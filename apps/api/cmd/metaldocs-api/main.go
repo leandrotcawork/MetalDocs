@@ -32,12 +32,17 @@ import (
 	nooppub "metaldocs/internal/platform/messaging/noop"
 	outboxpg "metaldocs/internal/platform/messaging/outbox/postgres"
 	"metaldocs/internal/platform/observability"
+	"metaldocs/internal/platform/security"
 )
 
 func main() {
 	repoMode, err := config.RepositoryMode()
 	if err != nil {
 		log.Fatalf("invalid repository mode: %v", err)
+	}
+	rateCfg, err := config.LoadRateLimitConfig()
+	if err != nil {
+		log.Fatalf("invalid rate limit config: %v", err)
 	}
 
 	docRepo, roleProvider, roleAdminRepo, auditWriter, publisher, cleanup := buildDependencies(repoMode)
@@ -57,6 +62,7 @@ func main() {
 	iamAdminService := iamapp.NewAdminService(roleAdminRepo, cachedProvider)
 	iamAdminHandler := iamdelivery.NewAdminHandler(iamAdminService)
 	httpObs := observability.NewHTTPObservability()
+	rateLimiter := security.NewRateLimiter(rateCfg)
 
 	mux := http.NewServeMux()
 	docHandler.RegisterRoutes(mux)
@@ -65,7 +71,7 @@ func main() {
 	iamAdminHandler.RegisterRoutes(mux)
 	mux.Handle("/api/v1/metrics", httpObs.MetricsHandler())
 
-	handler := httpObs.Wrap(iamMiddleware.Wrap(mux))
+	handler := httpObs.Wrap(rateLimiter.Wrap(iamMiddleware.Wrap(mux)))
 
 	addr := ":8080"
 	if appPort := os.Getenv("APP_PORT"); appPort != "" {
@@ -77,7 +83,8 @@ func main() {
 		Handler: handler,
 	}
 
-	log.Printf("MetalDocs API listening on %s (repository=%s auth_enabled=%t auth_cache_ttl=%s)", addr, repoMode, authn.Enabled(), authn.CacheTTL())
+	log.Printf("MetalDocs API listening on %s (repository=%s auth_enabled=%t auth_cache_ttl=%s rate_limit_enabled=%t rate_limit_window_s=%d rate_limit_max_requests=%d)",
+		addr, repoMode, authn.Enabled(), authn.CacheTTL(), rateCfg.Enabled, rateCfg.WindowSeconds, rateCfg.MaxRequests)
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("server failed: %v", err)
 	}

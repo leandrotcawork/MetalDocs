@@ -6,6 +6,9 @@
 
 ## Passos
 1. Copiar `.env.example` para `.env` e ajustar valores.
+   - Para hardening basico, habilitar:
+     - `METALDOCS_RATE_LIMIT_ENABLED=true`
+     - ajustar `METALDOCS_RATE_LIMIT_WINDOW_SECONDS` e `METALDOCS_RATE_LIMIT_MAX_REQUESTS`.
 2. Subir stack:
    - `docker compose -f deploy/compose/docker-compose.yml --env-file .env up -d`
 3. Validar saude:

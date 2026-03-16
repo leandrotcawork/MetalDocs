@@ -123,6 +123,47 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
+  /iam/users/{userId}/roles:
+    post:
+      summary: Cria/atualiza usuario IAM e atribui role
+      parameters:
+        - $ref: '#/components/parameters/UserIdHeader'
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertUserRoleRequest'
+      responses:
+        '200':
+          description: Role atribuida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpsertUserRoleResponse'
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
 components:
   parameters:
     DocumentId:
@@ -211,6 +252,27 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/VersionListItem'
+    UpsertUserRoleRequest:
+      type: object
+      required: [role]
+      properties:
+        displayName:
+          type: string
+        role:
+          type: string
+          enum: [admin, editor, reviewer, viewer]
+        assignedBy:
+          type: string
+    UpsertUserRoleResponse:
+      type: object
+      required: [userId, role]
+      properties:
+        userId:
+          type: string
+        role:
+          type: string
+        displayName:
+          type: string
     ApiErrorEnvelope:
       type: object
       required: [error]

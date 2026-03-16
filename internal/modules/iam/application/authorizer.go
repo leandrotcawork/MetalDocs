@@ -13,6 +13,7 @@ func NewStaticAuthorizer() *StaticAuthorizer {
 				domain.PermDocumentCreate: true,
 				domain.PermDocumentRead:   true,
 				domain.PermVersionRead:    true,
+				domain.PermIAMManageRoles: true,
 			},
 			domain.RoleEditor: {
 				domain.PermDocumentCreate: true,

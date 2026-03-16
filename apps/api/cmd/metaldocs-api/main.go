@@ -15,6 +15,7 @@ import (
 	iamapp "metaldocs/internal/modules/iam/application"
 	iamdelivery "metaldocs/internal/modules/iam/delivery/http"
 	iamdomain "metaldocs/internal/modules/iam/domain"
+	iammemory "metaldocs/internal/modules/iam/infrastructure/memory"
 	iampg "metaldocs/internal/modules/iam/infrastructure/postgres"
 	"metaldocs/internal/platform/authn"
 	"metaldocs/internal/platform/config"
@@ -27,18 +28,23 @@ func main() {
 		log.Fatalf("invalid repository mode: %v", err)
 	}
 
-	docRepo, roleProvider, cleanup := buildDependencies(repoMode)
+	docRepo, roleProvider, roleAdminRepo, cleanup := buildDependencies(repoMode)
 	defer cleanup()
 
 	docService := docapp.NewService(docRepo, nil, nil)
 	docHandler := docdelivery.NewHandler(docService)
 
-	mux := http.NewServeMux()
-	docHandler.RegisterRoutes(mux)
-
 	authorizer := iamapp.NewStaticAuthorizer()
 	cachedProvider := iamapp.NewCachedRoleProvider(roleProvider, authn.CacheTTL())
 	iamMiddleware := iamdelivery.NewMiddleware(authorizer, cachedProvider, authn.Enabled())
+
+	iamAdminService := iamapp.NewAdminService(roleAdminRepo, cachedProvider)
+	iamAdminHandler := iamdelivery.NewAdminHandler(iamAdminService)
+
+	mux := http.NewServeMux()
+	docHandler.RegisterRoutes(mux)
+	iamAdminHandler.RegisterRoutes(mux)
+
 	handler := iamMiddleware.Wrap(mux)
 
 	addr := ":8080"
@@ -57,7 +63,7 @@ func main() {
 	}
 }
 
-func buildDependencies(mode string) (docdomain.Repository, iamdomain.RoleProvider, func()) {
+func buildDependencies(mode string) (docdomain.Repository, iamdomain.RoleProvider, iamdomain.RoleAdminRepository, func()) {
 	switch mode {
 	case config.RepositoryPostgres:
 		pgCfg, err := config.LoadPostgresConfig()
@@ -68,10 +74,10 @@ func buildDependencies(mode string) (docdomain.Repository, iamdomain.RoleProvide
 		if err != nil {
 			log.Fatalf("open postgres: %v", err)
 		}
-		return pgrepo.NewRepository(db), iampg.NewRoleProvider(db), func() { _ = closeDB(db) }
+		return pgrepo.NewRepository(db), iampg.NewRoleProvider(db), iampg.NewRoleAdminRepository(db), func() { _ = closeDB(db) }
 	default:
 		roles := authn.DevRoleMap()
-		return memoryrepo.NewRepository(), iamapp.NewDevRoleProvider(roles), func() {}
+		return memoryrepo.NewRepository(), iamapp.NewDevRoleProvider(roles), iammemory.NewRoleAdminRepository(), func() {}
 	}
 }
 

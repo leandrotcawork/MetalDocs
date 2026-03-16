@@ -136,3 +136,22 @@ func TestMiddlewareInternalErrorWhenProviderFails(t *testing.T) {
 		t.Fatalf("expected 500, got %d", rr.Code)
 	}
 }
+
+func TestMiddlewareProtectsIAMAdminRoute(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v1/iam/users/test-user/roles", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	mw := iamdelivery.NewMiddleware(iamapp.NewStaticAuthorizer(), fakeRoleProvider{roles: []iamdomain.Role{iamdomain.RoleEditor}}, true)
+	h := mw.Wrap(mux)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/iam/users/test-user/roles", strings.NewReader(`{"role":"viewer"}`))
+	req.Header.Set("X-User-Id", "editor-user")
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d", rr.Code)
+	}
+}

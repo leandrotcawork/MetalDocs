@@ -11,3 +11,8 @@ type Authorizer interface {
 type RoleProvider interface {
 	RolesByUserID(ctx context.Context, userID string) ([]Role, error)
 }
+
+// RoleAdminRepository writes IAM user and role assignments.
+type RoleAdminRepository interface {
+	UpsertUserAndAssignRole(ctx context.Context, userID, displayName string, role Role, assignedBy string) error
+}

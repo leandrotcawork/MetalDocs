@@ -6,13 +6,9 @@ Este procedimento e manual para executar no seu servidor PostgreSQL.
 
 ```sql
 CREATE ROLE metaldocs_app LOGIN PASSWORD ''CHANGE_ME_STRONG_PASSWORD'';
-
 CREATE DATABASE metaldocs OWNER metaldocs_app;
-
 \c metaldocs
-
 CREATE SCHEMA IF NOT EXISTS metaldocs AUTHORIZATION metaldocs_app;
-
 ALTER ROLE metaldocs_app IN DATABASE metaldocs
   SET search_path = metaldocs, public;
 ```
@@ -22,25 +18,9 @@ ALTER ROLE metaldocs_app IN DATABASE metaldocs
 Execute em ordem:
 1. `migrations/0001_init_documents.sql`
 2. `migrations/0002_init_iam_rbac.sql`
+3. `migrations/0003_iam_role_code_constraint.sql`
 
-## 3) Validacoes obrigatorias
-
-```sql
-\c metaldocs
-
-SELECT table_schema, table_name
-FROM information_schema.tables
-WHERE table_schema = 'metaldocs'
-ORDER BY table_name;
-```
-
-Esperado (minimo):
-- `metaldocs.documents`
-- `metaldocs.document_versions`
-- `metaldocs.iam_users`
-- `metaldocs.iam_user_roles`
-
-## 4) Seed inicial de RBAC para teste
+## 3) Seed inicial de RBAC para teste
 
 ```sql
 INSERT INTO metaldocs.iam_users (user_id, display_name)
@@ -52,9 +32,7 @@ VALUES ('admin-local', 'admin', 'manual-seed')
 ON CONFLICT (user_id, role_code) DO NOTHING;
 ```
 
-## 5) Configurar MetalDocs para usar Postgres
-
-No arquivo `.env` do MetalDocs:
+## 4) Configurar MetalDocs
 
 ```env
 METALDOCS_REPOSITORY=postgres
@@ -64,35 +42,26 @@ PGDATABASE=metaldocs
 PGUSER=metaldocs_app
 PGPASSWORD=CHANGE_ME_STRONG_PASSWORD
 PGSSLMODE=disable
-
-# Auth middleware
 METALDOCS_AUTH_ENABLED=true
 METALDOCS_AUTHZ_CACHE_TTL_SECONDS=30
 ```
 
-## 6) Teste de conectividade + auth
-
-Suba a API e valide:
+## 5) Smoke auth
 
 ```bash
 curl http://localhost:8080/api/v1/health/ready
-```
-
-Teste endpoint protegido sem headers (esperado 401):
-
-```bash
 curl http://localhost:8080/api/v1/documents
-```
-
-Teste endpoint protegido com user existente no banco (esperado 200):
-
-```bash
 curl -H "X-User-Id: admin-local" http://localhost:8080/api/v1/documents
 ```
 
-## 7) Boas praticas
-- Nunca compartilhar schema/tabelas com MetalShopping.
-- Nunca usar superuser na aplicacao.
-- Rotacionar senha da role `metaldocs_app` periodicamente.
-- Em producao, usar `PGSSLMODE=require` (ou superior) com certs.
-- Invalidate cache de auth apos mudanca de role (next step: endpoint/admin action).
+## 6) Smoke admin IAM
+
+```bash
+curl -X POST \
+  -H "X-User-Id: admin-local" \
+  -H "Content-Type: application/json" \
+  -d '{"displayName":"Editor User","role":"editor"}' \
+  http://localhost:8080/api/v1/iam/users/editor-user/roles
+```
+
+Apos atribuir role, o cache do usuario e invalidado automaticamente no processo.

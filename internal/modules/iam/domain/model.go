@@ -15,4 +15,5 @@ const (
 	PermDocumentCreate Permission = "document:create"
 	PermDocumentRead   Permission = "document:read"
 	PermVersionRead    Permission = "version:read"
+	PermIAMManageRoles Permission = "iam:manage_roles"
 )

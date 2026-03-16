@@ -123,6 +123,65 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
+  /search/documents:
+    get:
+      summary: Pesquisa documentos por filtros
+      parameters:
+        - $ref: '#/components/parameters/UserIdHeader'
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: ownerId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: classification
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [PUBLIC, INTERNAL, CONFIDENTIAL, RESTRICTED]
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [DRAFT, IN_REVIEW, APPROVED, PUBLISHED, ARCHIVED]
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Lista filtrada de documentos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchDocumentsResponse'
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
   /workflow/documents/{documentId}/transitions:
     post:
       summary: Transiciona o status de workflow do documento
@@ -341,6 +400,33 @@ components:
           type: string
         toStatus:
           type: string
+    SearchDocumentItem:
+      type: object
+      required: [documentId, title, ownerId, classification, status, createdAt]
+      properties:
+        documentId:
+          type: string
+        title:
+          type: string
+        ownerId:
+          type: string
+        classification:
+          type: string
+          enum: [PUBLIC, INTERNAL, CONFIDENTIAL, RESTRICTED]
+        status:
+          type: string
+          enum: [DRAFT, IN_REVIEW, APPROVED, PUBLISHED, ARCHIVED]
+        createdAt:
+          type: string
+          format: date-time
+    SearchDocumentsResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchDocumentItem'
     ApiErrorEnvelope:
       type: object
       required: [error]

@@ -20,6 +20,9 @@ import (
 	iamdomain "metaldocs/internal/modules/iam/domain"
 	iammemory "metaldocs/internal/modules/iam/infrastructure/memory"
 	iampg "metaldocs/internal/modules/iam/infrastructure/postgres"
+	searchapp "metaldocs/internal/modules/search/application"
+	searchdelivery "metaldocs/internal/modules/search/delivery/http"
+	searchdocs "metaldocs/internal/modules/search/infrastructure/documents"
 	workflowapp "metaldocs/internal/modules/workflow/application"
 	workflowdelivery "metaldocs/internal/modules/workflow/delivery/http"
 	"metaldocs/internal/platform/authn"
@@ -38,6 +41,8 @@ func main() {
 
 	docService := docapp.NewService(docRepo, nil, nil)
 	docHandler := docdelivery.NewHandler(docService)
+	searchService := searchapp.NewService(searchdocs.NewReader(docRepo))
+	searchHandler := searchdelivery.NewHandler(searchService)
 	workflowService := workflowapp.NewService(docRepo, auditWriter, nil, nil)
 	workflowHandler := workflowdelivery.NewHandler(workflowService)
 
@@ -50,6 +55,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	docHandler.RegisterRoutes(mux)
+	searchHandler.RegisterRoutes(mux)
 	workflowHandler.RegisterRoutes(mux)
 	iamAdminHandler.RegisterRoutes(mux)
 

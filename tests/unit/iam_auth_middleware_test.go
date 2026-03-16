@@ -240,3 +240,54 @@ func TestMiddlewareProtectsWorkflowTransitionRoute(t *testing.T) {
 		})
 	}
 }
+
+func TestMiddlewareProtectsSearchRoute(t *testing.T) {
+	tests := []struct {
+		name       string
+		roles      []iamdomain.Role
+		userID     string
+		wantStatus int
+	}{
+		{
+			name:       "viewer can search documents",
+			roles:      []iamdomain.Role{iamdomain.RoleViewer},
+			userID:     "viewer-user",
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "reviewer can search documents",
+			roles:      []iamdomain.Role{iamdomain.RoleReviewer},
+			userID:     "reviewer-user",
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "missing user header is unauthorized",
+			roles:      []iamdomain.Role{iamdomain.RoleViewer},
+			userID:     "",
+			wantStatus: http.StatusUnauthorized,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mux := http.NewServeMux()
+			mux.HandleFunc("/api/v1/search/documents", func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+			})
+
+			mw := iamdelivery.NewMiddleware(iamapp.NewStaticAuthorizer(), fakeRoleProvider{roles: tt.roles}, true)
+			h := mw.Wrap(mux)
+
+			req := httptest.NewRequest(http.MethodGet, "/api/v1/search/documents?q=doc", nil)
+			if tt.userID != "" {
+				req.Header.Set("X-User-Id", tt.userID)
+			}
+			rr := httptest.NewRecorder()
+			h.ServeHTTP(rr, req)
+
+			if rr.Code != tt.wantStatus {
+				t.Fatalf("expected %d, got %d", tt.wantStatus, rr.Code)
+			}
+		})
+	}
+}

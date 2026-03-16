@@ -16,5 +16,6 @@ const (
 	PermDocumentRead       Permission = "document:read"
 	PermVersionRead        Permission = "version:read"
 	PermWorkflowTransition Permission = "workflow:transition"
+	PermSearchRead         Permission = "search:read"
 	PermIAMManageRoles     Permission = "iam:manage_roles"
 )

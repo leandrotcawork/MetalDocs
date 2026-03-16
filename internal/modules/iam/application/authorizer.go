@@ -14,6 +14,7 @@ func NewStaticAuthorizer() *StaticAuthorizer {
 				domain.PermDocumentRead:       true,
 				domain.PermVersionRead:        true,
 				domain.PermWorkflowTransition: true,
+				domain.PermSearchRead:         true,
 				domain.PermIAMManageRoles:     true,
 			},
 			domain.RoleEditor: {
@@ -21,15 +22,18 @@ func NewStaticAuthorizer() *StaticAuthorizer {
 				domain.PermDocumentRead:       true,
 				domain.PermVersionRead:        true,
 				domain.PermWorkflowTransition: true,
+				domain.PermSearchRead:         true,
 			},
 			domain.RoleReviewer: {
 				domain.PermDocumentRead:       true,
 				domain.PermVersionRead:        true,
 				domain.PermWorkflowTransition: true,
+				domain.PermSearchRead:         true,
 			},
 			domain.RoleViewer: {
 				domain.PermDocumentRead: true,
 				domain.PermVersionRead:  true,
+				domain.PermSearchRead:   true,
 			},
 		},
 	}

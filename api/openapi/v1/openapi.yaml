@@ -1,0 +1,91 @@
+openapi: 3.0.3
+info:
+  title: MetalDocs API
+  version: 1.0.0
+  description: >
+    API inicial do MetalDocs (v1). Escopo atual sem integracao com IA.
+servers:
+  - url: http://192.168.0.3:8080/api/v1
+paths:
+  /health/live:
+    get:
+      summary: Liveness check
+      responses:
+        '200':
+          description: API em execucao
+  /health/ready:
+    get:
+      summary: Readiness check
+      responses:
+        '200':
+          description: Dependencias prontas
+  /documents:
+    post:
+      summary: Cria documento e primeira versao
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDocumentRequest'
+      responses:
+        '201':
+          description: Documento criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentCreatedResponse'
+    get:
+      summary: Lista documentos
+      responses:
+        '200':
+          description: Lista de documentos
+  /documents/{documentId}/versions:
+    get:
+      summary: Lista versoes de um documento
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      responses:
+        '200':
+          description: Lista de versoes
+components:
+  parameters:
+    DocumentId:
+      name: documentId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    CreateDocumentRequest:
+      type: object
+      required:
+        - title
+        - ownerId
+      properties:
+        title:
+          type: string
+          minLength: 1
+        ownerId:
+          type: string
+          format: uuid
+        classification:
+          type: string
+          enum: [PUBLIC, INTERNAL, CONFIDENTIAL, RESTRICTED]
+          default: INTERNAL
+    DocumentCreatedResponse:
+      type: object
+      required:
+        - documentId
+        - version
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        version:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum: [DRAFT, IN_REVIEW, APPROVED, PUBLISHED, ARCHIVED]

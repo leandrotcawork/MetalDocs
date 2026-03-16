@@ -1,0 +1,53 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: metaldocs-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - metaldocs_postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    container_name: metaldocs-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - metaldocs_redis_data:/data
+
+  minio:
+    image: minio/minio:latest
+    container_name: metaldocs-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - metaldocs_minio_data:/data
+
+  api:
+    image: ${API_IMAGE}
+    container_name: metaldocs-api
+    depends_on:
+      - postgres
+      - redis
+      - minio
+    environment:
+      APP_ENV: ${APP_ENV}
+      APP_HOST: ${APP_HOST}
+      APP_PORT: ${APP_PORT}
+    ports:
+      - "8080:8080"
+
+volumes:
+  metaldocs_postgres_data:
+  metaldocs_redis_data:
+  metaldocs_minio_data:

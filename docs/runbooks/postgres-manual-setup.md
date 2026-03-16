@@ -19,6 +19,11 @@ Execute em ordem:
 1. `migrations/0001_init_documents.sql`
 2. `migrations/0002_init_iam_rbac.sql`
 3. `migrations/0003_iam_role_code_constraint.sql`
+4. `migrations/0004_init_audit_events.sql`
+5. `migrations/0005_grant_workflow_audit_privileges.sql`
+6. `migrations/0006_grant_documents_bootstrap_privileges.sql`
+7. `migrations/0007_init_outbox_events.sql`
+8. `migrations/0008_grant_outbox_privileges.sql`
 
 ## 3) Seed inicial de RBAC para teste
 

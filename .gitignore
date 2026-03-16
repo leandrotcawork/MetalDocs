@@ -1,2 +1,5 @@
 .gocache/
 .env
+backups/
+tmp_api_err.log
+tmp_api_out.log

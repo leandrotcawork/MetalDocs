@@ -33,6 +33,10 @@ func (r *atomicRepoSpy) ListDocuments(context.Context) ([]domain.Document, error
 	return nil, nil
 }
 
+func (r *atomicRepoSpy) UpdateDocumentStatus(context.Context, string, string) error {
+	return nil
+}
+
 func (r *atomicRepoSpy) SaveVersion(context.Context, domain.Version) error {
 	r.saveCalled = true
 	return nil

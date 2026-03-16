@@ -3,7 +3,11 @@ package domain
 import "time"
 
 const (
-	StatusDraft = "DRAFT"
+	StatusDraft     = "DRAFT"
+	StatusInReview  = "IN_REVIEW"
+	StatusApproved  = "APPROVED"
+	StatusPublished = "PUBLISHED"
+	StatusArchived  = "ARCHIVED"
 )
 
 const (
@@ -30,12 +34,12 @@ type Version struct {
 }
 
 type CreateDocumentCommand struct {
-	DocumentID      string
-	Title           string
-	OwnerID         string
-	Classification  string
-	InitialContent  string
-	TraceID         string
+	DocumentID     string
+	Title          string
+	OwnerID        string
+	Classification string
+	InitialContent string
+	TraceID        string
 }
 
 type AddVersionCommand struct {

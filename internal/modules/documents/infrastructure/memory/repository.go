@@ -78,6 +78,19 @@ func (r *Repository) ListDocuments(_ context.Context) ([]domain.Document, error)
 	return docs, nil
 }
 
+func (r *Repository) UpdateDocumentStatus(_ context.Context, documentID, status string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	doc, exists := r.documents[documentID]
+	if !exists {
+		return domain.ErrDocumentNotFound
+	}
+	doc.Status = status
+	r.documents[documentID] = doc
+	return nil
+}
+
 func (r *Repository) SaveVersion(ctx context.Context, version domain.Version) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

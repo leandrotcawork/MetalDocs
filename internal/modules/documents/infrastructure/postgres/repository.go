@@ -137,6 +137,26 @@ ORDER BY created_at ASC
 	return out, nil
 }
 
+func (r *Repository) UpdateDocumentStatus(ctx context.Context, documentID, status string) error {
+	const q = `
+UPDATE metaldocs.documents
+SET status = $2, updated_at = NOW()
+WHERE id = $1
+`
+	res, err := r.db.ExecContext(ctx, q, documentID, status)
+	if err != nil {
+		return fmt.Errorf("update document status: %w", err)
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected update document status: %w", err)
+	}
+	if affected == 0 {
+		return domain.ErrDocumentNotFound
+	}
+	return nil
+}
+
 func (r *Repository) SaveVersion(ctx context.Context, version domain.Version) error {
 	const q = `
 INSERT INTO metaldocs.document_versions (document_id, version_number, content, created_at)

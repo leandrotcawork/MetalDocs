@@ -12,8 +12,9 @@ const (
 type Permission string
 
 const (
-	PermDocumentCreate Permission = "document:create"
-	PermDocumentRead   Permission = "document:read"
-	PermVersionRead    Permission = "version:read"
-	PermIAMManageRoles Permission = "iam:manage_roles"
+	PermDocumentCreate     Permission = "document:create"
+	PermDocumentRead       Permission = "document:read"
+	PermVersionRead        Permission = "version:read"
+	PermWorkflowTransition Permission = "workflow:transition"
+	PermIAMManageRoles     Permission = "iam:manage_roles"
 )

@@ -7,6 +7,9 @@ import (
 	"net/http"
 	"os"
 
+	auditdomain "metaldocs/internal/modules/audit/domain"
+	auditmemory "metaldocs/internal/modules/audit/infrastructure/memory"
+	auditpg "metaldocs/internal/modules/audit/infrastructure/postgres"
 	docapp "metaldocs/internal/modules/documents/application"
 	docdelivery "metaldocs/internal/modules/documents/delivery/http"
 	docdomain "metaldocs/internal/modules/documents/domain"
@@ -17,6 +20,8 @@ import (
 	iamdomain "metaldocs/internal/modules/iam/domain"
 	iammemory "metaldocs/internal/modules/iam/infrastructure/memory"
 	iampg "metaldocs/internal/modules/iam/infrastructure/postgres"
+	workflowapp "metaldocs/internal/modules/workflow/application"
+	workflowdelivery "metaldocs/internal/modules/workflow/delivery/http"
 	"metaldocs/internal/platform/authn"
 	"metaldocs/internal/platform/config"
 	pgdb "metaldocs/internal/platform/db/postgres"
@@ -28,11 +33,13 @@ func main() {
 		log.Fatalf("invalid repository mode: %v", err)
 	}
 
-	docRepo, roleProvider, roleAdminRepo, cleanup := buildDependencies(repoMode)
+	docRepo, roleProvider, roleAdminRepo, auditWriter, cleanup := buildDependencies(repoMode)
 	defer cleanup()
 
 	docService := docapp.NewService(docRepo, nil, nil)
 	docHandler := docdelivery.NewHandler(docService)
+	workflowService := workflowapp.NewService(docRepo, auditWriter, nil, nil)
+	workflowHandler := workflowdelivery.NewHandler(workflowService)
 
 	authorizer := iamapp.NewStaticAuthorizer()
 	cachedProvider := iamapp.NewCachedRoleProvider(roleProvider, authn.CacheTTL())
@@ -43,6 +50,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	docHandler.RegisterRoutes(mux)
+	workflowHandler.RegisterRoutes(mux)
 	iamAdminHandler.RegisterRoutes(mux)
 
 	handler := iamMiddleware.Wrap(mux)
@@ -63,7 +71,7 @@ func main() {
 	}
 }
 
-func buildDependencies(mode string) (docdomain.Repository, iamdomain.RoleProvider, iamdomain.RoleAdminRepository, func()) {
+func buildDependencies(mode string) (docdomain.Repository, iamdomain.RoleProvider, iamdomain.RoleAdminRepository, auditdomain.Writer, func()) {
 	switch mode {
 	case config.RepositoryPostgres:
 		pgCfg, err := config.LoadPostgresConfig()
@@ -74,10 +82,10 @@ func buildDependencies(mode string) (docdomain.Repository, iamdomain.RoleProvide
 		if err != nil {
 			log.Fatalf("open postgres: %v", err)
 		}
-		return pgrepo.NewRepository(db), iampg.NewRoleProvider(db), iampg.NewRoleAdminRepository(db), func() { _ = closeDB(db) }
+		return pgrepo.NewRepository(db), iampg.NewRoleProvider(db), iampg.NewRoleAdminRepository(db), auditpg.NewWriter(db), func() { _ = closeDB(db) }
 	default:
 		roles := authn.DevRoleMap()
-		return memoryrepo.NewRepository(), iamapp.NewDevRoleProvider(roles), iammemory.NewRoleAdminRepository(), func() {}
+		return memoryrepo.NewRepository(), iamapp.NewDevRoleProvider(roles), iammemory.NewRoleAdminRepository(), auditmemory.NewWriter(), func() {}
 	}
 }
 

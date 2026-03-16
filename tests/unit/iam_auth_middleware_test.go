@@ -138,20 +138,105 @@ func TestMiddlewareInternalErrorWhenProviderFails(t *testing.T) {
 }
 
 func TestMiddlewareProtectsIAMAdminRoute(t *testing.T) {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/api/v1/iam/users/test-user/roles", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
+	tests := []struct {
+		name       string
+		roles      []iamdomain.Role
+		userID     string
+		wantStatus int
+	}{
+		{
+			name:       "viewer is forbidden to manage roles",
+			roles:      []iamdomain.Role{iamdomain.RoleViewer},
+			userID:     "viewer-user",
+			wantStatus: http.StatusForbidden,
+		},
+		{
+			name:       "editor is forbidden to manage roles",
+			roles:      []iamdomain.Role{iamdomain.RoleEditor},
+			userID:     "editor-user",
+			wantStatus: http.StatusForbidden,
+		},
+		{
+			name:       "reviewer is forbidden to manage roles",
+			roles:      []iamdomain.Role{iamdomain.RoleReviewer},
+			userID:     "reviewer-user",
+			wantStatus: http.StatusForbidden,
+		},
+		{
+			name:       "admin can manage roles",
+			roles:      []iamdomain.Role{iamdomain.RoleAdmin},
+			userID:     "admin-local",
+			wantStatus: http.StatusOK,
+		},
+	}
 
-	mw := iamdelivery.NewMiddleware(iamapp.NewStaticAuthorizer(), fakeRoleProvider{roles: []iamdomain.Role{iamdomain.RoleEditor}}, true)
-	h := mw.Wrap(mux)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mux := http.NewServeMux()
+			mux.HandleFunc("/api/v1/iam/users/test-user/roles", func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+			})
 
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/iam/users/test-user/roles", strings.NewReader(`{"role":"viewer"}`))
-	req.Header.Set("X-User-Id", "editor-user")
-	rr := httptest.NewRecorder()
-	h.ServeHTTP(rr, req)
+			mw := iamdelivery.NewMiddleware(iamapp.NewStaticAuthorizer(), fakeRoleProvider{roles: tt.roles}, true)
+			h := mw.Wrap(mux)
 
-	if rr.Code != http.StatusForbidden {
-		t.Fatalf("expected 403, got %d", rr.Code)
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/iam/users/test-user/roles", strings.NewReader(`{"role":"viewer"}`))
+			req.Header.Set("X-User-Id", tt.userID)
+			rr := httptest.NewRecorder()
+			h.ServeHTTP(rr, req)
+
+			if rr.Code != tt.wantStatus {
+				t.Fatalf("expected %d, got %d", tt.wantStatus, rr.Code)
+			}
+		})
+	}
+}
+
+func TestMiddlewareProtectsWorkflowTransitionRoute(t *testing.T) {
+	tests := []struct {
+		name       string
+		roles      []iamdomain.Role
+		userID     string
+		wantStatus int
+	}{
+		{
+			name:       "viewer is forbidden to transition workflow",
+			roles:      []iamdomain.Role{iamdomain.RoleViewer},
+			userID:     "viewer-user",
+			wantStatus: http.StatusForbidden,
+		},
+		{
+			name:       "reviewer can transition workflow",
+			roles:      []iamdomain.Role{iamdomain.RoleReviewer},
+			userID:     "reviewer-user",
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "admin can transition workflow",
+			roles:      []iamdomain.Role{iamdomain.RoleAdmin},
+			userID:     "admin-local",
+			wantStatus: http.StatusOK,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mux := http.NewServeMux()
+			mux.HandleFunc("/api/v1/workflow/documents/test-user/transitions", func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+			})
+
+			mw := iamdelivery.NewMiddleware(iamapp.NewStaticAuthorizer(), fakeRoleProvider{roles: tt.roles}, true)
+			h := mw.Wrap(mux)
+
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/workflow/documents/test-user/transitions", strings.NewReader(`{"toStatus":"IN_REVIEW"}`))
+			req.Header.Set("X-User-Id", tt.userID)
+			rr := httptest.NewRecorder()
+			h.ServeHTTP(rr, req)
+
+			if rr.Code != tt.wantStatus {
+				t.Fatalf("expected %d, got %d", tt.wantStatus, rr.Code)
+			}
+		})
 	}
 }

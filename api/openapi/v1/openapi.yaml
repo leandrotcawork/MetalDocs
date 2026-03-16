@@ -123,6 +123,55 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
+  /workflow/documents/{documentId}/transitions:
+    post:
+      summary: Transiciona o status de workflow do documento
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+        - $ref: '#/components/parameters/UserIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowTransitionRequest'
+      responses:
+        '200':
+          description: Workflow atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowTransitionResponse'
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '404':
+          description: Documento nao encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '409':
+          description: Transicao invalida para o status atual
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
   /iam/users/{userId}/roles:
     post:
       summary: Cria/atualiza usuario IAM e atribui role
@@ -272,6 +321,25 @@ components:
         role:
           type: string
         displayName:
+          type: string
+    WorkflowTransitionRequest:
+      type: object
+      required: [toStatus]
+      properties:
+        toStatus:
+          type: string
+          enum: [DRAFT, IN_REVIEW, APPROVED, PUBLISHED, ARCHIVED]
+        reason:
+          type: string
+    WorkflowTransitionResponse:
+      type: object
+      required: [documentId, fromStatus, toStatus]
+      properties:
+        documentId:
+          type: string
+        fromStatus:
+          type: string
+        toStatus:
           type: string
     ApiErrorEnvelope:
       type: object

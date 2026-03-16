@@ -16,24 +16,36 @@ MetalDocs e uma plataforma interna para centralizacao, versionamento, workflow e
 - RBAC no backend.
 
 ## Fora de escopo v1
-- Funcionalidades de IA generativa, NLP ou agentes.
+- Funcionalidades de IA generativa, NLP ou agentes no produto.
 - Sugestoes automaticas baseadas em IA.
-- Qualquer processamento que dependa de modelos de linguagem.
+- Qualquer processamento em runtime dependente de LLM.
 
-## Principios
-- Arquitetura modular monolith com boundaries explicitos.
-- API-first com OpenAPI versionado.
-- Observabilidade desde o dia 1.
-- Sem mudancas destrutivas sem ADR.
+## Source of Truth (ordem de prioridade)
+1. `AGENTS.md`
+2. `docs/plans/MASTER_IMPLEMENTATION_PLAN.md`
+3. `docs/architecture/ARCHITECTURE_GUARDRAILS.md`
+4. `docs/standards/ENGINEERING_STANDARDS.md`
+5. `docs/adr/*.md`
+6. `api/openapi/v1/openapi.yaml`
 
-## Estrutura
-- `apps/`: processos executaveis (API e worker).
-- `internal/platform/`: infraestrutura compartilhada.
-- `internal/modules/`: dominios de negocio (vertical slice).
-- `api/openapi/`: contrato de API.
-- `docs/`: arquitetura, ADRs e runbooks.
-- `tests/`: estrategia de testes por tipo.
+## Documentos chave
+- Plano mestre: `docs/plans/MASTER_IMPLEMENTATION_PLAN.md`
+- Guardrails de arquitetura: `docs/architecture/ARCHITECTURE_GUARDRAILS.md`
+- Standards de engenharia: `docs/standards/ENGINEERING_STANDARDS.md`
+- Contratos internos (eventos/erros): `docs/contracts/INTERNAL_EVENTS_AND_ERRORS.md`
+- Setup dev Go: `docs/runbooks/dev-setup.md`
+- Setup manual Postgres: `docs/runbooks/postgres-manual-setup.md`
+- Templates: `docs/templates/`
+- Prompts oficiais: `docs/prompts/`
+
+## Dependency Management (Go)
+- O projeto nao usa `venv` ou `requirements.txt`.
+- Dependencias sao geridas por `go.mod` e travadas em `go.sum`.
+
+## Repository Modes
+- `METALDOCS_REPOSITORY=memory` (default para desenvolvimento rapido)
+- `METALDOCS_REPOSITORY=postgres` (persistencia real)
 
 ## Ambiente inicial
 - Host local: `192.168.0.3`.
-- Deploy inicial via Docker Compose.
+- Deploy inicial: Docker Compose single-node.

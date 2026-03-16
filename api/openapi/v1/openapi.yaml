@@ -13,15 +13,31 @@ paths:
       responses:
         '200':
           description: API em execucao
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
   /health/ready:
     get:
       summary: Readiness check
       responses:
         '200':
           description: Dependencias prontas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
   /documents:
     post:
       summary: Cria documento e primeira versao
+      parameters:
+        - $ref: '#/components/parameters/UserIdHeader'
       requestBody:
         required: true
         content:
@@ -35,19 +51,78 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DocumentCreatedResponse'
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
     get:
       summary: Lista documentos
+      parameters:
+        - $ref: '#/components/parameters/UserIdHeader'
       responses:
         '200':
           description: Lista de documentos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDocumentsResponse'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
   /documents/{documentId}/versions:
     get:
       summary: Lista versoes de um documento
       parameters:
         - $ref: '#/components/parameters/DocumentId'
+        - $ref: '#/components/parameters/UserIdHeader'
       responses:
         '200':
           description: Lista de versoes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListVersionsResponse'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '404':
+          description: Documento nao encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
 components:
   parameters:
     DocumentId:
@@ -56,7 +131,12 @@ components:
       required: true
       schema:
         type: string
-        format: uuid
+    UserIdHeader:
+      name: X-User-Id
+      in: header
+      required: true
+      schema:
+        type: string
   schemas:
     CreateDocumentRequest:
       type: object
@@ -69,23 +149,84 @@ components:
           minLength: 1
         ownerId:
           type: string
-          format: uuid
+          minLength: 1
         classification:
           type: string
           enum: [PUBLIC, INTERNAL, CONFIDENTIAL, RESTRICTED]
           default: INTERNAL
+        initialContent:
+          type: string
     DocumentCreatedResponse:
       type: object
       required:
         - documentId
         - version
+        - status
       properties:
         documentId:
           type: string
-          format: uuid
         version:
           type: integer
           minimum: 1
         status:
           type: string
           enum: [DRAFT, IN_REVIEW, APPROVED, PUBLISHED, ARCHIVED]
+    DocumentListItem:
+      type: object
+      required: [documentId, title, ownerId, status]
+      properties:
+        documentId:
+          type: string
+        title:
+          type: string
+        ownerId:
+          type: string
+        status:
+          type: string
+    ListDocumentsResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentListItem'
+    VersionListItem:
+      type: object
+      required: [documentId, version, createdAt]
+      properties:
+        documentId:
+          type: string
+        version:
+          type: integer
+          minimum: 1
+        createdAt:
+          type: string
+          format: date-time
+    ListVersionsResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/VersionListItem'
+    ApiErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          $ref: '#/components/schemas/ApiError'
+    ApiError:
+      type: object
+      required: [code, message, details, trace_id]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+        trace_id:
+          type: string

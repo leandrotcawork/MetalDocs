@@ -28,6 +28,9 @@ import (
 	"metaldocs/internal/platform/authn"
 	"metaldocs/internal/platform/config"
 	pgdb "metaldocs/internal/platform/db/postgres"
+	"metaldocs/internal/platform/messaging"
+	nooppub "metaldocs/internal/platform/messaging/noop"
+	outboxpg "metaldocs/internal/platform/messaging/outbox/postgres"
 )
 
 func main() {
@@ -36,14 +39,14 @@ func main() {
 		log.Fatalf("invalid repository mode: %v", err)
 	}
 
-	docRepo, roleProvider, roleAdminRepo, auditWriter, cleanup := buildDependencies(repoMode)
+	docRepo, roleProvider, roleAdminRepo, auditWriter, publisher, cleanup := buildDependencies(repoMode)
 	defer cleanup()
 
-	docService := docapp.NewService(docRepo, nil, nil)
+	docService := docapp.NewService(docRepo, publisher, nil)
 	docHandler := docdelivery.NewHandler(docService)
 	searchService := searchapp.NewService(searchdocs.NewReader(docRepo))
 	searchHandler := searchdelivery.NewHandler(searchService)
-	workflowService := workflowapp.NewService(docRepo, auditWriter, nil, nil)
+	workflowService := workflowapp.NewService(docRepo, auditWriter, publisher, nil)
 	workflowHandler := workflowdelivery.NewHandler(workflowService)
 
 	authorizer := iamapp.NewStaticAuthorizer()
@@ -77,7 +80,7 @@ func main() {
 	}
 }
 
-func buildDependencies(mode string) (docdomain.Repository, iamdomain.RoleProvider, iamdomain.RoleAdminRepository, auditdomain.Writer, func()) {
+func buildDependencies(mode string) (docdomain.Repository, iamdomain.RoleProvider, iamdomain.RoleAdminRepository, auditdomain.Writer, messaging.Publisher, func()) {
 	switch mode {
 	case config.RepositoryPostgres:
 		pgCfg, err := config.LoadPostgresConfig()
@@ -88,10 +91,10 @@ func buildDependencies(mode string) (docdomain.Repository, iamdomain.RoleProvide
 		if err != nil {
 			log.Fatalf("open postgres: %v", err)
 		}
-		return pgrepo.NewRepository(db), iampg.NewRoleProvider(db), iampg.NewRoleAdminRepository(db), auditpg.NewWriter(db), func() { _ = closeDB(db) }
+		return pgrepo.NewRepository(db), iampg.NewRoleProvider(db), iampg.NewRoleAdminRepository(db), auditpg.NewWriter(db), outboxpg.NewPublisher(db), func() { _ = closeDB(db) }
 	default:
 		roles := authn.DevRoleMap()
-		return memoryrepo.NewRepository(), iamapp.NewDevRoleProvider(roles), iammemory.NewRoleAdminRepository(), auditmemory.NewWriter(), func() {}
+		return memoryrepo.NewRepository(), iamapp.NewDevRoleProvider(roles), iammemory.NewRoleAdminRepository(), auditmemory.NewWriter(), nooppub.NewPublisher(), func() {}
 	}
 }
 

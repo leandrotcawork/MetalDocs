@@ -99,6 +99,24 @@ func TestMiddlewareSkipsHealthRoutes(t *testing.T) {
 	}
 }
 
+func TestMiddlewareSkipsMetricsRoute(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v1/metrics", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	mw := iamdelivery.NewMiddleware(iamapp.NewStaticAuthorizer(), fakeRoleProvider{roles: []iamdomain.Role{iamdomain.RoleViewer}}, true)
+	h := mw.Wrap(mux)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/metrics", nil)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rr.Code)
+	}
+}
+
 func TestMiddlewareUnauthorizedWhenUserMissingInProvider(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/v1/documents", func(w http.ResponseWriter, r *http.Request) {

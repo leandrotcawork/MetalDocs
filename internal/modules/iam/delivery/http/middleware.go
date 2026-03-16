@@ -68,7 +68,7 @@ func hasPermission(authorizer iamdomain.Authorizer, roles []iamdomain.Role, perm
 }
 
 func requiredPermission(method, path string) (iamdomain.Permission, bool) {
-	if path == "/api/v1/health/live" || path == "/api/v1/health/ready" {
+	if path == "/api/v1/health/live" || path == "/api/v1/health/ready" || path == "/api/v1/metrics" {
 		return "", false
 	}
 

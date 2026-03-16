@@ -31,6 +31,7 @@ import (
 	"metaldocs/internal/platform/messaging"
 	nooppub "metaldocs/internal/platform/messaging/noop"
 	outboxpg "metaldocs/internal/platform/messaging/outbox/postgres"
+	"metaldocs/internal/platform/observability"
 )
 
 func main() {
@@ -55,14 +56,16 @@ func main() {
 
 	iamAdminService := iamapp.NewAdminService(roleAdminRepo, cachedProvider)
 	iamAdminHandler := iamdelivery.NewAdminHandler(iamAdminService)
+	httpObs := observability.NewHTTPObservability()
 
 	mux := http.NewServeMux()
 	docHandler.RegisterRoutes(mux)
 	searchHandler.RegisterRoutes(mux)
 	workflowHandler.RegisterRoutes(mux)
 	iamAdminHandler.RegisterRoutes(mux)
+	mux.Handle("/api/v1/metrics", httpObs.MetricsHandler())
 
-	handler := iamMiddleware.Wrap(mux)
+	handler := httpObs.Wrap(iamMiddleware.Wrap(mux))
 
 	addr := ":8080"
 	if appPort := os.Getenv("APP_PORT"); appPort != "" {

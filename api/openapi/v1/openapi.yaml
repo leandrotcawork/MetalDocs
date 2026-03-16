@@ -33,6 +33,16 @@ paths:
                 properties:
                   status:
                     type: string
+  /metrics:
+    get:
+      summary: HTTP RED metrics por rota
+      responses:
+        '200':
+          description: Metricas de requests, erros e duracao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricsResponse'
   /documents:
     post:
       summary: Cria documento e primeira versao
@@ -427,6 +437,30 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SearchDocumentItem'
+    MetricItem:
+      type: object
+      required: [route, method, requests, errors, durationTotalMs, avgDurationMs]
+      properties:
+        route:
+          type: string
+        method:
+          type: string
+        requests:
+          type: integer
+        errors:
+          type: integer
+        durationTotalMs:
+          type: integer
+        avgDurationMs:
+          type: integer
+    MetricsResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MetricItem'
     ApiErrorEnvelope:
       type: object
       required: [error]

@@ -9,6 +9,7 @@ Checklist final para release com foco em confiabilidade, operacao segura e readi
 - [ ] `scripts/contract-baseline.ps1` aprovado.
 - [ ] `scripts/security-baseline.ps1 -SkipGovulncheck` aprovado (`gosec` sem issues).
 - [ ] `scripts/phase3-hardening-gate.ps1` aprovado.
+- [ ] `scripts/phase3-release-readiness.ps1` aprovado.
 - [ ] Baselines de performance (read + write concurrency) aprovados e registrados em runbook.
 
 ## 2. Contract and Architecture
@@ -33,3 +34,4 @@ Checklist final para release com foco em confiabilidade, operacao segura e readi
 - [ ] Go/No-Go aprovado com evidencias anexadas.
 - [ ] Responsavel de operacao definido.
 - [ ] Plano de rollback confirmado e testado.
+- [ ] Workflow manual `release-readiness` executado com artifact `phase3-release-evidence`.

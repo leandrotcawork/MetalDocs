@@ -38,6 +38,7 @@ MetalDocs e uma plataforma interna para centralizacao, versionamento, workflow e
 - Security baseline (SAST): `docs/runbooks/security-baseline.md`
 - Contract baseline: `docs/runbooks/contract-baseline.md`
 - Branch protection: `docs/runbooks/branch-protection.md`
+- Release readiness: `docs/runbooks/release-readiness.md`
 - Phase 3 hardening checklist: `docs/hardening/PHASE3_RELEASE_CHECKLIST.md`
 - Architecture review (Q1): `docs/hardening/ARCHITECTURE_REVIEW_2026Q1.md`
 - Module extraction strategy: `docs/hardening/MODULE_EXTRACTION_PLAN.md`

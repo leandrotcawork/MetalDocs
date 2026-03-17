@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -12,10 +13,13 @@ import (
 
 	"metaldocs/internal/modules/documents/application"
 	"metaldocs/internal/modules/documents/domain"
+	"metaldocs/internal/platform/security"
 )
 
 type Handler struct {
-	service *application.Service
+	service     *application.Service
+	signer      *security.AttachmentSigner
+	downloadTTL time.Duration
 }
 
 type CreateDocumentRequest struct {
@@ -106,6 +110,22 @@ type VersionDiffResponse struct {
 	ExpiryAtChanged       bool     `json:"expiryAtChanged"`
 }
 
+type AttachmentResponse struct {
+	AttachmentID string `json:"attachmentId"`
+	DocumentID   string `json:"documentId"`
+	FileName     string `json:"fileName"`
+	ContentType  string `json:"contentType"`
+	SizeBytes    int64  `json:"sizeBytes"`
+	UploadedBy   string `json:"uploadedBy"`
+	CreatedAt    string `json:"createdAt"`
+}
+
+type AttachmentDownloadURLResponse struct {
+	AttachmentID string `json:"attachmentId"`
+	DownloadURL  string `json:"downloadUrl"`
+	ExpiresAt    string `json:"expiresAt"`
+}
+
 type apiErrorEnvelope struct {
 	Error apiError `json:"error"`
 }
@@ -118,7 +138,21 @@ type apiError struct {
 }
 
 func NewHandler(service *application.Service) *Handler {
-	return &Handler{service: service}
+	return &Handler{
+		service:     service,
+		signer:      security.NewAttachmentSigner("metaldocs-local-dev-secret"),
+		downloadTTL: 5 * time.Minute,
+	}
+}
+
+func (h *Handler) WithAttachmentDownloads(signer *security.AttachmentSigner, ttl time.Duration) *Handler {
+	if signer != nil {
+		h.signer = signer
+	}
+	if ttl > 0 {
+		h.downloadTTL = ttl
+	}
+	return h
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
@@ -128,6 +162,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/access-policies", h.handleAccessPolicies)
 	mux.HandleFunc("/api/v1/documents", h.handleDocuments)
 	mux.HandleFunc("/api/v1/documents/", h.handleDocumentSubRoutes)
+	mux.HandleFunc("/api/v1/attachments/", h.handleAttachmentDownloads)
 }
 
 func (h *Handler) handleHealthLive(w http.ResponseWriter, r *http.Request) {
@@ -333,8 +368,23 @@ func (h *Handler) handleDocumentSubRoutes(w http.ResponseWriter, r *http.Request
 		h.handleDiffVersions(w, r, parts[0])
 		return
 	}
+	if len(parts) == 4 && strings.TrimSpace(parts[0]) != "" && parts[1] == "attachments" && parts[3] == "download-url" && r.Method == http.MethodGet {
+		h.handleCreateAttachmentDownloadURL(w, r, parts[0], parts[2])
+		return
+	}
 	if len(parts) == 2 && strings.TrimSpace(parts[0]) != "" && parts[1] == "versions" && r.Method == http.MethodPost {
 		h.handleAddVersion(w, r, parts[0])
+		return
+	}
+	if len(parts) == 2 && strings.TrimSpace(parts[0]) != "" && parts[1] == "attachments" {
+		switch r.Method {
+		case http.MethodPost:
+			h.handleUploadAttachment(w, r, parts[0])
+		case http.MethodGet:
+			h.handleListAttachments(w, r, parts[0])
+		default:
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
 		return
 	}
 	if len(parts) == 1 && strings.TrimSpace(parts[0]) != "" {
@@ -461,6 +511,111 @@ func (h *Handler) handleDiffVersions(w http.ResponseWriter, r *http.Request, doc
 	})
 }
 
+func (h *Handler) handleUploadAttachment(w http.ResponseWriter, r *http.Request, documentID string) {
+	traceID := requestTraceID(r)
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid multipart payload", traceID)
+		return
+	}
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Missing file field", traceID)
+		return
+	}
+	defer file.Close()
+
+	content, err := io.ReadAll(io.LimitReader(file, 10<<20+1))
+	if err != nil {
+		writeAPIError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to read attachment payload", traceID)
+		return
+	}
+	if len(content) == 0 || len(content) > 10*1024*1024 {
+		writeAPIError(w, http.StatusBadRequest, "INVALID_ATTACHMENT", "Attachment size must be between 1 byte and 10 MB", traceID)
+		return
+	}
+
+	attachment, err := h.service.UploadAttachmentAuthorized(r.Context(), domain.UploadAttachmentCommand{
+		DocumentID:  documentID,
+		FileName:    header.Filename,
+		ContentType: header.Header.Get("Content-Type"),
+		Content:     content,
+		UploadedBy:  strings.TrimSpace(r.Header.Get("X-User-Id")),
+		TraceID:     traceID,
+	})
+	if err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, mapAttachmentResponse(attachment))
+}
+
+func (h *Handler) handleListAttachments(w http.ResponseWriter, r *http.Request, documentID string) {
+	traceID := requestTraceID(r)
+	items, err := h.service.ListAttachmentsAuthorized(r.Context(), documentID)
+	if err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+
+	out := make([]AttachmentResponse, 0, len(items))
+	for _, item := range items {
+		out = append(out, mapAttachmentResponse(item))
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": out})
+}
+
+func (h *Handler) handleCreateAttachmentDownloadURL(w http.ResponseWriter, r *http.Request, documentID, attachmentID string) {
+	traceID := requestTraceID(r)
+	attachment, err := h.service.GetAttachmentAuthorized(r.Context(), documentID, attachmentID)
+	if err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+
+	expiresAt := time.Now().UTC().Add(h.downloadTTL)
+	downloadURL := h.signer.BuildDownloadURL("/api/v1/attachments/"+attachment.ID+"/content", attachment.ID, expiresAt)
+	writeJSON(w, http.StatusOK, AttachmentDownloadURLResponse{
+		AttachmentID: attachment.ID,
+		DownloadURL:  downloadURL,
+		ExpiresAt:    expiresAt.Format(time.RFC3339),
+	})
+}
+
+func (h *Handler) handleAttachmentDownloads(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/attachments/")
+	parts := strings.Split(path, "/")
+	if len(parts) != 2 || strings.TrimSpace(parts[0]) == "" || parts[1] != "content" {
+		writeAPIError(w, http.StatusNotFound, "ATTACHMENT_NOT_FOUND", "Attachment route not found", requestTraceID(r))
+		return
+	}
+
+	attachmentID := parts[0]
+	expiresAt := strings.TrimSpace(r.URL.Query().Get("expiresAt"))
+	signature := strings.TrimSpace(r.URL.Query().Get("signature"))
+	if !h.signer.Verify(attachmentID, expiresAt, signature) {
+		writeAPIError(w, http.StatusForbidden, "ATTACHMENT_URL_INVALID", "Attachment URL is invalid or expired", requestTraceID(r))
+		return
+	}
+
+	attachment, content, err := h.service.OpenAttachmentContent(r.Context(), attachmentID)
+	if err != nil {
+		h.writeDomainError(w, err, requestTraceID(r))
+		return
+	}
+
+	w.Header().Set("Content-Type", attachment.ContentType)
+	w.Header().Set("Content-Disposition", `attachment; filename="`+attachment.FileName+`"`)
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(content)
+}
+
 func (h *Handler) writeDomainError(w http.ResponseWriter, err error, traceID string) {
 	switch {
 	case errors.Is(err, domain.ErrInvalidCommand):
@@ -479,6 +634,12 @@ func (h *Handler) writeDomainError(w http.ResponseWriter, err error, traceID str
 		writeAPIError(w, http.StatusConflict, "VERSIONING_NOT_ALLOWED", "Document cannot receive a new version in current status", traceID)
 	case errors.Is(err, domain.ErrVersionNotFound):
 		writeAPIError(w, http.StatusNotFound, "VERSION_NOT_FOUND", "Version not found", traceID)
+	case errors.Is(err, domain.ErrInvalidAttachment):
+		writeAPIError(w, http.StatusBadRequest, "INVALID_ATTACHMENT", "Invalid attachment payload", traceID)
+	case errors.Is(err, domain.ErrAttachmentNotFound):
+		writeAPIError(w, http.StatusNotFound, "ATTACHMENT_NOT_FOUND", "Attachment not found", traceID)
+	case errors.Is(err, domain.ErrAttachmentStoreUnavailable):
+		writeAPIError(w, http.StatusInternalServerError, "ATTACHMENT_STORE_UNAVAILABLE", "Attachment storage is not configured", traceID)
 	default:
 		writeAPIError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Internal server error", traceID)
 	}
@@ -541,4 +702,16 @@ func parseRequiredIntQuery(r *http.Request, key string) (int, error) {
 		return 0, domain.ErrInvalidCommand
 	}
 	return strconv.Atoi(raw)
+}
+
+func mapAttachmentResponse(item domain.Attachment) AttachmentResponse {
+	return AttachmentResponse{
+		AttachmentID: item.ID,
+		DocumentID:   item.DocumentID,
+		FileName:     item.FileName,
+		ContentType:  item.ContentType,
+		SizeBytes:    item.SizeBytes,
+		UploadedBy:   item.UploadedBy,
+		CreatedAt:    item.CreatedAt.UTC().Format(time.RFC3339),
+	}
 }

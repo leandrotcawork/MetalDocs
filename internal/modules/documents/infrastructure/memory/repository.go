@@ -9,19 +9,23 @@ import (
 )
 
 type Repository struct {
-	mu        sync.RWMutex
-	documents map[string]domain.Document
-	versions  map[string][]domain.Version
-	types     []domain.DocumentType
-	policies  map[string][]domain.AccessPolicy
+	mu                  sync.RWMutex
+	documents           map[string]domain.Document
+	versions            map[string][]domain.Version
+	attachments         map[string]domain.Attachment
+	documentAttachments map[string][]domain.Attachment
+	types               []domain.DocumentType
+	policies            map[string][]domain.AccessPolicy
 }
 
 func NewRepository() *Repository {
 	return &Repository{
-		documents: map[string]domain.Document{},
-		versions:  map[string][]domain.Version{},
-		types:     domain.DefaultDocumentTypes(),
-		policies:  map[string][]domain.AccessPolicy{},
+		documents:           map[string]domain.Document{},
+		versions:            map[string][]domain.Version{},
+		attachments:         map[string]domain.Attachment{},
+		documentAttachments: map[string][]domain.Attachment{},
+		types:               domain.DefaultDocumentTypes(),
+		policies:            map[string][]domain.AccessPolicy{},
 	}
 }
 
@@ -178,4 +182,41 @@ func (r *Repository) NextVersionNumber(_ context.Context, documentID string) (in
 	}
 
 	return len(r.versions[documentID]) + 1, nil
+}
+
+func (r *Repository) CreateAttachment(_ context.Context, attachment domain.Attachment) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, exists := r.documents[attachment.DocumentID]; !exists {
+		return domain.ErrDocumentNotFound
+	}
+	r.attachments[attachment.ID] = attachment
+	r.documentAttachments[attachment.DocumentID] = append(r.documentAttachments[attachment.DocumentID], attachment)
+	return nil
+}
+
+func (r *Repository) GetAttachment(_ context.Context, attachmentID string) (domain.Attachment, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	attachment, exists := r.attachments[attachmentID]
+	if !exists {
+		return domain.Attachment{}, domain.ErrAttachmentNotFound
+	}
+	return attachment, nil
+}
+
+func (r *Repository) ListAttachments(_ context.Context, documentID string) ([]domain.Attachment, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	if _, exists := r.documents[documentID]; !exists {
+		return nil, domain.ErrDocumentNotFound
+	}
+	items := append([]domain.Attachment(nil), r.documentAttachments[documentID]...)
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].CreatedAt.Before(items[j].CreatedAt)
+	})
+	return items, nil
 }

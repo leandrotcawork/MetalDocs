@@ -1,6 +1,9 @@
 package domain
 
-import "context"
+import (
+	"context"
+	"io"
+)
 
 // Repository defines persistence operations for the documents module.
 type Repository interface {
@@ -15,10 +18,19 @@ type Repository interface {
 	ListVersions(ctx context.Context, documentID string) ([]Version, error)
 	GetVersion(ctx context.Context, documentID string, versionNumber int) (Version, error)
 	NextVersionNumber(ctx context.Context, documentID string) (int, error)
+	CreateAttachment(ctx context.Context, attachment Attachment) error
+	GetAttachment(ctx context.Context, attachmentID string) (Attachment, error)
+	ListAttachments(ctx context.Context, documentID string) ([]Attachment, error)
 }
 
 // AtomicCreateRepository is an optional capability for strong consistency on create flow.
 // If implemented, service can persist document + initial version in a single atomic operation.
 type AtomicCreateRepository interface {
 	CreateDocumentWithInitialVersion(ctx context.Context, document Document, version Version) error
+}
+
+type AttachmentStore interface {
+	Save(ctx context.Context, storageKey string, content []byte) error
+	Open(ctx context.Context, storageKey string) (io.ReadCloser, error)
+	Delete(ctx context.Context, storageKey string) error
 }

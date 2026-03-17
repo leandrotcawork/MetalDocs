@@ -76,6 +76,9 @@ func requiredPermission(method, path string) (iamdomain.Permission, bool) {
 	if method == http.MethodPost && path == "/api/v1/documents" {
 		return iamdomain.PermDocumentCreate, true
 	}
+	if method == http.MethodPost && strings.HasPrefix(path, "/api/v1/documents/") && strings.HasSuffix(path, "/attachments") {
+		return iamdomain.PermDocumentUploadAttachment, true
+	}
 	if method == http.MethodGet && path == "/api/v1/documents" {
 		return iamdomain.PermDocumentRead, true
 	}

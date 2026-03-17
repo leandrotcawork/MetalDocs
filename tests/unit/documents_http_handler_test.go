@@ -1,7 +1,9 @@
 package unit
 
 import (
+	"bytes"
 	"encoding/json"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -14,7 +16,7 @@ import (
 
 func newTestMux() *http.ServeMux {
 	repo := memory.NewRepository()
-	svc := application.NewService(repo, nil, nil)
+	svc := application.NewService(repo, nil, nil).WithAttachmentStore(memory.NewAttachmentStore())
 	h := httpdelivery.NewHandler(svc)
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
@@ -133,5 +135,84 @@ func TestReplaceAndListAccessPoliciesHTTP(t *testing.T) {
 
 	if getRR.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d body=%s", getRR.Code, getRR.Body.String())
+	}
+}
+
+func TestUploadListAndDownloadAttachmentFlow(t *testing.T) {
+	mux := newTestMux()
+
+	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/documents", strings.NewReader(`{"title":"Manual","documentType":"manual","ownerId":"u1","businessUnit":"ops","department":"general","metadata":{"manual_code":"MAN-HTTP"}}`))
+	createReq.Header.Set("Content-Type", "application/json")
+	createRR := httptest.NewRecorder()
+	mux.ServeHTTP(createRR, createReq)
+	if createRR.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d body=%s", createRR.Code, createRR.Body.String())
+	}
+
+	var created struct {
+		DocumentID string `json:"documentId"`
+	}
+	if err := json.Unmarshal(createRR.Body.Bytes(), &created); err != nil {
+		t.Fatalf("decode create response: %v", err)
+	}
+
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	part, err := writer.CreateFormFile("file", "manual.txt")
+	if err != nil {
+		t.Fatalf("create form file: %v", err)
+	}
+	if _, err := part.Write([]byte("hello attachment")); err != nil {
+		t.Fatalf("write form file: %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("close multipart writer: %v", err)
+	}
+
+	uploadReq := httptest.NewRequest(http.MethodPost, "/api/v1/documents/"+created.DocumentID+"/attachments", &body)
+	uploadReq.Header.Set("Content-Type", writer.FormDataContentType())
+	uploadReq.Header.Set("X-User-Id", "editor-local")
+	uploadRR := httptest.NewRecorder()
+	mux.ServeHTTP(uploadRR, uploadReq)
+	if uploadRR.Code != http.StatusCreated {
+		t.Fatalf("expected 201 for upload, got %d body=%s", uploadRR.Code, uploadRR.Body.String())
+	}
+
+	var attachment struct {
+		AttachmentID string `json:"attachmentId"`
+	}
+	if err := json.Unmarshal(uploadRR.Body.Bytes(), &attachment); err != nil {
+		t.Fatalf("decode upload response: %v", err)
+	}
+
+	listReq := httptest.NewRequest(http.MethodGet, "/api/v1/documents/"+created.DocumentID+"/attachments", nil)
+	listRR := httptest.NewRecorder()
+	mux.ServeHTTP(listRR, listReq)
+	if listRR.Code != http.StatusOK {
+		t.Fatalf("expected 200 for list attachments, got %d body=%s", listRR.Code, listRR.Body.String())
+	}
+
+	urlReq := httptest.NewRequest(http.MethodGet, "/api/v1/documents/"+created.DocumentID+"/attachments/"+attachment.AttachmentID+"/download-url", nil)
+	urlRR := httptest.NewRecorder()
+	mux.ServeHTTP(urlRR, urlReq)
+	if urlRR.Code != http.StatusOK {
+		t.Fatalf("expected 200 for download url, got %d body=%s", urlRR.Code, urlRR.Body.String())
+	}
+
+	var downloadResp struct {
+		DownloadURL string `json:"downloadUrl"`
+	}
+	if err := json.Unmarshal(urlRR.Body.Bytes(), &downloadResp); err != nil {
+		t.Fatalf("decode download url response: %v", err)
+	}
+
+	downloadReq := httptest.NewRequest(http.MethodGet, downloadResp.DownloadURL, nil)
+	downloadRR := httptest.NewRecorder()
+	mux.ServeHTTP(downloadRR, downloadReq)
+	if downloadRR.Code != http.StatusOK {
+		t.Fatalf("expected 200 for attachment download, got %d body=%s", downloadRR.Code, downloadRR.Body.String())
+	}
+	if strings.TrimSpace(downloadRR.Body.String()) != "hello attachment" {
+		t.Fatalf("unexpected attachment content: %s", downloadRR.Body.String())
 	}
 }

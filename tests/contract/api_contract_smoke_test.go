@@ -3,6 +3,8 @@ package contract
 import (
 	"bytes"
 	"encoding/json"
+	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -70,6 +72,13 @@ func TestAPIContractSmoke(t *testing.T) {
 			wantStatus: http.StatusOK,
 		},
 		{
+			name:       "list attachments",
+			method:     http.MethodGet,
+			path:       "/api/v1/documents/" + docID + "/attachments",
+			withUserID: true,
+			wantStatus: http.StatusOK,
+		},
+		{
 			name:       "upsert iam role",
 			method:     http.MethodPost,
 			path:       "/api/v1/iam/users/contract-user/roles",
@@ -117,6 +126,7 @@ func TestAPIContractSmoke(t *testing.T) {
 
 func buildContractTestHandler() http.Handler {
 	docRepo := memoryrepo.NewRepository()
+	attachmentStore := memoryrepo.NewAttachmentStore()
 	cachedProvider := iamapp.NewCachedRoleProvider(
 		iamapp.NewDevRoleProvider(map[string][]iamdomain.Role{
 			"admin-local": {iamdomain.RoleAdmin},
@@ -127,7 +137,7 @@ func buildContractTestHandler() http.Handler {
 	auditWriter := auditmemory.NewWriter()
 	authorizer := iamapp.NewStaticAuthorizer()
 
-	docService := docapp.NewService(docRepo, nil, nil)
+	docService := docapp.NewService(docRepo, nil, nil).WithAttachmentStore(attachmentStore)
 	docHandler := docdelivery.NewHandler(docService)
 	searchService := searchapp.NewService(searchdocs.NewReader(docRepo))
 	searchHandler := searchdelivery.NewHandler(searchService)
@@ -190,4 +200,31 @@ func createDocument(t *testing.T, handler http.Handler) string {
 		t.Fatalf("seed create returned empty documentId")
 	}
 	return resp.DocumentID
+}
+
+func TestAttachmentSmokeFlow(t *testing.T) {
+	handler := buildContractTestHandler()
+	docID := createDocument(t, handler)
+
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	part, err := writer.CreateFormFile("file", "contract.txt")
+	if err != nil {
+		t.Fatalf("create form file: %v", err)
+	}
+	if _, err := io.WriteString(part, "contract attachment"); err != nil {
+		t.Fatalf("write attachment: %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("close writer: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/documents/"+docID+"/attachments", &body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("X-User-Id", "admin-local")
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("upload attachment status mismatch: got=%d body=%s", rr.Code, rr.Body.String())
+	}
 }

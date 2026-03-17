@@ -67,6 +67,18 @@ func (r *atomicRepoSpy) NextVersionNumber(context.Context, string) (int, error) 
 	return 1, nil
 }
 
+func (r *atomicRepoSpy) CreateAttachment(context.Context, domain.Attachment) error {
+	return nil
+}
+
+func (r *atomicRepoSpy) GetAttachment(context.Context, string) (domain.Attachment, error) {
+	return domain.Attachment{}, domain.ErrAttachmentNotFound
+}
+
+func (r *atomicRepoSpy) ListAttachments(context.Context, string) ([]domain.Attachment, error) {
+	return nil, nil
+}
+
 func TestCreateDocumentPrefersAtomicRepositoryWhenAvailable(t *testing.T) {
 	repo := &atomicRepoSpy{}
 	svc := application.NewService(repo, nil, fixedClock{now: time.Date(2026, 3, 16, 10, 0, 0, 0, time.UTC)})

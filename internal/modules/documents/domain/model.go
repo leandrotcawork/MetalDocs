@@ -43,6 +43,17 @@ type Version struct {
 	CreatedAt     time.Time
 }
 
+type Attachment struct {
+	ID          string
+	DocumentID  string
+	FileName    string
+	ContentType string
+	SizeBytes   int64
+	StorageKey  string
+	UploadedBy  string
+	CreatedAt   time.Time
+}
+
 type CreateDocumentCommand struct {
 	DocumentID     string
 	Title          string
@@ -64,6 +75,15 @@ type AddVersionCommand struct {
 	Content       string
 	ChangeSummary string
 	TraceID       string
+}
+
+type UploadAttachmentCommand struct {
+	DocumentID  string
+	FileName    string
+	ContentType string
+	Content     []byte
+	UploadedBy  string
+	TraceID     string
 }
 
 type VersionDiff struct {

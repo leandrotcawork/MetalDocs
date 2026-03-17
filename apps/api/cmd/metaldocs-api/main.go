@@ -36,6 +36,7 @@ import (
 	outboxpg "metaldocs/internal/platform/messaging/outbox/postgres"
 	"metaldocs/internal/platform/observability"
 	"metaldocs/internal/platform/security"
+	localstorage "metaldocs/internal/platform/storage/local"
 )
 
 func main() {
@@ -47,12 +48,16 @@ func main() {
 	if err != nil {
 		log.Fatalf("invalid rate limit config: %v", err)
 	}
+	attachmentsCfg, err := config.LoadAttachmentsConfig()
+	if err != nil {
+		log.Fatalf("invalid attachments config: %v", err)
+	}
 
-	docRepo, roleProvider, roleAdminRepo, auditWriter, publisher, cleanup := buildDependencies(repoMode)
+	docRepo, attachmentStore, roleProvider, roleAdminRepo, auditWriter, publisher, cleanup := buildDependencies(repoMode, attachmentsCfg)
 	defer cleanup()
 
-	docService := docapp.NewService(docRepo, publisher, nil)
-	docHandler := docdelivery.NewHandler(docService)
+	docService := docapp.NewService(docRepo, publisher, nil).WithAttachmentStore(attachmentStore)
+	docHandler := docdelivery.NewHandler(docService).WithAttachmentDownloads(security.NewAttachmentSigner(attachmentsCfg.DownloadSecret), time.Duration(attachmentsCfg.DownloadTTLSeconds)*time.Second)
 	searchService := searchapp.NewService(searchdocs.NewReader(docRepo))
 	searchHandler := searchdelivery.NewHandler(searchService)
 	workflowService := workflowapp.NewService(docRepo, auditWriter, publisher, nil)
@@ -98,7 +103,7 @@ func main() {
 	}
 }
 
-func buildDependencies(mode string) (docdomain.Repository, iamdomain.RoleProvider, iamdomain.RoleAdminRepository, auditdomain.Writer, messaging.Publisher, func()) {
+func buildDependencies(mode string, attachmentsCfg config.AttachmentsConfig) (docdomain.Repository, docdomain.AttachmentStore, iamdomain.RoleProvider, iamdomain.RoleAdminRepository, auditdomain.Writer, messaging.Publisher, func()) {
 	switch mode {
 	case config.RepositoryPostgres:
 		pgCfg, err := config.LoadPostgresConfig()
@@ -109,10 +114,10 @@ func buildDependencies(mode string) (docdomain.Repository, iamdomain.RoleProvide
 		if err != nil {
 			log.Fatalf("open postgres: %v", err)
 		}
-		return pgrepo.NewRepository(db), iampg.NewRoleProvider(db), iampg.NewRoleAdminRepository(db), auditpg.NewWriter(db), outboxpg.NewPublisher(db), func() { _ = closeDB(db) }
+		return pgrepo.NewRepository(db), localstorage.NewStore(attachmentsCfg.RootPath), iampg.NewRoleProvider(db), iampg.NewRoleAdminRepository(db), auditpg.NewWriter(db), outboxpg.NewPublisher(db), func() { _ = closeDB(db) }
 	default:
 		roles := authn.DevRoleMap()
-		return memoryrepo.NewRepository(), iamapp.NewDevRoleProvider(roles), iammemory.NewRoleAdminRepository(), auditmemory.NewWriter(), nooppub.NewPublisher(), func() {}
+		return memoryrepo.NewRepository(), memoryrepo.NewAttachmentStore(), iamapp.NewDevRoleProvider(roles), iammemory.NewRoleAdminRepository(), auditmemory.NewWriter(), nooppub.NewPublisher(), func() {}
 	}
 }
 

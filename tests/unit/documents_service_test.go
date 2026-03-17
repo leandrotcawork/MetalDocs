@@ -8,6 +8,7 @@ import (
 	"metaldocs/internal/modules/documents/application"
 	"metaldocs/internal/modules/documents/domain"
 	"metaldocs/internal/modules/documents/infrastructure/memory"
+	iamdomain "metaldocs/internal/modules/iam/domain"
 	"metaldocs/internal/platform/messaging"
 )
 
@@ -262,5 +263,68 @@ func TestListVersionsRequiresExistingDocument(t *testing.T) {
 	_, err := svc.ListVersions(context.Background(), "missing")
 	if err == nil {
 		t.Fatal("expected error for missing document")
+	}
+}
+
+func TestUploadAndListAttachmentsAuthorized(t *testing.T) {
+	repo := memory.NewRepository()
+	store := memory.NewAttachmentStore()
+	svc := application.NewService(repo, nil, fixedClock{now: time.Date(2026, 3, 16, 10, 0, 0, 0, time.UTC)}).WithAttachmentStore(store)
+
+	_, err := svc.CreateDocument(context.Background(), domain.CreateDocumentCommand{
+		DocumentID:   "doc-attach",
+		Title:        "Manual",
+		DocumentType: "manual",
+		OwnerID:      "owner-1",
+		BusinessUnit: "ops",
+		Department:   "general",
+		MetadataJSON: map[string]any{
+			"manual_code": "MAN-ATTACH",
+		},
+		InitialContent: "v1",
+	})
+	if err != nil {
+		t.Fatalf("unexpected create error: %v", err)
+	}
+
+	if err := svc.ReplaceAccessPolicies(context.Background(), "document", "doc-attach", []domain.AccessPolicy{
+		{SubjectType: domain.SubjectTypeUser, SubjectID: "editor-1", Capability: domain.CapabilityDocumentView, Effect: domain.PolicyEffectAllow},
+		{SubjectType: domain.SubjectTypeUser, SubjectID: "editor-1", Capability: domain.CapabilityDocumentUploadAttachment, Effect: domain.PolicyEffectAllow},
+	}); err != nil {
+		t.Fatalf("unexpected replace error: %v", err)
+	}
+
+	ctx := iamdomain.WithAuthContext(context.Background(), "editor-1", []iamdomain.Role{iamdomain.RoleEditor})
+	attachment, err := svc.UploadAttachmentAuthorized(ctx, domain.UploadAttachmentCommand{
+		DocumentID:  "doc-attach",
+		FileName:    "manual.txt",
+		ContentType: "text/plain",
+		Content:     []byte("attachment content"),
+		TraceID:     "trace-attach",
+	})
+	if err != nil {
+		t.Fatalf("unexpected upload error: %v", err)
+	}
+
+	items, err := svc.ListAttachmentsAuthorized(ctx, "doc-attach")
+	if err != nil {
+		t.Fatalf("unexpected list error: %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("expected 1 attachment, got %d", len(items))
+	}
+	if items[0].ID != attachment.ID {
+		t.Fatalf("expected attachment %s, got %s", attachment.ID, items[0].ID)
+	}
+
+	got, content, err := svc.OpenAttachmentContent(context.Background(), attachment.ID)
+	if err != nil {
+		t.Fatalf("unexpected open content error: %v", err)
+	}
+	if got.FileName != "manual.txt" {
+		t.Fatalf("expected manual.txt, got %s", got.FileName)
+	}
+	if string(content) != "attachment content" {
+		t.Fatalf("unexpected content: %s", string(content))
 	}
 }

@@ -361,6 +361,154 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
+  /documents/{documentId}/attachments:
+    post:
+      summary: Faz upload de um anexo para o documento
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+        - $ref: '#/components/parameters/UserIdHeader'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Anexo criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttachmentItem'
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+    get:
+      summary: Lista anexos de um documento
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+        - $ref: '#/components/parameters/UserIdHeader'
+      responses:
+        '200':
+          description: Lista de anexos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListAttachmentsResponse'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '404':
+          description: Documento nao encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+  /documents/{documentId}/attachments/{attachmentId}/download-url:
+    get:
+      summary: Gera URL temporaria para download do anexo
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+        - $ref: '#/components/parameters/UserIdHeader'
+        - name: attachmentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: URL temporaria de download
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttachmentDownloadURLResponse'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '404':
+          description: Documento ou anexo nao encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+  /attachments/{attachmentId}/content:
+    get:
+      summary: Download de anexo via URL assinada temporaria
+      parameters:
+        - name: attachmentId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: expiresAt
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: signature
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Conteudo binario do anexo
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '403':
+          description: URL invalida ou expirada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '404':
+          description: Anexo nao encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
   /search/documents:
     get:
       summary: Pesquisa documentos por filtros
@@ -799,6 +947,45 @@ components:
           type: boolean
         expiryAtChanged:
           type: boolean
+    AttachmentItem:
+      type: object
+      required: [attachmentId, documentId, fileName, contentType, sizeBytes, uploadedBy, createdAt]
+      properties:
+        attachmentId:
+          type: string
+        documentId:
+          type: string
+        fileName:
+          type: string
+        contentType:
+          type: string
+        sizeBytes:
+          type: integer
+          format: int64
+        uploadedBy:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    ListAttachmentsResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AttachmentItem'
+    AttachmentDownloadURLResponse:
+      type: object
+      required: [attachmentId, downloadUrl, expiresAt]
+      properties:
+        attachmentId:
+          type: string
+        downloadUrl:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
     UpsertUserRoleRequest:
       type: object
       required: [role]

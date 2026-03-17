@@ -422,6 +422,95 @@ WHERE document_id = $1
 	return next, nil
 }
 
+func (r *Repository) CreateAttachment(ctx context.Context, attachment domain.Attachment) error {
+	const q = `
+INSERT INTO metaldocs.document_attachments (
+  id, document_id, file_name, content_type, size_bytes, storage_key, uploaded_by, created_at
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+`
+	_, err := r.db.ExecContext(ctx, q,
+		attachment.ID,
+		attachment.DocumentID,
+		attachment.FileName,
+		attachment.ContentType,
+		attachment.SizeBytes,
+		attachment.StorageKey,
+		attachment.UploadedBy,
+		attachment.CreatedAt,
+	)
+	if err != nil {
+		return mapError(err)
+	}
+	return nil
+}
+
+func (r *Repository) GetAttachment(ctx context.Context, attachmentID string) (domain.Attachment, error) {
+	const q = `
+SELECT id, document_id, file_name, content_type, size_bytes, storage_key, uploaded_by, created_at
+FROM metaldocs.document_attachments
+WHERE id = $1
+`
+	var attachment domain.Attachment
+	if err := r.db.QueryRowContext(ctx, q, attachmentID).Scan(
+		&attachment.ID,
+		&attachment.DocumentID,
+		&attachment.FileName,
+		&attachment.ContentType,
+		&attachment.SizeBytes,
+		&attachment.StorageKey,
+		&attachment.UploadedBy,
+		&attachment.CreatedAt,
+	); err != nil {
+		if err == sql.ErrNoRows {
+			return domain.Attachment{}, domain.ErrAttachmentNotFound
+		}
+		return domain.Attachment{}, fmt.Errorf("get attachment: %w", err)
+	}
+	return attachment, nil
+}
+
+func (r *Repository) ListAttachments(ctx context.Context, documentID string) ([]domain.Attachment, error) {
+	_, err := r.GetDocument(ctx, documentID)
+	if err != nil {
+		return nil, err
+	}
+
+	const q = `
+SELECT id, document_id, file_name, content_type, size_bytes, storage_key, uploaded_by, created_at
+FROM metaldocs.document_attachments
+WHERE document_id = $1
+ORDER BY created_at ASC
+`
+	rows, err := r.db.QueryContext(ctx, q, documentID)
+	if err != nil {
+		return nil, fmt.Errorf("list attachments: %w", err)
+	}
+	defer rows.Close()
+
+	var out []domain.Attachment
+	for rows.Next() {
+		var attachment domain.Attachment
+		if err := rows.Scan(
+			&attachment.ID,
+			&attachment.DocumentID,
+			&attachment.FileName,
+			&attachment.ContentType,
+			&attachment.SizeBytes,
+			&attachment.StorageKey,
+			&attachment.UploadedBy,
+			&attachment.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan attachment: %w", err)
+		}
+		out = append(out, attachment)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list attachments rows: %w", err)
+	}
+	return out, nil
+}
+
 func mapError(err error) error {
 	msg := err.Error()
 	if strings.Contains(msg, "duplicate key value") {
@@ -432,6 +521,9 @@ func mapError(err error) error {
 			return domain.ErrInvalidDocumentType
 		}
 		return domain.ErrDocumentNotFound
+	}
+	if strings.Contains(msg, "document_attachments") && strings.Contains(msg, "duplicate key value") {
+		return domain.ErrInvalidAttachment
 	}
 	return fmt.Errorf("postgres repository: %w", err)
 }

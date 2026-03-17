@@ -148,7 +148,7 @@ Saida:
 - busca pronta para UI operacional
 
 ## Task 009 - Add attachments module
-Status: `todo`
+Status: `done`
 
 Objetivo:
 Criar o fluxo de anexos com storage abstraido e permissao separada.

@@ -15,6 +15,7 @@ const (
 	PermDocumentCreate            Permission = "document:create"
 	PermDocumentEdit              Permission = "document:edit"
 	PermDocumentRead              Permission = "document:read"
+	PermDocumentUploadAttachment  Permission = "document:upload_attachment"
 	PermDocumentManagePermissions Permission = "document:manage_permissions"
 	PermVersionRead               Permission = "version:read"
 	PermWorkflowTransition        Permission = "workflow:transition"

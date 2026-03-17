@@ -17,11 +17,24 @@ powershell -ExecutionPolicy Bypass -File scripts/phase3-release-readiness.ps1 -B
 powershell -ExecutionPolicy Bypass -File scripts/phase3-release-readiness.ps1 -BaseRef HEAD~1
 ```
 
+## Execucao via GitHub Actions (manual)
+Workflow: `release-readiness` (`.github/workflows/release-readiness.yml`)
+
+Inputs:
+- `base_ref` (default: `origin/main`)
+- `skip_govulncheck` (default: `true`)
+
+Resultado esperado:
+- Job `readiness` verde.
+- Artifact `phase3-release-evidence` com JSONs de evidencia.
+
 ## Evidencia
 - JSON final:
   - `non_git/release/phase3_release_readiness_<timestamp>.json`
 - Referencias internas:
   - evidencia do hardening gate em `non_git/hardening/*.json`
+  - evidencia de contract em `non_git/contract/*.json`
+  - evidencia de security em `non_git/security/*.json`
 
 ## Criterio de aceite
 - Status final `approved`.

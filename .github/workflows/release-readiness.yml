@@ -1,0 +1,55 @@
+name: release-readiness
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_ref:
+        description: "Base ref for governance diff (ex: origin/main)"
+        required: true
+        default: "origin/main"
+        type: string
+      skip_govulncheck:
+        description: "Skip govulncheck network-dependent step"
+        required: true
+        default: true
+        type: boolean
+
+jobs:
+  readiness:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install security tools
+        shell: pwsh
+        run: |
+          go install github.com/securego/gosec/v2/cmd/gosec@latest
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - name: Fetch base ref
+        shell: pwsh
+        run: git fetch origin main --depth=1
+
+      - name: Run release readiness gate
+        shell: pwsh
+        run: ./scripts/phase3-release-readiness.ps1 -BaseRef "${{ inputs.base_ref }}" -SkipGovulncheck:${{ inputs.skip_govulncheck }}
+
+      - name: Upload release evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase3-release-evidence
+          path: |
+            non_git/release/*.json
+            non_git/hardening/*.json
+            non_git/contract/*.json
+            non_git/security/*.json

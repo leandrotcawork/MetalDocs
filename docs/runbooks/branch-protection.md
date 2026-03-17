@@ -15,6 +15,7 @@ Garantir que nenhuma mudanca entre em `main` sem passar pelos gates de governanc
 ## Status checks obrigatorios
 - `governance-check / check`
 - `phase3-hardening-gate / hardening`
+- `module-boundaries / conformance`
 
 ## Como configurar (GitHub)
 1. Abrir repo -> `Settings` -> `Branches`.
@@ -23,6 +24,7 @@ Garantir que nenhuma mudanca entre em `main` sem passar pelos gates de governanc
 4. Em `Status checks`, selecionar:
    - `governance-check / check`
    - `phase3-hardening-gate / hardening`
+   - `module-boundaries / conformance`
 5. Salvar regra.
 
 ## Evidencia minima

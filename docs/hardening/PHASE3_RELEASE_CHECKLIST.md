@@ -5,6 +5,7 @@ Checklist final para release com foco em confiabilidade, operacao segura e readi
 
 ## 1. Quality Gates (must pass)
 - [ ] `go test ./...` verde.
+- [ ] `scripts/check-module-boundaries.ps1` aprovado.
 - [ ] `scripts/contract-baseline.ps1` aprovado.
 - [ ] `scripts/security-baseline.ps1 -SkipGovulncheck` aprovado (`gosec` sem issues).
 - [ ] `scripts/phase3-hardening-gate.ps1` aprovado.

@@ -34,6 +34,9 @@ $result = [ordered]@{
       exit_code = $null
       passed = $false
     }
+    module_boundaries = [ordered]@{
+      passed = $false
+    }
     contract_baseline = [ordered]@{
       evidence_file = $null
       status = "not_run"
@@ -56,6 +59,12 @@ try {
     throw "go test falhou com exit code $LASTEXITCODE"
   }
   $result.steps.go_test.passed = $true
+
+  & "$PSScriptRoot/check-module-boundaries.ps1"
+  if ($LASTEXITCODE -ne 0) {
+    throw "check-module-boundaries falhou com exit code $LASTEXITCODE"
+  }
+  $result.steps.module_boundaries.passed = $true
 
   & "$PSScriptRoot/contract-baseline.ps1"
   if ($LASTEXITCODE -ne 0) {

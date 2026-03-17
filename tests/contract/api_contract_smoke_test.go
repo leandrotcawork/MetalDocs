@@ -42,8 +42,17 @@ func TestAPIContractSmoke(t *testing.T) {
 		{name: "health ready", method: http.MethodGet, path: "/api/v1/health/ready", wantStatus: http.StatusOK},
 		{name: "metrics", method: http.MethodGet, path: "/api/v1/metrics", wantStatus: http.StatusOK},
 		{name: "list document types", method: http.MethodGet, path: "/api/v1/document-types", withUserID: true, wantStatus: http.StatusOK},
+		{name: "list access policies", method: http.MethodGet, path: "/api/v1/access-policies?resourceScope=document&resourceId=" + docID, withUserID: true, wantStatus: http.StatusOK},
 		{name: "list documents", method: http.MethodGet, path: "/api/v1/documents", withUserID: true, wantStatus: http.StatusOK},
 		{name: "search documents", method: http.MethodGet, path: "/api/v1/search/documents?limit=10&documentType=contract&businessUnit=legal&department=contracts", withUserID: true, wantStatus: http.StatusOK},
+		{
+			name:       "replace access policies",
+			method:     http.MethodPut,
+			path:       "/api/v1/access-policies",
+			body:       map[string]any{"resourceScope": "document", "resourceId": docID, "policies": []map[string]any{{"subjectType": "user", "subjectId": "editor-user", "capability": "document.view", "effect": "allow"}}},
+			withUserID: true,
+			wantStatus: http.StatusOK,
+		},
 		{
 			name:       "workflow transition",
 			method:     http.MethodPost,

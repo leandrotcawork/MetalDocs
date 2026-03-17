@@ -217,6 +217,84 @@ ORDER BY code ASC
 	return out, nil
 }
 
+func (r *Repository) ListAccessPolicies(ctx context.Context, resourceScope, resourceID string) ([]domain.AccessPolicy, error) {
+	const q = `
+SELECT subject_type, subject_id, resource_scope, resource_id, capability, effect
+FROM metaldocs.document_access_policies
+WHERE resource_scope = $1 AND resource_id = $2
+ORDER BY subject_type ASC, subject_id ASC, capability ASC
+`
+	rows, err := r.db.QueryContext(ctx, q, resourceScope, resourceID)
+	if err != nil {
+		return nil, fmt.Errorf("list access policies: %w", err)
+	}
+	defer rows.Close()
+
+	var out []domain.AccessPolicy
+	for rows.Next() {
+		var item domain.AccessPolicy
+		if err := rows.Scan(
+			&item.SubjectType,
+			&item.SubjectID,
+			&item.ResourceScope,
+			&item.ResourceID,
+			&item.Capability,
+			&item.Effect,
+		); err != nil {
+			return nil, fmt.Errorf("scan access policy: %w", err)
+		}
+		out = append(out, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list access policies rows: %w", err)
+	}
+	return out, nil
+}
+
+func (r *Repository) ReplaceAccessPolicies(ctx context.Context, resourceScope, resourceID string, policies []domain.AccessPolicy) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx replace access policies: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	if _, err := tx.ExecContext(ctx,
+		`DELETE FROM metaldocs.document_access_policies WHERE resource_scope = $1 AND resource_id = $2`,
+		resourceScope,
+		resourceID,
+	); err != nil {
+		return fmt.Errorf("delete access policies: %w", err)
+	}
+
+	if len(policies) > 0 {
+		const insertPolicy = `
+INSERT INTO metaldocs.document_access_policies (
+  subject_type, subject_id, resource_scope, resource_id, capability, effect, created_at
+)
+VALUES ($1, $2, $3, $4, $5, $6, NOW())
+`
+		for _, policy := range policies {
+			if _, err := tx.ExecContext(ctx, insertPolicy,
+				policy.SubjectType,
+				policy.SubjectID,
+				policy.ResourceScope,
+				policy.ResourceID,
+				policy.Capability,
+				policy.Effect,
+			); err != nil {
+				return mapError(err)
+			}
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit tx replace access policies: %w", err)
+	}
+	return nil
+}
+
 func (r *Repository) UpdateDocumentStatus(ctx context.Context, documentID, status string) error {
 	const q = `
 UPDATE metaldocs.documents

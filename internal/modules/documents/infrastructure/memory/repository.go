@@ -13,6 +13,7 @@ type Repository struct {
 	documents map[string]domain.Document
 	versions  map[string][]domain.Version
 	types     []domain.DocumentType
+	policies  map[string][]domain.AccessPolicy
 }
 
 func NewRepository() *Repository {
@@ -20,6 +21,7 @@ func NewRepository() *Repository {
 		documents: map[string]domain.Document{},
 		versions:  map[string][]domain.Version{},
 		types:     domain.DefaultDocumentTypes(),
+		policies:  map[string][]domain.AccessPolicy{},
 	}
 }
 
@@ -87,6 +89,26 @@ func (r *Repository) ListDocumentTypes(_ context.Context) ([]domain.DocumentType
 	out := make([]domain.DocumentType, len(r.types))
 	copy(out, r.types)
 	return out, nil
+}
+
+func (r *Repository) ListAccessPolicies(_ context.Context, resourceScope, resourceID string) ([]domain.AccessPolicy, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	key := resourceScope + ":" + resourceID
+	items := append([]domain.AccessPolicy(nil), r.policies[key]...)
+	return items, nil
+}
+
+func (r *Repository) ReplaceAccessPolicies(_ context.Context, resourceScope, resourceID string, policies []domain.AccessPolicy) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	key := resourceScope + ":" + resourceID
+	items := make([]domain.AccessPolicy, len(policies))
+	copy(items, policies)
+	r.policies[key] = items
+	return nil
 }
 
 func (r *Repository) UpdateDocumentStatus(_ context.Context, documentID, status string) error {

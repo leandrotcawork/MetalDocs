@@ -7,4 +7,5 @@ var (
 	ErrDocumentNotFound      = errors.New("document not found")
 	ErrDocumentAlreadyExists = errors.New("document already exists")
 	ErrInvalidDocumentType   = errors.New("invalid document type")
+	ErrInvalidAccessPolicy   = errors.New("invalid access policy")
 )

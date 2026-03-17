@@ -50,7 +50,7 @@ Saida:
 - OpenAPI atualizada
 
 ## Task 003 - Define permission matrix by resource
-Status: `todo`
+Status: `done`
 
 Objetivo:
 Definir o modelo de permissao que permita controlar quem pode ver, editar, anexar e alterar workflow.
@@ -71,7 +71,7 @@ Saida:
 - estrategia de avaliacao backend definida
 
 ## Task 004 - Add access policy schema and persistence
-Status: `todo`
+Status: `done`
 
 Objetivo:
 Criar a persistencia do modelo de acesso por recurso.

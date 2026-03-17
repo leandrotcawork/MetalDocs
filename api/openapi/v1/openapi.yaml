@@ -67,6 +67,82 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
+  /access-policies:
+    get:
+      summary: Lista policies de acesso por recurso
+      parameters:
+        - $ref: '#/components/parameters/UserIdHeader'
+        - name: resourceScope
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [document, document_type, area]
+        - name: resourceId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lista de policies
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListAccessPoliciesResponse'
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+    put:
+      summary: Substitui policies de acesso de um recurso
+      parameters:
+        - $ref: '#/components/parameters/UserIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplaceAccessPoliciesRequest'
+      responses:
+        '200':
+          description: Policies substituidas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReplaceAccessPoliciesResponse'
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
   /documents:
     post:
       summary: Cria documento e primeira versao
@@ -457,6 +533,73 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/DocumentTypeItem'
+    AccessPolicyItem:
+      type: object
+      required: [subjectType, subjectId, resourceScope, resourceId, capability, effect]
+      properties:
+        subjectType:
+          type: string
+          enum: [user, role, group]
+        subjectId:
+          type: string
+        resourceScope:
+          type: string
+          enum: [document, document_type, area]
+        resourceId:
+          type: string
+        capability:
+          type: string
+          enum: [document.view, document.edit, document.upload_attachment, document.change_workflow, document.manage_permissions]
+        effect:
+          type: string
+          enum: [allow, deny]
+    AccessPolicyWriteItem:
+      type: object
+      required: [subjectType, subjectId, capability, effect]
+      properties:
+        subjectType:
+          type: string
+          enum: [user, role, group]
+        subjectId:
+          type: string
+        capability:
+          type: string
+          enum: [document.view, document.edit, document.upload_attachment, document.change_workflow, document.manage_permissions]
+        effect:
+          type: string
+          enum: [allow, deny]
+    ListAccessPoliciesResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccessPolicyItem'
+    ReplaceAccessPoliciesRequest:
+      type: object
+      required: [resourceScope, resourceId, policies]
+      properties:
+        resourceScope:
+          type: string
+          enum: [document, document_type, area]
+        resourceId:
+          type: string
+        policies:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccessPolicyWriteItem'
+    ReplaceAccessPoliciesResponse:
+      type: object
+      required: [resourceScope, resourceId, replacedCount]
+      properties:
+        resourceScope:
+          type: string
+        resourceId:
+          type: string
+        replacedCount:
+          type: integer
+          minimum: 0
     VersionListItem:
       type: object
       required: [documentId, version, createdAt]

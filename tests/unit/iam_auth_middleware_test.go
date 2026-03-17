@@ -309,3 +309,58 @@ func TestMiddlewareProtectsSearchRoute(t *testing.T) {
 		})
 	}
 }
+
+func TestMiddlewareProtectsAccessPoliciesRoute(t *testing.T) {
+	tests := []struct {
+		name       string
+		roles      []iamdomain.Role
+		userID     string
+		method     string
+		wantStatus int
+	}{
+		{
+			name:       "viewer is forbidden to list policies",
+			roles:      []iamdomain.Role{iamdomain.RoleViewer},
+			userID:     "viewer-user",
+			method:     http.MethodGet,
+			wantStatus: http.StatusForbidden,
+		},
+		{
+			name:       "editor is forbidden to replace policies",
+			roles:      []iamdomain.Role{iamdomain.RoleEditor},
+			userID:     "editor-user",
+			method:     http.MethodPut,
+			wantStatus: http.StatusForbidden,
+		},
+		{
+			name:       "admin can manage policies",
+			roles:      []iamdomain.Role{iamdomain.RoleAdmin},
+			userID:     "admin-local",
+			method:     http.MethodPut,
+			wantStatus: http.StatusOK,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mux := http.NewServeMux()
+			mux.HandleFunc("/api/v1/access-policies", func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+			})
+
+			mw := iamdelivery.NewMiddleware(iamapp.NewStaticAuthorizer(), fakeRoleProvider{roles: tt.roles}, true)
+			h := mw.Wrap(mux)
+
+			req := httptest.NewRequest(tt.method, "/api/v1/access-policies?resourceScope=document&resourceId=doc-1", strings.NewReader(`{"resourceScope":"document","resourceId":"doc-1","policies":[]}`))
+			if tt.userID != "" {
+				req.Header.Set("X-User-Id", tt.userID)
+			}
+			rr := httptest.NewRecorder()
+			h.ServeHTTP(rr, req)
+
+			if rr.Code != tt.wantStatus {
+				t.Fatalf("expected %d, got %d", tt.wantStatus, rr.Code)
+			}
+		})
+	}
+}

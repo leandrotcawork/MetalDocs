@@ -206,6 +206,39 @@ func (s *Service) ListVersions(ctx context.Context, documentID string) ([]domain
 	return s.repo.ListVersions(ctx, strings.TrimSpace(documentID))
 }
 
+func (s *Service) ListAccessPolicies(ctx context.Context, resourceScope, resourceID string) ([]domain.AccessPolicy, error) {
+	resourceScope = normalizeResourceScope(resourceScope)
+	resourceID = strings.TrimSpace(resourceID)
+	if resourceScope == "" || resourceID == "" {
+		return nil, domain.ErrInvalidCommand
+	}
+	if !isKnownResourceScope(resourceScope) {
+		return nil, domain.ErrInvalidAccessPolicy
+	}
+	return s.repo.ListAccessPolicies(ctx, resourceScope, resourceID)
+}
+
+func (s *Service) ReplaceAccessPolicies(ctx context.Context, resourceScope, resourceID string, policies []domain.AccessPolicy) error {
+	resourceScope = normalizeResourceScope(resourceScope)
+	resourceID = strings.TrimSpace(resourceID)
+	if resourceScope == "" || resourceID == "" {
+		return domain.ErrInvalidCommand
+	}
+	if !isKnownResourceScope(resourceScope) {
+		return domain.ErrInvalidAccessPolicy
+	}
+
+	normalized := make([]domain.AccessPolicy, 0, len(policies))
+	for _, policy := range policies {
+		item, ok := normalizeAccessPolicy(resourceScope, resourceID, policy)
+		if !ok {
+			return domain.ErrInvalidAccessPolicy
+		}
+		normalized = append(normalized, item)
+	}
+	return s.repo.ReplaceAccessPolicies(ctx, resourceScope, resourceID, normalized)
+}
+
 func (s *Service) isKnownDocumentType(ctx context.Context, code string) bool {
 	items, err := s.ListDocumentTypes(ctx)
 	if err != nil {
@@ -261,4 +294,68 @@ func cloneTimePtr(value *time.Time) *time.Time {
 	}
 	cloned := value.UTC()
 	return &cloned
+}
+
+func normalizeAccessPolicy(resourceScope, resourceID string, policy domain.AccessPolicy) (domain.AccessPolicy, bool) {
+	subjectType := strings.ToLower(strings.TrimSpace(policy.SubjectType))
+	subjectID := strings.TrimSpace(policy.SubjectID)
+	capability := strings.TrimSpace(policy.Capability)
+	effect := strings.ToLower(strings.TrimSpace(policy.Effect))
+
+	if !isKnownSubjectType(subjectType) || subjectID == "" || !isKnownCapability(capability) || !isKnownEffect(effect) {
+		return domain.AccessPolicy{}, false
+	}
+
+	return domain.AccessPolicy{
+		SubjectType:   subjectType,
+		SubjectID:     subjectID,
+		ResourceScope: resourceScope,
+		ResourceID:    resourceID,
+		Capability:    capability,
+		Effect:        effect,
+	}, true
+}
+
+func normalizeResourceScope(raw string) string {
+	return strings.ToLower(strings.TrimSpace(raw))
+}
+
+func isKnownResourceScope(raw string) bool {
+	switch raw {
+	case domain.ResourceScopeDocument, domain.ResourceScopeDocumentType, domain.ResourceScopeArea:
+		return true
+	default:
+		return false
+	}
+}
+
+func isKnownSubjectType(raw string) bool {
+	switch raw {
+	case domain.SubjectTypeUser, domain.SubjectTypeRole, domain.SubjectTypeGroup:
+		return true
+	default:
+		return false
+	}
+}
+
+func isKnownCapability(raw string) bool {
+	switch raw {
+	case domain.CapabilityDocumentView,
+		domain.CapabilityDocumentEdit,
+		domain.CapabilityDocumentUploadAttachment,
+		domain.CapabilityDocumentChangeWorkflow,
+		domain.CapabilityDocumentManagePermissions:
+		return true
+	default:
+		return false
+	}
+}
+
+func isKnownEffect(raw string) bool {
+	switch raw {
+	case domain.PolicyEffectAllow, domain.PolicyEffectDeny:
+		return true
+	default:
+		return false
+	}
 }

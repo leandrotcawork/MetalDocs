@@ -70,6 +70,40 @@ type DocumentType struct {
 	ReviewIntervalDays int
 }
 
+type AccessPolicy struct {
+	SubjectType   string
+	SubjectID     string
+	ResourceScope string
+	ResourceID    string
+	Capability    string
+	Effect        string
+}
+
+const (
+	SubjectTypeUser  = "user"
+	SubjectTypeRole  = "role"
+	SubjectTypeGroup = "group"
+)
+
+const (
+	ResourceScopeDocument     = "document"
+	ResourceScopeDocumentType = "document_type"
+	ResourceScopeArea         = "area"
+)
+
+const (
+	CapabilityDocumentView              = "document.view"
+	CapabilityDocumentEdit              = "document.edit"
+	CapabilityDocumentUploadAttachment  = "document.upload_attachment"
+	CapabilityDocumentChangeWorkflow    = "document.change_workflow"
+	CapabilityDocumentManagePermissions = "document.manage_permissions"
+)
+
+const (
+	PolicyEffectAllow = "allow"
+	PolicyEffectDeny  = "deny"
+)
+
 func DefaultDocumentTypes() []DocumentType {
 	return []DocumentType{
 		{Code: "policy", Name: "Policy", Description: "High-level governance and policy document", ReviewIntervalDays: 365},

@@ -81,6 +81,9 @@ func requiredPermission(method, path string) (iamdomain.Permission, bool) {
 	if method == http.MethodGet && path == "/api/v1/search/documents" {
 		return iamdomain.PermSearchRead, true
 	}
+	if (method == http.MethodGet || method == http.MethodPut) && path == "/api/v1/access-policies" {
+		return iamdomain.PermDocumentManagePermissions, true
+	}
 	if method == http.MethodGet && strings.HasPrefix(path, "/api/v1/documents/") && strings.HasSuffix(path, "/versions") {
 		return iamdomain.PermVersionRead, true
 	}

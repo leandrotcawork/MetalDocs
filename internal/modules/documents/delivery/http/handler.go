@@ -66,6 +66,28 @@ type DocumentTypeResponse struct {
 	ReviewIntervalDays int    `json:"reviewIntervalDays"`
 }
 
+type AccessPolicyRequest struct {
+	SubjectType string `json:"subjectType"`
+	SubjectID   string `json:"subjectId"`
+	Capability  string `json:"capability"`
+	Effect      string `json:"effect"`
+}
+
+type ReplaceAccessPoliciesRequest struct {
+	ResourceScope string                `json:"resourceScope"`
+	ResourceID    string                `json:"resourceId"`
+	Policies      []AccessPolicyRequest `json:"policies"`
+}
+
+type AccessPolicyResponse struct {
+	SubjectType   string `json:"subjectType"`
+	SubjectID     string `json:"subjectId"`
+	ResourceScope string `json:"resourceScope"`
+	ResourceID    string `json:"resourceId"`
+	Capability    string `json:"capability"`
+	Effect        string `json:"effect"`
+}
+
 type apiErrorEnvelope struct {
 	Error apiError `json:"error"`
 }
@@ -85,6 +107,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/health/live", h.handleHealthLive)
 	mux.HandleFunc("/api/v1/health/ready", h.handleHealthReady)
 	mux.HandleFunc("/api/v1/document-types", h.handleDocumentTypes)
+	mux.HandleFunc("/api/v1/access-policies", h.handleAccessPolicies)
 	mux.HandleFunc("/api/v1/documents", h.handleDocuments)
 	mux.HandleFunc("/api/v1/documents/", h.handleDocumentSubRoutes)
 }
@@ -132,6 +155,74 @@ func (h *Handler) handleDocumentTypes(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{"items": out})
+}
+
+func (h *Handler) handleAccessPolicies(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		h.handleListAccessPolicies(w, r)
+	case http.MethodPut:
+		h.handleReplaceAccessPolicies(w, r)
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
+func (h *Handler) handleListAccessPolicies(w http.ResponseWriter, r *http.Request) {
+	traceID := requestTraceID(r)
+	resourceScope := r.URL.Query().Get("resourceScope")
+	resourceID := r.URL.Query().Get("resourceId")
+
+	items, err := h.service.ListAccessPolicies(r.Context(), resourceScope, resourceID)
+	if err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+
+	out := make([]AccessPolicyResponse, 0, len(items))
+	for _, item := range items {
+		out = append(out, AccessPolicyResponse{
+			SubjectType:   item.SubjectType,
+			SubjectID:     item.SubjectID,
+			ResourceScope: item.ResourceScope,
+			ResourceID:    item.ResourceID,
+			Capability:    item.Capability,
+			Effect:        item.Effect,
+		})
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"items": out})
+}
+
+func (h *Handler) handleReplaceAccessPolicies(w http.ResponseWriter, r *http.Request) {
+	traceID := requestTraceID(r)
+
+	var req ReplaceAccessPoliciesRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid JSON payload", traceID)
+		return
+	}
+
+	policies := make([]domain.AccessPolicy, 0, len(req.Policies))
+	for _, item := range req.Policies {
+		policies = append(policies, domain.AccessPolicy{
+			SubjectType: item.SubjectType,
+			SubjectID:   item.SubjectID,
+			Capability:  item.Capability,
+			Effect:      item.Effect,
+		})
+	}
+
+	if err := h.service.ReplaceAccessPolicies(r.Context(), req.ResourceScope, req.ResourceID, policies); err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"resourceScope": strings.ToLower(strings.TrimSpace(req.ResourceScope)),
+		"resourceId":    strings.TrimSpace(req.ResourceID),
+		"replacedCount": len(policies),
+	})
 }
 
 func (h *Handler) handleCreateDocument(w http.ResponseWriter, r *http.Request) {
@@ -260,6 +351,8 @@ func (h *Handler) writeDomainError(w http.ResponseWriter, err error, traceID str
 		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid request data", traceID)
 	case errors.Is(err, domain.ErrInvalidDocumentType):
 		writeAPIError(w, http.StatusBadRequest, "INVALID_DOCUMENT_TYPE", "Invalid document type", traceID)
+	case errors.Is(err, domain.ErrInvalidAccessPolicy):
+		writeAPIError(w, http.StatusBadRequest, "INVALID_ACCESS_POLICY", "Invalid access policy", traceID)
 	case errors.Is(err, domain.ErrDocumentNotFound):
 		writeAPIError(w, http.StatusNotFound, "DOC_NOT_FOUND", "Document not found", traceID)
 	case errors.Is(err, domain.ErrDocumentAlreadyExists):

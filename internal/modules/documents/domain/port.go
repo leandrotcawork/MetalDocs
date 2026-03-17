@@ -8,6 +8,8 @@ type Repository interface {
 	GetDocument(ctx context.Context, documentID string) (Document, error)
 	ListDocuments(ctx context.Context) ([]Document, error)
 	ListDocumentTypes(ctx context.Context) ([]DocumentType, error)
+	ListAccessPolicies(ctx context.Context, resourceScope, resourceID string) ([]AccessPolicy, error)
+	ReplaceAccessPolicies(ctx context.Context, resourceScope, resourceID string, policies []AccessPolicy) error
 	UpdateDocumentStatus(ctx context.Context, documentID, status string) error
 	SaveVersion(ctx context.Context, version Version) error
 	ListVersions(ctx context.Context, documentID string) ([]Version, error)

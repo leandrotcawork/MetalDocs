@@ -89,3 +89,24 @@ func TestListDocumentTypes(t *testing.T) {
 		t.Fatalf("expected 200, got %d", rr.Code)
 	}
 }
+
+func TestReplaceAndListAccessPoliciesHTTP(t *testing.T) {
+	mux := newTestMux()
+
+	putReq := httptest.NewRequest(http.MethodPut, "/api/v1/access-policies", strings.NewReader(`{"resourceScope":"document","resourceId":"doc-1","policies":[{"subjectType":"user","subjectId":"leandro","capability":"document.view","effect":"allow"}]}`))
+	putReq.Header.Set("Content-Type", "application/json")
+	putRR := httptest.NewRecorder()
+	mux.ServeHTTP(putRR, putReq)
+
+	if putRR.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", putRR.Code, putRR.Body.String())
+	}
+
+	getReq := httptest.NewRequest(http.MethodGet, "/api/v1/access-policies?resourceScope=document&resourceId=doc-1", nil)
+	getRR := httptest.NewRecorder()
+	mux.ServeHTTP(getRR, getReq)
+
+	if getRR.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", getRR.Code, getRR.Body.String())
+	}
+}

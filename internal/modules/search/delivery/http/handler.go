@@ -16,15 +16,18 @@ type Handler struct {
 }
 
 type SearchDocumentResponse struct {
-	DocumentID     string `json:"documentId"`
-	Title          string `json:"title"`
-	DocumentType   string `json:"documentType"`
-	OwnerID        string `json:"ownerId"`
-	BusinessUnit   string `json:"businessUnit"`
-	Department     string `json:"department"`
-	Classification string `json:"classification"`
-	Status         string `json:"status"`
-	CreatedAt      string `json:"createdAt"`
+	DocumentID     string   `json:"documentId"`
+	Title          string   `json:"title"`
+	DocumentType   string   `json:"documentType"`
+	OwnerID        string   `json:"ownerId"`
+	BusinessUnit   string   `json:"businessUnit"`
+	Department     string   `json:"department"`
+	Classification string   `json:"classification"`
+	Status         string   `json:"status"`
+	Tags           []string `json:"tags"`
+	EffectiveAt    string   `json:"effectiveAt,omitempty"`
+	ExpiryAt       string   `json:"expiryAt,omitempty"`
+	CreatedAt      string   `json:"createdAt"`
 }
 
 func NewHandler(service *searchapp.Service) *Handler {
@@ -51,6 +54,17 @@ func (h *Handler) handleSearchDocuments(w http.ResponseWriter, r *http.Request) 
 		limit = n
 	}
 
+	expiryBefore, err := parseOptionalDateTimeQuery(r, "expiryBefore")
+	if err != nil {
+		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid expiryBefore value", requestTraceID(r))
+		return
+	}
+	expiryAfter, err := parseOptionalDateTimeQuery(r, "expiryAfter")
+	if err != nil {
+		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid expiryAfter value", requestTraceID(r))
+		return
+	}
+
 	items, err := h.service.SearchDocuments(r.Context(), searchdomain.Query{
 		Text:           r.URL.Query().Get("q"),
 		DocumentType:   r.URL.Query().Get("documentType"),
@@ -59,6 +73,9 @@ func (h *Handler) handleSearchDocuments(w http.ResponseWriter, r *http.Request) 
 		Department:     r.URL.Query().Get("department"),
 		Classification: r.URL.Query().Get("classification"),
 		Status:         r.URL.Query().Get("status"),
+		Tag:            r.URL.Query().Get("tag"),
+		ExpiryBefore:   expiryBefore,
+		ExpiryAfter:    expiryAfter,
 		Limit:          limit,
 	})
 	if err != nil {
@@ -77,6 +94,9 @@ func (h *Handler) handleSearchDocuments(w http.ResponseWriter, r *http.Request) 
 			Department:     item.Department,
 			Classification: item.Classification,
 			Status:         item.Status,
+			Tags:           append([]string(nil), item.Tags...),
+			EffectiveAt:    formatOptionalTime(item.EffectiveAt),
+			ExpiryAt:       formatOptionalTime(item.ExpiryAt),
 			CreatedAt:      item.CreatedAt.Format(time.RFC3339),
 		})
 	}
@@ -117,4 +137,24 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
+}
+
+func parseOptionalDateTimeQuery(r *http.Request, key string) (*time.Time, error) {
+	raw := strings.TrimSpace(r.URL.Query().Get(key))
+	if raw == "" {
+		return nil, nil
+	}
+	parsed, err := time.Parse(time.RFC3339, raw)
+	if err != nil {
+		return nil, err
+	}
+	utc := parsed.UTC()
+	return &utc, nil
+}
+
+func formatOptionalTime(value *time.Time) string {
+	if value == nil {
+		return ""
+	}
+	return value.UTC().Format(time.RFC3339)
 }

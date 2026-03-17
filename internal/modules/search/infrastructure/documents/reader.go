@@ -40,3 +40,23 @@ func (r *Reader) ListDocuments(ctx context.Context) ([]searchdomain.Document, er
 	}
 	return out, nil
 }
+
+func (r *Reader) ListAccessPolicies(ctx context.Context, resourceScope, resourceID string) ([]searchdomain.AccessPolicy, error) {
+	items, err := r.repo.ListAccessPolicies(ctx, resourceScope, resourceID)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]searchdomain.AccessPolicy, 0, len(items))
+	for _, item := range items {
+		out = append(out, searchdomain.AccessPolicy{
+			SubjectType:   item.SubjectType,
+			SubjectID:     item.SubjectID,
+			ResourceScope: item.ResourceScope,
+			ResourceID:    item.ResourceID,
+			Capability:    item.Capability,
+			Effect:        item.Effect,
+		})
+	}
+	return out, nil
+}

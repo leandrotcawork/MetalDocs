@@ -131,7 +131,7 @@ Saida:
 - erro de dominio consistente para metadata invalida
 
 ## Task 008 - Extend search with structured filters
-Status: `todo`
+Status: `done`
 
 Objetivo:
 Permitir busca profissional baseada em filtros estruturados e autorizacao.

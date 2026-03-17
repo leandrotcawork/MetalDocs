@@ -404,6 +404,23 @@ paths:
           schema:
             type: string
             enum: [DRAFT, IN_REVIEW, APPROVED, PUBLISHED, ARCHIVED]
+        - name: tag
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: expiryBefore
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: expiryAfter
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
         - name: limit
           in: query
           required: false
@@ -824,7 +841,7 @@ components:
           type: string
     SearchDocumentItem:
       type: object
-      required: [documentId, title, documentType, ownerId, businessUnit, department, classification, status, createdAt]
+      required: [documentId, title, documentType, ownerId, businessUnit, department, classification, status, tags, createdAt]
       properties:
         documentId:
           type: string
@@ -844,6 +861,16 @@ components:
         status:
           type: string
           enum: [DRAFT, IN_REVIEW, APPROVED, PUBLISHED, ARCHIVED]
+        tags:
+          type: array
+          items:
+            type: string
+        effectiveAt:
+          type: string
+          format: date-time
+        expiryAt:
+          type: string
+          format: date-time
         createdAt:
           type: string
           format: date-time

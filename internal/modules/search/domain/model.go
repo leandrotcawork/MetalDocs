@@ -25,5 +25,17 @@ type Query struct {
 	Department     string
 	Classification string
 	Status         string
+	Tag            string
+	ExpiryBefore   *time.Time
+	ExpiryAfter    *time.Time
 	Limit          int
+}
+
+type AccessPolicy struct {
+	SubjectType   string
+	SubjectID     string
+	ResourceScope string
+	ResourceID    string
+	Capability    string
+	Effect        string
 }

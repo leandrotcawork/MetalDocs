@@ -34,6 +34,9 @@ services:
       - metaldocs_minio_data:/data
 
   api:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/api.Dockerfile
     image: ${API_IMAGE}
     container_name: metaldocs-api
     depends_on:
@@ -44,10 +47,73 @@ services:
       APP_ENV: ${APP_ENV}
       APP_HOST: ${APP_HOST}
       APP_PORT: ${APP_PORT}
+      METALDOCS_REPOSITORY: postgres
+      METALDOCS_AUTH_ENABLED: ${METALDOCS_AUTH_ENABLED}
+      METALDOCS_AUTHZ_CACHE_TTL_SECONDS: ${METALDOCS_AUTHZ_CACHE_TTL_SECONDS}
+      METALDOCS_RATE_LIMIT_ENABLED: ${METALDOCS_RATE_LIMIT_ENABLED}
+      METALDOCS_RATE_LIMIT_WINDOW_SECONDS: ${METALDOCS_RATE_LIMIT_WINDOW_SECONDS}
+      METALDOCS_RATE_LIMIT_MAX_REQUESTS: ${METALDOCS_RATE_LIMIT_MAX_REQUESTS}
+      METALDOCS_CORS_ENABLED: false
+      METALDOCS_ATTACHMENTS_ROOT: /var/lib/metaldocs/attachments
+      METALDOCS_ATTACHMENTS_SIGNING_SECRET: ${METALDOCS_ATTACHMENTS_SIGNING_SECRET}
+      METALDOCS_ATTACHMENTS_DOWNLOAD_TTL_SECONDS: ${METALDOCS_ATTACHMENTS_DOWNLOAD_TTL_SECONDS}
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: ${POSTGRES_DB}
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGSSLMODE: disable
+    volumes:
+      - metaldocs_attachments_data:/var/lib/metaldocs/attachments
+
+  worker:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/worker.Dockerfile
+    image: ${WORKER_IMAGE}
+    container_name: metaldocs-worker
+    depends_on:
+      - postgres
+      - redis
+      - minio
+      - api
+    environment:
+      METALDOCS_REPOSITORY: postgres
+      METALDOCS_WORKER_POLL_INTERVAL_SECONDS: ${METALDOCS_WORKER_POLL_INTERVAL_SECONDS}
+      METALDOCS_WORKER_BATCH_SIZE: ${METALDOCS_WORKER_BATCH_SIZE}
+      METALDOCS_WORKER_REVIEW_REMINDER_DAYS: ${METALDOCS_WORKER_REVIEW_REMINDER_DAYS}
+      METALDOCS_WORKER_RUN_ONCE: ${METALDOCS_WORKER_RUN_ONCE}
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: ${POSTGRES_DB}
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGSSLMODE: disable
+    volumes:
+      - metaldocs_attachments_data:/var/lib/metaldocs/attachments
+
+  web:
+    build:
+      context: ../../frontend/apps/web
+      dockerfile: Dockerfile
+    image: ${WEB_IMAGE}
+    container_name: metaldocs-web
+    depends_on:
+      - api
+
+  gateway:
+    image: nginx:1.27-alpine
+    container_name: metaldocs-gateway
+    depends_on:
+      - api
+      - web
     ports:
-      - "8080:8080"
+      - "80:80"
+    volumes:
+      - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
 
 volumes:
   metaldocs_postgres_data:
   metaldocs_redis_data:
   metaldocs_minio_data:
+  metaldocs_attachments_data:

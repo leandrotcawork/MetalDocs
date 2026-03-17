@@ -8,8 +8,10 @@ UI operacional minima para cadastro, busca, detalhe, permissoes, anexos e workfl
 3. Rode `npm run dev`.
 
 ## Expected backend
-- API em `http://192.168.0.3:8080/api/v1`
-- Header `X-User-Id` configurado por `VITE_USER_ID`
+- API em `http://127.0.0.1:8080`
+- Frontend usa `/api/v1` por padrao
+- Em desenvolvimento, o Vite faz proxy local para a API
+- Se a web for servida por origem separada fora do proxy, habilite CORS na API com allowlist explicita
 
 ## Scope
 - formulario de documento

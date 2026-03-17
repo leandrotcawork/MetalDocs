@@ -48,6 +48,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("invalid rate limit config: %v", err)
 	}
+	corsCfg, err := config.LoadCORSConfig()
+	if err != nil {
+		log.Fatalf("invalid cors config: %v", err)
+	}
 	attachmentsCfg, err := config.LoadAttachmentsConfig()
 	if err != nil {
 		log.Fatalf("invalid attachments config: %v", err)
@@ -71,6 +75,7 @@ func main() {
 	iamAdminHandler := iamdelivery.NewAdminHandler(iamAdminService)
 	httpObs := observability.NewHTTPObservability()
 	rateLimiter := security.NewRateLimiter(rateCfg)
+	cors := security.NewCORS(corsCfg)
 
 	mux := http.NewServeMux()
 	docHandler.RegisterRoutes(mux)
@@ -79,7 +84,7 @@ func main() {
 	iamAdminHandler.RegisterRoutes(mux)
 	mux.Handle("/api/v1/metrics", httpObs.MetricsHandler())
 
-	handler := httpObs.Wrap(rateLimiter.Wrap(iamMiddleware.Wrap(mux)))
+	handler := cors.Wrap(httpObs.Wrap(rateLimiter.Wrap(iamMiddleware.Wrap(mux))))
 
 	addr := ":8080"
 	if appPort := os.Getenv("APP_PORT"); appPort != "" {
@@ -96,8 +101,8 @@ func main() {
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
-	log.Printf("MetalDocs API listening on %s (repository=%s auth_enabled=%t auth_cache_ttl=%s rate_limit_enabled=%t rate_limit_window_s=%d rate_limit_max_requests=%d)",
-		addr, repoMode, authn.Enabled(), authn.CacheTTL(), rateCfg.Enabled, rateCfg.WindowSeconds, rateCfg.MaxRequests)
+	log.Printf("MetalDocs API listening on %s (repository=%s auth_enabled=%t auth_cache_ttl=%s rate_limit_enabled=%t rate_limit_window_s=%d rate_limit_max_requests=%d cors_enabled=%t cors_allowed_origins=%d)",
+		addr, repoMode, authn.Enabled(), authn.CacheTTL(), rateCfg.Enabled, rateCfg.WindowSeconds, rateCfg.MaxRequests, corsCfg.Enabled, len(corsCfg.AllowedOrigins))
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("server failed: %v", err)
 	}

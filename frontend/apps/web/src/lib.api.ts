@@ -9,7 +9,7 @@ import type {
   ApiErrorEnvelope,
 } from "./lib.types";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://192.168.0.3:8080/api/v1";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 const USER_ID = import.meta.env.VITE_USER_ID ?? "admin-local";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -36,6 +36,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   currentUserId: USER_ID,
+  currentApiBaseUrl: API_BASE_URL,
   listDocumentTypes: () => request<{ items: DocumentTypeItem[] }>("/document-types"),
   listDocuments: () => request<{ items: DocumentListItem[] }>("/documents"),
   searchDocuments: (params: URLSearchParams) => request<{ items: SearchDocumentItem[] }>(`/search/documents?${params.toString()}`),

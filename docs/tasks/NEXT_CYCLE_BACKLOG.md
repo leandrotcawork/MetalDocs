@@ -179,7 +179,7 @@ Saida:
 - workflow pronto para cenarios de aprovacao reais
 
 ## Task 011 - Build worker for notifications and review reminders
-Status: `todo`
+Status: `done`
 
 Objetivo:
 Consumir outbox e executar jobs assincronos do dominio.

@@ -43,6 +43,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MetricsResponse'
+  /document-types:
+    get:
+      summary: Lista os tipos documentais suportados
+      parameters:
+        - $ref: '#/components/parameters/UserIdHeader'
+      responses:
+        '200':
+          description: Lista de tipos documentais
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDocumentTypesResponse'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
   /documents:
     post:
       summary: Cria documento e primeira versao
@@ -144,6 +168,22 @@ paths:
           schema:
             type: string
         - name: ownerId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: documentType
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [policy, procedure, work_instruction, contract, supplier_document, technical_drawing, certificate, report, form, manual]
+        - name: businessUnit
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: department
           in: query
           required: false
           schema:
@@ -301,18 +341,43 @@ components:
       type: object
       required:
         - title
+        - documentType
         - ownerId
+        - businessUnit
+        - department
       properties:
         title:
           type: string
           minLength: 1
+        documentType:
+          type: string
+          enum: [policy, procedure, work_instruction, contract, supplier_document, technical_drawing, certificate, report, form, manual]
         ownerId:
+          type: string
+          minLength: 1
+        businessUnit:
+          type: string
+          minLength: 1
+        department:
           type: string
           minLength: 1
         classification:
           type: string
           enum: [PUBLIC, INTERNAL, CONFIDENTIAL, RESTRICTED]
           default: INTERNAL
+        tags:
+          type: array
+          items:
+            type: string
+        effectiveAt:
+          type: string
+          format: date-time
+        expiryAt:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties: true
         initialContent:
           type: string
     DocumentCreatedResponse:
@@ -321,6 +386,7 @@ components:
         - documentId
         - version
         - status
+        - documentType
       properties:
         documentId:
           type: string
@@ -330,18 +396,38 @@ components:
         status:
           type: string
           enum: [DRAFT, IN_REVIEW, APPROVED, PUBLISHED, ARCHIVED]
+        documentType:
+          type: string
     DocumentListItem:
       type: object
-      required: [documentId, title, ownerId, status]
+      required: [documentId, title, documentType, ownerId, businessUnit, department, classification, status, tags]
       properties:
         documentId:
           type: string
         title:
           type: string
+        documentType:
+          type: string
         ownerId:
+          type: string
+        businessUnit:
+          type: string
+        department:
+          type: string
+        classification:
           type: string
         status:
           type: string
+        tags:
+          type: array
+          items:
+            type: string
+        effectiveAt:
+          type: string
+          format: date-time
+        expiryAt:
+          type: string
+          format: date-time
     ListDocumentsResponse:
       type: object
       required: [items]
@@ -350,6 +436,27 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/DocumentListItem'
+    DocumentTypeItem:
+      type: object
+      required: [code, name, description, reviewIntervalDays]
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        reviewIntervalDays:
+          type: integer
+          minimum: 1
+    ListDocumentTypesResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentTypeItem'
     VersionListItem:
       type: object
       required: [documentId, version, createdAt]
@@ -412,13 +519,19 @@ components:
           type: string
     SearchDocumentItem:
       type: object
-      required: [documentId, title, ownerId, classification, status, createdAt]
+      required: [documentId, title, documentType, ownerId, businessUnit, department, classification, status, createdAt]
       properties:
         documentId:
           type: string
         title:
           type: string
+        documentType:
+          type: string
         ownerId:
+          type: string
+        businessUnit:
+          type: string
+        department:
           type: string
         classification:
           type: string

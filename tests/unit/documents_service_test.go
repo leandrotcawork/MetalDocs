@@ -36,7 +36,10 @@ func TestCreateDocumentCreatesVersionAndEvents(t *testing.T) {
 	doc, err := svc.CreateDocument(context.Background(), domain.CreateDocumentCommand{
 		DocumentID:     "doc-1",
 		Title:          "Contract",
+		DocumentType:   "contract",
 		OwnerID:        "user-1",
+		BusinessUnit:   "legal",
+		Department:     "contracts",
 		InitialContent: "v1",
 		TraceID:        "trace-1",
 	})
@@ -46,6 +49,9 @@ func TestCreateDocumentCreatesVersionAndEvents(t *testing.T) {
 
 	if doc.Status != domain.StatusDraft {
 		t.Fatalf("expected status %s, got %s", domain.StatusDraft, doc.Status)
+	}
+	if doc.DocumentType != "contract" {
+		t.Fatalf("expected document type contract, got %s", doc.DocumentType)
 	}
 
 	versions, err := svc.ListVersions(context.Background(), "doc-1")
@@ -74,7 +80,10 @@ func TestAddVersionIncrementsVersionNumber(t *testing.T) {
 	_, err := svc.CreateDocument(context.Background(), domain.CreateDocumentCommand{
 		DocumentID:     "doc-2",
 		Title:          "Policy",
+		DocumentType:   "policy",
 		OwnerID:        "user-2",
+		BusinessUnit:   "quality",
+		Department:     "qa",
 		InitialContent: "first",
 		TraceID:        "trace-2",
 	})
@@ -112,7 +121,10 @@ func TestListDocumentsReturnsCreatedDocuments(t *testing.T) {
 	_, err := svc.CreateDocument(context.Background(), domain.CreateDocumentCommand{
 		DocumentID:     "doc-a",
 		Title:          "A",
+		DocumentType:   "manual",
 		OwnerID:        "user-a",
+		BusinessUnit:   "ops",
+		Department:     "general",
 		InitialContent: "v1",
 	})
 	if err != nil {
@@ -122,7 +134,10 @@ func TestListDocumentsReturnsCreatedDocuments(t *testing.T) {
 	_, err = svc.CreateDocument(context.Background(), domain.CreateDocumentCommand{
 		DocumentID:     "doc-b",
 		Title:          "B",
+		DocumentType:   "report",
 		OwnerID:        "user-b",
+		BusinessUnit:   "ops",
+		Department:     "general",
 		InitialContent: "v1",
 	})
 	if err != nil {
@@ -146,6 +161,23 @@ func TestCreateDocumentValidation(t *testing.T) {
 	_, err := svc.CreateDocument(context.Background(), domain.CreateDocumentCommand{})
 	if err == nil {
 		t.Fatal("expected validation error, got nil")
+	}
+}
+
+func TestCreateDocumentRejectsUnknownType(t *testing.T) {
+	repo := memory.NewRepository()
+	svc := application.NewService(repo, nil, fixedClock{now: time.Now().UTC()})
+
+	_, err := svc.CreateDocument(context.Background(), domain.CreateDocumentCommand{
+		DocumentID:   "doc-invalid",
+		Title:        "Invalid",
+		DocumentType: "unknown_type",
+		OwnerID:      "user-1",
+		BusinessUnit: "ops",
+		Department:   "general",
+	})
+	if err == nil {
+		t.Fatal("expected invalid document type error")
 	}
 }
 

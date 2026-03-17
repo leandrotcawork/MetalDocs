@@ -41,8 +41,9 @@ func TestAPIContractSmoke(t *testing.T) {
 		{name: "health live", method: http.MethodGet, path: "/api/v1/health/live", wantStatus: http.StatusOK},
 		{name: "health ready", method: http.MethodGet, path: "/api/v1/health/ready", wantStatus: http.StatusOK},
 		{name: "metrics", method: http.MethodGet, path: "/api/v1/metrics", wantStatus: http.StatusOK},
+		{name: "list document types", method: http.MethodGet, path: "/api/v1/document-types", withUserID: true, wantStatus: http.StatusOK},
 		{name: "list documents", method: http.MethodGet, path: "/api/v1/documents", withUserID: true, wantStatus: http.StatusOK},
-		{name: "search documents", method: http.MethodGet, path: "/api/v1/search/documents?limit=10", withUserID: true, wantStatus: http.StatusOK},
+		{name: "search documents", method: http.MethodGet, path: "/api/v1/search/documents?limit=10&documentType=contract&businessUnit=legal&department=contracts", withUserID: true, wantStatus: http.StatusOK},
 		{
 			name:       "workflow transition",
 			method:     http.MethodPost,
@@ -143,7 +144,10 @@ func createDocument(t *testing.T, handler http.Handler) string {
 
 	body, err := json.Marshal(map[string]any{
 		"title":          "Contract Seed",
+		"documentType":   "contract",
 		"ownerId":        "owner-contract",
+		"businessUnit":   "legal",
+		"department":     "contracts",
 		"classification": "INTERNAL",
 		"initialContent": "seed",
 	})

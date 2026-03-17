@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -34,7 +35,12 @@ func NewService(repo domain.Repository, publisher messaging.Publisher, clock Clo
 }
 
 func (s *Service) CreateDocument(ctx context.Context, cmd domain.CreateDocumentCommand) (domain.Document, error) {
-	if strings.TrimSpace(cmd.DocumentID) == "" || strings.TrimSpace(cmd.Title) == "" || strings.TrimSpace(cmd.OwnerID) == "" {
+	if strings.TrimSpace(cmd.DocumentID) == "" ||
+		strings.TrimSpace(cmd.Title) == "" ||
+		strings.TrimSpace(cmd.OwnerID) == "" ||
+		strings.TrimSpace(cmd.DocumentType) == "" ||
+		strings.TrimSpace(cmd.BusinessUnit) == "" ||
+		strings.TrimSpace(cmd.Department) == "" {
 		return domain.Document{}, domain.ErrInvalidCommand
 	}
 
@@ -43,14 +49,32 @@ func (s *Service) CreateDocument(ctx context.Context, cmd domain.CreateDocumentC
 		classification = domain.ClassificationInternal
 	}
 
+	documentType := strings.TrimSpace(strings.ToLower(cmd.DocumentType))
+	if !s.isKnownDocumentType(ctx, documentType) {
+		return domain.Document{}, domain.ErrInvalidDocumentType
+	}
+
+	metadata := normalizeMetadata(cmd.MetadataJSON)
+	if _, err := json.Marshal(metadata); err != nil {
+		return domain.Document{}, domain.ErrInvalidCommand
+	}
+
 	now := s.clock.Now()
 	doc := domain.Document{
 		ID:             strings.TrimSpace(cmd.DocumentID),
 		Title:          strings.TrimSpace(cmd.Title),
+		DocumentType:   documentType,
 		OwnerID:        strings.TrimSpace(cmd.OwnerID),
+		BusinessUnit:   strings.TrimSpace(cmd.BusinessUnit),
+		Department:     strings.TrimSpace(cmd.Department),
 		Classification: classification,
 		Status:         domain.StatusDraft,
+		Tags:           normalizeTags(cmd.Tags),
+		EffectiveAt:    cloneTimePtr(cmd.EffectiveAt),
+		ExpiryAt:       cloneTimePtr(cmd.ExpiryAt),
+		MetadataJSON:   metadata,
 		CreatedAt:      now,
+		UpdatedAt:      now,
 	}
 
 	v1 := domain.Version{
@@ -85,8 +109,11 @@ func (s *Service) CreateDocument(ctx context.Context, cmd domain.CreateDocumentC
 			Producer:          "documents",
 			TraceID:           cmd.TraceID,
 			Payload: map[string]any{
-				"document_id": doc.ID,
-				"title":       doc.Title,
+				"document_id":   doc.ID,
+				"title":         doc.Title,
+				"document_type": doc.DocumentType,
+				"business_unit": doc.BusinessUnit,
+				"department":    doc.Department,
 			},
 		})
 
@@ -161,9 +188,77 @@ func (s *Service) ListDocuments(ctx context.Context) ([]domain.Document, error) 
 	return s.repo.ListDocuments(ctx)
 }
 
+func (s *Service) ListDocumentTypes(ctx context.Context) ([]domain.DocumentType, error) {
+	items, err := s.repo.ListDocumentTypes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(items) == 0 {
+		return domain.DefaultDocumentTypes(), nil
+	}
+	return items, nil
+}
+
 func (s *Service) ListVersions(ctx context.Context, documentID string) ([]domain.Version, error) {
 	if strings.TrimSpace(documentID) == "" {
 		return nil, domain.ErrInvalidCommand
 	}
 	return s.repo.ListVersions(ctx, strings.TrimSpace(documentID))
+}
+
+func (s *Service) isKnownDocumentType(ctx context.Context, code string) bool {
+	items, err := s.ListDocumentTypes(ctx)
+	if err != nil {
+		return false
+	}
+	for _, item := range items {
+		if strings.EqualFold(strings.TrimSpace(item.Code), code) {
+			return true
+		}
+	}
+	return false
+}
+
+func normalizeTags(tags []string) []string {
+	if len(tags) == 0 {
+		return []string{}
+	}
+	out := make([]string, 0, len(tags))
+	seen := map[string]struct{}{}
+	for _, tag := range tags {
+		normalized := strings.TrimSpace(tag)
+		if normalized == "" {
+			continue
+		}
+		key := strings.ToLower(normalized)
+		if _, exists := seen[key]; exists {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, normalized)
+	}
+	return out
+}
+
+func normalizeMetadata(metadata map[string]any) map[string]any {
+	if len(metadata) == 0 {
+		return map[string]any{}
+	}
+	out := make(map[string]any, len(metadata))
+	for key, value := range metadata {
+		trimmed := strings.TrimSpace(key)
+		if trimmed == "" {
+			continue
+		}
+		out[trimmed] = value
+	}
+	return out
+}
+
+func cloneTimePtr(value *time.Time) *time.Time {
+	if value == nil {
+		return nil
+	}
+	cloned := value.UTC()
+	return &cloned
 }

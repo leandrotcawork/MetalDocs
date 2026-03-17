@@ -26,9 +26,15 @@ func (r *Reader) ListDocuments(ctx context.Context) ([]searchdomain.Document, er
 		out = append(out, searchdomain.Document{
 			ID:             doc.ID,
 			Title:          doc.Title,
+			DocumentType:   doc.DocumentType,
 			OwnerID:        doc.OwnerID,
+			BusinessUnit:   doc.BusinessUnit,
+			Department:     doc.Department,
 			Classification: doc.Classification,
 			Status:         doc.Status,
+			Tags:           append([]string(nil), doc.Tags...),
+			EffectiveAt:    doc.EffectiveAt,
+			ExpiryAt:       doc.ExpiryAt,
 			CreatedAt:      doc.CreatedAt,
 		})
 	}

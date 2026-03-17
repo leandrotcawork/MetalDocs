@@ -33,6 +33,10 @@ func (r *atomicRepoSpy) ListDocuments(context.Context) ([]domain.Document, error
 	return nil, nil
 }
 
+func (r *atomicRepoSpy) ListDocumentTypes(context.Context) ([]domain.DocumentType, error) {
+	return domain.DefaultDocumentTypes(), nil
+}
+
 func (r *atomicRepoSpy) UpdateDocumentStatus(context.Context, string, string) error {
 	return nil
 }
@@ -57,7 +61,10 @@ func TestCreateDocumentPrefersAtomicRepositoryWhenAvailable(t *testing.T) {
 	_, err := svc.CreateDocument(context.Background(), domain.CreateDocumentCommand{
 		DocumentID:     "doc-atomic",
 		Title:          "Atomic",
+		DocumentType:   "manual",
 		OwnerID:        "owner-atomic",
+		BusinessUnit:   "ops",
+		Department:     "general",
 		InitialContent: "v1",
 	})
 	if err != nil {

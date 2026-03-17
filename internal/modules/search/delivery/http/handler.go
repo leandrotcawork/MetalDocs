@@ -18,7 +18,10 @@ type Handler struct {
 type SearchDocumentResponse struct {
 	DocumentID     string `json:"documentId"`
 	Title          string `json:"title"`
+	DocumentType   string `json:"documentType"`
 	OwnerID        string `json:"ownerId"`
+	BusinessUnit   string `json:"businessUnit"`
+	Department     string `json:"department"`
 	Classification string `json:"classification"`
 	Status         string `json:"status"`
 	CreatedAt      string `json:"createdAt"`
@@ -50,7 +53,10 @@ func (h *Handler) handleSearchDocuments(w http.ResponseWriter, r *http.Request) 
 
 	items, err := h.service.SearchDocuments(r.Context(), searchdomain.Query{
 		Text:           r.URL.Query().Get("q"),
+		DocumentType:   r.URL.Query().Get("documentType"),
 		OwnerID:        r.URL.Query().Get("ownerId"),
+		BusinessUnit:   r.URL.Query().Get("businessUnit"),
+		Department:     r.URL.Query().Get("department"),
 		Classification: r.URL.Query().Get("classification"),
 		Status:         r.URL.Query().Get("status"),
 		Limit:          limit,
@@ -65,7 +71,10 @@ func (h *Handler) handleSearchDocuments(w http.ResponseWriter, r *http.Request) 
 		out = append(out, SearchDocumentResponse{
 			DocumentID:     item.ID,
 			Title:          item.Title,
+			DocumentType:   item.DocumentType,
 			OwnerID:        item.OwnerID,
+			BusinessUnit:   item.BusinessUnit,
+			Department:     item.Department,
 			Classification: item.Classification,
 			Status:         item.Status,
 			CreatedAt:      item.CreatedAt.Format(time.RFC3339),

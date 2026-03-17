@@ -16,7 +16,7 @@ Registrar as tasks do proximo ciclo de execucao do MetalDocs com foco em dominio
 - `blocked`
 
 ## Task 001 - Freeze document type registry
-Status: `todo`
+Status: `done`
 
 Objetivo:
 Definir os tipos documentais iniciais da plataforma sem acoplar ao negocio de uma empresa especifica.
@@ -31,7 +31,7 @@ Saida:
 - base para schema e validacoes
 
 ## Task 002 - Model document metadata base
-Status: `todo`
+Status: `done`
 
 Objetivo:
 Evoluir `documents` para suportar metadados estruturados obrigatorios.

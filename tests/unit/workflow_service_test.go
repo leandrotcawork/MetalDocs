@@ -29,7 +29,10 @@ func TestWorkflowTransitionUpdatesDocumentStatus(t *testing.T) {
 	_, err := docSvc.CreateDocument(context.Background(), docdomain.CreateDocumentCommand{
 		DocumentID:     "doc-wf-1",
 		Title:          "Workflow Doc",
+		DocumentType:   "manual",
 		OwnerID:        "owner-1",
+		BusinessUnit:   "ops",
+		Department:     "general",
 		InitialContent: "v1",
 	})
 	if err != nil {
@@ -68,7 +71,10 @@ func TestWorkflowTransitionRejectsInvalidPath(t *testing.T) {
 	_, err := docSvc.CreateDocument(context.Background(), docdomain.CreateDocumentCommand{
 		DocumentID:     "doc-wf-2",
 		Title:          "Workflow Doc 2",
+		DocumentType:   "manual",
 		OwnerID:        "owner-2",
+		BusinessUnit:   "ops",
+		Department:     "general",
 		InitialContent: "v1",
 	})
 	if err != nil {
@@ -93,7 +99,10 @@ func TestWorkflowTransitionRollsBackWhenAuditFails(t *testing.T) {
 	_, err := docSvc.CreateDocument(context.Background(), docdomain.CreateDocumentCommand{
 		DocumentID:     "doc-wf-3",
 		Title:          "Workflow Doc 3",
+		DocumentType:   "manual",
 		OwnerID:        "owner-3",
+		BusinessUnit:   "ops",
+		Department:     "general",
 		InitialContent: "v1",
 	})
 	if err != nil {

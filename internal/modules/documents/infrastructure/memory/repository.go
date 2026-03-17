@@ -12,12 +12,14 @@ type Repository struct {
 	mu        sync.RWMutex
 	documents map[string]domain.Document
 	versions  map[string][]domain.Version
+	types     []domain.DocumentType
 }
 
 func NewRepository() *Repository {
 	return &Repository{
 		documents: map[string]domain.Document{},
 		versions:  map[string][]domain.Version{},
+		types:     domain.DefaultDocumentTypes(),
 	}
 }
 
@@ -76,6 +78,15 @@ func (r *Repository) ListDocuments(_ context.Context) ([]domain.Document, error)
 	})
 
 	return docs, nil
+}
+
+func (r *Repository) ListDocumentTypes(_ context.Context) ([]domain.DocumentType, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	out := make([]domain.DocumentType, len(r.types))
+	copy(out, r.types)
+	return out, nil
 }
 
 func (r *Repository) UpdateDocumentStatus(_ context.Context, documentID, status string) error {

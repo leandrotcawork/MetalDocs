@@ -28,7 +28,10 @@ func (s *Service) SearchDocuments(ctx context.Context, q domain.Query) ([]domain
 	}
 
 	text := strings.ToLower(strings.TrimSpace(q.Text))
+	documentType := strings.ToLower(strings.TrimSpace(q.DocumentType))
 	ownerID := strings.TrimSpace(q.OwnerID)
+	businessUnit := strings.TrimSpace(q.BusinessUnit)
+	department := strings.TrimSpace(q.Department)
 	classification := strings.ToUpper(strings.TrimSpace(q.Classification))
 	status := strings.ToUpper(strings.TrimSpace(q.Status))
 
@@ -37,7 +40,16 @@ func (s *Service) SearchDocuments(ctx context.Context, q domain.Query) ([]domain
 		if text != "" && !strings.Contains(strings.ToLower(doc.Title), text) {
 			continue
 		}
+		if documentType != "" && strings.ToLower(doc.DocumentType) != documentType {
+			continue
+		}
 		if ownerID != "" && doc.OwnerID != ownerID {
+			continue
+		}
+		if businessUnit != "" && doc.BusinessUnit != businessUnit {
+			continue
+		}
+		if department != "" && doc.Department != department {
 			continue
 		}
 		if classification != "" && strings.ToUpper(doc.Classification) != classification {

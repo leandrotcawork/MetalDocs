@@ -7,6 +7,7 @@ type Repository interface {
 	CreateDocument(ctx context.Context, document Document) error
 	GetDocument(ctx context.Context, documentID string) (Document, error)
 	ListDocuments(ctx context.Context) ([]Document, error)
+	ListDocumentTypes(ctx context.Context) ([]DocumentType, error)
 	UpdateDocumentStatus(ctx context.Context, documentID, status string) error
 	SaveVersion(ctx context.Context, version Version) error
 	ListVersions(ctx context.Context, documentID string) ([]Version, error)

@@ -19,29 +19,51 @@ type Handler struct {
 }
 
 type CreateDocumentRequest struct {
-	Title          string `json:"title"`
-	OwnerID        string `json:"ownerId"`
-	Classification string `json:"classification"`
-	InitialContent string `json:"initialContent,omitempty"`
+	Title          string         `json:"title"`
+	DocumentType   string         `json:"documentType"`
+	OwnerID        string         `json:"ownerId"`
+	BusinessUnit   string         `json:"businessUnit"`
+	Department     string         `json:"department"`
+	Classification string         `json:"classification"`
+	Tags           []string       `json:"tags,omitempty"`
+	EffectiveAt    string         `json:"effectiveAt,omitempty"`
+	ExpiryAt       string         `json:"expiryAt,omitempty"`
+	Metadata       map[string]any `json:"metadata,omitempty"`
+	InitialContent string         `json:"initialContent,omitempty"`
 }
 
 type DocumentResponse struct {
-	DocumentID string `json:"documentId"`
-	Title      string `json:"title"`
-	OwnerID    string `json:"ownerId"`
-	Status     string `json:"status"`
+	DocumentID     string   `json:"documentId"`
+	Title          string   `json:"title"`
+	DocumentType   string   `json:"documentType"`
+	OwnerID        string   `json:"ownerId"`
+	BusinessUnit   string   `json:"businessUnit"`
+	Department     string   `json:"department"`
+	Classification string   `json:"classification"`
+	Status         string   `json:"status"`
+	Tags           []string `json:"tags"`
+	EffectiveAt    string   `json:"effectiveAt,omitempty"`
+	ExpiryAt       string   `json:"expiryAt,omitempty"`
 }
 
 type DocumentCreatedResponse struct {
-	DocumentID string `json:"documentId"`
-	Version    int    `json:"version"`
-	Status     string `json:"status"`
+	DocumentID   string `json:"documentId"`
+	Version      int    `json:"version"`
+	Status       string `json:"status"`
+	DocumentType string `json:"documentType"`
 }
 
 type VersionResponse struct {
 	DocumentID string `json:"documentId"`
 	Version    int    `json:"version"`
 	CreatedAt  string `json:"createdAt"`
+}
+
+type DocumentTypeResponse struct {
+	Code               string `json:"code"`
+	Name               string `json:"name"`
+	Description        string `json:"description"`
+	ReviewIntervalDays int    `json:"reviewIntervalDays"`
 }
 
 type apiErrorEnvelope struct {
@@ -62,6 +84,7 @@ func NewHandler(service *application.Service) *Handler {
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/health/live", h.handleHealthLive)
 	mux.HandleFunc("/api/v1/health/ready", h.handleHealthReady)
+	mux.HandleFunc("/api/v1/document-types", h.handleDocumentTypes)
 	mux.HandleFunc("/api/v1/documents", h.handleDocuments)
 	mux.HandleFunc("/api/v1/documents/", h.handleDocumentSubRoutes)
 }
@@ -85,12 +108,49 @@ func (h *Handler) handleDocuments(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h *Handler) handleDocumentTypes(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	traceID := requestTraceID(r)
+	items, err := h.service.ListDocumentTypes(r.Context())
+	if err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+
+	out := make([]DocumentTypeResponse, 0, len(items))
+	for _, item := range items {
+		out = append(out, DocumentTypeResponse{
+			Code:               item.Code,
+			Name:               item.Name,
+			Description:        item.Description,
+			ReviewIntervalDays: item.ReviewIntervalDays,
+		})
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"items": out})
+}
+
 func (h *Handler) handleCreateDocument(w http.ResponseWriter, r *http.Request) {
 	traceID := requestTraceID(r)
 
 	var req CreateDocumentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid JSON payload", traceID)
+		return
+	}
+
+	effectiveAt, err := parseOptionalRFC3339(req.EffectiveAt)
+	if err != nil {
+		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid effectiveAt value", traceID)
+		return
+	}
+	expiryAt, err := parseOptionalRFC3339(req.ExpiryAt)
+	if err != nil {
+		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid expiryAt value", traceID)
 		return
 	}
 
@@ -103,8 +163,15 @@ func (h *Handler) handleCreateDocument(w http.ResponseWriter, r *http.Request) {
 	doc, err := h.service.CreateDocument(context.Background(), domain.CreateDocumentCommand{
 		DocumentID:     docID,
 		Title:          req.Title,
+		DocumentType:   req.DocumentType,
 		OwnerID:        req.OwnerID,
+		BusinessUnit:   req.BusinessUnit,
+		Department:     req.Department,
 		Classification: req.Classification,
+		Tags:           req.Tags,
+		EffectiveAt:    effectiveAt,
+		ExpiryAt:       expiryAt,
+		MetadataJSON:   req.Metadata,
 		InitialContent: req.InitialContent,
 		TraceID:        traceID,
 	})
@@ -114,9 +181,10 @@ func (h *Handler) handleCreateDocument(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusCreated, DocumentCreatedResponse{
-		DocumentID: doc.ID,
-		Version:    1,
-		Status:     doc.Status,
+		DocumentID:   doc.ID,
+		Version:      1,
+		Status:       doc.Status,
+		DocumentType: doc.DocumentType,
 	})
 }
 
@@ -132,10 +200,17 @@ func (h *Handler) handleListDocuments(w http.ResponseWriter, r *http.Request) {
 	out := make([]DocumentResponse, 0, len(docs))
 	for _, doc := range docs {
 		out = append(out, DocumentResponse{
-			DocumentID: doc.ID,
-			Title:      doc.Title,
-			OwnerID:    doc.OwnerID,
-			Status:     doc.Status,
+			DocumentID:     doc.ID,
+			Title:          doc.Title,
+			DocumentType:   doc.DocumentType,
+			OwnerID:        doc.OwnerID,
+			BusinessUnit:   doc.BusinessUnit,
+			Department:     doc.Department,
+			Classification: doc.Classification,
+			Status:         doc.Status,
+			Tags:           append([]string(nil), doc.Tags...),
+			EffectiveAt:    formatOptionalTime(doc.EffectiveAt),
+			ExpiryAt:       formatOptionalTime(doc.ExpiryAt),
 		})
 	}
 
@@ -183,6 +258,8 @@ func (h *Handler) writeDomainError(w http.ResponseWriter, err error, traceID str
 	switch {
 	case errors.Is(err, domain.ErrInvalidCommand):
 		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid request data", traceID)
+	case errors.Is(err, domain.ErrInvalidDocumentType):
+		writeAPIError(w, http.StatusBadRequest, "INVALID_DOCUMENT_TYPE", "Invalid document type", traceID)
 	case errors.Is(err, domain.ErrDocumentNotFound):
 		writeAPIError(w, http.StatusNotFound, "DOC_NOT_FOUND", "Document not found", traceID)
 	case errors.Is(err, domain.ErrDocumentAlreadyExists):
@@ -222,4 +299,23 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
+}
+
+func parseOptionalRFC3339(raw string) (*time.Time, error) {
+	if strings.TrimSpace(raw) == "" {
+		return nil, nil
+	}
+	parsed, err := time.Parse(time.RFC3339, strings.TrimSpace(raw))
+	if err != nil {
+		return nil, err
+	}
+	utc := parsed.UTC()
+	return &utc, nil
+}
+
+func formatOptionalTime(value *time.Time) string {
+	if value == nil {
+		return ""
+	}
+	return value.UTC().Format(time.RFC3339)
 }

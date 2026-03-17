@@ -37,7 +37,7 @@ func TestHealthEndpoints(t *testing.T) {
 func TestCreateAndListVersionsFlow(t *testing.T) {
 	mux := newTestMux()
 
-	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/documents", strings.NewReader(`{"title":"Contract","ownerId":"u1","classification":"INTERNAL"}`))
+	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/documents", strings.NewReader(`{"title":"Contract","documentType":"contract","ownerId":"u1","businessUnit":"legal","department":"contracts","classification":"INTERNAL"}`))
 	createReq.Header.Set("Content-Type", "application/json")
 	createRR := httptest.NewRecorder()
 	mux.ServeHTTP(createRR, createReq)
@@ -68,12 +68,24 @@ func TestCreateAndListVersionsFlow(t *testing.T) {
 func TestCreateDocumentValidationError(t *testing.T) {
 	mux := newTestMux()
 
-	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/documents", strings.NewReader(`{"title":"","ownerId":""}`))
+	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/documents", strings.NewReader(`{"title":"","documentType":"","ownerId":"","businessUnit":"","department":""}`))
 	createReq.Header.Set("Content-Type", "application/json")
 	createRR := httptest.NewRecorder()
 	mux.ServeHTTP(createRR, createReq)
 
 	if createRR.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", createRR.Code)
+	}
+}
+
+func TestListDocumentTypes(t *testing.T) {
+	mux := newTestMux()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/document-types", nil)
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rr.Code)
 	}
 }

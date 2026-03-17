@@ -1,49 +1,81 @@
-# Runbook: Backup and Restore (Local PostgreSQL)
+# Runbook: Backup/Restore Gate (Local PostgreSQL)
 
 ## Objetivo
-Executar backup consistente e validar restore do banco `metaldocs` em ambiente local.
+Executar e comprovar o gate da Fase 2 com fluxo oficial:
+`backup -> validate -> restore`.
+
+O gate so e aprovado quando o restore em banco isolado e o smoke SQL passam 100%.
 
 ## Pre-requisitos
 - PostgreSQL tools instaladas (`pg_dump`, `pg_restore`, `psql`).
 - Variaveis de ambiente definidas:
   - `PGHOST`
   - `PGPORT`
-  - `PGDATABASE`
-  - `PGUSER` e `PGPASSWORD` (ou passar `-PgUser` e `-PgPassword` nos scripts)
-- Usuario de backup com permissao de leitura no schema `metaldocs`.
+  - `PGDATABASE` (fonte, ex.: `metaldocs`)
+- Usuario dedicado de backup (nao `metaldocs_app`).
+- Usuario de restore com permissao para criar DB e restaurar.
 
 ## Setup do usuario de backup (uma vez por ambiente)
-1. Execute como admin:
+1. Ajustar senha no arquivo `scripts/sql/create-backup-role.sql`.
+2. Executar como admin:
    - `psql -h <host> -p <port> -U <admin_user> -d postgres -f scripts/sql/create-backup-role.sql`
-2. Ajuste a senha no script SQL antes de executar.
 
-## Backup
-1. Rodar script:
-   - `powershell -ExecutionPolicy Bypass -File scripts/backup-postgres.ps1 -PgUser <backup_user> -PgPassword <backup_password>`
-2. Confirmar arquivo gerado em `backups/` com extensao `.dump`.
-3. Validar dump:
-   - `powershell -ExecutionPolicy Bypass -File scripts/validate-backup.ps1 -BackupFile backups/<arquivo>.dump -PgRestorePath "C:\Program Files\PostgreSQL\16\bin\pg_restore.exe"`
+## Contrato operacional (scripts)
+- Entrada minima:
+  - Backup: host/port/database/user/password.
+  - Validate: arquivo de dump.
+  - Restore: arquivo de dump + banco alvo + user/password.
+- Saida minima:
+  - `status`, timestamps de inicio/fim, `duration_seconds`.
+  - `backup_file`.
+  - `checksum_sha256` (backup).
+  - `validation_passed` (validate).
 
-## Restore (ambiente de validacao)
-Recomendacao: restaurar em database de validacao, nao na principal.
+## Execucao oficial do gate (1 comando)
+Rodar o orquestrador:
 
-1. Criar database de validacao com usuario admin:
-   - `CREATE DATABASE metaldocs_restore_validation;`
-2. Rodar restore:
-   - `powershell -ExecutionPolicy Bypass -File scripts/restore-postgres.ps1 -BackupFile backups/<arquivo>.dump -TargetDatabase metaldocs_restore_validation -PgUser <restore_user> -PgPassword <restore_password>`
-3. Validar objetos principais:
-   - `\dt metaldocs.*`
-   - `SELECT COUNT(*) FROM metaldocs.documents;`
-   - `SELECT COUNT(*) FROM metaldocs.audit_events;`
-   - `SELECT COUNT(*) FROM metaldocs.outbox_events;`
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/run-backup-restore-gate.ps1 -EnvironmentName local -BackupUser metaldocs_backup -BackupPassword "<backup_password>" -RestoreUser "<restore_user>" -RestorePassword "<restore_password>" -RestoreValidationDatabase "metaldocs_restore_test"
+```
 
-## Evidencia minima para gate Phase 2
-- Nome do arquivo de backup.
-- Timestamp do backup.
-- Comando de restore executado.
-- Resultado das queries de validacao.
+## Opcional: execucao em 3 comandos explicitos
+1. Backup:
+   - `powershell -ExecutionPolicy Bypass -File scripts/backup-postgres.ps1 -EnvironmentName local -PgUser metaldocs_backup -PgPassword "<backup_password>"`
+2. Validate:
+   - `powershell -ExecutionPolicy Bypass -File scripts/validate-backup.ps1 -BackupFile backups/<arquivo>.dump -EnvironmentName local`
+3. Restore:
+   - `powershell -ExecutionPolicy Bypass -File scripts/restore-postgres.ps1 -BackupFile backups/<arquivo>.dump -TargetDatabase metaldocs_restore_test -EnvironmentName local -PgUser "<restore_user>" -PgPassword "<restore_password>"`
+
+## Evidence Required (obrigatorio)
+Anexar o JSON em `backups/evidence/backup_restore_gate_<env>_<db>_<timestamp>.json` contendo:
+- Status final do gate (`approved` ou `rejected`).
+- Operador.
+- Caminho do dump.
+- Hash SHA-256 do dump.
+- Resultado da validacao.
+- Resultado do restore.
+- Resultado do smoke SQL com contagem de:
+  - `metaldocs.documents`
+  - `metaldocs.document_versions`
+  - `metaldocs.iam_users`
+  - `metaldocs.iam_user_roles`
+  - `metaldocs.audit_events`
+  - `metaldocs.outbox_events`
+
+## Criterios de aceite (gate aprovado)
+- Backup concluido sem erro.
+- Dump valido no `validate-backup`.
+- Restore concluido em banco isolado (`metaldocs_restore_test`).
+- Smoke SQL 100% aprovado.
+- Evidence JSON gerado com status `approved`.
+
+## Criterios de reprovacao
+- Falha em qualquer etapa do fluxo.
+- Credencial invalida.
+- Dump invalido/corrompido.
+- Restore incompleto.
+- Falha em qualquer consulta de smoke.
 
 ## Cuidados
-- O script de restore usa `--clean --if-exists`.
-- Nao rode restore direto no banco de producao sem janela e aprovacao.
-- O usuario da aplicacao (`metaldocs_app`) pode nao ter `SELECT` em tabelas sensiveis (ex.: `audit_events`, `outbox_events`) por politica de least privilege. Use usuario dedicado de backup.
+- Nao executar restore no banco principal sem janela aprovada.
+- `metaldocs_app` permanece least-privilege e nao deve ser usado para backup.

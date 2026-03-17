@@ -3,11 +3,13 @@ param(
   [string]$BackupFile,
   [string]$TargetDatabase = "",
   [string]$PgRestorePath = "pg_restore",
+  [string]$EnvironmentName = "local",
   [string]$PgUser = "",
   [string]$PgPassword = ""
 )
 
 $ErrorActionPreference = "Stop"
+$startedAt = [DateTime]::UtcNow
 
 if (-not (Test-Path $BackupFile)) {
   throw "Arquivo de backup nao encontrado: $BackupFile"
@@ -49,6 +51,7 @@ $env:PGPASSWORD = $effectivePassword
   --dbname $TargetDatabase `
   --clean `
   --if-exists `
+  --exit-on-error `
   --no-owner `
   --no-privileges `
   $BackupFile
@@ -57,4 +60,21 @@ if ($LASTEXITCODE -ne 0) {
   throw "pg_restore falhou com exit code $LASTEXITCODE"
 }
 
+$finishedAt = [DateTime]::UtcNow
+$durationSeconds = [Math]::Round(($finishedAt - $startedAt).TotalSeconds, 3)
+
 Write-Host "Restore concluido com sucesso em database: $TargetDatabase"
+[PSCustomObject]@{
+  status = "success"
+  operation = "restore"
+  started_utc = $startedAt.ToString("o")
+  finished_utc = $finishedAt.ToString("o")
+  duration_seconds = $durationSeconds
+  operator = $env:USERNAME
+  environment = $EnvironmentName
+  pg_host = $env:PGHOST
+  pg_port = $env:PGPORT
+  pg_user = $effectiveUser
+  target_database = $TargetDatabase
+  backup_file = $BackupFile
+}

@@ -85,7 +85,7 @@ Saida:
 - schema pronto para enforcement
 
 ## Task 005 - Enforce authorization in documents flows
-Status: `todo`
+Status: `done`
 
 Objetivo:
 Aplicar o novo modelo de permissao nas operacoes de documentos.

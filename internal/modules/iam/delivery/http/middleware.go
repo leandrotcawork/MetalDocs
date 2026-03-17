@@ -54,7 +54,8 @@ func (m *Middleware) Wrap(next http.Handler) http.Handler {
 			return
 		}
 
-		next.ServeHTTP(w, r)
+		ctx := iamdomain.WithAuthContext(r.Context(), userID, roles)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
@@ -76,6 +77,12 @@ func requiredPermission(method, path string) (iamdomain.Permission, bool) {
 		return iamdomain.PermDocumentCreate, true
 	}
 	if method == http.MethodGet && path == "/api/v1/documents" {
+		return iamdomain.PermDocumentRead, true
+	}
+	if method == http.MethodGet && path == "/api/v1/document-types" {
+		return iamdomain.PermDocumentRead, true
+	}
+	if method == http.MethodGet && strings.HasPrefix(path, "/api/v1/documents/") && !strings.HasSuffix(path, "/versions") {
 		return iamdomain.PermDocumentRead, true
 	}
 	if method == http.MethodGet && path == "/api/v1/search/documents" {

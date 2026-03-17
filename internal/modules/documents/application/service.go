@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"metaldocs/internal/modules/documents/domain"
+	iamdomain "metaldocs/internal/modules/iam/domain"
 	"metaldocs/internal/platform/messaging"
 )
 
@@ -137,6 +138,13 @@ func (s *Service) CreateDocument(ctx context.Context, cmd domain.CreateDocumentC
 	return doc, nil
 }
 
+func (s *Service) CreateDocumentAuthorized(ctx context.Context, cmd domain.CreateDocumentCommand) (domain.Document, error) {
+	if !s.isAllowedForCreate(ctx, cmd) {
+		return domain.Document{}, domain.ErrDocumentNotFound
+	}
+	return s.CreateDocument(ctx, cmd)
+}
+
 func (s *Service) AddVersion(ctx context.Context, cmd domain.AddVersionCommand) (domain.Version, error) {
 	if strings.TrimSpace(cmd.DocumentID) == "" {
 		return domain.Version{}, domain.ErrInvalidCommand
@@ -188,6 +196,28 @@ func (s *Service) ListDocuments(ctx context.Context) ([]domain.Document, error) 
 	return s.repo.ListDocuments(ctx)
 }
 
+func (s *Service) ListDocumentsAuthorized(ctx context.Context) ([]domain.Document, error) {
+	docs, err := s.repo.ListDocuments(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if shouldBypassPolicy(ctx) {
+		return docs, nil
+	}
+
+	filtered := make([]domain.Document, 0, len(docs))
+	for _, doc := range docs {
+		allowed, err := s.isAllowed(ctx, doc, domain.CapabilityDocumentView)
+		if err != nil {
+			return nil, err
+		}
+		if allowed {
+			filtered = append(filtered, doc)
+		}
+	}
+	return filtered, nil
+}
+
 func (s *Service) ListDocumentTypes(ctx context.Context) ([]domain.DocumentType, error) {
 	items, err := s.repo.ListDocumentTypes(ctx)
 	if err != nil {
@@ -203,7 +233,36 @@ func (s *Service) ListVersions(ctx context.Context, documentID string) ([]domain
 	if strings.TrimSpace(documentID) == "" {
 		return nil, domain.ErrInvalidCommand
 	}
+	doc, err := s.repo.GetDocument(ctx, strings.TrimSpace(documentID))
+	if err != nil {
+		return nil, err
+	}
+	allowed, err := s.isAllowed(ctx, doc, domain.CapabilityDocumentView)
+	if err != nil {
+		return nil, err
+	}
+	if !allowed {
+		return nil, domain.ErrDocumentNotFound
+	}
 	return s.repo.ListVersions(ctx, strings.TrimSpace(documentID))
+}
+
+func (s *Service) GetDocumentAuthorized(ctx context.Context, documentID string) (domain.Document, error) {
+	if strings.TrimSpace(documentID) == "" {
+		return domain.Document{}, domain.ErrInvalidCommand
+	}
+	doc, err := s.repo.GetDocument(ctx, strings.TrimSpace(documentID))
+	if err != nil {
+		return domain.Document{}, err
+	}
+	allowed, err := s.isAllowed(ctx, doc, domain.CapabilityDocumentView)
+	if err != nil {
+		return domain.Document{}, err
+	}
+	if !allowed {
+		return domain.Document{}, domain.ErrDocumentNotFound
+	}
+	return doc, nil
 }
 
 func (s *Service) ListAccessPolicies(ctx context.Context, resourceScope, resourceID string) ([]domain.AccessPolicy, error) {
@@ -340,7 +399,8 @@ func isKnownSubjectType(raw string) bool {
 
 func isKnownCapability(raw string) bool {
 	switch raw {
-	case domain.CapabilityDocumentView,
+	case domain.CapabilityDocumentCreate,
+		domain.CapabilityDocumentView,
 		domain.CapabilityDocumentEdit,
 		domain.CapabilityDocumentUploadAttachment,
 		domain.CapabilityDocumentChangeWorkflow,
@@ -349,6 +409,120 @@ func isKnownCapability(raw string) bool {
 	default:
 		return false
 	}
+}
+
+func (s *Service) isAllowedForCreate(ctx context.Context, cmd domain.CreateDocumentCommand) bool {
+	if shouldBypassPolicy(ctx) {
+		return true
+	}
+	items, err := s.policiesForCreate(ctx, cmd, domain.CapabilityDocumentCreate)
+	if err != nil {
+		return false
+	}
+	return decidePolicies(ctx, items)
+}
+
+func (s *Service) isAllowed(ctx context.Context, doc domain.Document, capability string) (bool, error) {
+	if shouldBypassPolicy(ctx) {
+		return true, nil
+	}
+	items, err := s.policiesForDocument(ctx, doc, capability)
+	if err != nil {
+		return false, err
+	}
+	return decidePolicies(ctx, items), nil
+}
+
+func (s *Service) policiesForDocument(ctx context.Context, doc domain.Document, capability string) ([]domain.AccessPolicy, error) {
+	scopes := []struct {
+		scope string
+		id    string
+	}{
+		{scope: domain.ResourceScopeDocument, id: doc.ID},
+		{scope: domain.ResourceScopeDocumentType, id: doc.DocumentType},
+		{scope: domain.ResourceScopeArea, id: areaResourceID(doc.BusinessUnit, doc.Department)},
+	}
+	return s.loadPoliciesForScopes(ctx, scopes, capability)
+}
+
+func (s *Service) policiesForCreate(ctx context.Context, cmd domain.CreateDocumentCommand, capability string) ([]domain.AccessPolicy, error) {
+	scopes := []struct {
+		scope string
+		id    string
+	}{
+		{scope: domain.ResourceScopeDocumentType, id: strings.ToLower(strings.TrimSpace(cmd.DocumentType))},
+		{scope: domain.ResourceScopeArea, id: areaResourceID(cmd.BusinessUnit, cmd.Department)},
+	}
+	return s.loadPoliciesForScopes(ctx, scopes, capability)
+}
+
+func (s *Service) loadPoliciesForScopes(ctx context.Context, scopes []struct {
+	scope string
+	id    string
+}, capability string) ([]domain.AccessPolicy, error) {
+	var out []domain.AccessPolicy
+	for _, scope := range scopes {
+		if strings.TrimSpace(scope.id) == "" {
+			continue
+		}
+		items, err := s.repo.ListAccessPolicies(ctx, scope.scope, scope.id)
+		if err != nil {
+			return nil, err
+		}
+		for _, item := range items {
+			if item.Capability == capability {
+				out = append(out, item)
+			}
+		}
+	}
+	return out, nil
+}
+
+func decidePolicies(ctx context.Context, items []domain.AccessPolicy) bool {
+	if len(items) == 0 {
+		return true
+	}
+	userID := iamdomain.UserIDFromContext(ctx)
+	roles := iamdomain.RolesFromContext(ctx)
+	rolesSet := map[string]struct{}{}
+	for _, role := range roles {
+		rolesSet[strings.ToLower(strings.TrimSpace(string(role)))] = struct{}{}
+	}
+
+	matchedAny := false
+	for _, item := range items {
+		if !matchesPolicySubject(item, userID, rolesSet) {
+			continue
+		}
+		matchedAny = true
+		if item.Effect == domain.PolicyEffectDeny {
+			return false
+		}
+	}
+	if matchedAny {
+		return true
+	}
+	return false
+}
+
+func matchesPolicySubject(item domain.AccessPolicy, userID string, rolesSet map[string]struct{}) bool {
+	switch item.SubjectType {
+	case domain.SubjectTypeUser:
+		return strings.EqualFold(item.SubjectID, userID)
+	case domain.SubjectTypeRole:
+		_, ok := rolesSet[strings.ToLower(strings.TrimSpace(item.SubjectID))]
+		return ok
+	default:
+		return false
+	}
+}
+
+func areaResourceID(businessUnit, department string) string {
+	return strings.TrimSpace(businessUnit) + ":" + strings.TrimSpace(department)
+}
+
+func shouldBypassPolicy(ctx context.Context) bool {
+	return iamdomain.UserIDFromContext(ctx) == "" && len(iamdomain.RolesFromContext(ctx)) == 0
 }
 
 func isKnownEffect(raw string) bool {

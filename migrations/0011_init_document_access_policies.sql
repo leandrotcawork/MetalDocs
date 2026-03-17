@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS metaldocs.document_access_policies (
     CHECK (resource_scope IN ('document', 'document_type', 'area')),
   CONSTRAINT chk_document_access_policies_capability
     CHECK (capability IN (
+      'document.create',
       'document.view',
       'document.edit',
       'document.upload_attachment',

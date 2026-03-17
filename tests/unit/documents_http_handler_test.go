@@ -63,6 +63,14 @@ func TestCreateAndListVersionsFlow(t *testing.T) {
 	if listRR.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", listRR.Code)
 	}
+
+	getReq := httptest.NewRequest(http.MethodGet, "/api/v1/documents/"+documentID, nil)
+	getRR := httptest.NewRecorder()
+	mux.ServeHTTP(getRR, getReq)
+
+	if getRR.Code != http.StatusOK {
+		t.Fatalf("expected 200 for get document, got %d", getRR.Code)
+	}
 }
 
 func TestCreateDocumentValidationError(t *testing.T) {

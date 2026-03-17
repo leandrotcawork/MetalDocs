@@ -92,6 +92,7 @@ const (
 )
 
 const (
+	CapabilityDocumentCreate            = "document.create"
 	CapabilityDocumentView              = "document.view"
 	CapabilityDocumentEdit              = "document.edit"
 	CapabilityDocumentUploadAttachment  = "document.upload_attachment"

@@ -1,7 +1,6 @@
 package httpdelivery
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -251,7 +250,7 @@ func (h *Handler) handleCreateDocument(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	doc, err := h.service.CreateDocument(context.Background(), domain.CreateDocumentCommand{
+	doc, err := h.service.CreateDocumentAuthorized(r.Context(), domain.CreateDocumentCommand{
 		DocumentID:     docID,
 		Title:          req.Title,
 		DocumentType:   req.DocumentType,
@@ -282,7 +281,7 @@ func (h *Handler) handleCreateDocument(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleListDocuments(w http.ResponseWriter, r *http.Request) {
 	traceID := requestTraceID(r)
 
-	docs, err := h.service.ListDocuments(context.Background())
+	docs, err := h.service.ListDocumentsAuthorized(r.Context())
 	if err != nil {
 		h.writeDomainError(w, err, traceID)
 		return
@@ -316,6 +315,10 @@ func (h *Handler) handleDocumentSubRoutes(w http.ResponseWriter, r *http.Request
 
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/documents/")
 	parts := strings.Split(path, "/")
+	if len(parts) == 1 && strings.TrimSpace(parts[0]) != "" {
+		h.handleGetDocument(w, r, parts[0])
+		return
+	}
 	if len(parts) != 2 || strings.TrimSpace(parts[0]) == "" || parts[1] != "versions" {
 		writeAPIError(w, http.StatusNotFound, "DOC_NOT_FOUND", "Route not found", requestTraceID(r))
 		return
@@ -324,10 +327,34 @@ func (h *Handler) handleDocumentSubRoutes(w http.ResponseWriter, r *http.Request
 	h.handleListVersions(w, r, parts[0])
 }
 
+func (h *Handler) handleGetDocument(w http.ResponseWriter, r *http.Request, documentID string) {
+	traceID := requestTraceID(r)
+
+	doc, err := h.service.GetDocumentAuthorized(r.Context(), documentID)
+	if err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, DocumentResponse{
+		DocumentID:     doc.ID,
+		Title:          doc.Title,
+		DocumentType:   doc.DocumentType,
+		OwnerID:        doc.OwnerID,
+		BusinessUnit:   doc.BusinessUnit,
+		Department:     doc.Department,
+		Classification: doc.Classification,
+		Status:         doc.Status,
+		Tags:           append([]string(nil), doc.Tags...),
+		EffectiveAt:    formatOptionalTime(doc.EffectiveAt),
+		ExpiryAt:       formatOptionalTime(doc.ExpiryAt),
+	})
+}
+
 func (h *Handler) handleListVersions(w http.ResponseWriter, r *http.Request, documentID string) {
 	traceID := requestTraceID(r)
 
-	versions, err := h.service.ListVersions(context.Background(), documentID)
+	versions, err := h.service.ListVersions(r.Context(), documentID)
 	if err != nil {
 		h.writeDomainError(w, err, traceID)
 		return

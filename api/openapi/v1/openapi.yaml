@@ -202,6 +202,37 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
+  /documents/{documentId}:
+    get:
+      summary: Busca um documento por id
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+        - $ref: '#/components/parameters/UserIdHeader'
+      responses:
+        '200':
+          description: Documento encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentListItem'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '404':
+          description: Documento nao encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
   /documents/{documentId}/versions:
     get:
       summary: Lista versoes de um documento
@@ -549,7 +580,7 @@ components:
           type: string
         capability:
           type: string
-          enum: [document.view, document.edit, document.upload_attachment, document.change_workflow, document.manage_permissions]
+          enum: [document.create, document.view, document.edit, document.upload_attachment, document.change_workflow, document.manage_permissions]
         effect:
           type: string
           enum: [allow, deny]
@@ -564,7 +595,7 @@ components:
           type: string
         capability:
           type: string
-          enum: [document.view, document.edit, document.upload_attachment, document.change_workflow, document.manage_permissions]
+          enum: [document.create, document.view, document.edit, document.upload_attachment, document.change_workflow, document.manage_permissions]
         effect:
           type: string
           enum: [allow, deny]

@@ -8,4 +8,5 @@ Use esta ordem para leitura:
 5. `adr/`
 6. `contracts/INTERNAL_EVENTS_AND_ERRORS.md`
 7. `runbooks/`
-8. `templates/` e `prompts/`
+8. `hardening/`
+9. `templates/` e `prompts/`

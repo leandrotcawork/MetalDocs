@@ -35,6 +35,7 @@ MetalDocs e uma plataforma interna para centralizacao, versionamento, workflow e
 - Contratos internos (eventos/erros): `docs/contracts/INTERNAL_EVENTS_AND_ERRORS.md`
 - Setup dev Go: `docs/runbooks/dev-setup.md`
 - Setup manual Postgres: `docs/runbooks/postgres-manual-setup.md`
+- Security baseline (SAST): `docs/runbooks/security-baseline.md`
 - Templates: `docs/templates/`
 - Prompts oficiais: `docs/prompts/`
 

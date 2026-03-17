@@ -11,4 +11,5 @@ Use esta ordem para leitura:
 8. `contracts/INTERNAL_EVENTS_AND_ERRORS.md`
 9. `runbooks/`
 10. `hardening/`
-11. `templates/` e `prompts/`
+11. `tasks/`
+12. `templates/` e `prompts/`

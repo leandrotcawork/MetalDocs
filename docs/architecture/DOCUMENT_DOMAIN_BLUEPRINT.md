@@ -150,6 +150,74 @@ Permissao de acesso deve considerar combinacao de:
 - classificacao do documento
 - ownership
 - escopo organizacional (`business_unit`, `department`)
+- policy especifica do documento
+- policy por tipo documental
+- policy por area
+
+## Access Control Layers
+
+### 1. Global role
+Define capacidade macro do usuario no sistema.
+
+Exemplos:
+- `admin`
+- `editor`
+- `reviewer`
+- `viewer`
+
+### 2. Area scope
+Define em quais areas o usuario pode operar.
+
+Exemplos:
+- pode ver documentos da area `quality`
+- pode editar documentos da area `engineering`
+- nao pode acessar documentos da area `finance`
+
+### 3. Document type scope
+Define em quais tipos documentais o usuario pode operar.
+
+Exemplos:
+- pode visualizar `policy` e `procedure`
+- pode editar `work_instruction`
+- nao pode editar `contract`
+
+### 4. Document-level overrides
+Permite override por documento especifico quando necessario.
+
+Exemplos:
+- usuario pode apenas visualizar um documento especifico
+- grupo pode editar um documento especifico
+- usuario pode anexar arquivo mas nao alterar metadados
+
+## Capability Model
+
+O modelo de permissao deve nascer orientado a capacidades e nao apenas a roles.
+
+Capacidades minimas para o proximo ciclo:
+- `document.view`
+- `document.edit`
+- `document.upload_attachment`
+- `document.change_workflow`
+- `document.manage_permissions`
+
+Regra importante:
+na tela de criar ou editar documento deve ser possivel definir:
+- quem pode apenas visualizar
+- quem pode visualizar e editar
+- quem pode anexar/subir arquivo
+- em qual tipo documental isso vale
+- em qual area isso vale
+
+Recomendacao de modelagem:
+guardar policies de forma estruturada e avaliavel no backend, nunca apenas no frontend.
+
+Estrutura conceitual inicial:
+- `subject_type` (`user`, `role`, `group`)
+- `subject_id`
+- `resource_scope` (`document`, `document_type`, `area`)
+- `resource_id`
+- `capability`
+- `effect` (`allow`, `deny`)
 
 Regra:
 RBAC puro por role global e suficiente para v1 inicial, mas o modelo de dados ja deve nascer preparado para policy por recurso.

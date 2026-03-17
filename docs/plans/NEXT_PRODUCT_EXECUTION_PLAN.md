@@ -18,12 +18,14 @@ Sem definicao de:
 - organizacao dos documentos
 - regras de validade
 - criterios de busca
+- regras de permissao por documento/tipo/area
 
 o risco e construir:
 - APIs genericas demais
 - telas que precisarao ser refeitas
 - worker processando eventos com payload pobre
 - banco com schema insuficiente
+- autorizacao incapaz de refletir a operacao real
 
 ## Execution Order
 
@@ -42,6 +44,7 @@ Entregaveis:
 - atualizar `documents` domain model
 - atualizar OpenAPI para refletir `document_type`, contexto organizacional e metadados
 - registrar regras de validacao por tipo documental
+- registrar contrato de permissao por documento, tipo e area
 
 Saida esperada:
 - contratos publicos e internos alinhados com o produto real
@@ -51,6 +54,7 @@ Entregaveis:
 - migrations additive-first
 - colunas e tabelas de metadata base
 - estrutura para metadados especificos por tipo
+- estrutura para access policies por recurso
 
 Saida esperada:
 - persistencia preparada para crescer sem reestruturar tudo depois
@@ -96,6 +100,17 @@ Dependencia:
 - `tags`
 - `effective_at`
 - `expiry_at`
+
+## Recommended v1 Access Control Scope
+- permissao por `area`
+- permissao por `document_type`
+- override por `document`
+- capacidades separadas de role:
+  - `view`
+  - `edit`
+  - `upload_attachment`
+  - `change_workflow`
+  - `manage_permissions`
 
 ## Data Modeling Recommendation
 
@@ -150,3 +165,4 @@ Inclui:
 - `effective_at`
 - `expiry_at`
 - `metadata_json` validado por tipo
+- `access_policies` por documento/tipo/area

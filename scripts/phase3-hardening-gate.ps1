@@ -27,6 +27,10 @@ $result = [ordered]@{
       exit_code = $null
       passed = $false
     }
+    contract_baseline = [ordered]@{
+      evidence_file = $null
+      status = "not_run"
+    }
     security_baseline = [ordered]@{
       skip_govulncheck = $SkipGovulncheck
       evidence_file = $null
@@ -45,6 +49,26 @@ try {
     throw "go test falhou com exit code $LASTEXITCODE"
   }
   $result.steps.go_test.passed = $true
+
+  & "$PSScriptRoot/contract-baseline.ps1"
+  if ($LASTEXITCODE -ne 0) {
+    throw "contract-baseline falhou com exit code $LASTEXITCODE"
+  }
+
+  $contractEvidence = Get-ChildItem "non_git/contract/contract_baseline_*.json" `
+    -File `
+    | Sort-Object LastWriteTime -Descending `
+    | Select-Object -First 1
+  if (-not $contractEvidence) {
+    throw "Nao foi encontrado arquivo de evidencia de contract baseline."
+  }
+
+  $contractResult = Get-Content $contractEvidence.FullName | ConvertFrom-Json
+  $result.steps.contract_baseline.evidence_file = $contractEvidence.FullName
+  $result.steps.contract_baseline.status = $contractResult.status
+  if ($contractResult.status -ne "approved") {
+    throw "Contract baseline nao aprovado."
+  }
 
   if ($SkipGovulncheck) {
     & "$PSScriptRoot/security-baseline.ps1" -SkipGovulncheck

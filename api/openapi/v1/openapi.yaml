@@ -650,6 +650,37 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
+  /workflow/documents/{documentId}/approvals:
+    get:
+      summary: Lista a trilha de aprovacoes do documento
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+        - $ref: '#/components/parameters/UserIdHeader'
+      responses:
+        '200':
+          description: Lista de aprovacoes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListWorkflowApprovalsResponse'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '404':
+          description: Documento nao encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
   /iam/users/{userId}/roles:
     post:
       summary: Cria/atualiza usuario IAM e atribui role
@@ -1016,6 +1047,8 @@ components:
           enum: [DRAFT, IN_REVIEW, APPROVED, PUBLISHED, ARCHIVED]
         reason:
           type: string
+        assignedReviewer:
+          type: string
     WorkflowTransitionResponse:
       type: object
       required: [documentId, fromStatus, toStatus]
@@ -1026,6 +1059,48 @@ components:
           type: string
         toStatus:
           type: string
+        approvalId:
+          type: string
+        approvalStatus:
+          type: string
+          enum: [PENDING, APPROVED, REJECTED]
+        assignedReviewer:
+          type: string
+    WorkflowApprovalItem:
+      type: object
+      required: [approvalId, documentId, requestedBy, assignedReviewer, status, requestedAt]
+      properties:
+        approvalId:
+          type: string
+        documentId:
+          type: string
+        requestedBy:
+          type: string
+        assignedReviewer:
+          type: string
+        decisionBy:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, APPROVED, REJECTED]
+        requestReason:
+          type: string
+        decisionReason:
+          type: string
+        requestedAt:
+          type: string
+          format: date-time
+        decidedAt:
+          type: string
+          format: date-time
+    ListWorkflowApprovalsResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkflowApprovalItem'
     SearchDocumentItem:
       type: object
       required: [documentId, title, documentType, ownerId, businessUnit, department, classification, status, tags, createdAt]

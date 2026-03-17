@@ -164,7 +164,7 @@ Saida:
 - modulo operacional para anexos
 
 ## Task 010 - Extend workflow with approval ownership
-Status: `todo`
+Status: `done`
 
 Objetivo:
 Evoluir workflow para aprovacoes mais proximas do negocio documental.

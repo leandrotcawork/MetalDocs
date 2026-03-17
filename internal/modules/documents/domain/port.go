@@ -3,6 +3,9 @@ package domain
 import (
 	"context"
 	"io"
+	"time"
+
+	workflowdomain "metaldocs/internal/modules/workflow/domain"
 )
 
 // Repository defines persistence operations for the documents module.
@@ -21,6 +24,12 @@ type Repository interface {
 	CreateAttachment(ctx context.Context, attachment Attachment) error
 	GetAttachment(ctx context.Context, attachmentID string) (Attachment, error)
 	ListAttachments(ctx context.Context, documentID string) ([]Attachment, error)
+	CreateWorkflowApproval(ctx context.Context, approval workflowdomain.Approval) error
+	GetLatestWorkflowApproval(ctx context.Context, documentID string) (workflowdomain.Approval, error)
+	UpdateWorkflowApprovalDecision(ctx context.Context, approvalID, status, decisionBy, decisionReason string, decidedAt time.Time) error
+	SaveWorkflowApprovalState(ctx context.Context, approval workflowdomain.Approval) error
+	DeleteWorkflowApproval(ctx context.Context, approvalID string) error
+	ListWorkflowApprovals(ctx context.Context, documentID string) ([]workflowdomain.Approval, error)
 }
 
 // AtomicCreateRepository is an optional capability for strong consistency on create flow.

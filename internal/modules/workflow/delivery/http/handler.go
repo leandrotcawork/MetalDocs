@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	docdomain "metaldocs/internal/modules/documents/domain"
 	workflowapp "metaldocs/internal/modules/workflow/application"
@@ -16,8 +17,22 @@ type Handler struct {
 }
 
 type TransitionRequest struct {
-	ToStatus string `json:"toStatus"`
-	Reason   string `json:"reason,omitempty"`
+	ToStatus         string `json:"toStatus"`
+	Reason           string `json:"reason,omitempty"`
+	AssignedReviewer string `json:"assignedReviewer,omitempty"`
+}
+
+type ApprovalResponse struct {
+	ApprovalID       string `json:"approvalId"`
+	DocumentID       string `json:"documentId"`
+	RequestedBy      string `json:"requestedBy"`
+	AssignedReviewer string `json:"assignedReviewer"`
+	DecisionBy       string `json:"decisionBy,omitempty"`
+	Status           string `json:"status"`
+	RequestReason    string `json:"requestReason,omitempty"`
+	DecisionReason   string `json:"decisionReason,omitempty"`
+	RequestedAt      string `json:"requestedAt"`
+	DecidedAt        string `json:"decidedAt,omitempty"`
 }
 
 func NewHandler(service *workflowapp.Service) *Handler {
@@ -29,17 +44,25 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 }
 
 func (h *Handler) handleDocumentWorkflowRoutes(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		return
-	}
 	traceID := requestTraceID(r)
 
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/workflow/documents/")
 	parts := strings.Split(path, "/")
-	if len(parts) != 2 || strings.TrimSpace(parts[0]) == "" || parts[1] != "transitions" {
+	if strings.TrimSpace(parts[0]) == "" {
 		return
 	}
 
+	if len(parts) == 2 && parts[1] == "transitions" && r.Method == http.MethodPost {
+		h.handleTransition(w, r, parts[0], traceID)
+		return
+	}
+	if len(parts) == 2 && parts[1] == "approvals" && r.Method == http.MethodGet {
+		h.handleListApprovals(w, r, parts[0], traceID)
+		return
+	}
+}
+
+func (h *Handler) handleTransition(w http.ResponseWriter, r *http.Request, documentID, traceID string) {
 	var req TransitionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid JSON payload", traceID)
@@ -48,11 +71,12 @@ func (h *Handler) handleDocumentWorkflowRoutes(w http.ResponseWriter, r *http.Re
 
 	actorID := strings.TrimSpace(r.Header.Get("X-User-Id"))
 	result, err := h.service.Transition(r.Context(), workflowdomain.TransitionCommand{
-		DocumentID: parts[0],
-		ToStatus:   req.ToStatus,
-		ActorID:    actorID,
-		Reason:     req.Reason,
-		TraceID:    traceID,
+		DocumentID:       documentID,
+		ToStatus:         req.ToStatus,
+		ActorID:          actorID,
+		Reason:           req.Reason,
+		AssignedReviewer: req.AssignedReviewer,
+		TraceID:          traceID,
 	})
 	if err != nil {
 		h.writeDomainError(w, err, traceID)
@@ -60,10 +84,38 @@ func (h *Handler) handleDocumentWorkflowRoutes(w http.ResponseWriter, r *http.Re
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"documentId": result.DocumentID,
-		"fromStatus": result.FromStatus,
-		"toStatus":   result.ToStatus,
+		"documentId":       result.DocumentID,
+		"fromStatus":       result.FromStatus,
+		"toStatus":         result.ToStatus,
+		"approvalId":       result.ApprovalID,
+		"approvalStatus":   result.ApprovalStatus,
+		"assignedReviewer": result.AssignedReviewer,
 	})
+}
+
+func (h *Handler) handleListApprovals(w http.ResponseWriter, r *http.Request, documentID, traceID string) {
+	items, err := h.service.ListApprovals(r.Context(), documentID)
+	if err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+
+	out := make([]ApprovalResponse, 0, len(items))
+	for _, item := range items {
+		out = append(out, ApprovalResponse{
+			ApprovalID:       item.ID,
+			DocumentID:       item.DocumentID,
+			RequestedBy:      item.RequestedBy,
+			AssignedReviewer: item.AssignedReviewer,
+			DecisionBy:       item.DecisionBy,
+			Status:           item.Status,
+			RequestReason:    item.RequestReason,
+			DecisionReason:   item.DecisionReason,
+			RequestedAt:      item.RequestedAt.UTC().Format(time.RFC3339),
+			DecidedAt:        formatOptionalTime(item.DecidedAt),
+		})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": out})
 }
 
 func (h *Handler) writeDomainError(w http.ResponseWriter, err error, traceID string) {
@@ -72,6 +124,10 @@ func (h *Handler) writeDomainError(w http.ResponseWriter, err error, traceID str
 		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid request data", traceID)
 	case errors.Is(err, workflowdomain.ErrInvalidTransition):
 		writeAPIError(w, http.StatusConflict, "CONFLICT_ERROR", "Invalid workflow transition", traceID)
+	case errors.Is(err, workflowdomain.ErrApprovalNotFound):
+		writeAPIError(w, http.StatusNotFound, "WORKFLOW_APPROVAL_NOT_FOUND", "Workflow approval not found", traceID)
+	case errors.Is(err, workflowdomain.ErrApprovalReviewerDenied):
+		writeAPIError(w, http.StatusForbidden, "WORKFLOW_APPROVAL_FORBIDDEN", "Actor is not assigned reviewer", traceID)
 	case errors.Is(err, docdomain.ErrDocumentNotFound):
 		writeAPIError(w, http.StatusNotFound, "DOC_NOT_FOUND", "Document not found", traceID)
 	default:
@@ -112,4 +168,11 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
+}
+
+func formatOptionalTime(value *time.Time) string {
+	if value == nil {
+		return ""
+	}
+	return value.UTC().Format(time.RFC3339)
 }

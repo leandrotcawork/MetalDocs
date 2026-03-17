@@ -4,8 +4,10 @@ import (
 	"context"
 	"sort"
 	"sync"
+	"time"
 
 	"metaldocs/internal/modules/documents/domain"
+	workflowdomain "metaldocs/internal/modules/workflow/domain"
 )
 
 type Repository struct {
@@ -14,6 +16,7 @@ type Repository struct {
 	versions            map[string][]domain.Version
 	attachments         map[string]domain.Attachment
 	documentAttachments map[string][]domain.Attachment
+	workflowApprovals   map[string][]workflowdomain.Approval
 	types               []domain.DocumentType
 	policies            map[string][]domain.AccessPolicy
 }
@@ -24,6 +27,7 @@ func NewRepository() *Repository {
 		versions:            map[string][]domain.Version{},
 		attachments:         map[string]domain.Attachment{},
 		documentAttachments: map[string][]domain.Attachment{},
+		workflowApprovals:   map[string][]workflowdomain.Approval{},
 		types:               domain.DefaultDocumentTypes(),
 		policies:            map[string][]domain.AccessPolicy{},
 	}
@@ -217,6 +221,96 @@ func (r *Repository) ListAttachments(_ context.Context, documentID string) ([]do
 	items := append([]domain.Attachment(nil), r.documentAttachments[documentID]...)
 	sort.Slice(items, func(i, j int) bool {
 		return items[i].CreatedAt.Before(items[j].CreatedAt)
+	})
+	return items, nil
+}
+
+func (r *Repository) CreateWorkflowApproval(_ context.Context, approval workflowdomain.Approval) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, exists := r.documents[approval.DocumentID]; !exists {
+		return domain.ErrDocumentNotFound
+	}
+	r.workflowApprovals[approval.DocumentID] = append(r.workflowApprovals[approval.DocumentID], approval)
+	return nil
+}
+
+func (r *Repository) GetLatestWorkflowApproval(_ context.Context, documentID string) (workflowdomain.Approval, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	items := r.workflowApprovals[documentID]
+	if len(items) == 0 {
+		return workflowdomain.Approval{}, workflowdomain.ErrApprovalNotFound
+	}
+	return items[len(items)-1], nil
+}
+
+func (r *Repository) UpdateWorkflowApprovalDecision(_ context.Context, approvalID, status, decisionBy, decisionReason string, decidedAt time.Time) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for documentID, items := range r.workflowApprovals {
+		for idx, item := range items {
+			if item.ID != approvalID {
+				continue
+			}
+			item.Status = status
+			item.DecisionBy = decisionBy
+			item.DecisionReason = decisionReason
+			decidedUTC := decidedAt.UTC()
+			item.DecidedAt = &decidedUTC
+			items[idx] = item
+			r.workflowApprovals[documentID] = items
+			return nil
+		}
+	}
+	return workflowdomain.ErrApprovalNotFound
+}
+
+func (r *Repository) SaveWorkflowApprovalState(_ context.Context, approval workflowdomain.Approval) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	items := r.workflowApprovals[approval.DocumentID]
+	for idx, item := range items {
+		if item.ID != approval.ID {
+			continue
+		}
+		items[idx] = approval
+		r.workflowApprovals[approval.DocumentID] = items
+		return nil
+	}
+	return workflowdomain.ErrApprovalNotFound
+}
+
+func (r *Repository) DeleteWorkflowApproval(_ context.Context, approvalID string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for documentID, items := range r.workflowApprovals {
+		for idx, item := range items {
+			if item.ID != approvalID {
+				continue
+			}
+			r.workflowApprovals[documentID] = append(items[:idx], items[idx+1:]...)
+			return nil
+		}
+	}
+	return workflowdomain.ErrApprovalNotFound
+}
+
+func (r *Repository) ListWorkflowApprovals(_ context.Context, documentID string) ([]workflowdomain.Approval, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	if _, exists := r.documents[documentID]; !exists {
+		return nil, domain.ErrDocumentNotFound
+	}
+	items := append([]workflowdomain.Approval(nil), r.workflowApprovals[documentID]...)
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].RequestedAt.Before(items[j].RequestedAt)
 	})
 	return items, nil
 }

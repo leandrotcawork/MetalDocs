@@ -106,6 +106,9 @@ func requiredPermission(method, path string) (iamdomain.Permission, bool) {
 	if method == http.MethodPost && strings.HasPrefix(path, "/api/v1/workflow/documents/") && strings.HasSuffix(path, "/transitions") {
 		return iamdomain.PermWorkflowTransition, true
 	}
+	if method == http.MethodGet && strings.HasPrefix(path, "/api/v1/workflow/documents/") && strings.HasSuffix(path, "/approvals") {
+		return iamdomain.PermDocumentRead, true
+	}
 	if method == http.MethodPost && strings.HasPrefix(path, "/api/v1/iam/users/") && strings.HasSuffix(path, "/roles") {
 		return iamdomain.PermIAMManageRoles, true
 	}

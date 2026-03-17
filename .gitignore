@@ -4,3 +4,8 @@ backups/
 non_git/
 tmp_api_err.log
 tmp_api_out.log
+frontend/apps/web/node_modules/
+frontend/apps/web/dist/
+frontend/apps/web/*.tsbuildinfo
+frontend/apps/web/vite.config.js
+frontend/apps/web/vite.config.d.ts

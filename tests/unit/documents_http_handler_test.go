@@ -37,7 +37,7 @@ func TestHealthEndpoints(t *testing.T) {
 func TestCreateAndListVersionsFlow(t *testing.T) {
 	mux := newTestMux()
 
-	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/documents", strings.NewReader(`{"title":"Contract","documentType":"contract","ownerId":"u1","businessUnit":"legal","department":"contracts","classification":"INTERNAL"}`))
+	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/documents", strings.NewReader(`{"title":"Contract","documentType":"contract","ownerId":"u1","businessUnit":"legal","department":"contracts","classification":"INTERNAL","metadata":{"counterparty":"Metal Nobre","contract_number":"CNT-002","start_date":"2026-03-01","end_date":"2026-12-31"}}`))
 	createReq.Header.Set("Content-Type", "application/json")
 	createRR := httptest.NewRecorder()
 	mux.ServeHTTP(createRR, createReq)
@@ -64,12 +64,29 @@ func TestCreateAndListVersionsFlow(t *testing.T) {
 		t.Fatalf("expected 200, got %d", listRR.Code)
 	}
 
+	addReq := httptest.NewRequest(http.MethodPost, "/api/v1/documents/"+documentID+"/versions", strings.NewReader(`{"content":"v2","changeSummary":"updated body"}`))
+	addReq.Header.Set("Content-Type", "application/json")
+	addRR := httptest.NewRecorder()
+	mux.ServeHTTP(addRR, addReq)
+
+	if addRR.Code != http.StatusCreated {
+		t.Fatalf("expected 201 for add version, got %d", addRR.Code)
+	}
+
 	getReq := httptest.NewRequest(http.MethodGet, "/api/v1/documents/"+documentID, nil)
 	getRR := httptest.NewRecorder()
 	mux.ServeHTTP(getRR, getReq)
 
 	if getRR.Code != http.StatusOK {
 		t.Fatalf("expected 200 for get document, got %d", getRR.Code)
+	}
+
+	diffReq := httptest.NewRequest(http.MethodGet, "/api/v1/documents/"+documentID+"/versions/diff?fromVersion=1&toVersion=2", nil)
+	diffRR := httptest.NewRecorder()
+	mux.ServeHTTP(diffRR, diffReq)
+
+	if diffRR.Code != http.StatusOK {
+		t.Fatalf("expected 200 for diff, got %d", diffRR.Code)
 	}
 }
 

@@ -34,12 +34,18 @@ func TestCreateDocumentCreatesVersionAndEvents(t *testing.T) {
 	svc := application.NewService(repo, pub, fixedClock{now: time.Date(2026, 3, 16, 10, 0, 0, 0, time.UTC)})
 
 	doc, err := svc.CreateDocument(context.Background(), domain.CreateDocumentCommand{
-		DocumentID:     "doc-1",
-		Title:          "Contract",
-		DocumentType:   "contract",
-		OwnerID:        "user-1",
-		BusinessUnit:   "legal",
-		Department:     "contracts",
+		DocumentID:   "doc-1",
+		Title:        "Contract",
+		DocumentType: "contract",
+		OwnerID:      "user-1",
+		BusinessUnit: "legal",
+		Department:   "contracts",
+		MetadataJSON: map[string]any{
+			"counterparty":    "Metal Nobre",
+			"contract_number": "CNT-001",
+			"start_date":      "2026-03-01",
+			"end_date":        "2026-12-31",
+		},
 		InitialContent: "v1",
 		TraceID:        "trace-1",
 	})
@@ -78,12 +84,15 @@ func TestAddVersionIncrementsVersionNumber(t *testing.T) {
 	svc := application.NewService(repo, pub, fixedClock{now: time.Date(2026, 3, 16, 10, 0, 0, 0, time.UTC)})
 
 	_, err := svc.CreateDocument(context.Background(), domain.CreateDocumentCommand{
-		DocumentID:     "doc-2",
-		Title:          "Policy",
-		DocumentType:   "policy",
-		OwnerID:        "user-2",
-		BusinessUnit:   "quality",
-		Department:     "qa",
+		DocumentID:   "doc-2",
+		Title:        "Policy",
+		DocumentType: "policy",
+		OwnerID:      "user-2",
+		BusinessUnit: "quality",
+		Department:   "qa",
+		MetadataJSON: map[string]any{
+			"policy_code": "POL-001",
+		},
 		InitialContent: "first",
 		TraceID:        "trace-2",
 	})
@@ -92,9 +101,10 @@ func TestAddVersionIncrementsVersionNumber(t *testing.T) {
 	}
 
 	version, err := svc.AddVersion(context.Background(), domain.AddVersionCommand{
-		DocumentID: "doc-2",
-		Content:    "second",
-		TraceID:    "trace-3",
+		DocumentID:    "doc-2",
+		Content:       "second",
+		ChangeSummary: "policy updated",
+		TraceID:       "trace-3",
 	})
 	if err != nil {
 		t.Fatalf("unexpected add version error: %v", err)
@@ -119,12 +129,15 @@ func TestListDocumentsReturnsCreatedDocuments(t *testing.T) {
 	svc := application.NewService(repo, nil, fixedClock{now: time.Date(2026, 3, 16, 10, 0, 0, 0, time.UTC)})
 
 	_, err := svc.CreateDocument(context.Background(), domain.CreateDocumentCommand{
-		DocumentID:     "doc-a",
-		Title:          "A",
-		DocumentType:   "manual",
-		OwnerID:        "user-a",
-		BusinessUnit:   "ops",
-		Department:     "general",
+		DocumentID:   "doc-a",
+		Title:        "A",
+		DocumentType: "manual",
+		OwnerID:      "user-a",
+		BusinessUnit: "ops",
+		Department:   "general",
+		MetadataJSON: map[string]any{
+			"manual_code": "MAN-001",
+		},
 		InitialContent: "v1",
 	})
 	if err != nil {
@@ -132,12 +145,15 @@ func TestListDocumentsReturnsCreatedDocuments(t *testing.T) {
 	}
 
 	_, err = svc.CreateDocument(context.Background(), domain.CreateDocumentCommand{
-		DocumentID:     "doc-b",
-		Title:          "B",
-		DocumentType:   "report",
-		OwnerID:        "user-b",
-		BusinessUnit:   "ops",
-		Department:     "general",
+		DocumentID:   "doc-b",
+		Title:        "B",
+		DocumentType: "report",
+		OwnerID:      "user-b",
+		BusinessUnit: "ops",
+		Department:   "general",
+		MetadataJSON: map[string]any{
+			"report_period": "2026-Q1",
+		},
 		InitialContent: "v1",
 	})
 	if err != nil {
@@ -178,6 +194,64 @@ func TestCreateDocumentRejectsUnknownType(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("expected invalid document type error")
+	}
+}
+
+func TestCreateDocumentRejectsInvalidMetadataForType(t *testing.T) {
+	repo := memory.NewRepository()
+	svc := application.NewService(repo, nil, fixedClock{now: time.Now().UTC()})
+
+	_, err := svc.CreateDocument(context.Background(), domain.CreateDocumentCommand{
+		DocumentID:   "doc-metadata",
+		Title:        "Invalid Contract",
+		DocumentType: "contract",
+		OwnerID:      "user-1",
+		BusinessUnit: "legal",
+		Department:   "contracts",
+		MetadataJSON: map[string]any{
+			"counterparty": "Metal Nobre",
+		},
+	})
+	if err == nil {
+		t.Fatal("expected invalid metadata error")
+	}
+}
+
+func TestDiffVersionsDetectsContentChange(t *testing.T) {
+	repo := memory.NewRepository()
+	svc := application.NewService(repo, nil, fixedClock{now: time.Date(2026, 3, 16, 10, 0, 0, 0, time.UTC)})
+
+	_, err := svc.CreateDocument(context.Background(), domain.CreateDocumentCommand{
+		DocumentID:   "doc-diff",
+		Title:        "Manual",
+		DocumentType: "manual",
+		OwnerID:      "user-1",
+		BusinessUnit: "ops",
+		Department:   "general",
+		MetadataJSON: map[string]any{
+			"manual_code": "MAN-002",
+		},
+		InitialContent: "v1",
+	})
+	if err != nil {
+		t.Fatalf("unexpected create error: %v", err)
+	}
+
+	_, err = svc.AddVersion(context.Background(), domain.AddVersionCommand{
+		DocumentID:    "doc-diff",
+		Content:       "v2",
+		ChangeSummary: "changed body",
+	})
+	if err != nil {
+		t.Fatalf("unexpected add version error: %v", err)
+	}
+
+	diff, err := svc.DiffVersions(context.Background(), "doc-diff", 1, 2)
+	if err != nil {
+		t.Fatalf("unexpected diff error: %v", err)
+	}
+	if !diff.ContentChanged {
+		t.Fatal("expected contentChanged to be true")
 	}
 }
 

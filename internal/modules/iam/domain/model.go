@@ -13,6 +13,7 @@ type Permission string
 
 const (
 	PermDocumentCreate            Permission = "document:create"
+	PermDocumentEdit              Permission = "document:edit"
 	PermDocumentRead              Permission = "document:read"
 	PermDocumentManagePermissions Permission = "document:manage_permissions"
 	PermVersionRead               Permission = "version:read"

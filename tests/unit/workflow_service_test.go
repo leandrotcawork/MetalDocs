@@ -27,12 +27,15 @@ func TestWorkflowTransitionUpdatesDocumentStatus(t *testing.T) {
 	workflowSvc := workflowapp.NewService(repo, auditmemory.NewWriter(), nil, fixedClock{now: time.Date(2026, 3, 16, 10, 1, 0, 0, time.UTC)})
 
 	_, err := docSvc.CreateDocument(context.Background(), docdomain.CreateDocumentCommand{
-		DocumentID:     "doc-wf-1",
-		Title:          "Workflow Doc",
-		DocumentType:   "manual",
-		OwnerID:        "owner-1",
-		BusinessUnit:   "ops",
-		Department:     "general",
+		DocumentID:   "doc-wf-1",
+		Title:        "Workflow Doc",
+		DocumentType: "manual",
+		OwnerID:      "owner-1",
+		BusinessUnit: "ops",
+		Department:   "general",
+		MetadataJSON: map[string]any{
+			"manual_code": "MAN-WF-1",
+		},
 		InitialContent: "v1",
 	})
 	if err != nil {
@@ -69,12 +72,15 @@ func TestWorkflowTransitionRejectsInvalidPath(t *testing.T) {
 	workflowSvc := workflowapp.NewService(repo, auditmemory.NewWriter(), nil, fixedClock{now: time.Date(2026, 3, 16, 10, 1, 0, 0, time.UTC)})
 
 	_, err := docSvc.CreateDocument(context.Background(), docdomain.CreateDocumentCommand{
-		DocumentID:     "doc-wf-2",
-		Title:          "Workflow Doc 2",
-		DocumentType:   "manual",
-		OwnerID:        "owner-2",
-		BusinessUnit:   "ops",
-		Department:     "general",
+		DocumentID:   "doc-wf-2",
+		Title:        "Workflow Doc 2",
+		DocumentType: "manual",
+		OwnerID:      "owner-2",
+		BusinessUnit: "ops",
+		Department:   "general",
+		MetadataJSON: map[string]any{
+			"manual_code": "MAN-WF-2",
+		},
 		InitialContent: "v1",
 	})
 	if err != nil {
@@ -97,12 +103,15 @@ func TestWorkflowTransitionRollsBackWhenAuditFails(t *testing.T) {
 	workflowSvc := workflowapp.NewService(repo, failingAuditWriter{}, nil, fixedClock{now: time.Date(2026, 3, 16, 10, 1, 0, 0, time.UTC)})
 
 	_, err := docSvc.CreateDocument(context.Background(), docdomain.CreateDocumentCommand{
-		DocumentID:     "doc-wf-3",
-		Title:          "Workflow Doc 3",
-		DocumentType:   "manual",
-		OwnerID:        "owner-3",
-		BusinessUnit:   "ops",
-		Department:     "general",
+		DocumentID:   "doc-wf-3",
+		Title:        "Workflow Doc 3",
+		DocumentType: "manual",
+		OwnerID:      "owner-3",
+		BusinessUnit: "ops",
+		Department:   "general",
+		MetadataJSON: map[string]any{
+			"manual_code": "MAN-WF-3",
+		},
 		InitialContent: "v1",
 	})
 	if err != nil {

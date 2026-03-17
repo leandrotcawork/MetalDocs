@@ -19,32 +19,47 @@ func TestSearchDocumentsFiltersAndLimits(t *testing.T) {
 	searchSvc := searchapp.NewService(searchdocs.NewReader(repo))
 
 	_, _ = docSvc.CreateDocument(context.Background(), docdomain.CreateDocumentCommand{
-		DocumentID:     "search-1",
-		Title:          "Contract Alpha",
-		DocumentType:   "contract",
-		OwnerID:        "owner-a",
-		BusinessUnit:   "legal",
-		Department:     "contracts",
+		DocumentID:   "search-1",
+		Title:        "Contract Alpha",
+		DocumentType: "contract",
+		OwnerID:      "owner-a",
+		BusinessUnit: "legal",
+		Department:   "contracts",
+		MetadataJSON: map[string]any{
+			"counterparty":    "Alpha",
+			"contract_number": "CNT-A",
+			"start_date":      "2026-01-01",
+			"end_date":        "2026-12-31",
+		},
 		Classification: docdomain.ClassificationInternal,
 		InitialContent: "v1",
 	})
 	_, _ = docSvc.CreateDocument(context.Background(), docdomain.CreateDocumentCommand{
-		DocumentID:     "search-2",
-		Title:          "Contract Beta",
-		DocumentType:   "contract",
-		OwnerID:        "owner-a",
-		BusinessUnit:   "legal",
-		Department:     "contracts",
+		DocumentID:   "search-2",
+		Title:        "Contract Beta",
+		DocumentType: "contract",
+		OwnerID:      "owner-a",
+		BusinessUnit: "legal",
+		Department:   "contracts",
+		MetadataJSON: map[string]any{
+			"counterparty":    "Beta",
+			"contract_number": "CNT-B",
+			"start_date":      "2026-01-01",
+			"end_date":        "2026-12-31",
+		},
 		Classification: docdomain.ClassificationConfidential,
 		InitialContent: "v1",
 	})
 	_, _ = docSvc.CreateDocument(context.Background(), docdomain.CreateDocumentCommand{
-		DocumentID:     "search-3",
-		Title:          "Policy Public",
-		DocumentType:   "policy",
-		OwnerID:        "owner-b",
-		BusinessUnit:   "quality",
-		Department:     "qa",
+		DocumentID:   "search-3",
+		Title:        "Policy Public",
+		DocumentType: "policy",
+		OwnerID:      "owner-b",
+		BusinessUnit: "quality",
+		Department:   "qa",
+		MetadataJSON: map[string]any{
+			"policy_code": "POL-PUBLIC",
+		},
 		Classification: docdomain.ClassificationPublic,
 		InitialContent: "v1",
 	})
@@ -71,12 +86,15 @@ func TestSearchDocumentsByStatus(t *testing.T) {
 	searchSvc := searchapp.NewService(searchdocs.NewReader(repo))
 
 	doc, err := docSvc.CreateDocument(context.Background(), docdomain.CreateDocumentCommand{
-		DocumentID:     "search-status-1",
-		Title:          "Status Doc",
-		DocumentType:   "manual",
-		OwnerID:        "owner-x",
-		BusinessUnit:   "ops",
-		Department:     "general",
+		DocumentID:   "search-status-1",
+		Title:        "Status Doc",
+		DocumentType: "manual",
+		OwnerID:      "owner-x",
+		BusinessUnit: "ops",
+		Department:   "general",
+		MetadataJSON: map[string]any{
+			"manual_code": "MAN-STATUS",
+		},
 		Classification: docdomain.ClassificationInternal,
 		InitialContent: "v1",
 	})
@@ -108,22 +126,28 @@ func TestSearchDocumentsByDocumentTypeAndArea(t *testing.T) {
 	searchSvc := searchapp.NewService(searchdocs.NewReader(repo))
 
 	_, _ = docSvc.CreateDocument(context.Background(), docdomain.CreateDocumentCommand{
-		DocumentID:     "search-area-1",
-		Title:          "Quality Procedure",
-		DocumentType:   "procedure",
-		OwnerID:        "owner-qa",
-		BusinessUnit:   "quality",
-		Department:     "qa",
+		DocumentID:   "search-area-1",
+		Title:        "Quality Procedure",
+		DocumentType: "procedure",
+		OwnerID:      "owner-qa",
+		BusinessUnit: "quality",
+		Department:   "qa",
+		MetadataJSON: map[string]any{
+			"procedure_code": "PROC-QA",
+		},
 		Classification: docdomain.ClassificationInternal,
 		InitialContent: "v1",
 	})
 	_, _ = docSvc.CreateDocument(context.Background(), docdomain.CreateDocumentCommand{
-		DocumentID:     "search-area-2",
-		Title:          "Engineering Manual",
-		DocumentType:   "manual",
-		OwnerID:        "owner-eng",
-		BusinessUnit:   "engineering",
-		Department:     "projects",
+		DocumentID:   "search-area-2",
+		Title:        "Engineering Manual",
+		DocumentType: "manual",
+		OwnerID:      "owner-eng",
+		BusinessUnit: "engineering",
+		Department:   "projects",
+		MetadataJSON: map[string]any{
+			"manual_code": "MAN-ENG",
+		},
 		Classification: docdomain.ClassificationInternal,
 		InitialContent: "v1",
 	})

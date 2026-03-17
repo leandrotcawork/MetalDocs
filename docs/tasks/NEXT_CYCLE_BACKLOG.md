@@ -102,7 +102,7 @@ Saida:
 - autorizacao orientada a capacidade no backend
 
 ## Task 006 - Evolve versions inside documents aggregate
-Status: `todo`
+Status: `done`
 
 Objetivo:
 Fortalecer o modelo de versao sem quebrar o ownership do aggregate `documents`.
@@ -117,7 +117,7 @@ Saida:
 - testes de regressao
 
 ## Task 007 - Add type-aware metadata validation
-Status: `todo`
+Status: `done`
 
 Objetivo:
 Validar `metadata_json` conforme `document_type`.

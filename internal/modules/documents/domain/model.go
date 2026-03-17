@@ -35,10 +35,12 @@ type Document struct {
 }
 
 type Version struct {
-	DocumentID string
-	Number     int
-	Content    string
-	CreatedAt  time.Time
+	DocumentID    string
+	Number        int
+	Content       string
+	ContentHash   string
+	ChangeSummary string
+	CreatedAt     time.Time
 }
 
 type CreateDocumentCommand struct {
@@ -58,9 +60,21 @@ type CreateDocumentCommand struct {
 }
 
 type AddVersionCommand struct {
-	DocumentID string
-	Content    string
-	TraceID    string
+	DocumentID    string
+	Content       string
+	ChangeSummary string
+	TraceID       string
+}
+
+type VersionDiff struct {
+	DocumentID            string
+	FromVersion           int
+	ToVersion             int
+	ContentChanged        bool
+	MetadataChanged       []string
+	ClassificationChanged bool
+	EffectiveAtChanged    bool
+	ExpiryAtChanged       bool
 }
 
 type DocumentType struct {
@@ -117,5 +131,54 @@ func DefaultDocumentTypes() []DocumentType {
 		{Code: "report", Name: "Report", Description: "Periodic or ad-hoc report", ReviewIntervalDays: 365},
 		{Code: "form", Name: "Form", Description: "Structured business form", ReviewIntervalDays: 180},
 		{Code: "manual", Name: "Manual", Description: "Reference or guidance manual", ReviewIntervalDays: 365},
+	}
+}
+
+type MetadataFieldRule struct {
+	Name     string
+	Type     string
+	Required bool
+}
+
+func DefaultMetadataRules() map[string][]MetadataFieldRule {
+	return map[string][]MetadataFieldRule{
+		"contract": {
+			{Name: "counterparty", Type: "string", Required: true},
+			{Name: "contract_number", Type: "string", Required: true},
+			{Name: "start_date", Type: "date", Required: true},
+			{Name: "end_date", Type: "date", Required: true},
+		},
+		"certificate": {
+			{Name: "issuer", Type: "string", Required: true},
+			{Name: "issue_date", Type: "date", Required: true},
+			{Name: "expiry_date", Type: "date", Required: true},
+		},
+		"technical_drawing": {
+			{Name: "drawing_code", Type: "string", Required: true},
+			{Name: "revision_code", Type: "string", Required: true},
+			{Name: "plant", Type: "string", Required: true},
+		},
+		"supplier_document": {
+			{Name: "supplier_name", Type: "string", Required: true},
+			{Name: "supplier_document_code", Type: "string", Required: true},
+		},
+		"policy": {
+			{Name: "policy_code", Type: "string", Required: true},
+		},
+		"procedure": {
+			{Name: "procedure_code", Type: "string", Required: true},
+		},
+		"work_instruction": {
+			{Name: "instruction_code", Type: "string", Required: true},
+		},
+		"report": {
+			{Name: "report_period", Type: "string", Required: true},
+		},
+		"form": {
+			{Name: "form_code", Type: "string", Required: true},
+		},
+		"manual": {
+			{Name: "manual_code", Type: "string", Required: true},
+		},
 	}
 }

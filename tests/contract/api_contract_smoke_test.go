@@ -159,6 +159,12 @@ func createDocument(t *testing.T, handler http.Handler) string {
 		"businessUnit":   "legal",
 		"department":     "contracts",
 		"classification": "INTERNAL",
+		"metadata": map[string]any{
+			"counterparty":    "Metal Nobre",
+			"contract_number": "CNT-001",
+			"start_date":      "2026-03-01",
+			"end_date":        "2026-12-31",
+		},
 		"initialContent": "seed",
 	})
 	if err != nil {

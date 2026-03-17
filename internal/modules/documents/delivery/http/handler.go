@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -53,9 +54,11 @@ type DocumentCreatedResponse struct {
 }
 
 type VersionResponse struct {
-	DocumentID string `json:"documentId"`
-	Version    int    `json:"version"`
-	CreatedAt  string `json:"createdAt"`
+	DocumentID    string `json:"documentId"`
+	Version       int    `json:"version"`
+	ContentHash   string `json:"contentHash"`
+	ChangeSummary string `json:"changeSummary"`
+	CreatedAt     string `json:"createdAt"`
 }
 
 type DocumentTypeResponse struct {
@@ -85,6 +88,22 @@ type AccessPolicyResponse struct {
 	ResourceID    string `json:"resourceId"`
 	Capability    string `json:"capability"`
 	Effect        string `json:"effect"`
+}
+
+type AddVersionRequest struct {
+	Content       string `json:"content"`
+	ChangeSummary string `json:"changeSummary"`
+}
+
+type VersionDiffResponse struct {
+	DocumentID            string   `json:"documentId"`
+	FromVersion           int      `json:"fromVersion"`
+	ToVersion             int      `json:"toVersion"`
+	ContentChanged        bool     `json:"contentChanged"`
+	MetadataChanged       []string `json:"metadataChanged"`
+	ClassificationChanged bool     `json:"classificationChanged"`
+	EffectiveAtChanged    bool     `json:"effectiveAtChanged"`
+	ExpiryAtChanged       bool     `json:"expiryAtChanged"`
 }
 
 type apiErrorEnvelope struct {
@@ -308,18 +327,25 @@ func (h *Handler) handleListDocuments(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleDocumentSubRoutes(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/documents/")
 	parts := strings.Split(path, "/")
+	if len(parts) == 3 && strings.TrimSpace(parts[0]) != "" && parts[1] == "versions" && parts[2] == "diff" && r.Method == http.MethodGet {
+		h.handleDiffVersions(w, r, parts[0])
+		return
+	}
+	if len(parts) == 2 && strings.TrimSpace(parts[0]) != "" && parts[1] == "versions" && r.Method == http.MethodPost {
+		h.handleAddVersion(w, r, parts[0])
+		return
+	}
 	if len(parts) == 1 && strings.TrimSpace(parts[0]) != "" {
+		if r.Method != http.MethodGet {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
 		h.handleGetDocument(w, r, parts[0])
 		return
 	}
-	if len(parts) != 2 || strings.TrimSpace(parts[0]) == "" || parts[1] != "versions" {
+	if len(parts) != 2 || strings.TrimSpace(parts[0]) == "" || parts[1] != "versions" || r.Method != http.MethodGet {
 		writeAPIError(w, http.StatusNotFound, "DOC_NOT_FOUND", "Route not found", requestTraceID(r))
 		return
 	}
@@ -363,13 +389,76 @@ func (h *Handler) handleListVersions(w http.ResponseWriter, r *http.Request, doc
 	items := make([]VersionResponse, 0, len(versions))
 	for _, v := range versions {
 		items = append(items, VersionResponse{
-			DocumentID: v.DocumentID,
-			Version:    v.Number,
-			CreatedAt:  v.CreatedAt.Format(time.RFC3339),
+			DocumentID:    v.DocumentID,
+			Version:       v.Number,
+			ContentHash:   v.ContentHash,
+			ChangeSummary: v.ChangeSummary,
+			CreatedAt:     v.CreatedAt.Format(time.RFC3339),
 		})
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{"items": items})
+}
+
+func (h *Handler) handleAddVersion(w http.ResponseWriter, r *http.Request, documentID string) {
+	traceID := requestTraceID(r)
+
+	var req AddVersionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid JSON payload", traceID)
+		return
+	}
+
+	version, err := h.service.AddVersionAuthorized(r.Context(), domain.AddVersionCommand{
+		DocumentID:    documentID,
+		Content:       req.Content,
+		ChangeSummary: req.ChangeSummary,
+		TraceID:       traceID,
+	})
+	if err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, VersionResponse{
+		DocumentID:    version.DocumentID,
+		Version:       version.Number,
+		ContentHash:   version.ContentHash,
+		ChangeSummary: version.ChangeSummary,
+		CreatedAt:     version.CreatedAt.Format(time.RFC3339),
+	})
+}
+
+func (h *Handler) handleDiffVersions(w http.ResponseWriter, r *http.Request, documentID string) {
+	traceID := requestTraceID(r)
+
+	fromVersion, err := parseRequiredIntQuery(r, "fromVersion")
+	if err != nil {
+		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid fromVersion value", traceID)
+		return
+	}
+	toVersion, err := parseRequiredIntQuery(r, "toVersion")
+	if err != nil {
+		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid toVersion value", traceID)
+		return
+	}
+
+	diff, err := h.service.DiffVersions(r.Context(), documentID, fromVersion, toVersion)
+	if err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, VersionDiffResponse{
+		DocumentID:            diff.DocumentID,
+		FromVersion:           diff.FromVersion,
+		ToVersion:             diff.ToVersion,
+		ContentChanged:        diff.ContentChanged,
+		MetadataChanged:       append([]string(nil), diff.MetadataChanged...),
+		ClassificationChanged: diff.ClassificationChanged,
+		EffectiveAtChanged:    diff.EffectiveAtChanged,
+		ExpiryAtChanged:       diff.ExpiryAtChanged,
+	})
 }
 
 func (h *Handler) writeDomainError(w http.ResponseWriter, err error, traceID string) {
@@ -380,10 +469,16 @@ func (h *Handler) writeDomainError(w http.ResponseWriter, err error, traceID str
 		writeAPIError(w, http.StatusBadRequest, "INVALID_DOCUMENT_TYPE", "Invalid document type", traceID)
 	case errors.Is(err, domain.ErrInvalidAccessPolicy):
 		writeAPIError(w, http.StatusBadRequest, "INVALID_ACCESS_POLICY", "Invalid access policy", traceID)
+	case errors.Is(err, domain.ErrInvalidMetadata):
+		writeAPIError(w, http.StatusBadRequest, "INVALID_METADATA", "Invalid metadata for document type", traceID)
 	case errors.Is(err, domain.ErrDocumentNotFound):
 		writeAPIError(w, http.StatusNotFound, "DOC_NOT_FOUND", "Document not found", traceID)
 	case errors.Is(err, domain.ErrDocumentAlreadyExists):
 		writeAPIError(w, http.StatusConflict, "CONFLICT_ERROR", "Document already exists", traceID)
+	case errors.Is(err, domain.ErrVersioningNotAllowed):
+		writeAPIError(w, http.StatusConflict, "VERSIONING_NOT_ALLOWED", "Document cannot receive a new version in current status", traceID)
+	case errors.Is(err, domain.ErrVersionNotFound):
+		writeAPIError(w, http.StatusNotFound, "VERSION_NOT_FOUND", "Version not found", traceID)
 	default:
 		writeAPIError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Internal server error", traceID)
 	}
@@ -438,4 +533,12 @@ func formatOptionalTime(value *time.Time) string {
 		return ""
 	}
 	return value.UTC().Format(time.RFC3339)
+}
+
+func parseRequiredIntQuery(r *http.Request, key string) (int, error) {
+	raw := strings.TrimSpace(r.URL.Query().Get(key))
+	if raw == "" {
+		return 0, domain.ErrInvalidCommand
+	}
+	return strconv.Atoi(raw)
 }

@@ -87,13 +87,15 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11, $12::jsonb, $13, $1
 	}
 
 	const insertVersion = `
-INSERT INTO metaldocs.document_versions (document_id, version_number, content, created_at)
-VALUES ($1, $2, $3, $4)
+INSERT INTO metaldocs.document_versions (document_id, version_number, content, content_hash, change_summary, created_at)
+VALUES ($1, $2, $3, $4, $5, $6)
 `
 	if _, err := tx.ExecContext(ctx, insertVersion,
 		version.DocumentID,
 		version.Number,
 		version.Content,
+		version.ContentHash,
+		version.ChangeSummary,
 		version.CreatedAt,
 	); err != nil {
 		return mapError(err)
@@ -317,13 +319,15 @@ WHERE id = $1
 
 func (r *Repository) SaveVersion(ctx context.Context, version domain.Version) error {
 	const q = `
-INSERT INTO metaldocs.document_versions (document_id, version_number, content, created_at)
-VALUES ($1, $2, $3, $4)
+INSERT INTO metaldocs.document_versions (document_id, version_number, content, content_hash, change_summary, created_at)
+VALUES ($1, $2, $3, $4, $5, $6)
 `
 	_, err := r.db.ExecContext(ctx, q,
 		version.DocumentID,
 		version.Number,
 		version.Content,
+		version.ContentHash,
+		version.ChangeSummary,
 		version.CreatedAt,
 	)
 	if err != nil {
@@ -339,7 +343,7 @@ func (r *Repository) ListVersions(ctx context.Context, documentID string) ([]dom
 	}
 
 	const q = `
-SELECT document_id, version_number, content, created_at
+SELECT document_id, version_number, content, content_hash, change_summary, created_at
 FROM metaldocs.document_versions
 WHERE document_id = $1
 ORDER BY version_number ASC
@@ -357,6 +361,8 @@ ORDER BY version_number ASC
 			&version.DocumentID,
 			&version.Number,
 			&version.Content,
+			&version.ContentHash,
+			&version.ChangeSummary,
 			&version.CreatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("scan version: %w", err)
@@ -368,6 +374,34 @@ ORDER BY version_number ASC
 	}
 
 	return out, nil
+}
+
+func (r *Repository) GetVersion(ctx context.Context, documentID string, versionNumber int) (domain.Version, error) {
+	_, err := r.GetDocument(ctx, documentID)
+	if err != nil {
+		return domain.Version{}, err
+	}
+
+	const q = `
+SELECT document_id, version_number, content, content_hash, change_summary, created_at
+FROM metaldocs.document_versions
+WHERE document_id = $1 AND version_number = $2
+`
+	var version domain.Version
+	if err := r.db.QueryRowContext(ctx, q, documentID, versionNumber).Scan(
+		&version.DocumentID,
+		&version.Number,
+		&version.Content,
+		&version.ContentHash,
+		&version.ChangeSummary,
+		&version.CreatedAt,
+	); err != nil {
+		if err == sql.ErrNoRows {
+			return domain.Version{}, domain.ErrVersionNotFound
+		}
+		return domain.Version{}, fmt.Errorf("get version: %w", err)
+	}
+	return version, nil
 }
 
 func (r *Repository) NextVersionNumber(ctx context.Context, documentID string) (int, error) {

@@ -11,6 +11,7 @@ func NewStaticAuthorizer() *StaticAuthorizer {
 		policy: map[domain.Role]map[domain.Permission]bool{
 			domain.RoleAdmin: {
 				domain.PermDocumentCreate:            true,
+				domain.PermDocumentEdit:              true,
 				domain.PermDocumentRead:              true,
 				domain.PermDocumentManagePermissions: true,
 				domain.PermVersionRead:               true,
@@ -20,6 +21,7 @@ func NewStaticAuthorizer() *StaticAuthorizer {
 			},
 			domain.RoleEditor: {
 				domain.PermDocumentCreate:     true,
+				domain.PermDocumentEdit:       true,
 				domain.PermDocumentRead:       true,
 				domain.PermVersionRead:        true,
 				domain.PermWorkflowTransition: true,

@@ -13,6 +13,7 @@ type atomicRepoSpy struct {
 	createCalled bool
 	saveCalled   bool
 	atomicCalled bool
+	versions     map[int]domain.Version
 }
 
 func (r *atomicRepoSpy) CreateDocument(context.Context, domain.Document) error {
@@ -58,6 +59,10 @@ func (r *atomicRepoSpy) ListVersions(context.Context, string) ([]domain.Version,
 	return nil, nil
 }
 
+func (r *atomicRepoSpy) GetVersion(context.Context, string, int) (domain.Version, error) {
+	return domain.Version{}, domain.ErrVersionNotFound
+}
+
 func (r *atomicRepoSpy) NextVersionNumber(context.Context, string) (int, error) {
 	return 1, nil
 }
@@ -67,12 +72,15 @@ func TestCreateDocumentPrefersAtomicRepositoryWhenAvailable(t *testing.T) {
 	svc := application.NewService(repo, nil, fixedClock{now: time.Date(2026, 3, 16, 10, 0, 0, 0, time.UTC)})
 
 	_, err := svc.CreateDocument(context.Background(), domain.CreateDocumentCommand{
-		DocumentID:     "doc-atomic",
-		Title:          "Atomic",
-		DocumentType:   "manual",
-		OwnerID:        "owner-atomic",
-		BusinessUnit:   "ops",
-		Department:     "general",
+		DocumentID:   "doc-atomic",
+		Title:        "Atomic",
+		DocumentType: "manual",
+		OwnerID:      "owner-atomic",
+		BusinessUnit: "ops",
+		Department:   "general",
+		MetadataJSON: map[string]any{
+			"manual_code": "MAN-ATOMIC",
+		},
 		InitialContent: "v1",
 	})
 	if err != nil {

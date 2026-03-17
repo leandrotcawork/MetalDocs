@@ -154,6 +154,21 @@ func (r *Repository) ListVersions(_ context.Context, documentID string) ([]domai
 	return versions, nil
 }
 
+func (r *Repository) GetVersion(_ context.Context, documentID string, versionNumber int) (domain.Version, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	if _, exists := r.documents[documentID]; !exists {
+		return domain.Version{}, domain.ErrDocumentNotFound
+	}
+	for _, version := range r.versions[documentID] {
+		if version.Number == versionNumber {
+			return version, nil
+		}
+	}
+	return domain.Version{}, domain.ErrVersionNotFound
+}
+
 func (r *Repository) NextVersionNumber(_ context.Context, documentID string) (int, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

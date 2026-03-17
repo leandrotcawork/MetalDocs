@@ -103,6 +103,9 @@ func TestListDocumentsAuthorizedFiltersByViewPolicy(t *testing.T) {
 		OwnerID:      "owner-a",
 		BusinessUnit: "ops",
 		Department:   "general",
+		MetadataJSON: map[string]any{
+			"manual_code": "MAN-001",
+		},
 	})
 	if err != nil {
 		t.Fatalf("unexpected create error: %v", err)
@@ -114,6 +117,9 @@ func TestListDocumentsAuthorizedFiltersByViewPolicy(t *testing.T) {
 		OwnerID:      "owner-b",
 		BusinessUnit: "ops",
 		Department:   "general",
+		MetadataJSON: map[string]any{
+			"manual_code": "MAN-002",
+		},
 	})
 	if err != nil {
 		t.Fatalf("unexpected create error: %v", err)

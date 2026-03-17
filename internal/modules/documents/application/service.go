@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"crypto/md5"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -59,6 +60,9 @@ func (s *Service) CreateDocument(ctx context.Context, cmd domain.CreateDocumentC
 	if _, err := json.Marshal(metadata); err != nil {
 		return domain.Document{}, domain.ErrInvalidCommand
 	}
+	if err := validateMetadata(documentType, metadata); err != nil {
+		return domain.Document{}, err
+	}
 
 	now := s.clock.Now()
 	doc := domain.Document{
@@ -79,10 +83,12 @@ func (s *Service) CreateDocument(ctx context.Context, cmd domain.CreateDocumentC
 	}
 
 	v1 := domain.Version{
-		DocumentID: doc.ID,
-		Number:     1,
-		Content:    cmd.InitialContent,
-		CreatedAt:  now,
+		DocumentID:    doc.ID,
+		Number:        1,
+		Content:       cmd.InitialContent,
+		ContentHash:   contentHash(cmd.InitialContent),
+		ChangeSummary: "Initial version",
+		CreatedAt:     now,
 	}
 
 	if atomicRepo, ok := s.repo.(domain.AtomicCreateRepository); ok {
@@ -154,6 +160,9 @@ func (s *Service) AddVersion(ctx context.Context, cmd domain.AddVersionCommand) 
 	if err != nil {
 		return domain.Version{}, err
 	}
+	if doc.Status != domain.StatusDraft && doc.Status != domain.StatusInReview {
+		return domain.Version{}, domain.ErrVersioningNotAllowed
+	}
 
 	next, err := s.repo.NextVersionNumber(ctx, doc.ID)
 	if err != nil {
@@ -161,10 +170,15 @@ func (s *Service) AddVersion(ctx context.Context, cmd domain.AddVersionCommand) 
 	}
 
 	version := domain.Version{
-		DocumentID: doc.ID,
-		Number:     next,
-		Content:    cmd.Content,
-		CreatedAt:  s.clock.Now(),
+		DocumentID:    doc.ID,
+		Number:        next,
+		Content:       cmd.Content,
+		ContentHash:   contentHash(cmd.Content),
+		ChangeSummary: strings.TrimSpace(cmd.ChangeSummary),
+		CreatedAt:     s.clock.Now(),
+	}
+	if version.ChangeSummary == "" {
+		version.ChangeSummary = fmt.Sprintf("Version %d update", next)
 	}
 
 	if err := s.repo.SaveVersion(ctx, version); err != nil {
@@ -190,6 +204,61 @@ func (s *Service) AddVersion(ctx context.Context, cmd domain.AddVersionCommand) 
 	}
 
 	return version, nil
+}
+
+func (s *Service) AddVersionAuthorized(ctx context.Context, cmd domain.AddVersionCommand) (domain.Version, error) {
+	if strings.TrimSpace(cmd.DocumentID) == "" {
+		return domain.Version{}, domain.ErrInvalidCommand
+	}
+	doc, err := s.repo.GetDocument(ctx, strings.TrimSpace(cmd.DocumentID))
+	if err != nil {
+		return domain.Version{}, err
+	}
+	allowed, err := s.isAllowed(ctx, doc, domain.CapabilityDocumentEdit)
+	if err != nil {
+		return domain.Version{}, err
+	}
+	if !allowed {
+		return domain.Version{}, domain.ErrDocumentNotFound
+	}
+	return s.AddVersion(ctx, cmd)
+}
+
+func (s *Service) DiffVersions(ctx context.Context, documentID string, fromVersion, toVersion int) (domain.VersionDiff, error) {
+	if strings.TrimSpace(documentID) == "" || fromVersion < 1 || toVersion < 1 || fromVersion == toVersion {
+		return domain.VersionDiff{}, domain.ErrInvalidCommand
+	}
+	doc, err := s.repo.GetDocument(ctx, strings.TrimSpace(documentID))
+	if err != nil {
+		return domain.VersionDiff{}, err
+	}
+	allowed, err := s.isAllowed(ctx, doc, domain.CapabilityDocumentView)
+	if err != nil {
+		return domain.VersionDiff{}, err
+	}
+	if !allowed {
+		return domain.VersionDiff{}, domain.ErrDocumentNotFound
+	}
+
+	fromItem, err := s.repo.GetVersion(ctx, documentID, fromVersion)
+	if err != nil {
+		return domain.VersionDiff{}, err
+	}
+	toItem, err := s.repo.GetVersion(ctx, documentID, toVersion)
+	if err != nil {
+		return domain.VersionDiff{}, err
+	}
+
+	return domain.VersionDiff{
+		DocumentID:            documentID,
+		FromVersion:           fromVersion,
+		ToVersion:             toVersion,
+		ContentChanged:        fromItem.ContentHash != toItem.ContentHash,
+		MetadataChanged:       []string{},
+		ClassificationChanged: false,
+		EffectiveAtChanged:    false,
+		ExpiryAtChanged:       false,
+	}, nil
 }
 
 func (s *Service) ListDocuments(ctx context.Context) ([]domain.Document, error) {
@@ -347,12 +416,35 @@ func normalizeMetadata(metadata map[string]any) map[string]any {
 	return out
 }
 
+func validateMetadata(documentType string, metadata map[string]any) error {
+	rulesByType := domain.DefaultMetadataRules()
+	rules, ok := rulesByType[documentType]
+	if !ok {
+		return nil
+	}
+	for _, rule := range rules {
+		value, exists := metadata[rule.Name]
+		if rule.Required && (!exists || isEmptyMetadataValue(value)) {
+			return domain.ErrInvalidMetadata
+		}
+		if exists && !matchesMetadataType(rule.Type, value) {
+			return domain.ErrInvalidMetadata
+		}
+	}
+	return nil
+}
+
 func cloneTimePtr(value *time.Time) *time.Time {
 	if value == nil {
 		return nil
 	}
 	cloned := value.UTC()
 	return &cloned
+}
+
+func contentHash(value string) string {
+	sum := md5.Sum([]byte(value))
+	return fmt.Sprintf("%x", sum[:])
 }
 
 func normalizeAccessPolicy(resourceScope, resourceID string, policy domain.AccessPolicy) (domain.AccessPolicy, bool) {
@@ -531,5 +623,40 @@ func isKnownEffect(raw string) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+func isEmptyMetadataValue(value any) bool {
+	switch typed := value.(type) {
+	case nil:
+		return true
+	case string:
+		return strings.TrimSpace(typed) == ""
+	default:
+		return false
+	}
+}
+
+func matchesMetadataType(expected string, value any) bool {
+	switch expected {
+	case "string":
+		_, ok := value.(string)
+		return ok && !isEmptyMetadataValue(value)
+	case "date":
+		raw, ok := value.(string)
+		if !ok {
+			return false
+		}
+		raw = strings.TrimSpace(raw)
+		if raw == "" {
+			return false
+		}
+		if _, err := time.Parse("2006-01-02", raw); err == nil {
+			return true
+		}
+		_, err := time.Parse(time.RFC3339, raw)
+		return err == nil
+	default:
+		return true
 	}
 }

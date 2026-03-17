@@ -8,4 +8,7 @@ var (
 	ErrDocumentAlreadyExists = errors.New("document already exists")
 	ErrInvalidDocumentType   = errors.New("invalid document type")
 	ErrInvalidAccessPolicy   = errors.New("invalid access policy")
+	ErrInvalidMetadata       = errors.New("invalid metadata")
+	ErrVersioningNotAllowed  = errors.New("versioning not allowed for current status")
+	ErrVersionNotFound       = errors.New("version not found")
 )

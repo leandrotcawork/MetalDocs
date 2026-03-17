@@ -31,7 +31,9 @@ MetalDocs e uma plataforma interna para centralizacao, versionamento, workflow e
 ## Documentos chave
 - Plano mestre: `docs/plans/MASTER_IMPLEMENTATION_PLAN.md`
 - Guardrails de arquitetura: `docs/architecture/ARCHITECTURE_GUARDRAILS.md`
+- Blueprint do dominio documental: `docs/architecture/DOCUMENT_DOMAIN_BLUEPRINT.md`
 - Standards de engenharia: `docs/standards/ENGINEERING_STANDARDS.md`
+- Plano do proximo ciclo de produto: `docs/plans/NEXT_PRODUCT_EXECUTION_PLAN.md`
 - Contratos internos (eventos/erros): `docs/contracts/INTERNAL_EVENTS_AND_ERRORS.md`
 - Setup dev Go: `docs/runbooks/dev-setup.md`
 - Setup manual Postgres: `docs/runbooks/postgres-manual-setup.md`

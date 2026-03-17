@@ -6,6 +6,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
+	"time"
 
 	auditdomain "metaldocs/internal/modules/audit/domain"
 	auditmemory "metaldocs/internal/modules/audit/infrastructure/memory"
@@ -75,12 +78,17 @@ func main() {
 
 	addr := ":8080"
 	if appPort := os.Getenv("APP_PORT"); appPort != "" {
-		addr = ":" + appPort
+		port, convErr := strconv.Atoi(strings.TrimSpace(appPort))
+		if convErr != nil || port < 1 || port > 65535 {
+			log.Fatalf("invalid APP_PORT value")
+		}
+		addr = ":" + strconv.Itoa(port)
 	}
 
 	server := &http.Server{
-		Addr:    addr,
-		Handler: handler,
+		Addr:              addr,
+		Handler:           handler,
+		ReadHeaderTimeout: 5 * time.Second,
 	}
 
 	log.Printf("MetalDocs API listening on %s (repository=%s auth_enabled=%t auth_cache_ttl=%s rate_limit_enabled=%t rate_limit_window_s=%d rate_limit_max_requests=%d)",

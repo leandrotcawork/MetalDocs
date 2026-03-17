@@ -48,7 +48,11 @@ func (o *HTTPObservability) Wrap(next http.Handler) http.Handler {
 
 		route := normalizeRoute(r.URL.Path)
 		method := r.Method
-		durationMs := uint64(time.Since(start).Milliseconds())
+		elapsedMs := time.Since(start).Milliseconds()
+		if elapsedMs < 0 {
+			elapsedMs = 0
+		}
+		durationMs := uint64(elapsedMs)
 		isError := sw.status >= 400
 
 		m := o.getMetric(route, method)

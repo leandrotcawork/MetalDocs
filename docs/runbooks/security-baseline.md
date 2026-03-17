@@ -39,3 +39,16 @@ powershell -ExecutionPolicy Bypass -File scripts/security-baseline.ps1
 - Tratar findings por severidade (critical/high primeiro).
 - Abrir issue com owner e prazo.
 - Reexecutar baseline apos correcao.
+
+## Evidencia oficial registrada
+Execucao oficial (gosec): `2026-03-16 22:40` (America/Sao_Paulo).
+
+- Comando:
+  - `powershell -ExecutionPolicy Bypass -File scripts/security-baseline.ps1 -SkipGovulncheck`
+- Resultado:
+  - `gosec`: `approved`, `Issues: 0`
+  - Evidencia: `non_git/security/security_baseline_20260317T014047Z.json`
+
+Observacao operacional:
+- `govulncheck` depende de acesso a `https://vuln.go.dev` para baixar a base de vulnerabilidades.
+- Sem conectividade externa liberada, o passo `govulncheck` fica bloqueado por ambiente, nao por codigo.

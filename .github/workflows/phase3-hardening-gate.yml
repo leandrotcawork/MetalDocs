@@ -1,0 +1,28 @@
+name: phase3-hardening-gate
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  hardening:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install security tools
+        shell: pwsh
+        run: |
+          go install github.com/securego/gosec/v2/cmd/gosec@latest
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - name: Run phase 3 hardening gate
+        shell: pwsh
+        run: ./scripts/phase3-hardening-gate.ps1

@@ -6,7 +6,14 @@ param(
 $ErrorActionPreference = "Stop"
 
 if (-not (Get-Command go -ErrorAction SilentlyContinue)) {
-  $env:Path = "C:\Program Files\Go\bin;" + $env:Path
+  if (Test-Path "C:\Program Files\Go\bin\go.exe") {
+    $env:Path = "C:\Program Files\Go\bin;" + $env:Path
+  }
+}
+
+$goCmd = Get-Command go -ErrorAction SilentlyContinue
+if (-not $goCmd) {
+  throw "Go toolchain nao encontrada no PATH."
 }
 
 $root = Split-Path -Parent $PSScriptRoot
@@ -43,7 +50,7 @@ $result = [ordered]@{
 $started = [DateTime]::UtcNow
 
 try {
-  & "C:\Program Files\Go\bin\go.exe" test ./...
+  & $goCmd.Source test ./...
   $result.steps.go_test.exit_code = $LASTEXITCODE
   if ($LASTEXITCODE -ne 0) {
     throw "go test falhou com exit code $LASTEXITCODE"

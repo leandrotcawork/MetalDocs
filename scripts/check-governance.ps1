@@ -15,9 +15,12 @@ function Fail([string]$msg) {
   exit 1
 }
 
-if ($changedText -match '(?m)^apps/api/') {
+# API contract-impacting changes must update OpenAPI.
+# We intentionally scope to delivery/http handlers and API spec files to avoid false positives
+# for non-contract bootstrap changes in apps/api.
+if ($changedText -match '(?m)^internal/modules/.+/delivery/http/.+\.go$') {
   if ($changedText -notmatch '(?m)^api/openapi/v1/openapi.yaml$') {
-    Fail "API handler change detected without OpenAPI update."
+    Fail "API contract change detected without OpenAPI update."
   }
 }
 

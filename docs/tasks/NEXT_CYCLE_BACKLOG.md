@@ -606,10 +606,17 @@ Objetivo:
 Traduzir o modelo de authoring em experiencia visual e navegacao operacional de alto nivel.
 
 Escopo:
+- app shell documental
+- operations center documental
 - workspace documental orientado por `documentProfile`
+- catalogo documental
+- detalhe/review documental
+- authoring wizard em 4 etapas (`Profile -> Metadata -> Content -> Review`)
+- registry explorer em modo leitura forte
 - metadata dinamica por schema
 - governanca sempre visivel
 - area de versoes/diff/approvals/attachments/audit navegavel
+- compatibilidade arquitetural com realtime futuro sem depender de SSE/WebSocket agora
 
 Saida:
 - UX documental consistente, profissional e preparada para empresas diferentes
@@ -627,3 +634,53 @@ Escopo:
 
 Saida:
 - experiencia documental aplicada ao caso de negocio da Metal Nobre sem hardcode de plataforma
+
+## Task 036 - Registry administration CRUD
+Status: `pending`
+
+Objetivo:
+Permitir administrar o registry documental pelo produto, e nao apenas consulta-lo.
+
+Escopo:
+- CRUD de profiles
+- CRUD/versionamento de schema por profile
+- CRUD de governance por profile
+- CRUD de process areas
+- CRUD de subjects
+
+Saida:
+- painel administrativo que torna o modelo profile-first realmente configuravel por UI
+
+## Task 037 - Realtime event stream for operations center
+Status: `pending`
+
+Objetivo:
+Adicionar atualizacao ao vivo para paineis operacionais sem acoplar isso prematuramente ao authoring base.
+
+Escopo:
+- feed operacional server-to-client
+- notificacoes em tempo real
+- approvals e sinais operacionais em tempo real
+- adaptador frontend de stream
+
+Direcao:
+- priorizar `SSE`
+- avaliar `WebSocket` apenas se houver necessidade real de bidirecionalidade
+
+Saida:
+- operations center com atualizacao ao vivo sem polling como mecanismo unico
+
+## Task 038 - Collaborative editing and presence
+Status: `pending`
+
+Objetivo:
+Evoluir a plataforma para colaboracao documental em tempo real quando isso realmente virar necessidade de produto.
+
+Escopo:
+- presence
+- locking/conflito de edicao
+- sinais colaborativos
+- co-authoring
+
+Saida:
+- base para experiencia colaborativa mais profunda sem improviso arquitetural

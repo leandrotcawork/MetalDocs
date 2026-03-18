@@ -381,7 +381,7 @@ Saida:
 - painel web de notificacoes com estado operacional
 
 ## Task 023 - Expand administrative user management
-Status: `todo`
+Status: `done`
 
 Objetivo:
 Evoluir IAM/Auth administrativo para um ciclo de vida de usuario mais profissional.
@@ -394,6 +394,9 @@ Escopo:
 
 Saida:
 - superficie administrativa mais proxima de produto real
+- ativacao/inativacao de usuario via produto
+- visualizacao de estado de auth (lock, falhas, ultimo login, troca obrigatoria)
+- reconciliacao completa de roles por usuario
 
 ## Task 024 - Add administrative password reset and user lifecycle actions
 Status: `todo`

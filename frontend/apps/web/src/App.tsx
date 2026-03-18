@@ -77,6 +77,15 @@ const emptyUserForm = {
   roles: ["viewer"] as UserRole[],
 };
 
+const emptyManagedUserForm = {
+  userId: "",
+  displayName: "",
+  email: "",
+  isActive: true,
+  mustChangePassword: false,
+  roles: ["viewer"] as UserRole[],
+};
+
 type AppErrorBoundaryState = {
   hasError: boolean;
   message: string;
@@ -148,13 +157,33 @@ function AppContent() {
   const [policyScope, setPolicyScope] = useState<PolicyScope>("document");
   const [policyResourceId, setPolicyResourceId] = useState("");
   const [userForm, setUserForm] = useState(emptyUserForm);
+  const [managedUserForm, setManagedUserForm] = useState(emptyManagedUserForm);
 
   const currentUserRoles = Array.isArray(user?.roles) ? user.roles : [];
   const isAdmin = currentUserRoles.includes("admin");
+  const selectedManagedUser = managedUsers.find((item) => item.userId === managedUserForm.userId) ?? null;
 
   useEffect(() => {
     void bootstrap();
   }, []);
+
+  useEffect(() => {
+    if (!managedUserForm.userId) {
+      return;
+    }
+    const current = managedUsers.find((item) => item.userId === managedUserForm.userId);
+    if (!current) {
+      return;
+    }
+    setManagedUserForm((previous) => ({
+      ...previous,
+      displayName: current.displayName,
+      email: current.email ?? "",
+      isActive: current.isActive,
+      mustChangePassword: current.mustChangePassword,
+      roles: Array.isArray(current.roles) && current.roles.length > 0 ? current.roles : previous.roles,
+    }));
+  }, [managedUsers, managedUserForm.userId]);
 
   async function bootstrap() {
     try {
@@ -366,6 +395,59 @@ function AppContent() {
     }
   }
 
+  function selectManagedUser(item: ManagedUserItem) {
+    setManagedUserForm({
+      userId: item.userId,
+      displayName: item.displayName,
+      email: item.email ?? "",
+      isActive: item.isActive,
+      mustChangePassword: item.mustChangePassword,
+      roles: Array.isArray(item.roles) && item.roles.length > 0 ? item.roles : ["viewer"],
+    });
+  }
+
+  function toggleManagedUserRole(role: UserRole) {
+    setManagedUserForm((current) => {
+      const hasRole = current.roles.includes(role);
+      const nextRoles = hasRole ? current.roles.filter((item) => item !== role) : [...current.roles, role];
+      return {
+        ...current,
+        roles: nextRoles.length > 0 ? nextRoles : current.roles,
+      };
+    });
+  }
+
+  async function handleSaveManagedUser() {
+    if (!managedUserForm.userId) {
+      setError("Selecione um usuario para editar.");
+      return;
+    }
+    if (managedUserForm.roles.length === 0) {
+      setError("Selecione pelo menos uma role.");
+      return;
+    }
+    try {
+      setError("");
+      setMessage("");
+      await api.updateUser(managedUserForm.userId, {
+        displayName: managedUserForm.displayName,
+        email: managedUserForm.email,
+        isActive: managedUserForm.isActive,
+        mustChangePassword: managedUserForm.mustChangePassword,
+      });
+      await api.replaceUserRoles(managedUserForm.userId, {
+        displayName: managedUserForm.displayName,
+        roles: managedUserForm.roles,
+      });
+      if (user) {
+        await loadWorkspace(user);
+      }
+      setMessage("Usuario administrativo atualizado com sucesso.");
+    } catch (err) {
+      handleError(err);
+    }
+  }
+
   async function handleMarkNotificationRead(notificationId: string) {
     try {
       await api.markNotificationRead(notificationId);
@@ -517,7 +599,23 @@ function AppContent() {
                 </form>
                 <div className="card">
                   <h3>Base de usuarios</h3>
-                  <ul className="mini-list">{managedUsers.map((item) => <li key={item.userId}><div><strong>{item.displayName}</strong><p>{item.username} - {(Array.isArray(item.roles) ? item.roles : []).join(", ") || "sem role"}</p></div><span>{item.isActive ? "Ativo" : "Inativo"}</span></li>)}</ul>
+                  <ul className="mini-list">{managedUsers.map((item) => <li key={item.userId} onClick={() => selectManagedUser(item)}><div><strong>{item.displayName}</strong><p>{item.username} - {(Array.isArray(item.roles) ? item.roles : []).join(", ") || "sem role"}</p><small>{item.isActive ? "Ativo" : "Inativo"} / {item.mustChangePassword ? "troca obrigatoria" : "senha OK"} / falhas: {item.failedLoginAttempts}{item.lockedUntil ? ` / lock: ${formatDate(item.lockedUntil)}` : ""}{item.lastLoginAt ? ` / ultimo login: ${formatDate(item.lastLoginAt)}` : ""}</small></div><span>{item.userId}</span></li>)}</ul>
+                </div>
+                <div className="card stack">
+                  <h3>Editar usuario</h3>
+                  {!selectedManagedUser ? <p className="hint">Selecione um usuario da lista para editar estado operacional e roles.</p> : (
+                    <>
+                      <p className="hint">Auth state atual: {selectedManagedUser.isActive ? "ativo" : "inativo"} / {selectedManagedUser.mustChangePassword ? "troca obrigatoria" : "senha estabilizada"} / falhas: {selectedManagedUser.failedLoginAttempts}</p>
+                      <input value={managedUserForm.displayName} onChange={(event) => setManagedUserForm({ ...managedUserForm, displayName: event.target.value })} placeholder="Display name" />
+                      <input value={managedUserForm.email} onChange={(event) => setManagedUserForm({ ...managedUserForm, email: event.target.value })} placeholder="Email" />
+                      <label><input type="checkbox" checked={managedUserForm.isActive} onChange={(event) => setManagedUserForm({ ...managedUserForm, isActive: event.target.checked })} /> Usuario ativo</label>
+                      <label><input type="checkbox" checked={managedUserForm.mustChangePassword} onChange={(event) => setManagedUserForm({ ...managedUserForm, mustChangePassword: event.target.checked })} /> Exigir troca de senha</label>
+                      <div className="detail-summary">
+                        {(["admin", "editor", "reviewer", "viewer"] as UserRole[]).map((role) => <label key={role}><input type="checkbox" checked={managedUserForm.roles.includes(role)} onChange={() => toggleManagedUserRole(role)} /> {role}</label>)}
+                      </div>
+                      <button type="button" className="ghost-button" onClick={() => void handleSaveManagedUser()}>Salvar usuario</button>
+                    </>
+                  )}
                 </div>
               </div>
             </section>

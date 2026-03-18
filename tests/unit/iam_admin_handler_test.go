@@ -43,3 +43,26 @@ func TestIAMAdminHandlerUpsertRole(t *testing.T) {
 		t.Fatalf("expected cache invalidation for test-user, got called=%v user=%s", inv.called, inv.userID)
 	}
 }
+
+func TestIAMAdminHandlerReplaceRoles(t *testing.T) {
+	repo := iammemory.NewRoleAdminRepository()
+	inv := &fakeInvalidator{}
+	service := iamapp.NewAdminService(repo, inv)
+	handler := iamdelivery.NewAdminHandler(service)
+
+	mux := http.NewServeMux()
+	handler.RegisterRoutes(mux)
+
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/iam/users/test-user/roles", strings.NewReader(`{"displayName":"Test User","roles":["editor","reviewer"]}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-User-Id", "admin-local")
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rr.Code, rr.Body.String())
+	}
+	if !inv.called || inv.userID != "test-user" {
+		t.Fatalf("expected cache invalidation for test-user, got called=%v user=%s", inv.called, inv.userID)
+	}
+}

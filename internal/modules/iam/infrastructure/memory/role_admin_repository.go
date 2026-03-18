@@ -34,3 +34,20 @@ func (r *RoleAdminRepository) UpsertUserAndAssignRole(_ context.Context, userID,
 	r.users[userID] = rec
 	return nil
 }
+
+func (r *RoleAdminRepository) ReplaceUserRoles(_ context.Context, userID, displayName string, roles []domain.Role, _ string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	rec, ok := r.users[userID]
+	if !ok {
+		rec = userRecord{displayName: displayName, roles: map[domain.Role]bool{}}
+	}
+	rec.displayName = displayName
+	rec.roles = map[domain.Role]bool{}
+	for _, role := range roles {
+		rec.roles[role] = true
+	}
+	r.users[userID] = rec
+	return nil
+}

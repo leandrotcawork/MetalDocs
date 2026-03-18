@@ -43,3 +43,30 @@ func (s *AdminService) UpsertUserAndAssignRole(ctx context.Context, userID, disp
 	}
 	return nil
 }
+
+func (s *AdminService) ReplaceUserRoles(ctx context.Context, userID, displayName string, roles []domain.Role, assignedBy string) error {
+	userID = strings.TrimSpace(userID)
+	displayName = strings.TrimSpace(displayName)
+	assignedBy = strings.TrimSpace(assignedBy)
+
+	if userID == "" {
+		return domain.ErrUserNotFound
+	}
+	if displayName == "" {
+		displayName = userID
+	}
+	if assignedBy == "" {
+		assignedBy = "system"
+	}
+	if len(roles) == 0 {
+		return domain.ErrUserNotFound
+	}
+
+	if err := s.repo.ReplaceUserRoles(ctx, userID, displayName, roles, assignedBy); err != nil {
+		return err
+	}
+	if s.invalidator != nil {
+		s.invalidator.InvalidateUser(userID)
+	}
+	return nil
+}

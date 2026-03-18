@@ -250,6 +250,7 @@ export const api = {
   createUser: (body: Record<string, unknown>) => request<{ userId: string }>("/iam/users", { method: "POST", body: JSON.stringify(body) }),
   updateUser: (userId: string, body: Record<string, unknown>) => request<{ userId: string; updated: boolean }>(`/iam/users/${userId}`, { method: "PATCH", body: JSON.stringify(body) }),
   assignRole: (userId: string, body: Record<string, unknown>) => request<{ userId: string; role: string; displayName: string }>(`/iam/users/${userId}/roles`, { method: "POST", body: JSON.stringify(body) }),
+  replaceUserRoles: (userId: string, body: Record<string, unknown>) => request<{ userId: string; displayName: string; roles: string[] }>(`/iam/users/${userId}/roles`, { method: "PUT", body: JSON.stringify(body) }),
   listDocumentTypes: () => request<{ items: DocumentTypeItem[] }>("/document-types"),
   listDocumentFamilies: () => request<{ items: DocumentFamilyItem[] }>("/document-families"),
   listDocumentProfiles: async () => {

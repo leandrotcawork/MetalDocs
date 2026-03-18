@@ -146,6 +146,9 @@ func requiredPermission(method, path string) (iamdomain.Permission, bool) {
 	if method == http.MethodPost && strings.HasPrefix(path, "/api/v1/iam/users/") && strings.HasSuffix(path, "/roles") {
 		return iamdomain.PermIAMManageRoles, true
 	}
+	if method == http.MethodPut && strings.HasPrefix(path, "/api/v1/iam/users/") && strings.HasSuffix(path, "/roles") {
+		return iamdomain.PermIAMManageRoles, true
+	}
 
 	return "", false
 }

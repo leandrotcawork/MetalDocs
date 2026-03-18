@@ -15,4 +15,5 @@ type RoleProvider interface {
 // RoleAdminRepository writes IAM user and role assignments.
 type RoleAdminRepository interface {
 	UpsertUserAndAssignRole(ctx context.Context, userID, displayName string, role Role, assignedBy string) error
+	ReplaceUserRoles(ctx context.Context, userID, displayName string, roles []Role, assignedBy string) error
 }

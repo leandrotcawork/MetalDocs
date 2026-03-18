@@ -301,6 +301,33 @@ func (r *Repository) UpsertUserAndAssignRole(_ context.Context, userID, displayN
 	return nil
 }
 
+func (r *Repository) ReplaceUserRoles(_ context.Context, userID, displayName string, roles []iamdomain.Role, _ string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	identity, ok := r.users[userID]
+	if !ok {
+		now := time.Now().UTC()
+		identity = authdomain.Identity{
+			UserID:      userID,
+			Username:    userID,
+			DisplayName: displayName,
+			IsActive:    true,
+			CreatedAt:   now,
+			UpdatedAt:   now,
+		}
+		r.byLogin[strings.ToLower(userID)] = userID
+	}
+	if strings.TrimSpace(displayName) != "" {
+		identity.DisplayName = strings.TrimSpace(displayName)
+	}
+	identity.Roles = append([]iamdomain.Role(nil), roles...)
+	identity.IsActive = true
+	identity.UpdatedAt = time.Now().UTC()
+	r.users[userID] = identity
+	return nil
+}
+
 func cloneIdentity(identity authdomain.Identity) authdomain.Identity {
 	identity.Roles = append([]iamdomain.Role(nil), identity.Roles...)
 	return identity

@@ -25,6 +25,12 @@ type UpsertUserRoleRequest struct {
 	AssignedBy  string `json:"assignedBy,omitempty"`
 }
 
+type ReplaceUserRolesRequest struct {
+	DisplayName string   `json:"displayName"`
+	Roles       []string `json:"roles"`
+	AssignedBy  string   `json:"assignedBy,omitempty"`
+}
+
 type CreateUserRequest struct {
 	UserID      string   `json:"userId,omitempty"`
 	Username    string   `json:"username"`
@@ -71,7 +77,14 @@ func (h *AdminHandler) handleUserRoute(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/iam/users/")
 	parts := strings.Split(path, "/")
 	if len(parts) == 2 && strings.TrimSpace(parts[0]) != "" && parts[1] == "roles" {
-		h.handleUserRoleUpsert(w, r, strings.TrimSpace(parts[0]), traceID)
+		switch r.Method {
+		case http.MethodPost:
+			h.handleUserRoleUpsert(w, r, strings.TrimSpace(parts[0]), traceID)
+		case http.MethodPut:
+			h.handleReplaceUserRoles(w, r, strings.TrimSpace(parts[0]), traceID)
+		default:
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
 		return
 	}
 	if len(parts) == 1 && strings.TrimSpace(parts[0]) != "" && r.Method == http.MethodPatch {
@@ -203,6 +216,40 @@ func (h *AdminHandler) handleUserRoleUpsert(w http.ResponseWriter, r *http.Reque
 		"userId":      userID,
 		"role":        string(role),
 		"displayName": strings.TrimSpace(req.DisplayName),
+	})
+}
+
+func (h *AdminHandler) handleReplaceUserRoles(w http.ResponseWriter, r *http.Request, userID, traceID string) {
+	var req ReplaceUserRolesRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid JSON payload", traceID)
+		return
+	}
+
+	roles, ok := parseRoles(req.Roles)
+	if !ok {
+		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid roles", traceID)
+		return
+	}
+
+	assignedBy := strings.TrimSpace(req.AssignedBy)
+	if assignedBy == "" {
+		assignedBy = authenticatedActor(r)
+	}
+
+	if err := h.service.ReplaceUserRoles(r.Context(), userID, req.DisplayName, roles, assignedBy); err != nil {
+		writeAPIError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to replace user roles", traceID)
+		return
+	}
+
+	roleStrings := make([]string, 0, len(roles))
+	for _, role := range roles {
+		roleStrings = append(roleStrings, string(role))
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"userId":      userID,
+		"displayName": strings.TrimSpace(req.DisplayName),
+		"roles":       roleStrings,
 	})
 }
 

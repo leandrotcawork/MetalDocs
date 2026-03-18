@@ -1113,6 +1113,45 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
+    put:
+      summary: Reconcilia o conjunto de roles de um usuario interno
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplaceUserRolesRequest'
+      responses:
+        '200':
+          description: Roles reconciliadas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReplaceUserRolesResponse'
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
 components:
   parameters:
     DocumentId:
@@ -1264,6 +1303,33 @@ components:
           type: string
         updated:
           type: boolean
+    ReplaceUserRolesRequest:
+      type: object
+      required: [displayName, roles]
+      properties:
+        displayName:
+          type: string
+        assignedBy:
+          type: string
+        roles:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            enum: [admin, editor, reviewer, viewer]
+    ReplaceUserRolesResponse:
+      type: object
+      required: [userId, displayName, roles]
+      properties:
+        userId:
+          type: string
+        displayName:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+            enum: [admin, editor, reviewer, viewer]
     CreateDocumentRequest:
       type: object
       required:

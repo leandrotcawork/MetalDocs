@@ -109,6 +109,14 @@ func TestAPIContractSmoke(t *testing.T) {
 			wantStatus: http.StatusOK,
 		},
 		{
+			name:       "replace iam roles",
+			method:     http.MethodPut,
+			path:       "/api/v1/iam/users/contract-user/roles",
+			body:       map[string]any{"displayName": "Contract User", "roles": []string{"reviewer", "viewer"}},
+			withUserID: true,
+			wantStatus: http.StatusOK,
+		},
+		{
 			name:       "missing auth header",
 			method:     http.MethodGet,
 			path:       "/api/v1/documents",

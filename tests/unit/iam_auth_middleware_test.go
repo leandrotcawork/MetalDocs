@@ -31,7 +31,7 @@ func TestMiddlewareBlocksProtectedRouteWithoutUserID(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	mw := iamdelivery.NewMiddleware(iamapp.NewStaticAuthorizer(), fakeRoleProvider{roles: []iamdomain.Role{iamdomain.RoleViewer}}, true)
+	mw := iamdelivery.NewMiddleware(iamapp.NewStaticAuthorizer(), fakeRoleProvider{roles: []iamdomain.Role{iamdomain.RoleViewer}}, true, true)
 	h := mw.Wrap(mux)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/documents", nil)
@@ -49,7 +49,7 @@ func TestMiddlewareAllowsWithRoleFromProvider(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	mw := iamdelivery.NewMiddleware(iamapp.NewStaticAuthorizer(), fakeRoleProvider{roles: []iamdomain.Role{iamdomain.RoleViewer}}, true)
+	mw := iamdelivery.NewMiddleware(iamapp.NewStaticAuthorizer(), fakeRoleProvider{roles: []iamdomain.Role{iamdomain.RoleViewer}}, true, true)
 	h := mw.Wrap(mux)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/documents", nil)
@@ -68,7 +68,7 @@ func TestMiddlewareBlocksInsufficientPermission(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	mw := iamdelivery.NewMiddleware(iamapp.NewStaticAuthorizer(), fakeRoleProvider{roles: []iamdomain.Role{iamdomain.RoleViewer}}, true)
+	mw := iamdelivery.NewMiddleware(iamapp.NewStaticAuthorizer(), fakeRoleProvider{roles: []iamdomain.Role{iamdomain.RoleViewer}}, true, true)
 	h := mw.Wrap(mux)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/documents", strings.NewReader(`{"title":"x","ownerId":"y"}`))
@@ -87,7 +87,7 @@ func TestMiddlewareSkipsHealthRoutes(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	mw := iamdelivery.NewMiddleware(iamapp.NewStaticAuthorizer(), fakeRoleProvider{roles: []iamdomain.Role{iamdomain.RoleViewer}}, true)
+	mw := iamdelivery.NewMiddleware(iamapp.NewStaticAuthorizer(), fakeRoleProvider{roles: []iamdomain.Role{iamdomain.RoleViewer}}, true, true)
 	h := mw.Wrap(mux)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/health/ready", nil)
@@ -105,7 +105,7 @@ func TestMiddlewareSkipsMetricsRoute(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	mw := iamdelivery.NewMiddleware(iamapp.NewStaticAuthorizer(), fakeRoleProvider{roles: []iamdomain.Role{iamdomain.RoleViewer}}, true)
+	mw := iamdelivery.NewMiddleware(iamapp.NewStaticAuthorizer(), fakeRoleProvider{roles: []iamdomain.Role{iamdomain.RoleViewer}}, true, true)
 	h := mw.Wrap(mux)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/metrics", nil)
@@ -123,7 +123,7 @@ func TestMiddlewareUnauthorizedWhenUserMissingInProvider(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	mw := iamdelivery.NewMiddleware(iamapp.NewStaticAuthorizer(), fakeRoleProvider{err: iamdomain.ErrUserNotFound}, true)
+	mw := iamdelivery.NewMiddleware(iamapp.NewStaticAuthorizer(), fakeRoleProvider{err: iamdomain.ErrUserNotFound}, true, true)
 	h := mw.Wrap(mux)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/documents", nil)
@@ -142,7 +142,7 @@ func TestMiddlewareInternalErrorWhenProviderFails(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	mw := iamdelivery.NewMiddleware(iamapp.NewStaticAuthorizer(), fakeRoleProvider{err: errors.New("db timeout")}, true)
+	mw := iamdelivery.NewMiddleware(iamapp.NewStaticAuthorizer(), fakeRoleProvider{err: errors.New("db timeout")}, true, true)
 	h := mw.Wrap(mux)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/documents", nil)
@@ -195,7 +195,7 @@ func TestMiddlewareProtectsIAMAdminRoute(t *testing.T) {
 				w.WriteHeader(http.StatusOK)
 			})
 
-			mw := iamdelivery.NewMiddleware(iamapp.NewStaticAuthorizer(), fakeRoleProvider{roles: tt.roles}, true)
+			mw := iamdelivery.NewMiddleware(iamapp.NewStaticAuthorizer(), fakeRoleProvider{roles: tt.roles}, true, true)
 			h := mw.Wrap(mux)
 
 			req := httptest.NewRequest(http.MethodPost, "/api/v1/iam/users/test-user/roles", strings.NewReader(`{"role":"viewer"}`))
@@ -244,7 +244,7 @@ func TestMiddlewareProtectsWorkflowTransitionRoute(t *testing.T) {
 				w.WriteHeader(http.StatusOK)
 			})
 
-			mw := iamdelivery.NewMiddleware(iamapp.NewStaticAuthorizer(), fakeRoleProvider{roles: tt.roles}, true)
+			mw := iamdelivery.NewMiddleware(iamapp.NewStaticAuthorizer(), fakeRoleProvider{roles: tt.roles}, true, true)
 			h := mw.Wrap(mux)
 
 			req := httptest.NewRequest(http.MethodPost, "/api/v1/workflow/documents/test-user/transitions", strings.NewReader(`{"toStatus":"IN_REVIEW"}`))
@@ -293,7 +293,7 @@ func TestMiddlewareProtectsSearchRoute(t *testing.T) {
 				w.WriteHeader(http.StatusOK)
 			})
 
-			mw := iamdelivery.NewMiddleware(iamapp.NewStaticAuthorizer(), fakeRoleProvider{roles: tt.roles}, true)
+			mw := iamdelivery.NewMiddleware(iamapp.NewStaticAuthorizer(), fakeRoleProvider{roles: tt.roles}, true, true)
 			h := mw.Wrap(mux)
 
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/search/documents?q=doc", nil)
@@ -348,7 +348,7 @@ func TestMiddlewareProtectsAccessPoliciesRoute(t *testing.T) {
 				w.WriteHeader(http.StatusOK)
 			})
 
-			mw := iamdelivery.NewMiddleware(iamapp.NewStaticAuthorizer(), fakeRoleProvider{roles: tt.roles}, true)
+			mw := iamdelivery.NewMiddleware(iamapp.NewStaticAuthorizer(), fakeRoleProvider{roles: tt.roles}, true, true)
 			h := mw.Wrap(mux)
 
 			req := httptest.NewRequest(tt.method, "/api/v1/access-policies?resourceScope=document&resourceId=doc-1", strings.NewReader(`{"resourceScope":"document","resourceId":"doc-1","policies":[]}`))

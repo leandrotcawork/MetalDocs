@@ -14,7 +14,7 @@ func TestCORSPreflightAllowedOrigin(t *testing.T) {
     Enabled:        true,
     AllowedOrigins: []string{"http://127.0.0.1:4173"},
     AllowedMethods: []string{"GET", "POST", "PUT", "OPTIONS"},
-    AllowedHeaders: []string{"Content-Type", "X-User-Id"},
+    AllowedHeaders: []string{"Content-Type", "X-Trace-Id"},
     MaxAgeSeconds:  300,
   })
 
@@ -40,7 +40,7 @@ func TestCORSDeniesUnknownOriginPreflight(t *testing.T) {
     Enabled:        true,
     AllowedOrigins: []string{"http://127.0.0.1:4173"},
     AllowedMethods: []string{"GET", "POST", "PUT", "OPTIONS"},
-    AllowedHeaders: []string{"Content-Type", "X-User-Id"},
+    AllowedHeaders: []string{"Content-Type", "X-Trace-Id"},
     MaxAgeSeconds:  300,
   })
 
@@ -63,7 +63,7 @@ func TestCORSAddsHeadersToSimpleRequest(t *testing.T) {
     Enabled:        true,
     AllowedOrigins: []string{"http://127.0.0.1:4173"},
     AllowedMethods: []string{"GET", "POST", "PUT", "OPTIONS"},
-    AllowedHeaders: []string{"Content-Type", "X-User-Id"},
+    AllowedHeaders: []string{"Content-Type", "X-Trace-Id"},
     MaxAgeSeconds:  300,
   })
 

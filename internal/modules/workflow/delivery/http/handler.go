@@ -8,6 +8,7 @@ import (
 	"time"
 
 	docdomain "metaldocs/internal/modules/documents/domain"
+	iamdomain "metaldocs/internal/modules/iam/domain"
 	workflowapp "metaldocs/internal/modules/workflow/application"
 	workflowdomain "metaldocs/internal/modules/workflow/domain"
 )
@@ -69,7 +70,7 @@ func (h *Handler) handleTransition(w http.ResponseWriter, r *http.Request, docum
 		return
 	}
 
-	actorID := strings.TrimSpace(r.Header.Get("X-User-Id"))
+	actorID := iamdomain.UserIDFromContext(r.Context())
 	result, err := h.service.Transition(r.Context(), workflowdomain.TransitionCommand{
 		DocumentID:       documentID,
 		ToStatus:         req.ToStatus,

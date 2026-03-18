@@ -2,6 +2,7 @@ package unit
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -9,7 +10,9 @@ import (
 	docdomain "metaldocs/internal/modules/documents/domain"
 	docmemory "metaldocs/internal/modules/documents/infrastructure/memory"
 	notificationapp "metaldocs/internal/modules/notifications/application"
+	notificationdomain "metaldocs/internal/modules/notifications/domain"
 	notificationmemory "metaldocs/internal/modules/notifications/infrastructure/memory"
+	"metaldocs/internal/platform/config"
 	"metaldocs/internal/platform/messaging"
 	workerapp "metaldocs/internal/platform/worker"
 )
@@ -17,7 +20,7 @@ import (
 type fakeConsumer struct {
 	events          []messaging.Event
 	markedPublished []string
-	released        []string
+	failed          []messaging.FailedEvent
 }
 
 func (f *fakeConsumer) ClaimUnpublished(context.Context, int) ([]messaging.Event, error) {
@@ -29,8 +32,14 @@ func (f *fakeConsumer) MarkPublished(_ context.Context, eventIDs []string) error
 	return nil
 }
 
-func (f *fakeConsumer) Release(_ context.Context, eventIDs []string) error {
-	f.released = append([]string(nil), eventIDs...)
+type failingNotificationRepo struct{}
+
+func (f failingNotificationRepo) Create(context.Context, notificationdomain.Notification) error {
+	return fmt.Errorf("forced notification failure")
+}
+
+func (f *fakeConsumer) MarkFailed(_ context.Context, failure messaging.FailedEvent) error {
+	f.failed = append(f.failed, failure)
 	return nil
 }
 
@@ -116,7 +125,7 @@ func TestWorkerRunOnceProcessesOutboxAndMarksPublished(t *testing.T) {
 			},
 		},
 	}
-	workerSvc := workerapp.NewService(consumer, notifSvc, 0)
+	workerSvc := workerapp.NewService(consumer, notifSvc, config.WorkerConfig{})
 
 	if err := workerSvc.RunOnce(context.Background(), 10); err != nil {
 		t.Fatalf("unexpected worker run error: %v", err)
@@ -127,5 +136,40 @@ func TestWorkerRunOnceProcessesOutboxAndMarksPublished(t *testing.T) {
 	}
 	if len(notifRepo.Items()) != 1 {
 		t.Fatalf("expected 1 notification, got %d", len(notifRepo.Items()))
+	}
+}
+
+func TestWorkerRunOnceMarksDeadLetterAfterMaxAttempts(t *testing.T) {
+	docRepo := docmemory.NewRepository()
+	notifRepo := failingNotificationRepo{}
+	notifSvc := notificationapp.NewService(notifRepo, docRepo, fixedClock{now: time.Date(2026, 3, 20, 10, 0, 0, 0, time.UTC)})
+	consumer := &fakeConsumer{
+		events: []messaging.Event{
+			{
+				EventID:      "evt-dead",
+				EventType:    "workflow.approval.requested",
+				AttemptCount: 5,
+				Payload: map[string]any{
+					"document_id":       "doc-dead",
+					"assigned_reviewer": "reviewer-dead",
+				},
+			},
+		},
+	}
+	workerSvc := workerapp.NewService(consumer, notifSvc, config.WorkerConfig{
+		MaxAttempts:      5,
+		RetryBaseSeconds: 10,
+		RetryMaxSeconds:  300,
+	})
+
+	if err := workerSvc.RunOnce(context.Background(), 10); err != nil {
+		t.Fatalf("unexpected worker run error: %v", err)
+	}
+
+	if len(consumer.failed) != 1 {
+		t.Fatalf("expected 1 failed event, got %d", len(consumer.failed))
+	}
+	if consumer.failed[0].DeadLetteredAt == nil {
+		t.Fatalf("expected event to be dead-lettered")
 	}
 }

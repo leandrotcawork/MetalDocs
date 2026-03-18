@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	authdomain "metaldocs/internal/modules/auth/domain"
 	"metaldocs/internal/platform/config"
 	"metaldocs/internal/platform/security"
 )
@@ -23,7 +24,7 @@ func TestRateLimiterBlocksWhenLimitExceeded(t *testing.T) {
 	h := rl.Wrap(mux)
 
 	req1 := httptest.NewRequest(http.MethodGet, "/api/v1/documents", nil)
-	req1.Header.Set("X-User-Id", "user-1")
+	req1 = req1.WithContext(authdomain.WithCurrentUser(req1.Context(), authdomain.CurrentUser{UserID: "user-1"}))
 	rr1 := httptest.NewRecorder()
 	h.ServeHTTP(rr1, req1)
 	if rr1.Code != http.StatusOK {
@@ -31,7 +32,7 @@ func TestRateLimiterBlocksWhenLimitExceeded(t *testing.T) {
 	}
 
 	req2 := httptest.NewRequest(http.MethodGet, "/api/v1/documents", nil)
-	req2.Header.Set("X-User-Id", "user-1")
+	req2 = req2.WithContext(authdomain.WithCurrentUser(req2.Context(), authdomain.CurrentUser{UserID: "user-1"}))
 	rr2 := httptest.NewRecorder()
 	h.ServeHTTP(rr2, req2)
 	if rr2.Code != http.StatusTooManyRequests {
@@ -53,12 +54,12 @@ func TestRateLimiterIsolatedByIdentity(t *testing.T) {
 	h := rl.Wrap(mux)
 
 	req1 := httptest.NewRequest(http.MethodGet, "/api/v1/search/documents", nil)
-	req1.Header.Set("X-User-Id", "user-a")
+	req1 = req1.WithContext(authdomain.WithCurrentUser(req1.Context(), authdomain.CurrentUser{UserID: "user-a"}))
 	rr1 := httptest.NewRecorder()
 	h.ServeHTTP(rr1, req1)
 
 	req2 := httptest.NewRequest(http.MethodGet, "/api/v1/search/documents", nil)
-	req2.Header.Set("X-User-Id", "user-b")
+	req2 = req2.WithContext(authdomain.WithCurrentUser(req2.Context(), authdomain.CurrentUser{UserID: "user-b"}))
 	rr2 := httptest.NewRecorder()
 	h.ServeHTTP(rr2, req2)
 

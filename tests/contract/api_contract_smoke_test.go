@@ -152,7 +152,7 @@ func buildContractTestHandler() http.Handler {
 	workflowHandler := workflowdelivery.NewHandler(workflowService)
 	iamAdminService := iamapp.NewAdminService(roleAdminRepo, cachedProvider)
 	iamAdminHandler := iamdelivery.NewAdminHandler(iamAdminService)
-	iamMiddleware := iamdelivery.NewMiddleware(authorizer, cachedProvider, true)
+	iamMiddleware := iamdelivery.NewMiddleware(authorizer, cachedProvider, true, true)
 	httpObs := observability.NewHTTPObservability()
 	rateLimiter := security.NewRateLimiter(config.RateLimitConfig{Enabled: false})
 

@@ -43,11 +43,129 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MetricsResponse'
+  /auth/login:
+    post:
+      summary: Autentica usuario local e cria sessao por cookie
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthLoginRequest'
+      responses:
+        '200':
+          description: Sessao criada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthLoginResponse'
+        '401':
+          description: Credenciais invalidas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+  /auth/logout:
+    post:
+      summary: Revoga a sessao atual
+      responses:
+        '204':
+          description: Sessao encerrada
+  /auth/me:
+    get:
+      summary: Retorna o usuario autenticado atual
+      responses:
+        '200':
+          description: Usuario atual
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUser'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+  /auth/change-password:
+    post:
+      summary: Troca a senha do usuario autenticado
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '200':
+          description: Senha alterada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangePasswordResponse'
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+  /iam/users:
+    get:
+      summary: Lista usuarios internos com estado de autenticacao
+      responses:
+        '200':
+          description: Lista de usuarios
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListManagedUsersResponse'
+    post:
+      summary: Cria usuario interno com credencial local inicial
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateManagedUserRequest'
+      responses:
+        '201':
+          description: Usuario criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateManagedUserResponse'
+  /iam/users/{userId}:
+    patch:
+      summary: Atualiza estado e credencial de um usuario interno
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateManagedUserRequest'
+      responses:
+        '200':
+          description: Usuario atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateManagedUserResponse'
   /document-types:
     get:
       summary: Lista os tipos documentais suportados
       parameters:
-        - $ref: '#/components/parameters/UserIdHeader'
       responses:
         '200':
           description: Lista de tipos documentais
@@ -71,7 +189,6 @@ paths:
     get:
       summary: Lista policies de acesso por recurso
       parameters:
-        - $ref: '#/components/parameters/UserIdHeader'
         - name: resourceScope
           in: query
           required: true
@@ -111,7 +228,6 @@ paths:
     put:
       summary: Substitui policies de acesso de um recurso
       parameters:
-        - $ref: '#/components/parameters/UserIdHeader'
       requestBody:
         required: true
         content:
@@ -147,7 +263,6 @@ paths:
     post:
       summary: Cria documento e primeira versao
       parameters:
-        - $ref: '#/components/parameters/UserIdHeader'
       requestBody:
         required: true
         content:
@@ -182,7 +297,6 @@ paths:
     get:
       summary: Lista documentos
       parameters:
-        - $ref: '#/components/parameters/UserIdHeader'
       responses:
         '200':
           description: Lista de documentos
@@ -207,7 +321,6 @@ paths:
       summary: Busca um documento por id
       parameters:
         - $ref: '#/components/parameters/DocumentId'
-        - $ref: '#/components/parameters/UserIdHeader'
       responses:
         '200':
           description: Documento encontrado
@@ -238,7 +351,6 @@ paths:
       summary: Cria nova versao do documento
       parameters:
         - $ref: '#/components/parameters/DocumentId'
-        - $ref: '#/components/parameters/UserIdHeader'
       requestBody:
         required: true
         content:
@@ -286,7 +398,6 @@ paths:
       summary: Lista versoes de um documento
       parameters:
         - $ref: '#/components/parameters/DocumentId'
-        - $ref: '#/components/parameters/UserIdHeader'
       responses:
         '200':
           description: Lista de versoes
@@ -317,7 +428,6 @@ paths:
       summary: Compara duas versoes do documento
       parameters:
         - $ref: '#/components/parameters/DocumentId'
-        - $ref: '#/components/parameters/UserIdHeader'
         - name: fromVersion
           in: query
           required: true
@@ -366,7 +476,6 @@ paths:
       summary: Faz upload de um anexo para o documento
       parameters:
         - $ref: '#/components/parameters/DocumentId'
-        - $ref: '#/components/parameters/UserIdHeader'
       requestBody:
         required: true
         content:
@@ -407,7 +516,6 @@ paths:
       summary: Lista anexos de um documento
       parameters:
         - $ref: '#/components/parameters/DocumentId'
-        - $ref: '#/components/parameters/UserIdHeader'
       responses:
         '200':
           description: Lista de anexos
@@ -438,7 +546,6 @@ paths:
       summary: Gera URL temporaria para download do anexo
       parameters:
         - $ref: '#/components/parameters/DocumentId'
-        - $ref: '#/components/parameters/UserIdHeader'
         - name: attachmentId
           in: path
           required: true
@@ -513,7 +620,6 @@ paths:
     get:
       summary: Pesquisa documentos por filtros
       parameters:
-        - $ref: '#/components/parameters/UserIdHeader'
         - name: q
           in: query
           required: false
@@ -606,7 +712,6 @@ paths:
       summary: Transiciona o status de workflow do documento
       parameters:
         - $ref: '#/components/parameters/DocumentId'
-        - $ref: '#/components/parameters/UserIdHeader'
       requestBody:
         required: true
         content:
@@ -655,7 +760,6 @@ paths:
       summary: Lista a trilha de aprovacoes do documento
       parameters:
         - $ref: '#/components/parameters/DocumentId'
-        - $ref: '#/components/parameters/UserIdHeader'
       responses:
         '200':
           description: Lista de aprovacoes
@@ -685,7 +789,6 @@ paths:
     post:
       summary: Cria/atualiza usuario IAM e atribui role
       parameters:
-        - $ref: '#/components/parameters/UserIdHeader'
         - name: userId
           in: path
           required: true
@@ -730,13 +833,149 @@ components:
       required: true
       schema:
         type: string
-    UserIdHeader:
-      name: X-User-Id
-      in: header
-      required: true
-      schema:
-        type: string
   schemas:
+    AuthLoginRequest:
+      type: object
+      required: [identifier, password]
+      properties:
+        identifier:
+          type: string
+        password:
+          type: string
+    CurrentUser:
+      type: object
+      required: [userId, username, displayName, mustChangePassword, roles]
+      properties:
+        userId:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+        displayName:
+          type: string
+        mustChangePassword:
+          type: boolean
+        roles:
+          type: array
+          items:
+            type: string
+            enum: [admin, editor, reviewer, viewer]
+    AuthLoginResponse:
+      type: object
+      required: [user, expiresAt]
+      properties:
+        user:
+          $ref: '#/components/schemas/CurrentUser'
+        expiresAt:
+          type: string
+          format: date-time
+    ChangePasswordRequest:
+      type: object
+      required: [newPassword]
+      properties:
+        currentPassword:
+          type: string
+          description: Obrigatoria para troca de senha em sessao normal; opcional no fluxo de primeiro acesso com troca obrigatoria.
+        newPassword:
+          type: string
+    ChangePasswordResponse:
+      type: object
+      required: [changed, user]
+      properties:
+        changed:
+          type: boolean
+        user:
+          $ref: '#/components/schemas/CurrentUser'
+    ManagedUserItem:
+      type: object
+      required: [userId, username, displayName, isActive, mustChangePassword, failedLoginAttempts, roles, createdAt, updatedAt]
+      properties:
+        userId:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+        displayName:
+          type: string
+        isActive:
+          type: boolean
+        mustChangePassword:
+          type: boolean
+        failedLoginAttempts:
+          type: integer
+        lockedUntil:
+          type: string
+          format: date-time
+        lastLoginAt:
+          type: string
+          format: date-time
+        roles:
+          type: array
+          items:
+            type: string
+            enum: [admin, editor, reviewer, viewer]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ListManagedUsersResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ManagedUserItem'
+    CreateManagedUserRequest:
+      type: object
+      required: [username, displayName, password, roles]
+      properties:
+        userId:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+        displayName:
+          type: string
+        password:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+            enum: [admin, editor, reviewer, viewer]
+    CreateManagedUserResponse:
+      type: object
+      required: [userId]
+      properties:
+        userId:
+          type: string
+    UpdateManagedUserRequest:
+      type: object
+      properties:
+        displayName:
+          type: string
+        email:
+          type: string
+        isActive:
+          type: boolean
+        newPassword:
+          type: string
+        mustChangePassword:
+          type: boolean
+    UpdateManagedUserResponse:
+      type: object
+      required: [userId, updated]
+      properties:
+        userId:
+          type: string
+        updated:
+          type: boolean
     CreateDocumentRequest:
       type: object
       required:
@@ -1187,3 +1426,5 @@ components:
           additionalProperties: true
         trace_id:
           type: string
+
+

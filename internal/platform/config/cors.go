@@ -26,7 +26,7 @@ func LoadCORSConfig() (CORSConfig, error) {
   }
   allowedHeaders := splitCSV(os.Getenv("METALDOCS_CORS_ALLOWED_HEADERS"))
   if len(allowedHeaders) == 0 {
-    allowedHeaders = []string{"Content-Type", "X-User-Id", "X-Trace-Id"}
+    allowedHeaders = []string{"Content-Type", "X-Trace-Id"}
   }
   exposedHeaders := splitCSV(os.Getenv("METALDOCS_CORS_EXPOSED_HEADERS"))
   allowCredentials := strings.EqualFold(strings.TrimSpace(os.Getenv("METALDOCS_CORS_ALLOW_CREDENTIALS")), "true")

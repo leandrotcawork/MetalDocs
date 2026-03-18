@@ -86,6 +86,16 @@ label span,
   padding: 2rem;
 }
 
+.auth-shell {
+  display: grid;
+  min-height: 100vh;
+  align-items: center;
+}
+
+.auth-hero {
+  min-height: 60vh;
+}
+
 .hero {
   display: grid;
   grid-template-columns: 1.8fr 0.9fr;
@@ -142,6 +152,10 @@ label span,
   display: grid;
   grid-template-columns: 0.95fr 1.1fr 1.25fr;
   gap: 1rem;
+}
+
+.wide-grid {
+  grid-template-columns: 0.9fr 1fr 1.15fr;
 }
 
 .panel {
@@ -303,6 +317,10 @@ td small {
 
 .action-row {
   grid-template-columns: 1fr 1fr;
+}
+
+.action-row.single {
+  grid-template-columns: 1fr;
 }
 
 @media (max-width: 1240px) {

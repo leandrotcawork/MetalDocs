@@ -42,31 +42,39 @@ ON CONFLICT (user_id, role_code) DO NOTHING;
 ```env
 METALDOCS_REPOSITORY=postgres
 PGHOST=127.0.0.1
-PGPORT=5432
+PGPORT=5433
 PGDATABASE=metaldocs
 PGUSER=metaldocs_app
 PGPASSWORD=CHANGE_ME_STRONG_PASSWORD
 PGSSLMODE=disable
 METALDOCS_AUTH_ENABLED=true
 METALDOCS_AUTHZ_CACHE_TTL_SECONDS=30
+METALDOCS_AUTH_SESSION_SECRET=CHANGE_ME_SESSION_SECRET
+METALDOCS_AUTH_LEGACY_HEADER_ENABLED=false
+METALDOCS_AUTH_ORIGIN_PROTECTION_ENABLED=true
+METALDOCS_AUTH_TRUSTED_ORIGINS=http://127.0.0.1:4173,http://localhost:4173
 ```
 
 ## 5) Smoke auth
 
 ```bash
 curl http://localhost:8080/api/v1/health/ready
-curl http://localhost:8080/api/v1/documents
-curl -H "X-User-Id: admin-local" http://localhost:8080/api/v1/documents
+curl -i -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"identifier":"admin","password":"CHANGE_ME_ADMIN_PASSWORD"}' \
+  http://localhost:8080/api/v1/auth/login
 ```
 
 ## 6) Smoke admin IAM
 
 ```bash
 curl -X POST \
-  -H "X-User-Id: admin-local" \
   -H "Content-Type: application/json" \
-  -d '{"displayName":"Editor User","role":"editor"}' \
-  http://localhost:8080/api/v1/iam/users/editor-user/roles
+  -H "Origin: http://127.0.0.1:4173" \
+  -b cookies.txt \
+  -c cookies.txt \
+  -d '{"username":"editor.user","displayName":"Editor User","password":"StrongPass123","roles":["editor"]}' \
+  http://localhost:8080/api/v1/iam/users
 ```
 
 Apos atribuir role, o cache do usuario e invalidado automaticamente no processo.

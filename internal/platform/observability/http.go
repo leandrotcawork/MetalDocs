@@ -10,6 +10,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	authdomain "metaldocs/internal/modules/auth/domain"
 )
 
 type routeMetrics struct {
@@ -66,9 +68,9 @@ func (o *HTTPObservability) Wrap(next http.Handler) http.Handler {
 		if traceID == "" {
 			traceID = "trace-local"
 		}
-		userID := strings.TrimSpace(r.Header.Get("X-User-Id"))
-		if userID == "" {
-			userID = "anonymous"
+		userID := "anonymous"
+		if currentUser, ok := authdomain.CurrentUserFromContext(r.Context()); ok && strings.TrimSpace(currentUser.UserID) != "" {
+			userID = currentUser.UserID
 		}
 
 		o.logger.Info("http_request",

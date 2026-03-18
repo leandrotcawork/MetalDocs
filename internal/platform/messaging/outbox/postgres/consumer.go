@@ -12,13 +12,15 @@ import (
 )
 
 type Consumer struct {
-	db *sql.DB
+	db         *sql.DB
+	claimLease time.Duration
 }
 
-var claimedAtSentinel = time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
-
-func NewConsumer(db *sql.DB) *Consumer {
-	return &Consumer{db: db}
+func NewConsumer(db *sql.DB, claimLease time.Duration) *Consumer {
+	if claimLease <= 0 {
+		claimLease = 30 * time.Second
+	}
+	return &Consumer{db: db, claimLease: claimLease}
 }
 
 func (c *Consumer) ClaimUnpublished(ctx context.Context, limit int) ([]messaging.Event, error) {
@@ -33,15 +35,32 @@ func (c *Consumer) ClaimUnpublished(ctx context.Context, limit int) ([]messaging
 	defer func() { _ = tx.Rollback() }()
 
 	const q = `
+WITH candidates AS (
+  SELECT event_id
+  FROM metaldocs.outbox_events
+  WHERE published_at IS NULL
+    AND dead_lettered_at IS NULL
+    AND (next_attempt_at IS NULL OR next_attempt_at <= NOW())
+  ORDER BY occurred_at ASC
+  FOR UPDATE SKIP LOCKED
+  LIMIT $1
+),
+claimed AS (
+  UPDATE metaldocs.outbox_events oe
+  SET attempt_count = oe.attempt_count + 1,
+      last_attempt_at = NOW(),
+      next_attempt_at = NOW() + $2::interval
+  FROM candidates c
+  WHERE oe.event_id = c.event_id
+  RETURNING oe.event_id, oe.event_type, oe.aggregate_type, oe.aggregate_id, oe.occurred_at,
+            oe.version, oe.attempt_count, oe.idempotency_key, oe.producer, oe.trace_id, oe.payload
+)
 SELECT event_id, event_type, aggregate_type, aggregate_id, occurred_at, version,
-       idempotency_key, producer, trace_id, payload
-FROM metaldocs.outbox_events
-WHERE published_at IS NULL
+       attempt_count, idempotency_key, producer, trace_id, payload
+FROM claimed
 ORDER BY occurred_at ASC
-FOR UPDATE SKIP LOCKED
-LIMIT $1
 `
-	rows, err := tx.QueryContext(ctx, q, limit)
+	rows, err := tx.QueryContext(ctx, q, limit, durationToPostgresInterval(c.claimLease))
 	if err != nil {
 		return nil, fmt.Errorf("claim unpublished outbox events: %w", err)
 	}
@@ -59,6 +78,7 @@ LIMIT $1
 			&event.AggregateID,
 			&occurredAt,
 			&event.Version,
+			&event.AttemptCount,
 			&event.IdempotencyKey,
 			&event.Producer,
 			&event.TraceID,
@@ -82,16 +102,6 @@ LIMIT $1
 		return nil, fmt.Errorf("iterate outbox rows: %w", err)
 	}
 
-	if len(events) > 0 {
-		ids := make([]string, 0, len(events))
-		for _, event := range events {
-			ids = append(ids, event.EventID)
-		}
-		if err := updatePublishedAtTx(ctx, tx, ids, claimedAtSentinel); err != nil {
-			return nil, err
-		}
-	}
-
 	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("commit claim outbox tx: %w", err)
 	}
@@ -99,59 +109,61 @@ LIMIT $1
 }
 
 func (c *Consumer) MarkPublished(ctx context.Context, eventIDs []string) error {
-	return updatePublishedAt(ctx, c.db, eventIDs, time.Now().UTC())
-}
-
-func (c *Consumer) Release(ctx context.Context, eventIDs []string) error {
 	if len(eventIDs) == 0 {
 		return nil
 	}
 	placeholders := make([]string, 0, len(eventIDs))
-	args := make([]any, 0, len(eventIDs))
+	args := make([]any, 0, len(eventIDs)+1)
 	for idx, eventID := range eventIDs {
 		placeholders = append(placeholders, fmt.Sprintf("$%d", idx+1))
 		args = append(args, strings.TrimSpace(eventID))
 	}
-	q := fmt.Sprintf("UPDATE metaldocs.outbox_events SET published_at = NULL WHERE event_id IN (%s) AND published_at = $%d", strings.Join(placeholders, ", "), len(args)+1)
-	args = append(args, claimedAtSentinel)
+	q := fmt.Sprintf(`
+UPDATE metaldocs.outbox_events
+SET published_at = $%d,
+    next_attempt_at = NULL,
+    last_error = NULL
+WHERE event_id IN (%s)
+`, len(args)+1, strings.Join(placeholders, ", "))
+	args = append(args, time.Now().UTC())
 	if _, err := c.db.ExecContext(ctx, q, args...); err != nil {
-		return fmt.Errorf("release outbox events: %w", err)
-	}
-	return nil
-}
-
-func updatePublishedAt(ctx context.Context, db *sql.DB, eventIDs []string, publishedAt time.Time) error {
-	if len(eventIDs) == 0 {
-		return nil
-	}
-	placeholders := make([]string, 0, len(eventIDs))
-	args := make([]any, 0, len(eventIDs))
-	for idx, eventID := range eventIDs {
-		placeholders = append(placeholders, fmt.Sprintf("$%d", idx+1))
-		args = append(args, strings.TrimSpace(eventID))
-	}
-	q := fmt.Sprintf("UPDATE metaldocs.outbox_events SET published_at = $%d WHERE event_id IN (%s)", len(args)+1, strings.Join(placeholders, ", "))
-	args = append(args, publishedAt.UTC())
-	if _, err := db.ExecContext(ctx, q, args...); err != nil {
 		return fmt.Errorf("mark outbox events published: %w", err)
 	}
 	return nil
 }
 
-func updatePublishedAtTx(ctx context.Context, tx *sql.Tx, eventIDs []string, publishedAt time.Time) error {
-	if len(eventIDs) == 0 {
-		return nil
+func (c *Consumer) MarkFailed(ctx context.Context, failure messaging.FailedEvent) error {
+	if strings.TrimSpace(failure.EventID) == "" {
+		return fmt.Errorf("event id is required")
 	}
-	placeholders := make([]string, 0, len(eventIDs))
-	args := make([]any, 0, len(eventIDs))
-	for idx, eventID := range eventIDs {
-		placeholders = append(placeholders, fmt.Sprintf("$%d", idx+1))
-		args = append(args, strings.TrimSpace(eventID))
+
+	var nextAttempt any
+	if failure.NextAttemptAt != nil {
+		nextAttempt = failure.NextAttemptAt.UTC()
 	}
-	q := fmt.Sprintf("UPDATE metaldocs.outbox_events SET published_at = $%d WHERE event_id IN (%s)", len(args)+1, strings.Join(placeholders, ", "))
-	args = append(args, publishedAt.UTC())
-	if _, err := tx.ExecContext(ctx, q, args...); err != nil {
-		return fmt.Errorf("claim outbox events: %w", err)
+	var deadLettered any
+	if failure.DeadLetteredAt != nil {
+		deadLettered = failure.DeadLetteredAt.UTC()
+	}
+
+	const q = `
+UPDATE metaldocs.outbox_events
+SET published_at = NULL,
+    last_error = $2,
+    next_attempt_at = $3,
+    dead_lettered_at = $4
+WHERE event_id = $1
+`
+	if _, err := c.db.ExecContext(ctx, q, strings.TrimSpace(failure.EventID), strings.TrimSpace(failure.LastError), nextAttempt, deadLettered); err != nil {
+		return fmt.Errorf("mark outbox event failed: %w", err)
 	}
 	return nil
+}
+
+func durationToPostgresInterval(value time.Duration) string {
+	seconds := int(value.Seconds())
+	if seconds < 1 {
+		seconds = 1
+	}
+	return fmt.Sprintf("%d seconds", seconds)
 }

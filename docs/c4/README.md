@@ -6,10 +6,10 @@
 
 ## Container
 - API: exposicao HTTP e regras de negocio.
-- Worker: tarefas assincronas (indexacao, notificacoes, jobs).
+- Worker: tarefas assincronas com retry, backoff e DLQ para eventos internos.
 - Postgres: dados transacionais e auditoria.
 - Redis: cache e filas leves.
-- MinIO: blobs de documento.
+- MinIO: storage oficial de blobs de documento no runtime real.
 
 ## Component
 - Modulos de dominio: `documents`, `versions`, `workflow`, `iam`, `audit`, `search`.

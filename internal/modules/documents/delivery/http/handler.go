@@ -13,6 +13,7 @@ import (
 
 	"metaldocs/internal/modules/documents/application"
 	"metaldocs/internal/modules/documents/domain"
+	iamdomain "metaldocs/internal/modules/iam/domain"
 	"metaldocs/internal/platform/security"
 )
 
@@ -540,7 +541,7 @@ func (h *Handler) handleUploadAttachment(w http.ResponseWriter, r *http.Request,
 		FileName:    header.Filename,
 		ContentType: header.Header.Get("Content-Type"),
 		Content:     content,
-		UploadedBy:  strings.TrimSpace(r.Header.Get("X-User-Id")),
+		UploadedBy:  iamdomain.UserIDFromContext(r.Context()),
 		TraceID:     traceID,
 	})
 	if err != nil {

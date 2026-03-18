@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	authdomain "metaldocs/internal/modules/auth/domain"
 	iamdomain "metaldocs/internal/modules/iam/domain"
 )
 
@@ -14,10 +15,15 @@ type Middleware struct {
 	authorizer   iamdomain.Authorizer
 	roleProvider iamdomain.RoleProvider
 	enabled      bool
+	legacyHeader bool
 }
 
-func NewMiddleware(authorizer iamdomain.Authorizer, roleProvider iamdomain.RoleProvider, enabled bool) *Middleware {
-	return &Middleware{authorizer: authorizer, roleProvider: roleProvider, enabled: enabled}
+func NewMiddleware(authorizer iamdomain.Authorizer, roleProvider iamdomain.RoleProvider, enabled bool, legacyHeader ...bool) *Middleware {
+	allowLegacy := false
+	if len(legacyHeader) > 0 {
+		allowLegacy = legacyHeader[0]
+	}
+	return &Middleware{authorizer: authorizer, roleProvider: roleProvider, enabled: enabled, legacyHeader: allowLegacy}
 }
 
 func (m *Middleware) Wrap(next http.Handler) http.Handler {
@@ -33,20 +39,27 @@ func (m *Middleware) Wrap(next http.Handler) http.Handler {
 		}
 
 		traceID := requestTraceID(r)
-		userID := strings.TrimSpace(r.Header.Get("X-User-Id"))
+		userID := iamdomain.UserIDFromContext(r.Context())
+		roles := iamdomain.RolesFromContext(r.Context())
+		if userID == "" && m.legacyHeader {
+			userID = strings.TrimSpace(r.Header.Get("X-User-Id"))
+		}
 		if userID == "" {
-			writeAPIError(w, http.StatusUnauthorized, "AUTH_UNAUTHORIZED", "Missing X-User-Id header", traceID)
+			writeAPIError(w, http.StatusUnauthorized, "AUTH_UNAUTHORIZED", "Authentication required", traceID)
 			return
 		}
 
-		roles, err := m.roleProvider.RolesByUserID(context.Background(), userID)
-		if err != nil {
-			if errors.Is(err, iamdomain.ErrUserNotFound) || errors.Is(err, iamdomain.ErrUserInactive) {
-				writeAPIError(w, http.StatusUnauthorized, "AUTH_UNAUTHORIZED", "User is not authorized", traceID)
+		if len(roles) == 0 {
+			resolvedRoles, err := m.roleProvider.RolesByUserID(context.Background(), userID)
+			if err != nil {
+				if errors.Is(err, iamdomain.ErrUserNotFound) || errors.Is(err, iamdomain.ErrUserInactive) {
+					writeAPIError(w, http.StatusUnauthorized, "AUTH_UNAUTHORIZED", "User is not authorized", traceID)
+					return
+				}
+				writeAPIError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Authorization lookup failed", traceID)
 				return
 			}
-			writeAPIError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Authorization lookup failed", traceID)
-			return
+			roles = resolvedRoles
 		}
 
 		if !hasPermission(m.authorizer, roles, perm) {
@@ -54,7 +67,10 @@ func (m *Middleware) Wrap(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := iamdomain.WithAuthContext(r.Context(), userID, roles)
+		ctx := r.Context()
+		if _, ok := authdomain.CurrentUserFromContext(ctx); !ok {
+			ctx = iamdomain.WithAuthContext(ctx, userID, roles)
+		}
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -70,6 +86,9 @@ func hasPermission(authorizer iamdomain.Authorizer, roles []iamdomain.Role, perm
 
 func requiredPermission(method, path string) (iamdomain.Permission, bool) {
 	if path == "/api/v1/health/live" || path == "/api/v1/health/ready" || path == "/api/v1/metrics" {
+		return "", false
+	}
+	if strings.HasPrefix(path, "/api/v1/auth/") {
 		return "", false
 	}
 
@@ -108,6 +127,15 @@ func requiredPermission(method, path string) (iamdomain.Permission, bool) {
 	}
 	if method == http.MethodGet && strings.HasPrefix(path, "/api/v1/workflow/documents/") && strings.HasSuffix(path, "/approvals") {
 		return iamdomain.PermDocumentRead, true
+	}
+	if method == http.MethodPost && path == "/api/v1/iam/users" {
+		return iamdomain.PermIAMManageRoles, true
+	}
+	if method == http.MethodGet && path == "/api/v1/iam/users" {
+		return iamdomain.PermIAMManageRoles, true
+	}
+	if method == http.MethodPatch && strings.HasPrefix(path, "/api/v1/iam/users/") && !strings.HasSuffix(path, "/roles") {
+		return iamdomain.PermIAMManageRoles, true
 	}
 	if method == http.MethodPost && strings.HasPrefix(path, "/api/v1/iam/users/") && strings.HasSuffix(path, "/roles") {
 		return iamdomain.PermIAMManageRoles, true

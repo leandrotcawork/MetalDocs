@@ -10,7 +10,9 @@ Validar rapidamente logs estruturados e metricas HTTP RED (`rate`, `errors`, `du
 ## Passos
 1. Executar requests de smoke:
    - `GET /api/v1/health/live`
-   - `GET /api/v1/search/documents` com e sem `X-User-Id`
+   - `POST /api/v1/auth/login`
+   - `GET /api/v1/auth/me`
+   - `GET /api/v1/search/documents`
    - `POST /api/v1/documents`
 2. Consultar metricas:
    - `GET /api/v1/metrics`
@@ -20,6 +22,10 @@ Validar rapidamente logs estruturados e metricas HTTP RED (`rate`, `errors`, `du
 4. Verificar logs no console da API:
    - evento `http_request`
    - campos `trace_id`, `user_id`, `method`, `path`, `route`, `status`, `duration_ms`.
+5. Verificar logs do worker:
+   - evento `worker_event`
+   - campos `event_id`, `event_type`, `attempt_count`, `result`, `trace_id`
+   - evento `worker_batch` com `processed`, `failed`, `dead_lettered`
 
 ## Sinais de sucesso
 - `/api/v1/metrics` retorna `200` com `items`.
@@ -32,5 +38,30 @@ Validar rapidamente logs estruturados e metricas HTTP RED (`rate`, `errors`, `du
 - Campos faltando em log:
   - confirmar que o processo rodando e o binario mais recente.
 - `401` inesperado:
-  - revisar header `X-User-Id`.
+  - revisar sessao/cookie e `Origin`/`Referer` no browser.
 
+## Consultas operacionais da fila
+Pendentes/claimable:
+```sql
+SELECT COUNT(*) AS pending_events
+FROM metaldocs.outbox_events
+WHERE published_at IS NULL
+  AND dead_lettered_at IS NULL
+  AND (next_attempt_at IS NULL OR next_attempt_at <= NOW());
+```
+
+Em DLQ:
+```sql
+SELECT COUNT(*) AS dead_lettered_events
+FROM metaldocs.outbox_events
+WHERE dead_lettered_at IS NOT NULL;
+```
+
+Ultimas falhas:
+```sql
+SELECT event_id, event_type, attempt_count, last_error, last_attempt_at, next_attempt_at, dead_lettered_at
+FROM metaldocs.outbox_events
+WHERE last_error IS NOT NULL
+ORDER BY last_attempt_at DESC
+LIMIT 20;
+```

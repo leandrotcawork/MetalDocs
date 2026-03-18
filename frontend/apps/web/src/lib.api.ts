@@ -1,22 +1,23 @@
 import type {
   AccessPolicyItem,
+  ApiErrorEnvelope,
   AttachmentItem,
+  CurrentUser,
   DocumentListItem,
   DocumentTypeItem,
+  ManagedUserItem,
   SearchDocumentItem,
   VersionListItem,
   WorkflowApprovalItem,
-  ApiErrorEnvelope,
 } from "./lib.types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
-const USER_ID = import.meta.env.VITE_USER_ID ?? "admin-local";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
+    credentials: "include",
     ...init,
     headers: {
-      "X-User-Id": USER_ID,
       ...(init?.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
       ...(init?.headers ?? {}),
     },
@@ -24,7 +25,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const errorPayload = (await response.json().catch(() => null)) as ApiErrorEnvelope | null;
-    throw new Error(errorPayload?.error.message ?? `HTTP ${response.status}`);
+    const error = new Error(errorPayload?.error.message ?? `HTTP ${response.status}`);
+    (error as Error & { status?: number }).status = response.status;
+    throw error;
   }
 
   if (response.status === 204) {
@@ -35,8 +38,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  currentUserId: USER_ID,
   currentApiBaseUrl: API_BASE_URL,
+  login: (body: { identifier: string; password: string }) => request<{ user: CurrentUser; expiresAt: string }>("/auth/login", { method: "POST", body: JSON.stringify(body) }),
+  logout: () => request<void>("/auth/logout", { method: "POST" }),
+  me: () => request<CurrentUser>("/auth/me"),
+  changePassword: (body: { currentPassword: string; newPassword: string }) => request<{ changed: boolean; user: CurrentUser }>("/auth/change-password", { method: "POST", body: JSON.stringify(body) }),
+  listUsers: () => request<{ items: ManagedUserItem[] }>("/iam/users"),
+  createUser: (body: Record<string, unknown>) => request<{ userId: string }>("/iam/users", { method: "POST", body: JSON.stringify(body) }),
+  updateUser: (userId: string, body: Record<string, unknown>) => request<{ userId: string; updated: boolean }>(`/iam/users/${userId}`, { method: "PATCH", body: JSON.stringify(body) }),
+  assignRole: (userId: string, body: Record<string, unknown>) => request<{ userId: string; role: string; displayName: string }>(`/iam/users/${userId}/roles`, { method: "POST", body: JSON.stringify(body) }),
   listDocumentTypes: () => request<{ items: DocumentTypeItem[] }>("/document-types"),
   listDocuments: () => request<{ items: DocumentListItem[] }>("/documents"),
   searchDocuments: (params: URLSearchParams) => request<{ items: SearchDocumentItem[] }>(`/search/documents?${params.toString()}`),

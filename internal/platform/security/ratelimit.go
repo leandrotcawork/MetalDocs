@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	authdomain "metaldocs/internal/modules/auth/domain"
+	iamdomain "metaldocs/internal/modules/iam/domain"
 	"metaldocs/internal/platform/config"
 )
 
@@ -92,7 +94,10 @@ func shouldSkipRateLimit(path string) bool {
 }
 
 func requestIdentity(r *http.Request) string {
-	if userID := strings.TrimSpace(r.Header.Get("X-User-Id")); userID != "" {
+	if currentUser, ok := authdomain.CurrentUserFromContext(r.Context()); ok && strings.TrimSpace(currentUser.UserID) != "" {
+		return "user:" + strings.TrimSpace(currentUser.UserID)
+	}
+	if userID := strings.TrimSpace(iamdomain.UserIDFromContext(r.Context())); userID != "" {
 		return "user:" + userID
 	}
 	host, _, err := net.SplitHostPort(strings.TrimSpace(r.RemoteAddr))

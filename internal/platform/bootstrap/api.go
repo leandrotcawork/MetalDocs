@@ -1,0 +1,126 @@
+package bootstrap
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+
+	auditdomain "metaldocs/internal/modules/audit/domain"
+	auditmemory "metaldocs/internal/modules/audit/infrastructure/memory"
+	auditpg "metaldocs/internal/modules/audit/infrastructure/postgres"
+	authdomain "metaldocs/internal/modules/auth/domain"
+	authmemory "metaldocs/internal/modules/auth/infrastructure/memory"
+	authpg "metaldocs/internal/modules/auth/infrastructure/postgres"
+	docdomain "metaldocs/internal/modules/documents/domain"
+	memoryrepo "metaldocs/internal/modules/documents/infrastructure/memory"
+	pgrepo "metaldocs/internal/modules/documents/infrastructure/postgres"
+	iamdomain "metaldocs/internal/modules/iam/domain"
+	iampg "metaldocs/internal/modules/iam/infrastructure/postgres"
+	"metaldocs/internal/platform/authn"
+	"metaldocs/internal/platform/config"
+	pgdb "metaldocs/internal/platform/db/postgres"
+	"metaldocs/internal/platform/messaging"
+	nooppub "metaldocs/internal/platform/messaging/noop"
+	outboxpg "metaldocs/internal/platform/messaging/outbox/postgres"
+	localstorage "metaldocs/internal/platform/storage/local"
+	miniostorage "metaldocs/internal/platform/storage/minio"
+)
+
+type APIDependencies struct {
+	DocumentsRepo   docdomain.Repository
+	AttachmentStore docdomain.AttachmentStore
+	RoleProvider    iamdomain.RoleProvider
+	RoleAdminRepo   iamdomain.RoleAdminRepository
+	AuthRepo        authdomain.Repository
+	AuditWriter     auditdomain.Writer
+	Publisher       messaging.Publisher
+	Cleanup         func()
+}
+
+type bucketEnsurer interface {
+	EnsureBucket(ctx context.Context) error
+}
+
+func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg config.AttachmentsConfig) (APIDependencies, error) {
+	switch repoMode {
+	case config.RepositoryPostgres:
+		pgCfg, err := config.LoadPostgresConfig()
+		if err != nil {
+			return APIDependencies{}, fmt.Errorf("load postgres config: %w", err)
+		}
+		db, err := pgdb.Open(ctx, pgCfg.DSN)
+		if err != nil {
+			return APIDependencies{}, fmt.Errorf("open postgres: %w", err)
+		}
+
+		store, err := buildAttachmentStore(ctx, attachmentsCfg)
+		if err != nil {
+			_ = closeDB(db)
+			return APIDependencies{}, err
+		}
+
+		authRepo := authpg.NewRepository(db)
+		return APIDependencies{
+			DocumentsRepo:   pgrepo.NewRepository(db),
+			AttachmentStore: store,
+			RoleProvider:    iampg.NewRoleProvider(db),
+			RoleAdminRepo:   iampg.NewRoleAdminRepository(db),
+			AuthRepo:        authRepo,
+			AuditWriter:     auditpg.NewWriter(db),
+			Publisher:       outboxpg.NewPublisher(db),
+			Cleanup:         func() { _ = closeDB(db) },
+		}, nil
+	default:
+		roles := authn.DevRoleMap()
+		store, err := buildAttachmentStore(ctx, attachmentsCfg)
+		if err != nil {
+			return APIDependencies{}, err
+		}
+		authRepo := authmemory.NewRepository()
+		for userID, userRoles := range roles {
+			if err := authRepo.UpsertUserAndAssignRole(ctx, userID, userID, userRoles[0], "bootstrap"); err != nil {
+				return APIDependencies{}, err
+			}
+			for _, role := range userRoles[1:] {
+				if err := authRepo.UpsertUserAndAssignRole(ctx, userID, userID, role, "bootstrap"); err != nil {
+					return APIDependencies{}, err
+				}
+			}
+		}
+		return APIDependencies{
+			DocumentsRepo:   memoryrepo.NewRepository(),
+			AttachmentStore: store,
+			RoleProvider:    authRepo,
+			RoleAdminRepo:   authRepo,
+			AuthRepo:        authRepo,
+			AuditWriter:     auditmemory.NewWriter(),
+			Publisher:       nooppub.NewPublisher(),
+			Cleanup:         func() {},
+		}, nil
+	}
+}
+
+func buildAttachmentStore(ctx context.Context, cfg config.AttachmentsConfig) (docdomain.AttachmentStore, error) {
+	switch cfg.Provider {
+	case config.StorageProviderMemory:
+		return memoryrepo.NewAttachmentStore(), nil
+	case config.StorageProviderMinIO:
+		store, err := miniostorage.NewStore(cfg)
+		if err != nil {
+			return nil, err
+		}
+		if err := store.EnsureBucket(ctx); err != nil {
+			return nil, err
+		}
+		return store, nil
+	default:
+		return localstorage.NewStore(cfg.RootPath), nil
+	}
+}
+
+func closeDB(db *sql.DB) error {
+	if db == nil {
+		return nil
+	}
+	return db.Close()
+}

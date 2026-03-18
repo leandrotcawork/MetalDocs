@@ -194,7 +194,7 @@ Saida:
 - worker production-ready para notificacoes
 
 ## Task 012 - Build operational UI
-Status: `todo`
+Status: `done`
 
 Objetivo:
 Criar a UI minima em cima do contrato real do backend.
@@ -210,6 +210,55 @@ Escopo:
 Saida:
 - interface minima usavel para operacao real
 
+## Task 013 - Promote MinIO to official runtime storage
+Status: `done`
+
+Objetivo:
+Alinhar o runtime real de anexos com a arquitetura oficial de object storage.
+
+Escopo:
+- provider explicito de storage
+- adapter MinIO/S3-compatible
+- bootstrap de bucket
+- compose alinhado ao provider oficial
+
+Saida:
+- stack Docker usando MinIO de verdade para blobs
+
+## Task 014 - Harden outbox worker with retry and DLQ
+Status: `done`
+
+Objetivo:
+Tornar o processamento assincrono resiliente a falhas temporarias e eventos envenenados.
+
+Escopo:
+- retry com backoff deterministico
+- persistencia de erro e tentativa
+- DLQ operacional
+- logs operacionais do worker
+
+Saida:
+- worker pronto para operacao mais robusta
+
+## Task 015 - Harden auth, web session security and local dev runtime
+Status: `done`
+
+Objetivo:
+Fechar auth v1, seguranca web e modo dev local sem ambiguidade antes do proximo ciclo.
+
+Escopo:
+- sessao por cookie HTTP-only como runtime oficial
+- first login com troca obrigatoria sem recarregar workspace antes da hora
+- protecao de origem para requests mutaveis autenticados por cookie
+- `X-User-Id` apenas como modo tecnico controlado
+- Postgres Docker como unica fonte de verdade local
+- scripts e runbooks do modo dev rapido
+
+Saida:
+- auth v1 estavel para web
+- runtime local previsivel
+- backlog liberado para a proxima camada de produto
+
 ## Recommended Commit Order
 1. Task 001 + Task 002
 2. Task 003 + Task 004
@@ -220,3 +269,5 @@ Saida:
 7. Task 010
 8. Task 011
 9. Task 012
+10. Task 013
+11. Task 014

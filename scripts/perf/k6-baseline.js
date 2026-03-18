@@ -1,6 +1,8 @@
 import http from "k6/http";
 import { check, sleep } from "k6";
 
+// Technical perf mode only. For these scripts, enable METALDOCS_AUTH_LEGACY_HEADER_ENABLED=true
+// or migrate the harness to a cookie-session login flow before using them in official runtime validation.
 const BASE_URL = __ENV.BASE_URL || "http://localhost:8080/api/v1";
 const USER_ID = __ENV.USER_ID || "admin-local";
 
@@ -40,4 +42,3 @@ export default function () {
 
   sleep(0.2);
 }
-

@@ -1,6 +1,31 @@
 export type DocumentStatus = "DRAFT" | "IN_REVIEW" | "APPROVED" | "PUBLISHED" | "ARCHIVED";
 export type Classification = "PUBLIC" | "INTERNAL" | "CONFIDENTIAL" | "RESTRICTED";
 export type ResourceScope = "document" | "document_type" | "area";
+export type UserRole = "admin" | "editor" | "reviewer" | "viewer";
+
+export interface CurrentUser {
+  userId: string;
+  username: string;
+  email?: string;
+  displayName: string;
+  mustChangePassword: boolean;
+  roles: UserRole[];
+}
+
+export interface ManagedUserItem {
+  userId: string;
+  username: string;
+  email?: string;
+  displayName: string;
+  isActive: boolean;
+  mustChangePassword: boolean;
+  failedLoginAttempts: number;
+  lockedUntil?: string;
+  lastLoginAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  roles: UserRole[];
+}
 
 export interface DocumentTypeItem {
   code: string;

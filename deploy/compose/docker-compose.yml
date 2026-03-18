@@ -2,27 +2,43 @@ services:
   postgres:
     image: postgres:16
     container_name: metaldocs-postgres
+    restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_HOST_PORT}:5432"
     volumes:
       - metaldocs_postgres_data:/var/lib/postgresql/data
+      - ../../migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
 
   redis:
     image: redis:7
     container_name: metaldocs-redis
+    restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     ports:
       - "6379:6379"
     volumes:
       - metaldocs_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
 
   minio:
     image: minio/minio:latest
     container_name: metaldocs-minio
+    restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
@@ -39,10 +55,14 @@ services:
       dockerfile: deploy/docker/api.Dockerfile
     image: ${API_IMAGE}
     container_name: metaldocs-api
+    restart: unless-stopped
     depends_on:
-      - postgres
-      - redis
-      - minio
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
     environment:
       APP_ENV: ${APP_ENV}
       APP_HOST: ${APP_HOST}
@@ -50,21 +70,45 @@ services:
       METALDOCS_REPOSITORY: postgres
       METALDOCS_AUTH_ENABLED: ${METALDOCS_AUTH_ENABLED}
       METALDOCS_AUTHZ_CACHE_TTL_SECONDS: ${METALDOCS_AUTHZ_CACHE_TTL_SECONDS}
+      METALDOCS_AUTH_SESSION_SECRET: ${METALDOCS_AUTH_SESSION_SECRET}
+      METALDOCS_AUTH_SESSION_COOKIE_NAME: ${METALDOCS_AUTH_SESSION_COOKIE_NAME}
+      METALDOCS_AUTH_SESSION_TTL_HOURS: ${METALDOCS_AUTH_SESSION_TTL_HOURS}
+      METALDOCS_AUTH_COOKIE_SECURE: ${METALDOCS_AUTH_COOKIE_SECURE}
+      METALDOCS_AUTH_PASSWORD_MIN_LENGTH: ${METALDOCS_AUTH_PASSWORD_MIN_LENGTH}
+      METALDOCS_AUTH_LOGIN_MAX_FAILED_ATTEMPTS: ${METALDOCS_AUTH_LOGIN_MAX_FAILED_ATTEMPTS}
+      METALDOCS_AUTH_LOGIN_LOCK_MINUTES: ${METALDOCS_AUTH_LOGIN_LOCK_MINUTES}
+      METALDOCS_AUTH_LEGACY_HEADER_ENABLED: ${METALDOCS_AUTH_LEGACY_HEADER_ENABLED}
+      METALDOCS_BOOTSTRAP_ADMIN_ENABLED: ${METALDOCS_BOOTSTRAP_ADMIN_ENABLED}
+      METALDOCS_BOOTSTRAP_ADMIN_USER_ID: ${METALDOCS_BOOTSTRAP_ADMIN_USER_ID}
+      METALDOCS_BOOTSTRAP_ADMIN_USERNAME: ${METALDOCS_BOOTSTRAP_ADMIN_USERNAME}
+      METALDOCS_BOOTSTRAP_ADMIN_EMAIL: ${METALDOCS_BOOTSTRAP_ADMIN_EMAIL}
+      METALDOCS_BOOTSTRAP_ADMIN_DISPLAY_NAME: ${METALDOCS_BOOTSTRAP_ADMIN_DISPLAY_NAME}
+      METALDOCS_BOOTSTRAP_ADMIN_PASSWORD: ${METALDOCS_BOOTSTRAP_ADMIN_PASSWORD}
       METALDOCS_RATE_LIMIT_ENABLED: ${METALDOCS_RATE_LIMIT_ENABLED}
       METALDOCS_RATE_LIMIT_WINDOW_SECONDS: ${METALDOCS_RATE_LIMIT_WINDOW_SECONDS}
       METALDOCS_RATE_LIMIT_MAX_REQUESTS: ${METALDOCS_RATE_LIMIT_MAX_REQUESTS}
       METALDOCS_CORS_ENABLED: false
-      METALDOCS_ATTACHMENTS_ROOT: /var/lib/metaldocs/attachments
+      METALDOCS_STORAGE_PROVIDER: ${METALDOCS_STORAGE_PROVIDER}
       METALDOCS_ATTACHMENTS_SIGNING_SECRET: ${METALDOCS_ATTACHMENTS_SIGNING_SECRET}
       METALDOCS_ATTACHMENTS_DOWNLOAD_TTL_SECONDS: ${METALDOCS_ATTACHMENTS_DOWNLOAD_TTL_SECONDS}
+      METALDOCS_MINIO_ENDPOINT: minio:9000
+      METALDOCS_MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      METALDOCS_MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      METALDOCS_MINIO_BUCKET: ${METALDOCS_MINIO_BUCKET}
+      METALDOCS_MINIO_USE_SSL: ${METALDOCS_MINIO_USE_SSL}
+      METALDOCS_MINIO_AUTO_CREATE_BUCKET: ${METALDOCS_MINIO_AUTO_CREATE_BUCKET}
       PGHOST: postgres
       PGPORT: 5432
       PGDATABASE: ${POSTGRES_DB}
       PGUSER: ${POSTGRES_USER}
       PGPASSWORD: ${POSTGRES_PASSWORD}
       PGSSLMODE: disable
-    volumes:
-      - metaldocs_attachments_data:/var/lib/metaldocs/attachments
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/api/v1/health/live >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
 
   worker:
     build:
@@ -72,25 +116,31 @@ services:
       dockerfile: deploy/docker/worker.Dockerfile
     image: ${WORKER_IMAGE}
     container_name: metaldocs-worker
+    restart: unless-stopped
     depends_on:
-      - postgres
-      - redis
-      - minio
-      - api
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      api:
+        condition: service_healthy
     environment:
       METALDOCS_REPOSITORY: postgres
       METALDOCS_WORKER_POLL_INTERVAL_SECONDS: ${METALDOCS_WORKER_POLL_INTERVAL_SECONDS}
       METALDOCS_WORKER_BATCH_SIZE: ${METALDOCS_WORKER_BATCH_SIZE}
       METALDOCS_WORKER_REVIEW_REMINDER_DAYS: ${METALDOCS_WORKER_REVIEW_REMINDER_DAYS}
       METALDOCS_WORKER_RUN_ONCE: ${METALDOCS_WORKER_RUN_ONCE}
+      METALDOCS_WORKER_MAX_ATTEMPTS: ${METALDOCS_WORKER_MAX_ATTEMPTS}
+      METALDOCS_WORKER_RETRY_BASE_SECONDS: ${METALDOCS_WORKER_RETRY_BASE_SECONDS}
+      METALDOCS_WORKER_RETRY_MAX_SECONDS: ${METALDOCS_WORKER_RETRY_MAX_SECONDS}
       PGHOST: postgres
       PGPORT: 5432
       PGDATABASE: ${POSTGRES_DB}
       PGUSER: ${POSTGRES_USER}
       PGPASSWORD: ${POSTGRES_PASSWORD}
       PGSSLMODE: disable
-    volumes:
-      - metaldocs_attachments_data:/var/lib/metaldocs/attachments
 
   web:
     build:
@@ -98,15 +148,26 @@ services:
       dockerfile: Dockerfile
     image: ${WEB_IMAGE}
     container_name: metaldocs-web
+    restart: unless-stopped
     depends_on:
-      - api
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://127.0.0.1:4173/ || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
 
   gateway:
     image: nginx:1.27-alpine
     container_name: metaldocs-gateway
+    restart: unless-stopped
     depends_on:
-      - api
-      - web
+      api:
+        condition: service_healthy
+      web:
+        condition: service_healthy
     ports:
       - "80:80"
     volumes:
@@ -116,4 +177,3 @@ volumes:
   metaldocs_postgres_data:
   metaldocs_redis_data:
   metaldocs_minio_data:
-  metaldocs_attachments_data:

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { TopbarDropdown } from "./TopbarDropdown";
+import { buildDocumentProfileCountMap } from "../features/documents/adapters/catalogSummary";
+import { TopbarDropdown } from "./ui/TopbarDropdown";
 import type {
   AccessPolicyItem,
   AttachmentItem,
@@ -123,6 +124,11 @@ export function DocumentsWorkspace(props: DocumentsWorkspaceProps) {
     }));
   }, [filteredDocuments, props.processAreas]);
 
+  const profileCountByCode = useMemo(
+    () => buildDocumentProfileCountMap(props.documents),
+    [props.documents],
+  );
+
   const inReviewCount = props.documents.filter((item) => item.status === "IN_REVIEW").length;
   const approvedCount = props.documents.filter((item) => item.status === "APPROVED" || item.status === "PUBLISHED").length;
   const expiringSoonDocuments = props.documents.filter((item) => {
@@ -197,7 +203,7 @@ export function DocumentsWorkspace(props: DocumentsWorkspaceProps) {
             <button key={item.code} type="button" className={`catalog-chip ${profileFilter === item.code ? "is-active" : ""}`} onClick={() => setProfileFilter((current) => current === item.code ? "all" : item.code)}>
               <span className={`catalog-chip-dot profile-${item.code}`} />
               {profileAlias(item.code, props.documentProfiles)}
-              <span className="catalog-chip-count">{props.documents.filter((doc) => doc.documentProfile === item.code).length}</span>
+              <span className="catalog-chip-count">{profileCountByCode[item.code] ?? 0}</span>
             </button>
           ))}
           <span className="catalog-chip-separator" />

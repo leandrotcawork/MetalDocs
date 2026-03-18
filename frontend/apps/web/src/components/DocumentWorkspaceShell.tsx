@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { buildProfileAccordions } from "../features/documents/adapters/catalogSummary";
 import type { DocumentProfileItem, SearchDocumentItem } from "../lib.types";
 
 export type WorkspaceView = "operations" | "approvals" | "audit" | "library" | "my-docs" | "recent" | "create" | "registry" | "notifications" | "admin";
@@ -34,13 +35,6 @@ type NavSubItem = {
 type NavSection = {
   label: string;
   items: NavSubItem[];
-};
-
-type ProfileAccordion = {
-  code: string;
-  label: string;
-  count: number;
-  areas: Array<{ label: string; count: number }>;
 };
 
 function sections(props: WorkspaceShellProps): NavSection[] {
@@ -171,27 +165,6 @@ function sections(props: WorkspaceShellProps): NavSection[] {
   return [overview, documents, ...tail];
 }
 
-function profileAccordions(props: WorkspaceShellProps): ProfileAccordion[] {
-  return props.documentProfiles.map((profile) => {
-    const profileDocuments = props.documents.filter((item) => item.documentProfile === profile.code);
-    const areaMap = new Map<string, number>();
-    for (const document of profileDocuments) {
-      const label = document.processArea || "Sem area";
-      areaMap.set(label, (areaMap.get(label) ?? 0) + 1);
-    }
-
-    return {
-      code: profile.code,
-      label: profile.alias || profile.name,
-      count: profileDocuments.length,
-      areas: Array.from(areaMap.entries())
-        .map(([label, count]) => ({ label, count }))
-        .sort((left, right) => right.count - left.count)
-        .slice(0, 5),
-    };
-  });
-}
-
 function activeTitle(activeView: WorkspaceView): string {
   switch (activeView) {
     case "operations":
@@ -227,7 +200,10 @@ export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
   const navSections = sections(props);
   const primarySections = navSections.slice(0, 2);
   const secondarySections = navSections.slice(2);
-  const typedSections = profileAccordions(props);
+  const typedSections = useMemo(
+    () => buildProfileAccordions(props.documentProfiles, props.documents),
+    [props.documentProfiles, props.documents],
+  );
   const currentTitle = activeTitle(props.activeView);
   const isCatalogView = isDocumentCatalogView(props.activeView);
   const userMenuRef = useRef<HTMLDivElement | null>(null);

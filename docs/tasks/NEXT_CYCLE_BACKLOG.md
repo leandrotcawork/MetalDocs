@@ -772,7 +772,7 @@ Aceite:
 - `go test ./...` verde
 
 ## Task 043 - Frontend structure: UI primitives, feature slices, and catalog summary performance
-Status: `todo`
+Status: `done`
 
 Objetivo:
 Evoluir `apps/web` para estrutura escalavel: primitives reutilizaveis, feature slices e performance previsivel do shell.

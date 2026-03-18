@@ -52,6 +52,12 @@ func TestCreateAndListVersionsFlow(t *testing.T) {
 	if err := json.Unmarshal(createRR.Body.Bytes(), &created); err != nil {
 		t.Fatalf("invalid create response json: %v", err)
 	}
+	if created["documentProfile"] != "contract" {
+		t.Fatalf("expected documentProfile contract, got %v", created["documentProfile"])
+	}
+	if created["documentFamily"] != "contract" {
+		t.Fatalf("expected documentFamily contract, got %v", created["documentFamily"])
+	}
 
 	documentID, ok := created["documentId"].(string)
 	if !ok || strings.TrimSpace(documentID) == "" {
@@ -114,6 +120,20 @@ func TestListDocumentTypes(t *testing.T) {
 
 	if rr.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", rr.Code)
+	}
+}
+
+func TestListDocumentFamiliesAndProfiles(t *testing.T) {
+	mux := newTestMux()
+
+	for _, path := range []string{"/api/v1/document-families", "/api/v1/document-profiles"} {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Fatalf("expected 200 for %s, got %d", path, rr.Code)
+		}
 	}
 }
 

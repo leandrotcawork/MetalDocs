@@ -259,6 +259,163 @@ Saida:
 - runtime local previsivel
 - backlog liberado para a proxima camada de produto
 
+## Task 016 - Introduce document family and profile registry
+Status: `done`
+
+Objetivo:
+Separar familias documentais canonicas da plataforma de perfis documentais configuraveis por empresa.
+
+Escopo:
+- familias canonicas fixas da plataforma
+- perfis documentais configuraveis
+- relacao `profile -> family`
+- `documents` passa a operar por profile sem perder a family
+
+Saida:
+- base multiempresa sem hardcode de tipos documentais por cliente
+- compatibilidade preservada com `documentType` como alias transitório de `documentProfile`
+
+## Task 017 - Add process area and subject taxonomy
+Status: `todo`
+
+Objetivo:
+Separar assunto/processo da natureza documental para evitar crescimento caotico de tipos.
+
+Escopo:
+- `process_area`
+- opcionalmente `subject/domain`
+- vinculo entre documentos, profiles e taxonomia
+- busca/filtro por processo
+
+Saida:
+- `marketplaces` e outros contextos deixam de competir com tipo documental
+
+## Task 018 - Add versioned schema and governance by profile
+Status: `todo`
+
+Objetivo:
+Permitir que cada profile defina metadata e governanca proprios de forma versionada e auditavel.
+
+Escopo:
+- schema versionado por profile
+- campos obrigatorios/opcionais por profile
+- prefixo/codigo por profile
+- workflow/revisao/retencao por profile
+
+Saida:
+- validacao e governanca documental configuraveis por empresa
+
+## Task 019 - Seed Metal Nobre document registry
+Status: `todo`
+
+Objetivo:
+Materializar o primeiro caso real da plataforma com taxonomia alinhada a ISO-9001 e operacao da Metal Nobre.
+
+Escopo:
+- profiles iniciais:
+  - `PO`
+  - `IT`
+  - `RG`
+- process areas iniciais:
+  - `quality`
+  - `marketplaces`
+  - `commercial`
+  - `purchasing`
+  - `logistics`
+  - `finance`
+
+Saida:
+- registry real pronto para organizar os documentos da Metal Nobre
+
+## Task 020 - Evolve API and UI to create documents by profile
+Status: `todo`
+
+Objetivo:
+Fazer a plataforma operar pelo registry configuravel em vez de lista fixa de tipos.
+
+Escopo:
+- OpenAPI refletindo family + profile
+- endpoints para listar registry/perfis
+- UI criando documentos por profile
+- exibicao de process area e governanca do profile
+
+Saida:
+- experiencia operacional multiempresa sobre a arquitetura correta
+
+## Task 021 - Add audit timeline HTTP surface
+Status: `todo`
+
+Objetivo:
+Fechar a timeline operacional do produto com trilha HTTP de auditoria real.
+
+Escopo:
+- endpoint de timeline/audit
+- consulta por documento
+- ordenacao por tempo
+- payload alinhado com eventos append-only existentes
+
+Saida:
+- timeline operacional completa via backend
+
+## Task 022 - Build operational notifications experience
+Status: `todo`
+
+Objetivo:
+Expor no produto a camada de notificacoes que hoje ja existe no worker/backend.
+
+Escopo:
+- endpoint/listagem de notificacoes
+- tela operacional de notificacoes
+- marcacao de leitura/estado operacional
+
+Saida:
+- notificacoes visiveis e utilizaveis na web app
+
+## Task 023 - Expand administrative user management
+Status: `todo`
+
+Objetivo:
+Evoluir IAM/Auth administrativo para um ciclo de vida de usuario mais profissional.
+
+Escopo:
+- gestao administrativa de usuarios mais completa
+- ativacao/inativacao
+- visualizacao de estado de auth
+- atribuicao de roles mais rica
+
+Saida:
+- superficie administrativa mais proxima de produto real
+
+## Task 024 - Add administrative password reset and user lifecycle actions
+Status: `todo`
+
+Objetivo:
+Fechar o lifecycle operacional de usuarios internos sem depender de SQL manual.
+
+Escopo:
+- reset administrativo de senha
+- obrigar troca de senha no proximo login
+- bloqueio/desbloqueio operacional
+- trilha auditavel dessas acoes
+
+Saida:
+- lifecycle de usuario operacionalizado
+
+## Task 025 - Deepen production readiness and observability
+Status: `todo`
+
+Objetivo:
+Subir a maturidade operacional da plataforma apos o ciclo de taxonomia documental e superficies operacionais.
+
+Escopo:
+- observabilidade mais profunda
+- readiness de producao
+- indicadores de auth/session/worker
+- evidencias de operacao segura
+
+Saida:
+- baseline mais proxima de release-grade
+
 ## Recommended Commit Order
 1. Task 001 + Task 002
 2. Task 003 + Task 004
@@ -271,3 +428,10 @@ Saida:
 9. Task 012
 10. Task 013
 11. Task 014
+12. Task 015
+13. Task 016 + Task 017
+14. Task 018 + Task 019
+15. Task 020
+16. Task 021 + Task 022
+17. Task 023 + Task 024
+18. Task 025

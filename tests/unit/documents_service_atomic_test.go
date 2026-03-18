@@ -39,6 +39,14 @@ func (r *atomicRepoSpy) ListDocumentTypes(context.Context) ([]domain.DocumentTyp
 	return domain.DefaultDocumentTypes(), nil
 }
 
+func (r *atomicRepoSpy) ListDocumentFamilies(context.Context) ([]domain.DocumentFamily, error) {
+	return domain.DefaultDocumentFamilies(), nil
+}
+
+func (r *atomicRepoSpy) ListDocumentProfiles(context.Context) ([]domain.DocumentProfile, error) {
+	return domain.DefaultDocumentProfiles(), nil
+}
+
 func (r *atomicRepoSpy) ListAccessPolicies(context.Context, string, string) ([]domain.AccessPolicy, error) {
 	return nil, nil
 }

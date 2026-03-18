@@ -13,6 +13,8 @@ type Repository interface {
 	CreateDocument(ctx context.Context, document Document) error
 	GetDocument(ctx context.Context, documentID string) (Document, error)
 	ListDocuments(ctx context.Context) ([]Document, error)
+	ListDocumentFamilies(ctx context.Context) ([]DocumentFamily, error)
+	ListDocumentProfiles(ctx context.Context) ([]DocumentProfile, error)
 	ListDocumentTypes(ctx context.Context) ([]DocumentType, error)
 	ListAccessPolicies(ctx context.Context, resourceScope, resourceID string) ([]AccessPolicy, error)
 	ReplaceAccessPolicies(ctx context.Context, resourceScope, resourceID string, policies []AccessPolicy) error

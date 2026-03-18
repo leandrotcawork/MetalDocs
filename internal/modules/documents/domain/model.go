@@ -18,20 +18,22 @@ const (
 )
 
 type Document struct {
-	ID             string
-	Title          string
-	DocumentType   string
-	OwnerID        string
-	BusinessUnit   string
-	Department     string
-	Classification string
-	Status         string
-	Tags           []string
-	EffectiveAt    *time.Time
-	ExpiryAt       *time.Time
-	MetadataJSON   map[string]any
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	ID              string
+	Title           string
+	DocumentType    string
+	DocumentProfile string
+	DocumentFamily  string
+	OwnerID         string
+	BusinessUnit    string
+	Department      string
+	Classification  string
+	Status          string
+	Tags            []string
+	EffectiveAt     *time.Time
+	ExpiryAt        *time.Time
+	MetadataJSON    map[string]any
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
 type Version struct {
@@ -55,19 +57,20 @@ type Attachment struct {
 }
 
 type CreateDocumentCommand struct {
-	DocumentID     string
-	Title          string
-	DocumentType   string
-	OwnerID        string
-	BusinessUnit   string
-	Department     string
-	Classification string
-	Tags           []string
-	EffectiveAt    *time.Time
-	ExpiryAt       *time.Time
-	MetadataJSON   map[string]any
-	InitialContent string
-	TraceID        string
+	DocumentID      string
+	Title           string
+	DocumentType    string
+	DocumentProfile string
+	OwnerID         string
+	BusinessUnit    string
+	Department      string
+	Classification  string
+	Tags            []string
+	EffectiveAt     *time.Time
+	ExpiryAt        *time.Time
+	MetadataJSON    map[string]any
+	InitialContent  string
+	TraceID         string
 }
 
 type AddVersionCommand struct {
@@ -99,6 +102,20 @@ type VersionDiff struct {
 
 type DocumentType struct {
 	Code               string
+	Name               string
+	Description        string
+	ReviewIntervalDays int
+}
+
+type DocumentFamily struct {
+	Code        string
+	Name        string
+	Description string
+}
+
+type DocumentProfile struct {
+	Code               string
+	FamilyCode         string
 	Name               string
 	Description        string
 	ReviewIntervalDays int
@@ -140,18 +157,56 @@ const (
 )
 
 func DefaultDocumentTypes() []DocumentType {
-	return []DocumentType{
-		{Code: "policy", Name: "Policy", Description: "High-level governance and policy document", ReviewIntervalDays: 365},
-		{Code: "procedure", Name: "Procedure", Description: "Operational procedure with controlled steps", ReviewIntervalDays: 365},
-		{Code: "work_instruction", Name: "Work Instruction", Description: "Detailed execution instruction", ReviewIntervalDays: 180},
-		{Code: "contract", Name: "Contract", Description: "Commercial or legal agreement", ReviewIntervalDays: 365},
-		{Code: "supplier_document", Name: "Supplier Document", Description: "Document received from supplier", ReviewIntervalDays: 180},
-		{Code: "technical_drawing", Name: "Technical Drawing", Description: "Engineering drawing or technical artifact", ReviewIntervalDays: 180},
-		{Code: "certificate", Name: "Certificate", Description: "Certificate with issuer and validity context", ReviewIntervalDays: 365},
-		{Code: "report", Name: "Report", Description: "Periodic or ad-hoc report", ReviewIntervalDays: 365},
-		{Code: "form", Name: "Form", Description: "Structured business form", ReviewIntervalDays: 180},
-		{Code: "manual", Name: "Manual", Description: "Reference or guidance manual", ReviewIntervalDays: 365},
+	profiles := DefaultDocumentProfiles()
+	out := make([]DocumentType, 0, len(profiles))
+	for _, item := range profiles {
+		out = append(out, DocumentType{
+			Code:               item.Code,
+			Name:               item.Name,
+			Description:        item.Description,
+			ReviewIntervalDays: item.ReviewIntervalDays,
+		})
 	}
+	return out
+}
+
+func DefaultDocumentFamilies() []DocumentFamily {
+	return []DocumentFamily{
+		{Code: "policy", Name: "Policy", Description: "High-level governance and policy document"},
+		{Code: "procedure", Name: "Procedure", Description: "Operational procedure with controlled steps"},
+		{Code: "work_instruction", Name: "Work Instruction", Description: "Detailed execution instruction"},
+		{Code: "contract", Name: "Contract", Description: "Commercial or legal agreement"},
+		{Code: "supplier_document", Name: "Supplier Document", Description: "Document received from supplier"},
+		{Code: "technical_drawing", Name: "Technical Drawing", Description: "Engineering drawing or technical artifact"},
+		{Code: "certificate", Name: "Certificate", Description: "Certificate with issuer and validity context"},
+		{Code: "report", Name: "Report", Description: "Periodic or ad-hoc report"},
+		{Code: "form", Name: "Form", Description: "Structured business form"},
+		{Code: "manual", Name: "Manual", Description: "Reference or guidance manual"},
+	}
+}
+
+func DefaultDocumentProfiles() []DocumentProfile {
+	return []DocumentProfile{
+		{Code: "policy", FamilyCode: "policy", Name: "Policy", Description: "High-level governance and policy document", ReviewIntervalDays: 365},
+		{Code: "procedure", FamilyCode: "procedure", Name: "Procedure", Description: "Operational procedure with controlled steps", ReviewIntervalDays: 365},
+		{Code: "work_instruction", FamilyCode: "work_instruction", Name: "Work Instruction", Description: "Detailed execution instruction", ReviewIntervalDays: 180},
+		{Code: "contract", FamilyCode: "contract", Name: "Contract", Description: "Commercial or legal agreement", ReviewIntervalDays: 365},
+		{Code: "supplier_document", FamilyCode: "supplier_document", Name: "Supplier Document", Description: "Document received from supplier", ReviewIntervalDays: 180},
+		{Code: "technical_drawing", FamilyCode: "technical_drawing", Name: "Technical Drawing", Description: "Engineering drawing or technical artifact", ReviewIntervalDays: 180},
+		{Code: "certificate", FamilyCode: "certificate", Name: "Certificate", Description: "Certificate with issuer and validity context", ReviewIntervalDays: 365},
+		{Code: "report", FamilyCode: "report", Name: "Report", Description: "Periodic or ad-hoc report", ReviewIntervalDays: 365},
+		{Code: "form", FamilyCode: "form", Name: "Form", Description: "Structured business form", ReviewIntervalDays: 180},
+		{Code: "manual", FamilyCode: "manual", Name: "Manual", Description: "Reference or guidance manual", ReviewIntervalDays: 365},
+	}
+}
+
+func DefaultDocumentProfilesByCode() map[string]DocumentProfile {
+	items := DefaultDocumentProfiles()
+	out := make(map[string]DocumentProfile, len(items))
+	for _, item := range items {
+		out[item.Code] = item
+	}
+	return out
 }
 
 type MetadataFieldRule struct {

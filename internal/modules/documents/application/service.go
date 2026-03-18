@@ -51,7 +51,6 @@ func (s *Service) CreateDocument(ctx context.Context, cmd domain.CreateDocumentC
 	if strings.TrimSpace(cmd.DocumentID) == "" ||
 		strings.TrimSpace(cmd.Title) == "" ||
 		strings.TrimSpace(cmd.OwnerID) == "" ||
-		strings.TrimSpace(cmd.DocumentType) == "" ||
 		strings.TrimSpace(cmd.BusinessUnit) == "" ||
 		strings.TrimSpace(cmd.Department) == "" {
 		return domain.Document{}, domain.ErrInvalidCommand
@@ -62,8 +61,8 @@ func (s *Service) CreateDocument(ctx context.Context, cmd domain.CreateDocumentC
 		classification = domain.ClassificationInternal
 	}
 
-	documentType := strings.TrimSpace(strings.ToLower(cmd.DocumentType))
-	if !s.isKnownDocumentType(ctx, documentType) {
+	profile, err := s.resolveDocumentProfile(ctx, cmd.DocumentProfile, cmd.DocumentType)
+	if err != nil {
 		return domain.Document{}, domain.ErrInvalidDocumentType
 	}
 
@@ -71,26 +70,28 @@ func (s *Service) CreateDocument(ctx context.Context, cmd domain.CreateDocumentC
 	if _, err := json.Marshal(metadata); err != nil {
 		return domain.Document{}, domain.ErrInvalidCommand
 	}
-	if err := validateMetadata(documentType, metadata); err != nil {
+	if err := validateMetadata(profile.Code, metadata); err != nil {
 		return domain.Document{}, err
 	}
 
 	now := s.clock.Now()
 	doc := domain.Document{
-		ID:             strings.TrimSpace(cmd.DocumentID),
-		Title:          strings.TrimSpace(cmd.Title),
-		DocumentType:   documentType,
-		OwnerID:        strings.TrimSpace(cmd.OwnerID),
-		BusinessUnit:   strings.TrimSpace(cmd.BusinessUnit),
-		Department:     strings.TrimSpace(cmd.Department),
-		Classification: classification,
-		Status:         domain.StatusDraft,
-		Tags:           normalizeTags(cmd.Tags),
-		EffectiveAt:    cloneTimePtr(cmd.EffectiveAt),
-		ExpiryAt:       cloneTimePtr(cmd.ExpiryAt),
-		MetadataJSON:   metadata,
-		CreatedAt:      now,
-		UpdatedAt:      now,
+		ID:              strings.TrimSpace(cmd.DocumentID),
+		Title:           strings.TrimSpace(cmd.Title),
+		DocumentType:    profile.Code,
+		DocumentProfile: profile.Code,
+		DocumentFamily:  profile.FamilyCode,
+		OwnerID:         strings.TrimSpace(cmd.OwnerID),
+		BusinessUnit:    strings.TrimSpace(cmd.BusinessUnit),
+		Department:      strings.TrimSpace(cmd.Department),
+		Classification:  classification,
+		Status:          domain.StatusDraft,
+		Tags:            normalizeTags(cmd.Tags),
+		EffectiveAt:     cloneTimePtr(cmd.EffectiveAt),
+		ExpiryAt:        cloneTimePtr(cmd.ExpiryAt),
+		MetadataJSON:    metadata,
+		CreatedAt:       now,
+		UpdatedAt:       now,
 	}
 
 	v1 := domain.Version{
@@ -309,6 +310,28 @@ func (s *Service) ListDocumentTypes(ctx context.Context) ([]domain.DocumentType,
 	return items, nil
 }
 
+func (s *Service) ListDocumentFamilies(ctx context.Context) ([]domain.DocumentFamily, error) {
+	items, err := s.repo.ListDocumentFamilies(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(items) == 0 {
+		return domain.DefaultDocumentFamilies(), nil
+	}
+	return items, nil
+}
+
+func (s *Service) ListDocumentProfiles(ctx context.Context) ([]domain.DocumentProfile, error) {
+	items, err := s.repo.ListDocumentProfiles(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(items) == 0 {
+		return domain.DefaultDocumentProfiles(), nil
+	}
+	return items, nil
+}
+
 func (s *Service) ListVersions(ctx context.Context, documentID string) ([]domain.Version, error) {
 	if strings.TrimSpace(documentID) == "" {
 		return nil, domain.ErrInvalidCommand
@@ -493,7 +516,7 @@ func (s *Service) ReplaceAccessPolicies(ctx context.Context, resourceScope, reso
 }
 
 func (s *Service) isKnownDocumentType(ctx context.Context, code string) bool {
-	items, err := s.ListDocumentTypes(ctx)
+	items, err := s.ListDocumentProfiles(ctx)
 	if err != nil {
 		return false
 	}
@@ -503,6 +526,27 @@ func (s *Service) isKnownDocumentType(ctx context.Context, code string) bool {
 		}
 	}
 	return false
+}
+
+func (s *Service) resolveDocumentProfile(ctx context.Context, preferredProfile, legacyDocumentType string) (domain.DocumentProfile, error) {
+	code := strings.ToLower(strings.TrimSpace(preferredProfile))
+	if code == "" {
+		code = strings.ToLower(strings.TrimSpace(legacyDocumentType))
+	}
+	if code == "" {
+		return domain.DocumentProfile{}, domain.ErrInvalidDocumentType
+	}
+
+	items, err := s.ListDocumentProfiles(ctx)
+	if err != nil {
+		return domain.DocumentProfile{}, err
+	}
+	for _, item := range items {
+		if strings.EqualFold(strings.TrimSpace(item.Code), code) {
+			return item, nil
+		}
+	}
+	return domain.DocumentProfile{}, domain.ErrInvalidDocumentType
 }
 
 func normalizeTags(tags []string) []string {
@@ -656,7 +700,7 @@ func (s *Service) policiesForDocument(ctx context.Context, doc domain.Document, 
 		id    string
 	}{
 		{scope: domain.ResourceScopeDocument, id: doc.ID},
-		{scope: domain.ResourceScopeDocumentType, id: doc.DocumentType},
+		{scope: domain.ResourceScopeDocumentType, id: doc.DocumentProfile},
 		{scope: domain.ResourceScopeArea, id: areaResourceID(doc.BusinessUnit, doc.Department)},
 	}
 	return s.loadPoliciesForScopes(ctx, scopes, capability)
@@ -667,7 +711,7 @@ func (s *Service) policiesForCreate(ctx context.Context, cmd domain.CreateDocume
 		scope string
 		id    string
 	}{
-		{scope: domain.ResourceScopeDocumentType, id: strings.ToLower(strings.TrimSpace(cmd.DocumentType))},
+		{scope: domain.ResourceScopeDocumentType, id: strings.ToLower(strings.TrimSpace(firstNonEmpty(cmd.DocumentProfile, cmd.DocumentType)))},
 		{scope: domain.ResourceScopeArea, id: areaResourceID(cmd.BusinessUnit, cmd.Department)},
 	}
 	return s.loadPoliciesForScopes(ctx, scopes, capability)
@@ -736,6 +780,15 @@ func matchesPolicySubject(item domain.AccessPolicy, userID string, rolesSet map[
 
 func areaResourceID(businessUnit, department string) string {
 	return strings.TrimSpace(businessUnit) + ":" + strings.TrimSpace(department)
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 func shouldBypassPolicy(ctx context.Context) bool {

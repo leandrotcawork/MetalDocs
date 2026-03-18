@@ -43,6 +43,8 @@ func TestAPIContractSmoke(t *testing.T) {
 		{name: "health live", method: http.MethodGet, path: "/api/v1/health/live", wantStatus: http.StatusOK},
 		{name: "health ready", method: http.MethodGet, path: "/api/v1/health/ready", wantStatus: http.StatusOK},
 		{name: "metrics", method: http.MethodGet, path: "/api/v1/metrics", wantStatus: http.StatusOK},
+		{name: "list document families", method: http.MethodGet, path: "/api/v1/document-families", withUserID: true, wantStatus: http.StatusOK},
+		{name: "list document profiles", method: http.MethodGet, path: "/api/v1/document-profiles", withUserID: true, wantStatus: http.StatusOK},
 		{name: "list document types", method: http.MethodGet, path: "/api/v1/document-types", withUserID: true, wantStatus: http.StatusOK},
 		{name: "list access policies", method: http.MethodGet, path: "/api/v1/access-policies?resourceScope=document&resourceId=" + docID, withUserID: true, wantStatus: http.StatusOK},
 		{name: "list documents", method: http.MethodGet, path: "/api/v1/documents", withUserID: true, wantStatus: http.StatusOK},

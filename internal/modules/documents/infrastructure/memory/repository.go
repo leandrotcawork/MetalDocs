@@ -17,6 +17,8 @@ type Repository struct {
 	attachments         map[string]domain.Attachment
 	documentAttachments map[string][]domain.Attachment
 	workflowApprovals   map[string][]workflowdomain.Approval
+	families            []domain.DocumentFamily
+	profiles            []domain.DocumentProfile
 	types               []domain.DocumentType
 	policies            map[string][]domain.AccessPolicy
 }
@@ -28,6 +30,8 @@ func NewRepository() *Repository {
 		attachments:         map[string]domain.Attachment{},
 		documentAttachments: map[string][]domain.Attachment{},
 		workflowApprovals:   map[string][]workflowdomain.Approval{},
+		families:            domain.DefaultDocumentFamilies(),
+		profiles:            domain.DefaultDocumentProfiles(),
 		types:               domain.DefaultDocumentTypes(),
 		policies:            map[string][]domain.AccessPolicy{},
 	}
@@ -96,6 +100,24 @@ func (r *Repository) ListDocumentTypes(_ context.Context) ([]domain.DocumentType
 
 	out := make([]domain.DocumentType, len(r.types))
 	copy(out, r.types)
+	return out, nil
+}
+
+func (r *Repository) ListDocumentFamilies(_ context.Context) ([]domain.DocumentFamily, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	out := make([]domain.DocumentFamily, len(r.families))
+	copy(out, r.families)
+	return out, nil
+}
+
+func (r *Repository) ListDocumentProfiles(_ context.Context) ([]domain.DocumentProfile, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	out := make([]domain.DocumentProfile, len(r.profiles))
+	copy(out, r.profiles)
 	return out, nil
 }
 

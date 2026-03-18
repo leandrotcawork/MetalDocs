@@ -23,16 +23,18 @@ func NewRepository(db *sql.DB) *Repository {
 func (r *Repository) CreateDocument(ctx context.Context, document domain.Document) error {
 	const q = `
 INSERT INTO metaldocs.documents (
-  id, title, document_type_code, owner_id, business_unit, department,
+  id, title, document_type_code, document_profile_code, document_family_code, owner_id, business_unit, department,
   classification, status, tags, effective_at, expiry_at, metadata_json, created_at, updated_at
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11, $12::jsonb, $13, $14)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13, $14::jsonb, $15, $16)
 `
 	tagsJSON, metadataJSON, effectiveAt, expiryAt := serializeDocument(document)
 	_, err := r.db.ExecContext(ctx, q,
 		document.ID,
 		document.Title,
 		document.DocumentType,
+		document.DocumentProfile,
+		document.DocumentFamily,
 		document.OwnerID,
 		document.BusinessUnit,
 		document.Department,
@@ -62,16 +64,18 @@ func (r *Repository) CreateDocumentWithInitialVersion(ctx context.Context, docum
 
 	const insertDoc = `
 INSERT INTO metaldocs.documents (
-  id, title, document_type_code, owner_id, business_unit, department,
+  id, title, document_type_code, document_profile_code, document_family_code, owner_id, business_unit, department,
   classification, status, tags, effective_at, expiry_at, metadata_json, created_at, updated_at
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11, $12::jsonb, $13, $14)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13, $14::jsonb, $15, $16)
 `
 	tagsJSON, metadataJSON, effectiveAt, expiryAt := serializeDocument(document)
 	if _, err := tx.ExecContext(ctx, insertDoc,
 		document.ID,
 		document.Title,
 		document.DocumentType,
+		document.DocumentProfile,
+		document.DocumentFamily,
 		document.OwnerID,
 		document.BusinessUnit,
 		document.Department,
@@ -110,7 +114,7 @@ VALUES ($1, $2, $3, $4, $5, $6)
 
 func (r *Repository) GetDocument(ctx context.Context, documentID string) (domain.Document, error) {
 	const q = `
-SELECT id, title, document_type_code, owner_id, business_unit, department,
+SELECT id, title, document_type_code, document_profile_code, document_family_code, owner_id, business_unit, department,
        classification, status, tags, effective_at, expiry_at, metadata_json, created_at, updated_at
 FROM metaldocs.documents
 WHERE id = $1
@@ -124,6 +128,8 @@ WHERE id = $1
 		&doc.ID,
 		&doc.Title,
 		&doc.DocumentType,
+		&doc.DocumentProfile,
+		&doc.DocumentFamily,
 		&doc.OwnerID,
 		&doc.BusinessUnit,
 		&doc.Department,
@@ -148,7 +154,7 @@ WHERE id = $1
 
 func (r *Repository) ListDocuments(ctx context.Context) ([]domain.Document, error) {
 	const q = `
-SELECT id, title, document_type_code, owner_id, business_unit, department,
+SELECT id, title, document_type_code, document_profile_code, document_family_code, owner_id, business_unit, department,
        classification, status, tags, effective_at, expiry_at, metadata_json, created_at, updated_at
 FROM metaldocs.documents
 ORDER BY created_at ASC
@@ -170,6 +176,8 @@ ORDER BY created_at ASC
 			&doc.ID,
 			&doc.Title,
 			&doc.DocumentType,
+			&doc.DocumentProfile,
+			&doc.DocumentFamily,
 			&doc.OwnerID,
 			&doc.BusinessUnit,
 			&doc.Department,
@@ -197,7 +205,7 @@ ORDER BY created_at ASC
 func (r *Repository) ListDocumentTypes(ctx context.Context) ([]domain.DocumentType, error) {
 	const q = `
 SELECT code, name, description, review_interval_days
-FROM metaldocs.document_types
+FROM metaldocs.document_profiles
 ORDER BY code ASC
 `
 	rows, err := r.db.QueryContext(ctx, q)
@@ -216,6 +224,58 @@ ORDER BY code ASC
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("list document types rows: %w", err)
+	}
+	return out, nil
+}
+
+func (r *Repository) ListDocumentFamilies(ctx context.Context) ([]domain.DocumentFamily, error) {
+	const q = `
+SELECT code, name, description
+FROM metaldocs.document_families
+ORDER BY code ASC
+`
+	rows, err := r.db.QueryContext(ctx, q)
+	if err != nil {
+		return nil, fmt.Errorf("list document families: %w", err)
+	}
+	defer rows.Close()
+
+	var out []domain.DocumentFamily
+	for rows.Next() {
+		var item domain.DocumentFamily
+		if err := rows.Scan(&item.Code, &item.Name, &item.Description); err != nil {
+			return nil, fmt.Errorf("scan document family: %w", err)
+		}
+		out = append(out, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list document families rows: %w", err)
+	}
+	return out, nil
+}
+
+func (r *Repository) ListDocumentProfiles(ctx context.Context) ([]domain.DocumentProfile, error) {
+	const q = `
+SELECT code, family_code, name, description, review_interval_days
+FROM metaldocs.document_profiles
+ORDER BY code ASC
+`
+	rows, err := r.db.QueryContext(ctx, q)
+	if err != nil {
+		return nil, fmt.Errorf("list document profiles: %w", err)
+	}
+	defer rows.Close()
+
+	var out []domain.DocumentProfile
+	for rows.Next() {
+		var item domain.DocumentProfile
+		if err := rows.Scan(&item.Code, &item.FamilyCode, &item.Name, &item.Description, &item.ReviewIntervalDays); err != nil {
+			return nil, fmt.Errorf("scan document profile: %w", err)
+		}
+		out = append(out, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list document profiles rows: %w", err)
 	}
 	return out, nil
 }
@@ -711,7 +771,7 @@ func mapError(err error) error {
 		return domain.ErrDocumentAlreadyExists
 	}
 	if strings.Contains(msg, "violates foreign key constraint") {
-		if strings.Contains(msg, "document_type") {
+		if strings.Contains(msg, "document_type") || strings.Contains(msg, "document_profile") || strings.Contains(msg, "document_family") {
 			return domain.ErrInvalidDocumentType
 		}
 		return domain.ErrDocumentNotFound

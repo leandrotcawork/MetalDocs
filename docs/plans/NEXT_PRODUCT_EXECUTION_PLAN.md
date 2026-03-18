@@ -1,98 +1,176 @@
 # Next Product Execution Plan
 
 ## Objective
-Definir a ordem correta para evoluir MetalDocs apos a fundacao arquitetural, evitando construir worker, UI ou APIs em cima de um modelo documental incompleto.
+Definir a ordem correta para evoluir MetalDocs apos o fechamento de auth/runtime/hardening, com foco agora em taxonomia documental multiempresa e configuravel sem drift arquitetural.
 
 ## Strategic Decision
-O proximo ciclo nao deve comecar por UI.
+O proximo ciclo oficial deve comecar por **documents configuraveis**, nao por mais UI ou por features operacionais isoladas.
 
-O primeiro foco deve ser fechar o dominio funcional de documentos e somente depois evoluir:
-- backend
-- worker
-- UI operacional
+O foco imediato passa a ser:
+- tornar `documents` governado por familias canonicas + perfis documentais configuraveis
+- suportar nomenclaturas por empresa sem hardcode na plataforma
+- separar claramente:
+  - natureza documental
+  - processo/assunto
+  - governanca
+
+Somente depois desse ciclo entram:
+- audit timeline HTTP completa
+- tela operacional de notificacoes
+- gestao administrativa de usuarios mais completa
+- reset administrativo de senha / lifecycle de usuario
+- readiness de producao e observabilidade mais profunda
 
 ## Why this order
-Sem definicao de:
-- tipos documentais
-- metadados obrigatorios
-- organizacao dos documentos
-- regras de validade
-- criterios de busca
-- regras de permissao por documento/tipo/area
+Sem um modelo profissional para:
+- familias documentais canonicas
+- perfis documentais por empresa
+- schemas versionados por perfil
+- processo/assunto como taxonomia separada
+- governanca por perfil
 
 o risco e construir:
-- APIs genericas demais
-- telas que precisarao ser refeitas
-- worker processando eventos com payload pobre
-- banco com schema insuficiente
-- autorizacao incapaz de refletir a operacao real
+- tipos documentais hardcoded por cliente
+- UI acoplada a uma empresa
+- APIs que confundem tipo documental com assunto
+- crescimento desordenado de metadata
+- governanca/regra de workflow espalhada no codigo
 
-## Execution Order
+## Market-Proven Direction
+Arquiteturas maduras de DMS/ECM seguem o mesmo principio:
+- **SharePoint**: `content types` customizaveis por organizacao
+- **Alfresco**: `types + aspects + properties + constraints`
+- **M-Files**: modelo explicitamente metadata-driven
 
-### Step 1. Freeze document information architecture
-Entregaveis:
-- blueprint de dominio documental
-- taxonomia inicial de tipos
-- metadados base obrigatorios
-- separacao entre workflow e validade
+Conclusao arquitetural para o MetalDocs:
+- nao modelar por pasta
+- nao modelar por assunto como tipo base
+- usar tipo/familia canonica + perfil configuravel + metadata governado
 
-Saida esperada:
-- decisao clara sobre como um documento e classificado, encontrado e governado
+## Official Modeling Direction
 
-### Step 2. Evolve domain and API contracts
-Entregaveis:
-- atualizar `documents` domain model
-- atualizar OpenAPI para refletir `document_type`, contexto organizacional e metadados
-- registrar regras de validacao por tipo documental
-- registrar contrato de permissao por documento, tipo e area
-
-Saida esperada:
-- contratos publicos e internos alinhados com o produto real
-
-### Step 3. Evolve database schema
-Entregaveis:
-- migrations additive-first
-- colunas e tabelas de metadata base
-- estrutura para metadados especificos por tipo
-- estrutura para access policies por recurso
-
-Saida esperada:
-- persistencia preparada para crescer sem reestruturar tudo depois
-
-### Step 4. Build worker production-ready
-Entregaveis:
-- consumidor do outbox
-- retry/backoff
-- idempotencia forte
-- runbook de reprocessamento
-
-Dependencia:
-- payloads de evento ja precisam refletir o modelo documental correto
-
-### Step 5. Build operational UI
-Entregaveis:
-- cadastro de documento com tipo e metadados
-- listagem com filtros estruturados
-- detalhe do documento
-- timeline de workflow e auditoria
-
-Dependencia:
-- contratos de backend e busca ja estabilizados
-
-## Recommended v1 Document Types
+### 1. Canonical document families
+Famílias pequenas, estaveis e da plataforma:
 - `policy`
 - `procedure`
 - `work_instruction`
-- `contract`
-- `supplier_document`
-- `technical_drawing`
-- `certificate`
-- `report`
+- `record`
 - `form`
+- `report`
 - `manual`
+- `contract`
+- `external_document`
 
-## Recommended v1 Core Metadata
-- `document_type`
+### 2. Company-specific document profiles
+Perfis configuraveis por empresa apontando para uma familia canonica.
+
+Exemplo Metal Nobre:
+- `PO` -> `procedure`
+- `IT` -> `work_instruction`
+- `RG` -> `record`
+
+Regra:
+o documento referencia o **profile**, nao apenas a familia bruta.
+
+### 3. Process/subject taxonomy
+Assunto/processo nao deve virar tipo base.
+
+Exemplos:
+- `marketplaces`
+- `quality`
+- `commercial`
+- `purchasing`
+- `logistics`
+
+Exemplo correto:
+- `PO-MKT-001`
+  - family: `procedure`
+  - profile: `PO`
+  - process_area: `marketplaces`
+
+### 4. Versioned schema and governance
+Cada profile deve poder definir:
+- metadata obrigatorio
+- metadata opcional
+- prefixo/codigo
+- workflow profile
+- review cadence
+- retention/validity
+- access defaults
+
+## Execution Order
+
+### Step 1. Introduce configurable document profile registry
+Status: `done`
+
+Entregaveis:
+- families canonicas da plataforma
+- profiles documentais por empresa
+- relacao `profile -> family`
+- endpoints HTTP para families/profiles
+- compatibilidade com `documentType` como alias de transicao
+
+Saida esperada:
+- nomenclaturas como `PO`, `IT`, `RG` deixam de ser hardcoded no frontend/backend
+
+### Step 2. Add process area and subject taxonomy
+Entregaveis:
+- `process_area`
+- opcionalmente `subject/domain`
+- vinculo com profiles e documentos
+
+Saida esperada:
+- `marketplaces` e outros assuntos deixam de competir com tipo documental
+
+### Step 3. Add versioned schema and governance profile
+Entregaveis:
+- schema versionado por profile
+- regras de validacao backend por profile
+- workflow/revisao/retencao por profile
+
+Saida esperada:
+- governanca documental configuravel por organizacao
+
+### Step 4. Evolve API and UI to operate by profile
+Entregaveis:
+- OpenAPI refletindo `document_profile`
+- listagem de registry/perfis
+- UI criando documento por profile
+- exibicao de family + profile + process area
+
+Saida esperada:
+- experiencia operacional pronta para empresas diferentes sem fork de codigo
+
+### Step 5. Only then expand operational product surface
+Depois de estabilizar documents configuraveis:
+- audit timeline HTTP completa
+- notificacoes operacionais
+- IAM administrativo mais rico
+- lifecycle administrativo de usuario
+- readiness/observabilidade mais profunda
+
+## Recommended Metal Nobre Initial Profiles
+- `PO` -> `procedure`
+- `IT` -> `work_instruction`
+- `RG` -> `record`
+
+## Recommended Metal Nobre Initial Process Areas
+- `quality`
+- `marketplaces`
+- `commercial`
+- `purchasing`
+- `logistics`
+- `finance`
+
+## Recommended Data Modeling
+
+### Platform-owned stable concepts
+- `document_family`
+- `document_profile`
+- `document_profile_schema_version`
+- `document_governance_profile`
+
+### Existing structured metadata that remains important
 - `business_unit`
 - `department`
 - `owner_id`
@@ -101,68 +179,29 @@ Dependencia:
 - `effective_at`
 - `expiry_at`
 
-## Recommended v1 Access Control Scope
-- permissao por `area`
-- permissao por `document_type`
-- override por `document`
-- capacidades separadas de role:
-  - `view`
-  - `edit`
-  - `upload_attachment`
-  - `change_workflow`
-  - `manage_permissions`
-
-## Data Modeling Recommendation
-
-### Base metadata
-Campos estruturados em colunas dedicadas para filtros frequentes.
-
-### Type-specific metadata
-Persistir em estrutura flexivel controlada por schema, por exemplo:
-- `metadata_json`
-
-Regra:
-nao permitir metadata arbitraria sem validacao por tipo documental.
-
-## Search Recommendation
-Busca do v1 deve suportar:
+### Search and filtering
+Busca deve continuar baseada em:
 - texto livre
-- filtros estruturados
-- combinacao dos dois
-
-Campos obrigatorios de filtro no proximo ciclo:
-- tipo documental
-- unidade de negocio
+- family
+- profile
+- process_area
+- unidade
 - departamento
 - classificacao
 - status
 - owner
 
 ## What not to do next
-- nao construir arvore de pasta complexa primeiro
-- nao construir UI rica antes do contrato funcional
-- nao criar modulo novo so para taxonomy agora
-- nao empurrar regras de tipo documental para frontend
-- nao modelar tudo como texto livre
+- nao transformar cada assunto em um novo tipo documental
+- nao hardcodar perfis da Metal Nobre diretamente no frontend
+- nao deixar schema por empresa dentro de `if/else` no codigo
+- nao criar modulo separado de taxonomy cedo demais; manter dentro de `documents` enquanto o bounded context ainda for o dono natural
+- nao voltar para organizacao por pasta como source of truth
 
 ## Exit Criteria for the next cycle
-- blueprint documental aprovado
-- OpenAPI atualizada
-- schema evoluido
-- testes de dominio cobrindo validacoes de tipo/metadado
-- backlog do worker ajustado ao modelo novo
-
-## Immediate Next Implementation Slice
-O proximo slice concreto deve ser:
-
-`documents v2 domain modeling`
-
-Inclui:
-- `document_type`
-- `business_unit`
-- `department`
-- `tags`
-- `effective_at`
-- `expiry_at`
-- `metadata_json` validado por tipo
-- `access_policies` por documento/tipo/area
+- registry documental configuravel implementado
+- Metal Nobre operando com `PO`, `IT`, `RG`
+- `marketplaces` tratado como taxonomia/processo, nao como tipo base acidental
+- validacao backend baseada em profile
+- OpenAPI e UI alinhadas ao profile registry
+- backlog operacional seguinte congelado

@@ -185,6 +185,52 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
+  /document-families:
+    get:
+      summary: Lista as familias documentais canonicas
+      parameters:
+      responses:
+        '200':
+          description: Lista de familias documentais
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDocumentFamiliesResponse'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+  /document-profiles:
+    get:
+      summary: Lista os perfis documentais disponiveis
+      parameters:
+      responses:
+        '200':
+          description: Lista de perfis documentais
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDocumentProfilesResponse'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
   /access-policies:
     get:
       summary: Lista policies de acesso por recurso
@@ -980,7 +1026,6 @@ components:
       type: object
       required:
         - title
-        - documentType
         - ownerId
         - businessUnit
         - department
@@ -991,6 +1036,8 @@ components:
         documentType:
           type: string
           enum: [policy, procedure, work_instruction, contract, supplier_document, technical_drawing, certificate, report, form, manual]
+        documentProfile:
+          type: string
         ownerId:
           type: string
           minLength: 1
@@ -1026,6 +1073,8 @@ components:
         - version
         - status
         - documentType
+        - documentProfile
+        - documentFamily
       properties:
         documentId:
           type: string
@@ -1037,15 +1086,23 @@ components:
           enum: [DRAFT, IN_REVIEW, APPROVED, PUBLISHED, ARCHIVED]
         documentType:
           type: string
+        documentProfile:
+          type: string
+        documentFamily:
+          type: string
     DocumentListItem:
       type: object
-      required: [documentId, title, documentType, ownerId, businessUnit, department, classification, status, tags]
+      required: [documentId, title, documentType, documentProfile, documentFamily, ownerId, businessUnit, department, classification, status, tags]
       properties:
         documentId:
           type: string
         title:
           type: string
         documentType:
+          type: string
+        documentProfile:
+          type: string
+        documentFamily:
           type: string
         ownerId:
           type: string
@@ -1096,6 +1153,47 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/DocumentTypeItem'
+    DocumentFamilyItem:
+      type: object
+      required: [code, name, description]
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+    ListDocumentFamiliesResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentFamilyItem'
+    DocumentProfileItem:
+      type: object
+      required: [code, familyCode, name, description, reviewIntervalDays]
+      properties:
+        code:
+          type: string
+        familyCode:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        reviewIntervalDays:
+          type: integer
+          minimum: 1
+    ListDocumentProfilesResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentProfileItem'
     AccessPolicyItem:
       type: object
       required: [subjectType, subjectId, resourceScope, resourceId, capability, effect]
@@ -1342,13 +1440,17 @@ components:
             $ref: '#/components/schemas/WorkflowApprovalItem'
     SearchDocumentItem:
       type: object
-      required: [documentId, title, documentType, ownerId, businessUnit, department, classification, status, tags, createdAt]
+      required: [documentId, title, documentType, documentProfile, documentFamily, ownerId, businessUnit, department, classification, status, tags, createdAt]
       properties:
         documentId:
           type: string
         title:
           type: string
         documentType:
+          type: string
+        documentProfile:
+          type: string
+        documentFamily:
           type: string
         ownerId:
           type: string

@@ -24,38 +24,43 @@ type Handler struct {
 }
 
 type CreateDocumentRequest struct {
-	Title          string         `json:"title"`
-	DocumentType   string         `json:"documentType"`
-	OwnerID        string         `json:"ownerId"`
-	BusinessUnit   string         `json:"businessUnit"`
-	Department     string         `json:"department"`
-	Classification string         `json:"classification"`
-	Tags           []string       `json:"tags,omitempty"`
-	EffectiveAt    string         `json:"effectiveAt,omitempty"`
-	ExpiryAt       string         `json:"expiryAt,omitempty"`
-	Metadata       map[string]any `json:"metadata,omitempty"`
-	InitialContent string         `json:"initialContent,omitempty"`
+	Title           string         `json:"title"`
+	DocumentType    string         `json:"documentType"`
+	DocumentProfile string         `json:"documentProfile,omitempty"`
+	OwnerID         string         `json:"ownerId"`
+	BusinessUnit    string         `json:"businessUnit"`
+	Department      string         `json:"department"`
+	Classification  string         `json:"classification"`
+	Tags            []string       `json:"tags,omitempty"`
+	EffectiveAt     string         `json:"effectiveAt,omitempty"`
+	ExpiryAt        string         `json:"expiryAt,omitempty"`
+	Metadata        map[string]any `json:"metadata,omitempty"`
+	InitialContent  string         `json:"initialContent,omitempty"`
 }
 
 type DocumentResponse struct {
-	DocumentID     string   `json:"documentId"`
-	Title          string   `json:"title"`
-	DocumentType   string   `json:"documentType"`
-	OwnerID        string   `json:"ownerId"`
-	BusinessUnit   string   `json:"businessUnit"`
-	Department     string   `json:"department"`
-	Classification string   `json:"classification"`
-	Status         string   `json:"status"`
-	Tags           []string `json:"tags"`
-	EffectiveAt    string   `json:"effectiveAt,omitempty"`
-	ExpiryAt       string   `json:"expiryAt,omitempty"`
+	DocumentID      string   `json:"documentId"`
+	Title           string   `json:"title"`
+	DocumentType    string   `json:"documentType"`
+	DocumentProfile string   `json:"documentProfile"`
+	DocumentFamily  string   `json:"documentFamily"`
+	OwnerID         string   `json:"ownerId"`
+	BusinessUnit    string   `json:"businessUnit"`
+	Department      string   `json:"department"`
+	Classification  string   `json:"classification"`
+	Status          string   `json:"status"`
+	Tags            []string `json:"tags"`
+	EffectiveAt     string   `json:"effectiveAt,omitempty"`
+	ExpiryAt        string   `json:"expiryAt,omitempty"`
 }
 
 type DocumentCreatedResponse struct {
-	DocumentID   string `json:"documentId"`
-	Version      int    `json:"version"`
-	Status       string `json:"status"`
-	DocumentType string `json:"documentType"`
+	DocumentID      string `json:"documentId"`
+	Version         int    `json:"version"`
+	Status          string `json:"status"`
+	DocumentType    string `json:"documentType"`
+	DocumentProfile string `json:"documentProfile"`
+	DocumentFamily  string `json:"documentFamily"`
 }
 
 type VersionResponse struct {
@@ -68,6 +73,20 @@ type VersionResponse struct {
 
 type DocumentTypeResponse struct {
 	Code               string `json:"code"`
+	Name               string `json:"name"`
+	Description        string `json:"description"`
+	ReviewIntervalDays int    `json:"reviewIntervalDays"`
+}
+
+type DocumentFamilyResponse struct {
+	Code        string `json:"code"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+type DocumentProfileResponse struct {
+	Code               string `json:"code"`
+	FamilyCode         string `json:"familyCode"`
 	Name               string `json:"name"`
 	Description        string `json:"description"`
 	ReviewIntervalDays int    `json:"reviewIntervalDays"`
@@ -159,6 +178,8 @@ func (h *Handler) WithAttachmentDownloads(signer *security.AttachmentSigner, ttl
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/health/live", h.handleHealthLive)
 	mux.HandleFunc("/api/v1/health/ready", h.handleHealthReady)
+	mux.HandleFunc("/api/v1/document-families", h.handleDocumentFamilies)
+	mux.HandleFunc("/api/v1/document-profiles", h.handleDocumentProfiles)
 	mux.HandleFunc("/api/v1/document-types", h.handleDocumentTypes)
 	mux.HandleFunc("/api/v1/access-policies", h.handleAccessPolicies)
 	mux.HandleFunc("/api/v1/documents", h.handleDocuments)
@@ -202,6 +223,58 @@ func (h *Handler) handleDocumentTypes(w http.ResponseWriter, r *http.Request) {
 	for _, item := range items {
 		out = append(out, DocumentTypeResponse{
 			Code:               item.Code,
+			Name:               item.Name,
+			Description:        item.Description,
+			ReviewIntervalDays: item.ReviewIntervalDays,
+		})
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"items": out})
+}
+
+func (h *Handler) handleDocumentFamilies(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	traceID := requestTraceID(r)
+	items, err := h.service.ListDocumentFamilies(r.Context())
+	if err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+
+	out := make([]DocumentFamilyResponse, 0, len(items))
+	for _, item := range items {
+		out = append(out, DocumentFamilyResponse{
+			Code:        item.Code,
+			Name:        item.Name,
+			Description: item.Description,
+		})
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"items": out})
+}
+
+func (h *Handler) handleDocumentProfiles(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	traceID := requestTraceID(r)
+	items, err := h.service.ListDocumentProfiles(r.Context())
+	if err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+
+	out := make([]DocumentProfileResponse, 0, len(items))
+	for _, item := range items {
+		out = append(out, DocumentProfileResponse{
+			Code:               item.Code,
+			FamilyCode:         item.FamilyCode,
 			Name:               item.Name,
 			Description:        item.Description,
 			ReviewIntervalDays: item.ReviewIntervalDays,
@@ -306,19 +379,20 @@ func (h *Handler) handleCreateDocument(w http.ResponseWriter, r *http.Request) {
 	}
 
 	doc, err := h.service.CreateDocumentAuthorized(r.Context(), domain.CreateDocumentCommand{
-		DocumentID:     docID,
-		Title:          req.Title,
-		DocumentType:   req.DocumentType,
-		OwnerID:        req.OwnerID,
-		BusinessUnit:   req.BusinessUnit,
-		Department:     req.Department,
-		Classification: req.Classification,
-		Tags:           req.Tags,
-		EffectiveAt:    effectiveAt,
-		ExpiryAt:       expiryAt,
-		MetadataJSON:   req.Metadata,
-		InitialContent: req.InitialContent,
-		TraceID:        traceID,
+		DocumentID:      docID,
+		Title:           req.Title,
+		DocumentType:    req.DocumentType,
+		DocumentProfile: req.DocumentProfile,
+		OwnerID:         req.OwnerID,
+		BusinessUnit:    req.BusinessUnit,
+		Department:      req.Department,
+		Classification:  req.Classification,
+		Tags:            req.Tags,
+		EffectiveAt:     effectiveAt,
+		ExpiryAt:        expiryAt,
+		MetadataJSON:    req.Metadata,
+		InitialContent:  req.InitialContent,
+		TraceID:         traceID,
 	})
 	if err != nil {
 		h.writeDomainError(w, err, traceID)
@@ -326,10 +400,12 @@ func (h *Handler) handleCreateDocument(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusCreated, DocumentCreatedResponse{
-		DocumentID:   doc.ID,
-		Version:      1,
-		Status:       doc.Status,
-		DocumentType: doc.DocumentType,
+		DocumentID:      doc.ID,
+		Version:         1,
+		Status:          doc.Status,
+		DocumentType:    doc.DocumentType,
+		DocumentProfile: doc.DocumentProfile,
+		DocumentFamily:  doc.DocumentFamily,
 	})
 }
 
@@ -345,17 +421,19 @@ func (h *Handler) handleListDocuments(w http.ResponseWriter, r *http.Request) {
 	out := make([]DocumentResponse, 0, len(docs))
 	for _, doc := range docs {
 		out = append(out, DocumentResponse{
-			DocumentID:     doc.ID,
-			Title:          doc.Title,
-			DocumentType:   doc.DocumentType,
-			OwnerID:        doc.OwnerID,
-			BusinessUnit:   doc.BusinessUnit,
-			Department:     doc.Department,
-			Classification: doc.Classification,
-			Status:         doc.Status,
-			Tags:           append([]string(nil), doc.Tags...),
-			EffectiveAt:    formatOptionalTime(doc.EffectiveAt),
-			ExpiryAt:       formatOptionalTime(doc.ExpiryAt),
+			DocumentID:      doc.ID,
+			Title:           doc.Title,
+			DocumentType:    doc.DocumentType,
+			DocumentProfile: doc.DocumentProfile,
+			DocumentFamily:  doc.DocumentFamily,
+			OwnerID:         doc.OwnerID,
+			BusinessUnit:    doc.BusinessUnit,
+			Department:      doc.Department,
+			Classification:  doc.Classification,
+			Status:          doc.Status,
+			Tags:            append([]string(nil), doc.Tags...),
+			EffectiveAt:     formatOptionalTime(doc.EffectiveAt),
+			ExpiryAt:        formatOptionalTime(doc.ExpiryAt),
 		})
 	}
 
@@ -414,17 +492,19 @@ func (h *Handler) handleGetDocument(w http.ResponseWriter, r *http.Request, docu
 	}
 
 	writeJSON(w, http.StatusOK, DocumentResponse{
-		DocumentID:     doc.ID,
-		Title:          doc.Title,
-		DocumentType:   doc.DocumentType,
-		OwnerID:        doc.OwnerID,
-		BusinessUnit:   doc.BusinessUnit,
-		Department:     doc.Department,
-		Classification: doc.Classification,
-		Status:         doc.Status,
-		Tags:           append([]string(nil), doc.Tags...),
-		EffectiveAt:    formatOptionalTime(doc.EffectiveAt),
-		ExpiryAt:       formatOptionalTime(doc.ExpiryAt),
+		DocumentID:      doc.ID,
+		Title:           doc.Title,
+		DocumentType:    doc.DocumentType,
+		DocumentProfile: doc.DocumentProfile,
+		DocumentFamily:  doc.DocumentFamily,
+		OwnerID:         doc.OwnerID,
+		BusinessUnit:    doc.BusinessUnit,
+		Department:      doc.Department,
+		Classification:  doc.Classification,
+		Status:          doc.Status,
+		Tags:            append([]string(nil), doc.Tags...),
+		EffectiveAt:     formatOptionalTime(doc.EffectiveAt),
+		ExpiryAt:        formatOptionalTime(doc.ExpiryAt),
 	})
 }
 

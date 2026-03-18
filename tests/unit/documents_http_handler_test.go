@@ -2,6 +2,7 @@ package unit
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"mime/multipart"
 	"net/http"
@@ -14,10 +15,20 @@ import (
 	"metaldocs/internal/modules/documents/infrastructure/memory"
 )
 
+type fakeHealthResponder struct{}
+
+func (fakeHealthResponder) Live(_ context.Context) (int, map[string]any) {
+	return http.StatusOK, map[string]any{"status": "live", "checks": []map[string]any{{"name": "process", "status": "up"}}}
+}
+
+func (fakeHealthResponder) Ready(_ context.Context) (int, map[string]any) {
+	return http.StatusOK, map[string]any{"status": "ready", "checks": []map[string]any{{"name": "repository", "status": "up", "mode": "memory"}}}
+}
+
 func newTestMux() *http.ServeMux {
 	repo := memory.NewRepository()
 	svc := application.NewService(repo, nil, nil).WithAttachmentStore(memory.NewAttachmentStore())
-	h := httpdelivery.NewHandler(svc)
+	h := httpdelivery.NewHandler(svc).WithHealthResponder(fakeHealthResponder{})
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 	return mux
@@ -32,6 +43,13 @@ func TestHealthEndpoints(t *testing.T) {
 		mux.ServeHTTP(rr, req)
 		if rr.Code != http.StatusOK {
 			t.Fatalf("expected 200 for %s, got %d", path, rr.Code)
+		}
+		var payload map[string]any
+		if err := json.Unmarshal(rr.Body.Bytes(), &payload); err != nil {
+			t.Fatalf("invalid health json: %v", err)
+		}
+		if payload["status"] == nil {
+			t.Fatalf("expected health status in payload for %s", path)
 		}
 	}
 }

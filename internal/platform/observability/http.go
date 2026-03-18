@@ -21,9 +21,10 @@ type routeMetrics struct {
 }
 
 type HTTPObservability struct {
-	logger *slog.Logger
-	mu     sync.RWMutex
-	byKey  map[string]*routeMetrics
+	logger          *slog.Logger
+	runtimeProvider RuntimeStatusProvider
+	mu              sync.RWMutex
+	byKey           map[string]*routeMetrics
 }
 
 type metricItem struct {
@@ -35,10 +36,15 @@ type metricItem struct {
 	AvgDurationMs   uint64 `json:"avgDurationMs"`
 }
 
-func NewHTTPObservability() *HTTPObservability {
+func NewHTTPObservability(runtimeProvider ...RuntimeStatusProvider) *HTTPObservability {
+	var provider RuntimeStatusProvider
+	if len(runtimeProvider) > 0 {
+		provider = runtimeProvider[0]
+	}
 	return &HTTPObservability{
-		logger: slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{})),
-		byKey:  make(map[string]*routeMetrics),
+		logger:          slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{})),
+		runtimeProvider: provider,
+		byKey:           make(map[string]*routeMetrics),
 	}
 }
 
@@ -93,8 +99,12 @@ func (o *HTTPObservability) MetricsHandler() http.Handler {
 		}
 
 		items := o.snapshot()
+		payload := map[string]any{"items": items}
+		if o.runtimeProvider != nil {
+			payload["runtime"] = o.runtimeProvider.RuntimeMetrics(r.Context())
+		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{"items": items})
+		_ = json.NewEncoder(w).Encode(payload)
 	})
 }
 
@@ -152,6 +162,12 @@ func normalizeRoute(path string) string {
 	}
 	if strings.HasPrefix(path, "/api/v1/iam/users/") && strings.HasSuffix(path, "/roles") {
 		return "/api/v1/iam/users/{userId}/roles"
+	}
+	if strings.HasPrefix(path, "/api/v1/iam/users/") && strings.HasSuffix(path, "/reset-password") {
+		return "/api/v1/iam/users/{userId}/reset-password"
+	}
+	if strings.HasPrefix(path, "/api/v1/iam/users/") && strings.HasSuffix(path, "/unlock") {
+		return "/api/v1/iam/users/{userId}/unlock"
 	}
 	return path
 }

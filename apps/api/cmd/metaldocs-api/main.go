@@ -67,7 +67,9 @@ func main() {
 	auditService := auditapp.NewService(deps.AuditReader)
 	docService := docapp.NewService(deps.DocumentsRepo, deps.Publisher, nil).WithAttachmentStore(deps.AttachmentStore)
 	auditHandler := auditdelivery.NewHandler(auditService)
-	docHandler := docdelivery.NewHandler(docService).WithAttachmentDownloads(security.NewAttachmentSigner(attachmentsCfg.DownloadSecret), time.Duration(attachmentsCfg.DownloadTTLSeconds)*time.Second)
+	docHandler := docdelivery.NewHandler(docService).
+		WithAttachmentDownloads(security.NewAttachmentSigner(attachmentsCfg.DownloadSecret), time.Duration(attachmentsCfg.DownloadTTLSeconds)*time.Second).
+		WithHealthResponder(deps.StatusProvider)
 	searchService := searchapp.NewService(searchdocs.NewReader(deps.DocumentsRepo))
 	searchHandler := searchdelivery.NewHandler(searchService)
 	notificationService := notificationapp.NewService(deps.NotificationsRepo, deps.DocumentsRepo, nil)
@@ -88,7 +90,7 @@ func main() {
 
 	iamAdminService := iamapp.NewAdminService(deps.RoleAdminRepo, cachedProvider)
 	iamAdminHandler := iamdelivery.NewAdminHandler(iamAdminService, authService, deps.AuditWriter)
-	httpObs := observability.NewHTTPObservability()
+	httpObs := observability.NewHTTPObservability(deps.StatusProvider)
 	rateLimiter := security.NewRateLimiter(rateCfg)
 	cors := security.NewCORS(corsCfg)
 

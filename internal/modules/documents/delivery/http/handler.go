@@ -1,6 +1,7 @@
 package httpdelivery
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -21,6 +22,12 @@ type Handler struct {
 	service     *application.Service
 	signer      *security.AttachmentSigner
 	downloadTTL time.Duration
+	health      healthResponder
+}
+
+type healthResponder interface {
+	Live(ctx context.Context) (int, map[string]any)
+	Ready(ctx context.Context) (int, map[string]any)
 }
 
 type CreateDocumentRequest struct {
@@ -217,6 +224,13 @@ func (h *Handler) WithAttachmentDownloads(signer *security.AttachmentSigner, ttl
 	return h
 }
 
+func (h *Handler) WithHealthResponder(health healthResponder) *Handler {
+	if health != nil {
+		h.health = health
+	}
+	return h
+}
+
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/health/live", h.handleHealthLive)
 	mux.HandleFunc("/api/v1/health/ready", h.handleHealthReady)
@@ -233,10 +247,20 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 }
 
 func (h *Handler) handleHealthLive(w http.ResponseWriter, r *http.Request) {
+	if h.health != nil {
+		status, payload := h.health.Live(r.Context())
+		writeJSON(w, status, payload)
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "live"})
 }
 
 func (h *Handler) handleHealthReady(w http.ResponseWriter, r *http.Request) {
+	if h.health != nil {
+		status, payload := h.health.Ready(r.Context())
+		writeJSON(w, status, payload)
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ready"})
 }
 

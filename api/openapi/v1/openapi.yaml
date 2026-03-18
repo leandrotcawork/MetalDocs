@@ -16,10 +16,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    type: string
+                $ref: '#/components/schemas/HealthResponse'
   /health/ready:
     get:
       summary: Readiness check
@@ -29,10 +26,13 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    type: string
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Dependencias indisponiveis ou degradadas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
   /metrics:
     get:
       summary: HTTP RED metrics por rota
@@ -1235,6 +1235,32 @@ components:
         expiresAt:
           type: string
           format: date-time
+    HealthCheckItem:
+      type: object
+      required: [name, status]
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+        mode:
+          type: string
+        provider:
+          type: string
+        enabled:
+          type: boolean
+        detail:
+          type: string
+    HealthResponse:
+      type: object
+      required: [status, checks]
+      properties:
+        status:
+          type: string
+        checks:
+          type: array
+          items:
+            $ref: '#/components/schemas/HealthCheckItem'
     ChangePasswordRequest:
       type: object
       required: [newPassword]
@@ -2085,12 +2111,15 @@ components:
           type: integer
     MetricsResponse:
       type: object
-      required: [items]
+      required: [items, runtime]
       properties:
         items:
           type: array
           items:
             $ref: '#/components/schemas/MetricItem'
+        runtime:
+          type: object
+          additionalProperties: true
     ApiErrorEnvelope:
       type: object
       required: [error]

@@ -25,6 +25,7 @@ import (
 	"metaldocs/internal/platform/messaging"
 	nooppub "metaldocs/internal/platform/messaging/noop"
 	outboxpg "metaldocs/internal/platform/messaging/outbox/postgres"
+	"metaldocs/internal/platform/observability"
 	localstorage "metaldocs/internal/platform/storage/local"
 	miniostorage "metaldocs/internal/platform/storage/minio"
 )
@@ -39,6 +40,7 @@ type APIDependencies struct {
 	AuditWriter       auditdomain.Writer
 	AuditReader       auditdomain.Reader
 	Publisher         messaging.Publisher
+	StatusProvider    observability.RuntimeStatusProvider
 	Cleanup           func()
 }
 
@@ -75,6 +77,7 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 			AuditWriter:       auditpg.NewWriter(db),
 			AuditReader:       auditpg.NewWriter(db),
 			Publisher:         outboxpg.NewPublisher(db),
+			StatusProvider:    observability.NewPostgresRuntimeStatusProvider(db, repoMode, attachmentsCfg.Provider, authn.Enabled()),
 			Cleanup:           func() { _ = closeDB(db) },
 		}, nil
 	default:
@@ -105,6 +108,7 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 			AuditWriter:       auditStore,
 			AuditReader:       auditStore,
 			Publisher:         nooppub.NewPublisher(),
+			StatusProvider:    observability.NewStaticRuntimeStatusProvider(repoMode, attachmentsCfg.Provider, authn.Enabled()),
 			Cleanup:           func() {},
 		}, nil
 	}

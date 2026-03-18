@@ -169,6 +169,24 @@ func TestAPIContractSmoke(t *testing.T) {
 			if rr.Code != tc.wantStatus {
 				t.Fatalf("status mismatch for %s %s: got=%d want=%d body=%s", tc.method, tc.path, rr.Code, tc.wantStatus, rr.Body.String())
 			}
+			if tc.path == "/api/v1/metrics" {
+				var payload map[string]any
+				if err := json.Unmarshal(rr.Body.Bytes(), &payload); err != nil {
+					t.Fatalf("invalid metrics json: %v", err)
+				}
+				if _, ok := payload["runtime"]; !ok {
+					t.Fatalf("expected runtime metrics payload, got %s", rr.Body.String())
+				}
+			}
+			if tc.path == "/api/v1/health/ready" {
+				var payload map[string]any
+				if err := json.Unmarshal(rr.Body.Bytes(), &payload); err != nil {
+					t.Fatalf("invalid readiness json: %v", err)
+				}
+				if payload["status"] != "ready" {
+					t.Fatalf("expected ready status, got %v", payload["status"])
+				}
+			}
 		})
 	}
 }
@@ -201,7 +219,9 @@ func buildContractTestHandler() http.Handler {
 	iamAdminService := iamapp.NewAdminService(roleAdminRepo, cachedProvider)
 	iamAdminHandler := iamdelivery.NewAdminHandler(iamAdminService, authapp.NewService(authRepo, cachedProvider, authapp.Config{PasswordMinLength: 8, LoginMaxFailedAttempts: 5, LoginLockDuration: time.Minute}), auditStore)
 	iamMiddleware := iamdelivery.NewMiddleware(authorizer, cachedProvider, true, true)
-	httpObs := observability.NewHTTPObservability()
+	statusProvider := observability.NewStaticRuntimeStatusProvider("memory", "memory", true)
+	docHandler = docHandler.WithHealthResponder(statusProvider)
+	httpObs := observability.NewHTTPObservability(statusProvider)
 	rateLimiter := security.NewRateLimiter(config.RateLimitConfig{Enabled: false})
 
 	mux := http.NewServeMux()

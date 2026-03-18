@@ -418,7 +418,7 @@ Saida:
 - trilha auditavel para update, reset e unlock
 
 ## Task 025 - Deepen production readiness and observability
-Status: `todo`
+Status: `done`
 
 Objetivo:
 Subir a maturidade operacional da plataforma apos o ciclo de taxonomia documental e superficies operacionais.
@@ -431,6 +431,9 @@ Escopo:
 
 Saida:
 - baseline mais proxima de release-grade
+- `/api/v1/health/ready` com checks estruturados e status degradado quando dependencias caem
+- `/api/v1/metrics` enriquecido com indicadores de auth, sessions e outbox worker
+- runtime local e Postgres com a mesma superficie de observabilidade
 
 ## Recommended Commit Order
 1. Task 001 + Task 002

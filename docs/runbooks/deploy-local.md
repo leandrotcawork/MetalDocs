@@ -1,11 +1,11 @@
-# Runbook: Deploy Local (192.168.0.3)
+# Runbook: Deploy Local
 
 ## Pre-requisitos
 - Docker e Docker Compose instalados.
 - Portas 80, 5433, 6379, 9000, 9001 liberadas no host.
 
 ## Topologia
-- `gateway` publica `http://192.168.0.3/`
+- `gateway` publica `http://localhost/` por padrao no host local
 - `web` serve a SPA operacional
 - `api` fica atras do gateway em `/api/v1`
 - `worker` processa notificacoes e lembretes
@@ -37,17 +37,17 @@
 2. Subir stack:
    - `docker compose -f deploy/compose/docker-compose.yml --env-file .env up -d --build`
 3. Validar saude:
-   - `curl http://192.168.0.3/api/v1/health/live`
-   - `curl http://192.168.0.3/api/v1/health/ready`
+   - `curl http://localhost/api/v1/health/live`
+   - `curl http://localhost/api/v1/health/ready`
 4. Validar UI:
-   - abrir `http://192.168.0.3/`
+   - abrir `http://localhost/`
    - login inicial:
      - username: `admin`
      - senha: valor de `METALDOCS_BOOTSTRAP_ADMIN_PASSWORD`
    - trocar a senha no primeiro acesso
 5. Validar storage:
-   - abrir `http://192.168.0.3/api/v1/health/live`
-   - confirmar bucket `metaldocs-attachments` no console do MinIO `http://192.168.0.3:9001/`
+   - abrir `http://localhost/api/v1/health/live`
+   - confirmar bucket `metaldocs-attachments` no console do MinIO `http://localhost:9001/`
 6. Validar worker:
    - `docker compose -f deploy/compose/docker-compose.yml --env-file .env logs worker --tail 100`
    - confirmar logs `worker_batch result=completed`
@@ -56,6 +56,7 @@
 - O modelo preferencial e same-origin via `gateway`; CORS fica desabilitado por padrao no deploy local.
 - A protecao de origem para sessao por cookie deve permanecer habilitada no runtime oficial.
 - A API nao precisa ficar exposta diretamente no host fora do gateway.
+- Se voce expuser o gateway em outro host/IP local, trate isso como detalhe operacional do ambiente e nao como source of truth do contrato.
 - O Postgres Docker publica a porta de host configurada em `POSTGRES_HOST_PORT`; para evitar conflito com instalacoes locais, o padrao recomendado e `5433`.
 - Storage local em filesystem nao e runtime oficial da stack Docker.
 - `X-User-Id` existe apenas para testes tecnicos controlados e deve permanecer desligado no runtime oficial.

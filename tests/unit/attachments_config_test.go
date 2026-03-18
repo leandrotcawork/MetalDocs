@@ -22,16 +22,13 @@ func TestLoadAttachmentsConfigRequiresSecretForMinIO(t *testing.T) {
 	}
 }
 
-func TestLoadAttachmentsConfigAllowsLocalFallbackSecret(t *testing.T) {
+func TestLoadAttachmentsConfigRequiresSecretForLocalProvider(t *testing.T) {
 	t.Setenv("APP_ENV", "local")
 	t.Setenv("METALDOCS_STORAGE_PROVIDER", "local")
 	_ = os.Unsetenv("METALDOCS_ATTACHMENTS_SIGNING_SECRET")
 
-	cfg, err := config.LoadAttachmentsConfig()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if cfg.DownloadSecret == "" {
-		t.Fatalf("expected dev fallback secret for local provider")
+	_, err := config.LoadAttachmentsConfig()
+	if err == nil {
+		t.Fatalf("expected error when local storage has no signing secret")
 	}
 }

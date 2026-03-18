@@ -78,7 +78,7 @@ http://127.0.0.1:4173
 
 ## 6) Regras de auth e browser
 - auth oficial v1 = sessao por cookie HTTP-only
-- `X-User-Id` nao e caminho oficial de runtime
+- `X-User-Id` nao e caminho oficial de runtime e deve ser tratado apenas como mecanismo tecnico de teste
 - first login com senha temporaria:
   - autentica
   - entra em `mustChangePassword=true`

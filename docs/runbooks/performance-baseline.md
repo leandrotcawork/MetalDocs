@@ -12,7 +12,7 @@ Estabelecer baseline inicial de latencia e erro para a API MetalDocs no ambiente
 1. Rodar teste:
    - `k6 run scripts/perf/k6-baseline.js`
 2. Opcional com variaveis:
-   - `k6 run -e BASE_URL=http://192.168.0.3:8080/api/v1 -e USER_ID=admin-local scripts/perf/k6-baseline.js`
+   - `k6 run -e BASE_URL=http://127.0.0.1:8080/api/v1 -e USER_ID=admin-local scripts/perf/k6-baseline.js`
 
 ## Criterios (thresholds no script)
 - `http_req_failed < 1%`
@@ -44,7 +44,7 @@ Execucao oficial: `2026-03-16 22:09:02` ate `22:09:06` (America/Sao_Paulo), com 
   - `aprovado`
 
 ## Acoes se falhar
-- Verificar endpoint `/api/v1/metrics` e logs estruturados.
+- Verificar endpoint `/api/v1/metrics` com sessao administrativa e logs estruturados.
 - Identificar rotas com `errors` e maior `avgDurationMs`.
 - Corrigir gargalo e repetir baseline.
 

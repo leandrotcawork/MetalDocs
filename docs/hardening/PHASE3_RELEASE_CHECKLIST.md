@@ -22,7 +22,7 @@ Checklist final para release com foco em confiabilidade, operacao segura e readi
 - [ ] Backup/restore gate aprovado com evidencias em `backups/evidence/`.
 - [ ] Runbooks atualizados: deploy, observability, security, backup/restore, performance.
 - [ ] Health checks `live` e `ready` validados apos deploy.
-- [ ] `/api/v1/metrics` respondendo e com rotas criticas observaveis.
+- [ ] `/api/v1/metrics` exigindo auth administrativa e com rotas criticas observaveis.
 
 ## 4. Security
 - [ ] `metaldocs_app` mantido em least-privilege.

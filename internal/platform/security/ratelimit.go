@@ -90,7 +90,7 @@ func (r *RateLimiter) allow(identity string) (bool, string) {
 }
 
 func shouldSkipRateLimit(path string) bool {
-	return path == "/api/v1/health/live" || path == "/api/v1/health/ready" || path == "/api/v1/metrics"
+	return path == "/api/v1/health/live" || path == "/api/v1/health/ready"
 }
 
 func requestIdentity(r *http.Request) string {

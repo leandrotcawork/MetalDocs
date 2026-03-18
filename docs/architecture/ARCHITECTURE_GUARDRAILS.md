@@ -59,6 +59,7 @@ Forbidden interaction:
 - Tokens de auth com expiracao curta.
 - Auth oficial web = sessao por cookie HTTP-only.
 - Runtime oficial nao usa `X-User-Id`; header legado fica apenas para testes tecnicos controlados.
+- Runtime oficial nao deve expor `/metrics` publicamente quando o payload incluir sinais operacionais internos.
 - Requests mutaveis autenticados por cookie exigem verificacao de origem (`Origin`/`Referer`) ou mecanismo equivalente.
 - Nenhum endpoint mutavel sem verificacao de permissao.
 - Nenhum segredo sensivel com fallback hardcoded em runtime oficial.

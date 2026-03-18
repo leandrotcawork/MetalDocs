@@ -5,7 +5,7 @@ info:
   description: >
     API inicial do MetalDocs (v1). Escopo atual sem integracao com IA.
 servers:
-  - url: http://192.168.0.3:8080/api/v1
+  - url: /api/v1
 paths:
   /health/live:
     get:
@@ -43,6 +43,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MetricsResponse'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
   /auth/login:
     post:
       summary: Autentica usuario local e cria sessao por cookie

@@ -2,34 +2,28 @@ package unit
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"metaldocs/internal/modules/documents/application"
 	httpdelivery "metaldocs/internal/modules/documents/delivery/http"
 	"metaldocs/internal/modules/documents/infrastructure/memory"
+	"metaldocs/internal/platform/observability"
+	"metaldocs/internal/platform/security"
 )
-
-type fakeHealthResponder struct{}
-
-func (fakeHealthResponder) Live(_ context.Context) (int, map[string]any) {
-	return http.StatusOK, map[string]any{"status": "live", "checks": []map[string]any{{"name": "process", "status": "up"}}}
-}
-
-func (fakeHealthResponder) Ready(_ context.Context) (int, map[string]any) {
-	return http.StatusOK, map[string]any{"status": "ready", "checks": []map[string]any{{"name": "repository", "status": "up", "mode": "memory"}}}
-}
 
 func newTestMux() *http.ServeMux {
 	repo := memory.NewRepository()
 	svc := application.NewService(repo, nil, nil).WithAttachmentStore(memory.NewAttachmentStore())
-	h := httpdelivery.NewHandler(svc).WithHealthResponder(fakeHealthResponder{})
+	h := httpdelivery.NewHandler(svc).
+		WithAttachmentDownloads(security.NewAttachmentSigner("test-attachment-secret"), 5*time.Minute)
 	mux := http.NewServeMux()
+	observability.NewHealthHandler(observability.NewStaticRuntimeStatusProvider("memory", "memory", true)).RegisterRoutes(mux)
 	h.RegisterRoutes(mux)
 	return mux
 }

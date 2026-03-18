@@ -68,7 +68,7 @@ func TestRateLimiterIsolatedByIdentity(t *testing.T) {
 	}
 }
 
-func TestRateLimiterSkipsHealthAndMetrics(t *testing.T) {
+func TestRateLimiterSkipsHealthOnly(t *testing.T) {
 	rl := security.NewRateLimiter(config.RateLimitConfig{
 		Enabled:       true,
 		WindowSeconds: 60,
@@ -93,12 +93,15 @@ func TestRateLimiterSkipsHealthAndMetrics(t *testing.T) {
 		}
 	}
 
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 2; i++ {
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/metrics", nil)
 		rr := httptest.NewRecorder()
 		h.ServeHTTP(rr, req)
-		if rr.Code != http.StatusOK {
-			t.Fatalf("expected metrics 200, got %d", rr.Code)
+		if i == 0 && rr.Code != http.StatusOK {
+			t.Fatalf("expected first metrics request 200, got %d", rr.Code)
+		}
+		if i == 1 && rr.Code != http.StatusTooManyRequests {
+			t.Fatalf("expected second metrics request 429, got %d", rr.Code)
 		}
 	}
 }

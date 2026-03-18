@@ -64,7 +64,7 @@ func (m *Middleware) Wrap(next http.Handler) http.Handler {
 
 func isPublicPath(path, method string) bool {
 	switch {
-	case path == "/api/v1/health/live", path == "/api/v1/health/ready", path == "/api/v1/metrics":
+	case path == "/api/v1/health/live", path == "/api/v1/health/ready":
 		return true
 	case method == http.MethodPost && path == "/api/v1/auth/login":
 		return true

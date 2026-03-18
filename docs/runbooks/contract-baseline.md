@@ -6,7 +6,7 @@ Garantir baseline de contrato da API com teste smoke dos endpoints v1 definidos 
 ## Escopo atual
 - `GET /api/v1/health/live`
 - `GET /api/v1/health/ready`
-- `GET /api/v1/metrics`
+- `GET /api/v1/metrics` (admin autenticado)
 - `POST /api/v1/documents`
 - `GET /api/v1/documents`
 - `GET /api/v1/search/documents`
@@ -26,6 +26,7 @@ powershell -ExecutionPolicy Bypass -File scripts/contract-baseline.ps1
 ## Criterio de aceite
 - `go test ./tests/contract -count=1` verde.
 - Nenhum endpoint smoke retornando `404` ou erro inesperado no fluxo autenticado.
+- `GET /api/v1/metrics` sem autenticacao retorna `401` no runtime oficial.
 
 ## Acoes se falhar
 - Validar se houve drift entre OpenAPI e handlers.

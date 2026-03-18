@@ -52,7 +52,7 @@ func TestAPIContractSmoke(t *testing.T) {
 	}{
 		{name: "health live", method: http.MethodGet, path: "/api/v1/health/live", wantStatus: http.StatusOK},
 		{name: "health ready", method: http.MethodGet, path: "/api/v1/health/ready", wantStatus: http.StatusOK},
-		{name: "metrics", method: http.MethodGet, path: "/api/v1/metrics", wantStatus: http.StatusOK},
+		{name: "metrics", method: http.MethodGet, path: "/api/v1/metrics", withUserID: true, wantStatus: http.StatusOK},
 		{name: "list document families", method: http.MethodGet, path: "/api/v1/document-families", withUserID: true, wantStatus: http.StatusOK},
 		{name: "list document profiles", method: http.MethodGet, path: "/api/v1/document-profiles", withUserID: true, wantStatus: http.StatusOK},
 		{name: "list profile schema", method: http.MethodGet, path: "/api/v1/document-profiles/manual/schema", withUserID: true, wantStatus: http.StatusOK},
@@ -136,6 +136,13 @@ func TestAPIContractSmoke(t *testing.T) {
 			wantStatus: http.StatusOK,
 		},
 		{
+			name:       "metrics without auth",
+			method:     http.MethodGet,
+			path:       "/api/v1/metrics",
+			withUserID: false,
+			wantStatus: http.StatusUnauthorized,
+		},
+		{
 			name:       "missing auth header",
 			method:     http.MethodGet,
 			path:       "/api/v1/documents",
@@ -169,7 +176,7 @@ func TestAPIContractSmoke(t *testing.T) {
 			if rr.Code != tc.wantStatus {
 				t.Fatalf("status mismatch for %s %s: got=%d want=%d body=%s", tc.method, tc.path, rr.Code, tc.wantStatus, rr.Body.String())
 			}
-			if tc.path == "/api/v1/metrics" {
+			if tc.path == "/api/v1/metrics" && tc.wantStatus == http.StatusOK {
 				var payload map[string]any
 				if err := json.Unmarshal(rr.Body.Bytes(), &payload); err != nil {
 					t.Fatalf("invalid metrics json: %v", err)
@@ -220,11 +227,12 @@ func buildContractTestHandler() http.Handler {
 	iamAdminHandler := iamdelivery.NewAdminHandler(iamAdminService, authapp.NewService(authRepo, cachedProvider, authapp.Config{PasswordMinLength: 8, LoginMaxFailedAttempts: 5, LoginLockDuration: time.Minute}), auditStore)
 	iamMiddleware := iamdelivery.NewMiddleware(authorizer, cachedProvider, true, true)
 	statusProvider := observability.NewStaticRuntimeStatusProvider("memory", "memory", true)
-	docHandler = docHandler.WithHealthResponder(statusProvider)
 	httpObs := observability.NewHTTPObservability(statusProvider)
+	healthHandler := observability.NewHealthHandler(statusProvider)
 	rateLimiter := security.NewRateLimiter(config.RateLimitConfig{Enabled: false})
 
 	mux := http.NewServeMux()
+	healthHandler.RegisterRoutes(mux)
 	auditHandler.RegisterRoutes(mux)
 	docHandler.RegisterRoutes(mux)
 	searchHandler.RegisterRoutes(mux)

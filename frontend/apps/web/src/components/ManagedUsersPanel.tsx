@@ -1,0 +1,92 @@
+import type { ManagedUserItem, UserRole } from "../lib.types";
+
+type CreateUserForm = {
+  userId: string;
+  username: string;
+  email: string;
+  displayName: string;
+  password: string;
+  roles: UserRole[];
+};
+
+type ManagedUserForm = {
+  userId: string;
+  displayName: string;
+  email: string;
+  isActive: boolean;
+  mustChangePassword: boolean;
+  roles: UserRole[];
+  resetPassword: string;
+};
+
+type ManagedUsersPanelProps = {
+  userForm: CreateUserForm;
+  managedUserForm: ManagedUserForm;
+  managedUsers: ManagedUserItem[];
+  selectedManagedUser: ManagedUserItem | null;
+  formatDate: (value?: string) => string;
+  onUserFormChange: (next: CreateUserForm) => void;
+  onManagedUserFormChange: (next: ManagedUserForm) => void;
+  onSubmitCreateUser: (event: React.FormEvent<HTMLFormElement>) => void | Promise<void>;
+  onSelectManagedUser: (item: ManagedUserItem) => void;
+  onToggleRole: (role: UserRole) => void;
+  onSaveManagedUser: () => void | Promise<void>;
+  onAdminResetPassword: () => void | Promise<void>;
+  onUnlockManagedUser: () => void | Promise<void>;
+};
+
+export function ManagedUsersPanel(props: ManagedUsersPanelProps) {
+  return (
+    <section data-testid="managed-users-panel" className="panel panel-admin">
+      <div className="panel-heading"><p className="kicker">IAM + Auth</p><h2>Usuarios internos</h2></div>
+      <div className="subgrid wide">
+        <form data-testid="user-create-form" className="card stack" onSubmit={props.onSubmitCreateUser}>
+          <h3>Criar usuario</h3>
+          <input data-testid="user-id" placeholder="userId opcional" value={props.userForm.userId} onChange={(event) => props.onUserFormChange({ ...props.userForm, userId: event.target.value })} />
+          <input data-testid="user-username" placeholder="username" value={props.userForm.username} onChange={(event) => props.onUserFormChange({ ...props.userForm, username: event.target.value })} required />
+          <input data-testid="user-email" placeholder="email" value={props.userForm.email} onChange={(event) => props.onUserFormChange({ ...props.userForm, email: event.target.value })} />
+          <input data-testid="user-display-name" placeholder="display name" value={props.userForm.displayName} onChange={(event) => props.onUserFormChange({ ...props.userForm, displayName: event.target.value })} required />
+          <input data-testid="user-password" type="password" placeholder="senha inicial" value={props.userForm.password} onChange={(event) => props.onUserFormChange({ ...props.userForm, password: event.target.value })} required />
+          <select data-testid="user-role" value={props.userForm.roles[0]} onChange={(event) => props.onUserFormChange({ ...props.userForm, roles: [event.target.value as UserRole] })}>{["admin", "editor", "reviewer", "viewer"].map((role) => <option key={role} value={role}>{role}</option>)}</select>
+          <button data-testid="user-submit" type="submit">Criar usuario</button>
+        </form>
+        <div className="card">
+          <h3>Base de usuarios</h3>
+          <ul className="mini-list">
+            {props.managedUsers.map((item) => (
+              <li key={item.userId} onClick={() => props.onSelectManagedUser(item)}>
+                <div>
+                  <strong>{item.displayName}</strong>
+                  <p>{item.username} - {(Array.isArray(item.roles) ? item.roles : []).join(", ") || "sem role"}</p>
+                  <small>{item.isActive ? "Ativo" : "Inativo"} / {item.mustChangePassword ? "troca obrigatoria" : "senha OK"} / falhas: {item.failedLoginAttempts}{item.lockedUntil ? ` / lock: ${props.formatDate(item.lockedUntil)}` : ""}{item.lastLoginAt ? ` / ultimo login: ${props.formatDate(item.lastLoginAt)}` : ""}</small>
+                </div>
+                <span>{item.userId}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="card stack">
+          <h3>Editar usuario</h3>
+          {!props.selectedManagedUser ? <p className="hint">Selecione um usuario da lista para editar estado operacional e roles.</p> : (
+            <>
+              <p className="hint">Auth state atual: {props.selectedManagedUser.isActive ? "ativo" : "inativo"} / {props.selectedManagedUser.mustChangePassword ? "troca obrigatoria" : "senha estabilizada"} / falhas: {props.selectedManagedUser.failedLoginAttempts}</p>
+              <input value={props.managedUserForm.displayName} onChange={(event) => props.onManagedUserFormChange({ ...props.managedUserForm, displayName: event.target.value })} placeholder="Display name" />
+              <input value={props.managedUserForm.email} onChange={(event) => props.onManagedUserFormChange({ ...props.managedUserForm, email: event.target.value })} placeholder="Email" />
+              <label><input type="checkbox" checked={props.managedUserForm.isActive} onChange={(event) => props.onManagedUserFormChange({ ...props.managedUserForm, isActive: event.target.checked })} /> Usuario ativo</label>
+              <label><input type="checkbox" checked={props.managedUserForm.mustChangePassword} onChange={(event) => props.onManagedUserFormChange({ ...props.managedUserForm, mustChangePassword: event.target.checked })} /> Exigir troca de senha</label>
+              <div className="detail-summary">
+                {(["admin", "editor", "reviewer", "viewer"] as UserRole[]).map((role) => <label key={role}><input type="checkbox" checked={props.managedUserForm.roles.includes(role)} onChange={() => props.onToggleRole(role)} /> {role}</label>)}
+              </div>
+              <button type="button" className="ghost-button" onClick={() => void props.onSaveManagedUser()}>Salvar usuario</button>
+              <input type="password" value={props.managedUserForm.resetPassword} onChange={(event) => props.onManagedUserFormChange({ ...props.managedUserForm, resetPassword: event.target.value })} placeholder="Nova senha temporaria" />
+              <div className="detail-summary">
+                <button type="button" className="ghost-button" onClick={() => void props.onAdminResetPassword()}>Resetar senha</button>
+                <button type="button" className="ghost-button" onClick={() => void props.onUnlockManagedUser()}>Desbloquear acesso</button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}

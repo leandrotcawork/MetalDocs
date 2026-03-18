@@ -1,7 +1,6 @@
 package httpdelivery
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -22,12 +21,6 @@ type Handler struct {
 	service     *application.Service
 	signer      *security.AttachmentSigner
 	downloadTTL time.Duration
-	health      healthResponder
-}
-
-type healthResponder interface {
-	Live(ctx context.Context) (int, map[string]any)
-	Ready(ctx context.Context) (int, map[string]any)
 }
 
 type CreateDocumentRequest struct {
@@ -209,7 +202,6 @@ type apiError struct {
 func NewHandler(service *application.Service) *Handler {
 	return &Handler{
 		service:     service,
-		signer:      security.NewAttachmentSigner("metaldocs-local-dev-secret"),
 		downloadTTL: 5 * time.Minute,
 	}
 }
@@ -224,16 +216,7 @@ func (h *Handler) WithAttachmentDownloads(signer *security.AttachmentSigner, ttl
 	return h
 }
 
-func (h *Handler) WithHealthResponder(health healthResponder) *Handler {
-	if health != nil {
-		h.health = health
-	}
-	return h
-}
-
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/api/v1/health/live", h.handleHealthLive)
-	mux.HandleFunc("/api/v1/health/ready", h.handleHealthReady)
 	mux.HandleFunc("/api/v1/document-families", h.handleDocumentFamilies)
 	mux.HandleFunc("/api/v1/document-profiles", h.handleDocumentProfiles)
 	mux.HandleFunc("/api/v1/document-profiles/", h.handleDocumentProfileSubRoutes)
@@ -244,24 +227,6 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/documents", h.handleDocuments)
 	mux.HandleFunc("/api/v1/documents/", h.handleDocumentSubRoutes)
 	mux.HandleFunc("/api/v1/attachments/", h.handleAttachmentDownloads)
-}
-
-func (h *Handler) handleHealthLive(w http.ResponseWriter, r *http.Request) {
-	if h.health != nil {
-		status, payload := h.health.Live(r.Context())
-		writeJSON(w, status, payload)
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "live"})
-}
-
-func (h *Handler) handleHealthReady(w http.ResponseWriter, r *http.Request) {
-	if h.health != nil {
-		status, payload := h.health.Ready(r.Context())
-		writeJSON(w, status, payload)
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ready"})
 }
 
 func (h *Handler) handleDocuments(w http.ResponseWriter, r *http.Request) {
@@ -842,6 +807,10 @@ func (h *Handler) handleListAttachments(w http.ResponseWriter, r *http.Request, 
 
 func (h *Handler) handleCreateAttachmentDownloadURL(w http.ResponseWriter, r *http.Request, documentID, attachmentID string) {
 	traceID := requestTraceID(r)
+	if h.signer == nil {
+		writeAPIError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Attachment signer is not configured", traceID)
+		return
+	}
 	attachment, err := h.service.GetAttachmentAuthorized(r.Context(), documentID, attachmentID)
 	if err != nil {
 		h.writeDomainError(w, err, traceID)
@@ -860,6 +829,10 @@ func (h *Handler) handleCreateAttachmentDownloadURL(w http.ResponseWriter, r *ht
 func (h *Handler) handleAttachmentDownloads(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	if h.signer == nil {
+		writeAPIError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Attachment signer is not configured", requestTraceID(r))
 		return
 	}
 

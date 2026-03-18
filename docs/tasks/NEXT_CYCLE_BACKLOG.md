@@ -454,3 +454,131 @@ Saida:
 16. Task 021 + Task 022
 17. Task 023 + Task 024
 18. Task 025
+
+## Task 026 - Restrict operational metrics surface
+Status: `done`
+
+Objetivo:
+Fechar a exposicao publica indevida da superficie de metricas operacionais.
+
+Escopo:
+- `/api/v1/metrics` deixa de ser publico no runtime oficial
+- metrics passa a exigir auth + permissao administrativa
+- `/metrics` sai do bypass de auth/rate-limit
+- OpenAPI, smoke e runbooks alinhados a politica nova
+
+Saida:
+- `health/live` e `health/ready` continuam superficies operacionais controladas
+- `metrics` deixa de ser canal anonimo de telemetria operacional
+
+## Task 027 - Remove legacy auth header from official runtime
+Status: `done`
+
+Objetivo:
+Eliminar `X-User-Id` como caminho oficial de runtime.
+
+Escopo:
+- runtime oficial ignora auth por header legado
+- docs e env examples deixam explicito que o header e apenas tecnico/teste
+- smoke e middleware passam a tratar cookie-session como auth oficial
+
+Saida:
+- auth oficial unificada em sessao por cookie
+- menor risco de impersonation por flag/env drift
+
+## Task 028 - Remove hardcoded secrets and sensitive fallbacks
+Status: `done`
+
+Objetivo:
+Remover segredos embutidos e atalhos sensiveis de runtime.
+
+Escopo:
+- fim do fallback hardcoded para `METALDOCS_ATTACHMENTS_SIGNING_SECRET`
+- attachment downloads dependem apenas de config/env valido
+- testes e runbooks atualizados para explicitar o segredo obrigatorio
+
+Saida:
+- nenhum segredo sensivel padrao embutido no caminho normal de runtime
+- falha explicita quando configuracao obrigatoria estiver ausente
+
+## Task 029 - Move health/readiness ownership to platform
+Status: `done`
+
+Objetivo:
+Corrigir boundary arquitetural das rotas operacionais.
+
+Escopo:
+- `/health/live` e `/health/ready` saem do modulo `documents`
+- ownership passa para `internal/platform/observability`
+- bootstrap da API registra health/readiness fora dos modulos de negocio
+
+Saida:
+- platform serve health/readiness
+- modules consomem capability, nao sao donos da superficie global
+
+## Task 030 - Refactor web app into operational slices
+Status: `done`
+
+Objetivo:
+Reduzir risco estrutural do frontend antes da fase forte de authoring/UX.
+
+Escopo:
+- `App.tsx` quebrado em slices operacionais
+- auth shell, app shell header, documents workspace, IAM admin panel e notifications panel extraidos
+- bootstrap e regras de negocio preservados sem redesign visual
+
+Saida:
+- frontend mais seguro para evolucao
+- menor acoplamento de render entre auth, documentos, IAM e notificacoes
+
+## Task 031 - Runtime/contract consistency cleanup
+Status: `done`
+
+Objetivo:
+Eliminar drift restante entre docs, contrato e runtime.
+
+Escopo:
+- OpenAPI sem server local hardcoded
+- runbooks alinhados com `localhost`/runtime oficial local
+- contrato baseline e observability docs atualizados para metrics autenticadas
+- env example limpo de hosts antigos nao-oficiais
+
+Saida:
+- docs e contratos representando a verdade do sistema com menos ambiguidade operacional
+
+## Task 032 - Security/architecture release review gate
+Status: `done`
+
+Objetivo:
+Fechar a fase de hardening com gate formal antes de authoring/UX.
+
+Escopo:
+- checklist final de auth, metrics, secrets, observability e frontend boundaries
+- registro dos residual risks aceitos conscientemente
+- criterio explicito de go/no-go para abrir a fase documental/UX
+
+Saida:
+- fase atual fechada com evidencias tecnicas
+- backlog liberado para `Task 033+`
+
+## Recommended Commit Order
+1. Task 001 + Task 002
+2. Task 003 + Task 004
+3. Task 005
+4. Task 006 + Task 007
+5. Task 008
+6. Task 009
+7. Task 010
+8. Task 011
+9. Task 012
+10. Task 013
+11. Task 014
+12. Task 015
+13. Task 016 + Task 017
+14. Task 018 + Task 019
+15. Task 020
+16. Task 021 + Task 022
+17. Task 023 + Task 024
+18. Task 025
+19. Task 026 + Task 027 + Task 028 + Task 029
+20. Task 030 + Task 031 + Task 032

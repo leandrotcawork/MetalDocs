@@ -68,8 +68,7 @@ func main() {
 	docService := docapp.NewService(deps.DocumentsRepo, deps.Publisher, nil).WithAttachmentStore(deps.AttachmentStore)
 	auditHandler := auditdelivery.NewHandler(auditService)
 	docHandler := docdelivery.NewHandler(docService).
-		WithAttachmentDownloads(security.NewAttachmentSigner(attachmentsCfg.DownloadSecret), time.Duration(attachmentsCfg.DownloadTTLSeconds)*time.Second).
-		WithHealthResponder(deps.StatusProvider)
+		WithAttachmentDownloads(security.NewAttachmentSigner(attachmentsCfg.DownloadSecret), time.Duration(attachmentsCfg.DownloadTTLSeconds)*time.Second)
 	searchService := searchapp.NewService(searchdocs.NewReader(deps.DocumentsRepo))
 	searchHandler := searchdelivery.NewHandler(searchService)
 	notificationService := notificationapp.NewService(deps.NotificationsRepo, deps.DocumentsRepo, nil)
@@ -77,11 +76,14 @@ func main() {
 	workflowService := workflowapp.NewService(deps.DocumentsRepo, deps.AuditWriter, deps.Publisher, nil)
 	workflowHandler := workflowdelivery.NewHandler(workflowService)
 	authHandler := authdelivery.NewHandler(authService)
+	healthHandler := observability.NewHealthHandler(deps.StatusProvider)
 
 	authorizer := iamapp.NewStaticAuthorizer()
 	cachedProvider := iamapp.NewCachedRoleProvider(deps.RoleProvider, authn.CacheTTL())
-	authMiddleware := authdelivery.NewMiddleware(authService, authCfg, authn.Enabled())
-	iamMiddleware := iamdelivery.NewMiddleware(authorizer, cachedProvider, authn.Enabled(), authCfg.LegacyHeaderEnabled)
+	runtimeAuthCfg := authCfg
+	runtimeAuthCfg.LegacyHeaderEnabled = false
+	authMiddleware := authdelivery.NewMiddleware(authService, runtimeAuthCfg, authn.Enabled())
+	iamMiddleware := iamdelivery.NewMiddleware(authorizer, cachedProvider, authn.Enabled(), false)
 	originProtection := security.NewOriginProtection(security.OriginProtectionConfig{
 		Enabled:           authCfg.OriginProtection,
 		SessionCookieName: authCfg.SessionCookieName,
@@ -96,6 +98,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	authHandler.RegisterRoutes(mux)
+	healthHandler.RegisterRoutes(mux)
 	auditHandler.RegisterRoutes(mux)
 	docHandler.RegisterRoutes(mux)
 	searchHandler.RegisterRoutes(mux)

@@ -50,11 +50,7 @@ func LoadAttachmentsConfig() (AttachmentsConfig, error) {
 
 	secret := strings.TrimSpace(os.Getenv("METALDOCS_ATTACHMENTS_SIGNING_SECRET"))
 	if secret == "" {
-		if appEnv == "local" && provider != StorageProviderMinIO {
-			secret = "metaldocs-local-dev-secret"
-		} else {
-			return AttachmentsConfig{}, fmt.Errorf("METALDOCS_ATTACHMENTS_SIGNING_SECRET is required for provider %s", provider)
-		}
+		return AttachmentsConfig{}, fmt.Errorf("METALDOCS_ATTACHMENTS_SIGNING_SECRET is required for provider %s", provider)
 	}
 
 	ttlSeconds := 300

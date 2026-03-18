@@ -99,7 +99,7 @@ func TestMiddlewareSkipsHealthRoutes(t *testing.T) {
 	}
 }
 
-func TestMiddlewareSkipsMetricsRoute(t *testing.T) {
+func TestMiddlewareRequiresAuthenticationForMetrics(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/v1/metrics", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -112,8 +112,8 @@ func TestMiddlewareSkipsMetricsRoute(t *testing.T) {
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 
-	if rr.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d", rr.Code)
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d", rr.Code)
 	}
 }
 

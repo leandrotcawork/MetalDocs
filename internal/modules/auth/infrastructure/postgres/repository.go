@@ -107,6 +107,20 @@ WHERE session_id = $1
 	return nil
 }
 
+func (r *Repository) RevokeSessionsByUserID(ctx context.Context, userID string, revokedAt time.Time) error {
+	const q = `
+UPDATE metaldocs.auth_sessions
+SET revoked_at = $2
+WHERE user_id = $1
+  AND revoked_at IS NULL
+`
+	_, err := r.db.ExecContext(ctx, q, userID, revokedAt)
+	if err != nil {
+		return fmt.Errorf("revoke auth sessions by user: %w", err)
+	}
+	return nil
+}
+
 func (r *Repository) RecordSuccessfulLogin(ctx context.Context, userID string, loginAt time.Time) error {
 	const q = `
 UPDATE metaldocs.auth_identities
@@ -259,11 +273,11 @@ SET email = COALESCE($2, email),
     password_hash = COALESCE($3, password_hash),
     password_algo = CASE WHEN $3 IS NULL THEN password_algo ELSE 'bcrypt' END,
     must_change_password = COALESCE($4, must_change_password),
-    failed_login_attempts = CASE WHEN $3 IS NULL THEN failed_login_attempts ELSE 0 END,
-    locked_until = CASE WHEN $3 IS NULL THEN locked_until ELSE NULL END,
+    failed_login_attempts = CASE WHEN $3 IS NOT NULL OR $5 THEN 0 ELSE failed_login_attempts END,
+    locked_until = CASE WHEN $3 IS NOT NULL OR $5 THEN NULL ELSE locked_until END,
     updated_at = NOW()
 WHERE user_id = $1
-`, params.UserID, nullableText(params.Email), nullableText(params.NewPasswordHash), nullableBool(params.MustChangePassword)); err != nil {
+`, params.UserID, nullableText(params.Email), nullableText(params.NewPasswordHash), nullableBool(params.MustChangePassword), params.ResetLockState); err != nil {
 			return fmt.Errorf("update auth identity: %w", err)
 		}
 	}

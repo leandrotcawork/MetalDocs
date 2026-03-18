@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	auditdomain "metaldocs/internal/modules/audit/domain"
 	authapp "metaldocs/internal/modules/auth/application"
 	authdomain "metaldocs/internal/modules/auth/domain"
 	iamapp "metaldocs/internal/modules/iam/application"
@@ -17,6 +18,7 @@ import (
 type AdminHandler struct {
 	service     *iamapp.AdminService
 	authService *authapp.Service
+	audit       auditdomain.Writer
 }
 
 type UpsertUserRoleRequest struct {
@@ -48,12 +50,16 @@ type UpdateUserRequest struct {
 	MustChangePassword *bool   `json:"mustChangePassword,omitempty"`
 }
 
-func NewAdminHandler(service *iamapp.AdminService, authService ...*authapp.Service) *AdminHandler {
-	var authSvc *authapp.Service
-	if len(authService) > 0 {
-		authSvc = authService[0]
+type ResetPasswordRequest struct {
+	NewPassword string `json:"newPassword"`
+}
+
+func NewAdminHandler(service *iamapp.AdminService, authService *authapp.Service, auditWriter ...auditdomain.Writer) *AdminHandler {
+	var writer auditdomain.Writer
+	if len(auditWriter) > 0 {
+		writer = auditWriter[0]
 	}
-	return &AdminHandler{service: service, authService: authSvc}
+	return &AdminHandler{service: service, authService: authService, audit: writer}
 }
 
 func (h *AdminHandler) RegisterRoutes(mux *http.ServeMux) {
@@ -85,6 +91,14 @@ func (h *AdminHandler) handleUserRoute(w http.ResponseWriter, r *http.Request) {
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
+		return
+	}
+	if len(parts) == 2 && strings.TrimSpace(parts[0]) != "" && parts[1] == "reset-password" && r.Method == http.MethodPost {
+		h.handleResetPassword(w, r, strings.TrimSpace(parts[0]), traceID)
+		return
+	}
+	if len(parts) == 2 && strings.TrimSpace(parts[0]) != "" && parts[1] == "unlock" && r.Method == http.MethodPost {
+		h.handleUnlockUser(w, r, strings.TrimSpace(parts[0]), traceID)
 		return
 	}
 	if len(parts) == 1 && strings.TrimSpace(parts[0]) != "" && r.Method == http.MethodPatch {
@@ -174,6 +188,12 @@ func (h *AdminHandler) handlePatchUser(w http.ResponseWriter, r *http.Request, u
 		h.writeAuthError(w, err, traceID)
 		return
 	}
+	h.recordAudit(r, userID, "iam.user.updated", map[string]any{
+		"displayName":        req.DisplayName,
+		"email":              req.Email,
+		"isActive":           req.IsActive,
+		"mustChangePassword": req.MustChangePassword,
+	})
 	writeJSON(w, http.StatusOK, map[string]any{"userId": userID, "updated": true})
 }
 
@@ -251,6 +271,42 @@ func (h *AdminHandler) handleReplaceUserRoles(w http.ResponseWriter, r *http.Req
 		"displayName": strings.TrimSpace(req.DisplayName),
 		"roles":       roleStrings,
 	})
+	h.recordAudit(r, userID, "iam.user.roles.replaced", map[string]any{
+		"roles": roleStrings,
+	})
+}
+
+func (h *AdminHandler) handleResetPassword(w http.ResponseWriter, r *http.Request, userID, traceID string) {
+	if h.authService == nil {
+		writeAPIError(w, http.StatusNotImplemented, "INTERNAL_ERROR", "User management service is not configured", traceID)
+		return
+	}
+	var req ResetPasswordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid JSON payload", traceID)
+		return
+	}
+	if err := h.authService.AdminResetPassword(r.Context(), userID, req.NewPassword); err != nil {
+		h.writeAuthError(w, err, traceID)
+		return
+	}
+	h.recordAudit(r, userID, "auth.user.password_reset", map[string]any{
+		"mustChangePassword": true,
+	})
+	writeJSON(w, http.StatusOK, map[string]any{"userId": userID, "reset": true, "mustChangePassword": true})
+}
+
+func (h *AdminHandler) handleUnlockUser(w http.ResponseWriter, r *http.Request, userID, traceID string) {
+	if h.authService == nil {
+		writeAPIError(w, http.StatusNotImplemented, "INTERNAL_ERROR", "User management service is not configured", traceID)
+		return
+	}
+	if err := h.authService.UnlockUser(r.Context(), userID); err != nil {
+		h.writeAuthError(w, err, traceID)
+		return
+	}
+	h.recordAudit(r, userID, "auth.user.unlocked", map[string]any{})
+	writeJSON(w, http.StatusOK, map[string]any{"userId": userID, "unlocked": true})
 }
 
 func (h *AdminHandler) writeAuthError(w http.ResponseWriter, err error, traceID string) {
@@ -259,9 +315,31 @@ func (h *AdminHandler) writeAuthError(w http.ResponseWriter, err error, traceID 
 		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", err.Error(), traceID)
 	case errors.Is(err, authdomain.ErrUserAlreadyExists):
 		writeAPIError(w, http.StatusConflict, "CONFLICT_ERROR", "User already exists", traceID)
+	case errors.Is(err, authdomain.ErrIdentityNotFound):
+		writeAPIError(w, http.StatusNotFound, "NOT_FOUND", "User not found", traceID)
 	default:
 		writeAPIError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to process user request", traceID)
 	}
+}
+
+func (h *AdminHandler) recordAudit(r *http.Request, userID, action string, payload map[string]any) {
+	if h.audit == nil {
+		return
+	}
+	payloadJSON, err := json.Marshal(payload)
+	if err != nil {
+		return
+	}
+	_ = h.audit.Record(r.Context(), auditdomain.Event{
+		ID:           "evt_" + strings.ReplaceAll(time.Now().UTC().Format("20060102150405.000000000"), ".", ""),
+		OccurredAt:   time.Now().UTC(),
+		ActorID:      authenticatedActor(r),
+		Action:       action,
+		ResourceType: "user",
+		ResourceID:   userID,
+		PayloadJSON:  string(payloadJSON),
+		TraceID:      requestTraceID(r),
+	})
 }
 
 func parseRoles(items []string) ([]iamdomain.Role, bool) {

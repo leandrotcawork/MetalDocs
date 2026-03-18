@@ -162,6 +162,44 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UpdateManagedUserResponse'
+  /iam/users/{userId}/reset-password:
+    post:
+      summary: Reseta administrativamente a senha de um usuario e exige troca no proximo login
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetManagedUserPasswordRequest'
+      responses:
+        '200':
+          description: Senha resetada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResetManagedUserPasswordResponse'
+  /iam/users/{userId}/unlock:
+    post:
+      summary: Limpa lock operacional e contador de falhas de login de um usuario
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Usuario desbloqueado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnlockManagedUserResponse'
   /document-types:
     get:
       summary: Lista os tipos documentais suportados
@@ -1302,6 +1340,30 @@ components:
         userId:
           type: string
         updated:
+          type: boolean
+    ResetManagedUserPasswordRequest:
+      type: object
+      required: [newPassword]
+      properties:
+        newPassword:
+          type: string
+    ResetManagedUserPasswordResponse:
+      type: object
+      required: [userId, reset, mustChangePassword]
+      properties:
+        userId:
+          type: string
+        reset:
+          type: boolean
+        mustChangePassword:
+          type: boolean
+    UnlockManagedUserResponse:
+      type: object
+      required: [userId, unlocked]
+      properties:
+        userId:
+          type: string
+        unlocked:
           type: boolean
     ReplaceUserRolesRequest:
       type: object

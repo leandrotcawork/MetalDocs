@@ -8,10 +8,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	auditapp "metaldocs/internal/modules/audit/application"
 	auditdelivery "metaldocs/internal/modules/audit/delivery/http"
 	auditmemory "metaldocs/internal/modules/audit/infrastructure/memory"
+	authapp "metaldocs/internal/modules/auth/application"
+	authdomain "metaldocs/internal/modules/auth/domain"
+	authmemory "metaldocs/internal/modules/auth/infrastructure/memory"
 	docapp "metaldocs/internal/modules/documents/application"
 	docdelivery "metaldocs/internal/modules/documents/delivery/http"
 	memoryrepo "metaldocs/internal/modules/documents/infrastructure/memory"
@@ -117,6 +121,21 @@ func TestAPIContractSmoke(t *testing.T) {
 			wantStatus: http.StatusOK,
 		},
 		{
+			name:       "admin reset password",
+			method:     http.MethodPost,
+			path:       "/api/v1/iam/users/contract-user/reset-password",
+			body:       map[string]any{"newPassword": "ContractReset123"},
+			withUserID: true,
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "admin unlock user",
+			method:     http.MethodPost,
+			path:       "/api/v1/iam/users/contract-user/unlock",
+			withUserID: true,
+			wantStatus: http.StatusOK,
+		},
+		{
 			name:       "missing auth header",
 			method:     http.MethodGet,
 			path:       "/api/v1/documents",
@@ -167,6 +186,7 @@ func buildContractTestHandler() http.Handler {
 	auditStore := auditmemory.NewWriter()
 	authorizer := iamapp.NewStaticAuthorizer()
 	notifRepo := notificationmemory.NewRepository()
+	authRepo := authmemory.NewRepository()
 
 	auditService := auditapp.NewService(auditStore)
 	docService := docapp.NewService(docRepo, nil, nil).WithAttachmentStore(attachmentStore)
@@ -179,7 +199,7 @@ func buildContractTestHandler() http.Handler {
 	workflowService := workflowapp.NewService(docRepo, auditStore, nil, nil)
 	workflowHandler := workflowdelivery.NewHandler(workflowService)
 	iamAdminService := iamapp.NewAdminService(roleAdminRepo, cachedProvider)
-	iamAdminHandler := iamdelivery.NewAdminHandler(iamAdminService)
+	iamAdminHandler := iamdelivery.NewAdminHandler(iamAdminService, authapp.NewService(authRepo, cachedProvider, authapp.Config{PasswordMinLength: 8, LoginMaxFailedAttempts: 5, LoginLockDuration: time.Minute}), auditStore)
 	iamMiddleware := iamdelivery.NewMiddleware(authorizer, cachedProvider, true, true)
 	httpObs := observability.NewHTTPObservability()
 	rateLimiter := security.NewRateLimiter(config.RateLimitConfig{Enabled: false})
@@ -203,6 +223,18 @@ func buildContractTestHandler() http.Handler {
 		Message:         "A contract smoke notification is available.",
 		Status:          notificationdomain.StatusPending,
 		IdempotencyKey:  "notif-contract",
+	})
+
+	_ = authRepo.CreateUser(httptest.NewRequest(http.MethodGet, "/", nil).Context(), authdomain.CreateUserParams{
+		UserID:             "contract-user",
+		Username:           "contract-user",
+		DisplayName:        "Contract User",
+		PasswordHash:       "hash",
+		PasswordAlgo:       "bcrypt",
+		MustChangePassword: false,
+		IsActive:           true,
+		Roles:              []iamdomain.Role{iamdomain.RoleViewer},
+		CreatedBy:          "system",
 	})
 
 	return httpObs.Wrap(rateLimiter.Wrap(iamMiddleware.Wrap(mux)))

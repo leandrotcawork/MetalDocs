@@ -84,6 +84,7 @@ const emptyManagedUserForm = {
   isActive: true,
   mustChangePassword: false,
   roles: ["viewer"] as UserRole[],
+  resetPassword: "",
 };
 
 type AppErrorBoundaryState = {
@@ -182,6 +183,7 @@ function AppContent() {
       isActive: current.isActive,
       mustChangePassword: current.mustChangePassword,
       roles: Array.isArray(current.roles) && current.roles.length > 0 ? current.roles : previous.roles,
+      resetPassword: "",
     }));
   }, [managedUsers, managedUserForm.userId]);
 
@@ -403,6 +405,7 @@ function AppContent() {
       isActive: item.isActive,
       mustChangePassword: item.mustChangePassword,
       roles: Array.isArray(item.roles) && item.roles.length > 0 ? item.roles : ["viewer"],
+      resetPassword: "",
     });
   }
 
@@ -443,6 +446,53 @@ function AppContent() {
         await loadWorkspace(user);
       }
       setMessage("Usuario administrativo atualizado com sucesso.");
+    } catch (err) {
+      handleError(err);
+    }
+  }
+
+  async function handleAdminResetPassword() {
+    if (!managedUserForm.userId) {
+      setError("Selecione um usuario para resetar a senha.");
+      return;
+    }
+    if (!managedUserForm.resetPassword.trim()) {
+      setError("Informe a nova senha temporaria.");
+      return;
+    }
+    try {
+      setError("");
+      setMessage("");
+      await api.adminResetPassword(managedUserForm.userId, {
+        newPassword: managedUserForm.resetPassword,
+      });
+      setManagedUserForm((current) => ({
+        ...current,
+        resetPassword: "",
+        mustChangePassword: true,
+      }));
+      if (user) {
+        await loadWorkspace(user);
+      }
+      setMessage("Senha administrativa resetada. O usuario precisara trocar no proximo login.");
+    } catch (err) {
+      handleError(err);
+    }
+  }
+
+  async function handleUnlockManagedUser() {
+    if (!managedUserForm.userId) {
+      setError("Selecione um usuario para desbloquear.");
+      return;
+    }
+    try {
+      setError("");
+      setMessage("");
+      await api.unlockUser(managedUserForm.userId);
+      if (user) {
+        await loadWorkspace(user);
+      }
+      setMessage("Usuario desbloqueado com sucesso.");
     } catch (err) {
       handleError(err);
     }
@@ -614,6 +664,11 @@ function AppContent() {
                         {(["admin", "editor", "reviewer", "viewer"] as UserRole[]).map((role) => <label key={role}><input type="checkbox" checked={managedUserForm.roles.includes(role)} onChange={() => toggleManagedUserRole(role)} /> {role}</label>)}
                       </div>
                       <button type="button" className="ghost-button" onClick={() => void handleSaveManagedUser()}>Salvar usuario</button>
+                      <input type="password" value={managedUserForm.resetPassword} onChange={(event) => setManagedUserForm({ ...managedUserForm, resetPassword: event.target.value })} placeholder="Nova senha temporaria" />
+                      <div className="detail-summary">
+                        <button type="button" className="ghost-button" onClick={() => void handleAdminResetPassword()}>Resetar senha</button>
+                        <button type="button" className="ghost-button" onClick={() => void handleUnlockManagedUser()}>Desbloquear acesso</button>
+                      </div>
                     </>
                   )}
                 </div>

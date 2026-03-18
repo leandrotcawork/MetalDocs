@@ -280,6 +280,34 @@ func (s *Service) UpdateUser(ctx context.Context, params authdomain.UpdateUserPa
 	return s.repo.UpdateUser(ctx, params)
 }
 
+func (s *Service) AdminResetPassword(ctx context.Context, userID, newPassword string) error {
+	newPassword = strings.TrimSpace(newPassword)
+	if err := s.validatePassword(newPassword); err != nil {
+		return err
+	}
+	passwordHash, err := s.hashPassword(newPassword)
+	if err != nil {
+		return err
+	}
+	required := true
+	if err := s.repo.UpdateUser(ctx, authdomain.UpdateUserParams{
+		UserID:             strings.TrimSpace(userID),
+		NewPasswordHash:    &passwordHash,
+		MustChangePassword: &required,
+		ResetLockState:     true,
+	}); err != nil {
+		return err
+	}
+	return s.repo.RevokeSessionsByUserID(ctx, strings.TrimSpace(userID), time.Now().UTC())
+}
+
+func (s *Service) UnlockUser(ctx context.Context, userID string) error {
+	return s.repo.UpdateUser(ctx, authdomain.UpdateUserParams{
+		UserID:         strings.TrimSpace(userID),
+		ResetLockState: true,
+	})
+}
+
 func (s *Service) SessionCookie(rawToken string, expiresAt time.Time) *http.Cookie {
 	return &http.Cookie{
 		Name:     s.cfg.SessionCookieName,

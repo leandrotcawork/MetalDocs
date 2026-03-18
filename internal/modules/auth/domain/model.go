@@ -69,6 +69,7 @@ type UpdateUserParams struct {
 	IsActive           *bool
 	NewPasswordHash    *string
 	MustChangePassword *bool
+	ResetLockState     bool
 }
 
 type BootstrapAdminParams struct {

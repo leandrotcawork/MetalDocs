@@ -95,6 +95,20 @@ func (r *Repository) RevokeSession(_ context.Context, sessionID string, revokedA
 	return nil
 }
 
+func (r *Repository) RevokeSessionsByUserID(_ context.Context, userID string, revokedAt time.Time) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for sessionID, session := range r.sessions {
+		if session.UserID != userID || session.RevokedAt != nil {
+			continue
+		}
+		revokedAtUTC := revokedAt.UTC()
+		session.RevokedAt = &revokedAtUTC
+		r.sessions[sessionID] = session
+	}
+	return nil
+}
+
 func (r *Repository) RecordSuccessfulLogin(_ context.Context, userID string, loginAt time.Time) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -218,6 +232,10 @@ func (r *Repository) UpdateUser(_ context.Context, params authdomain.UpdateUserP
 	}
 	if params.MustChangePassword != nil {
 		identity.MustChangePassword = *params.MustChangePassword
+	}
+	if params.ResetLockState {
+		identity.FailedLoginAttempts = 0
+		identity.LockedUntil = nil
 	}
 	identity.UpdatedAt = time.Now().UTC()
 	r.users[params.UserID] = identity

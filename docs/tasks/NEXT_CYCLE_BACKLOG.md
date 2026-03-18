@@ -399,7 +399,7 @@ Saida:
 - reconciliacao completa de roles por usuario
 
 ## Task 024 - Add administrative password reset and user lifecycle actions
-Status: `todo`
+Status: `done`
 
 Objetivo:
 Fechar o lifecycle operacional de usuarios internos sem depender de SQL manual.
@@ -412,6 +412,10 @@ Escopo:
 
 Saida:
 - lifecycle de usuario operacionalizado
+- reset administrativo de senha com troca obrigatoria no proximo login
+- desbloqueio operacional com limpeza de lock e tentativas falhas
+- revogacao de sessoes ativas apos reset administrativo
+- trilha auditavel para update, reset e unlock
 
 ## Task 025 - Deepen production readiness and observability
 Status: `todo`

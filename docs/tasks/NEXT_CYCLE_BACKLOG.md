@@ -582,3 +582,48 @@ Saida:
 18. Task 025
 19. Task 026 + Task 027 + Task 028 + Task 029
 20. Task 030 + Task 031 + Task 032
+
+## Task 033 - Document authoring flow design
+Status: `done`
+
+Objetivo:
+Congelar o modelo oficial de criacao, edicao e consulta documental antes da fase forte de UX.
+
+Escopo:
+- definir authoring profile-first
+- separar estrutura, metadata, governanca e versionamento
+- congelar modos de tela: create, edit metadata, edit content, review e read
+- registrar mapeamento das superficies HTTP atuais ao fluxo de authoring
+
+Saida:
+- documento formal de authoring publicado
+- base pronta para `Task 034` e `Task 035` sem reabrir o modelo de dominio
+
+## Task 034 - Document workspace UX
+Status: `pending`
+
+Objetivo:
+Traduzir o modelo de authoring em experiencia visual e navegacao operacional de alto nivel.
+
+Escopo:
+- workspace documental orientado por `documentProfile`
+- metadata dinamica por schema
+- governanca sempre visivel
+- area de versoes/diff/approvals/attachments/audit navegavel
+
+Saida:
+- UX documental consistente, profissional e preparada para empresas diferentes
+
+## Task 035 - Metal Nobre applied experience
+Status: `pending`
+
+Objetivo:
+Aplicar a experiencia documental ao caso real da Metal Nobre.
+
+Escopo:
+- perfis `po`, `it`, `rg`
+- process areas como `marketplaces`, `quality`, `commercial`, `purchasing`, `logistics` e `finance`
+- nomenclaturas, hints e experiencia proximas do uso real ISO-inspired
+
+Saida:
+- experiencia documental aplicada ao caso de negocio da Metal Nobre sem hardcode de plataforma

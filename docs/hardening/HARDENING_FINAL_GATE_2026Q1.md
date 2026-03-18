@@ -34,3 +34,8 @@ A plataforma esta pronta para abrir a fase seguinte de:
 - `Task 033 - Document Authoring Flow Design`
 - `Task 034 - Document Workspace UX`
 - `Task 035 - Metal Nobre Applied Experience`
+
+Status apos esta revisao:
+- `Task 033`: concluida
+- `Task 034`: pronta para implementacao
+- `Task 035`: pronta para implementacao apos UX base

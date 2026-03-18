@@ -62,6 +62,25 @@ type Attachment struct {
 	CreatedAt   time.Time
 }
 
+type WorkflowApproval struct {
+	ID               string
+	DocumentID       string
+	RequestedBy      string
+	AssignedReviewer string
+	DecisionBy       string
+	Status           string
+	RequestReason    string
+	DecisionReason   string
+	RequestedAt      time.Time
+	DecidedAt        *time.Time
+}
+
+const (
+	WorkflowApprovalStatusPending  = "PENDING"
+	WorkflowApprovalStatusApproved = "APPROVED"
+	WorkflowApprovalStatusRejected = "REJECTED"
+)
+
 type CreateDocumentCommand struct {
 	DocumentID      string
 	Title           string

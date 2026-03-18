@@ -730,7 +730,7 @@ Aceite:
 - nenhum `DELETE/UPDATE` em `audit_events` em migrations oficiais
 
 ## Task 041 - Decouple documents domain from workflow domain types
-Status: `todo`
+Status: `done`
 
 Objetivo:
 Restaurar disciplina de boundary: `documents/domain` nao deve depender de tipos do modulo `workflow`.

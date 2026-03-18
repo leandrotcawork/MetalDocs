@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"metaldocs/internal/modules/documents/domain"
-	workflowdomain "metaldocs/internal/modules/workflow/domain"
 )
 
 type Repository struct {
@@ -728,7 +727,7 @@ ORDER BY created_at ASC
 	return out, nil
 }
 
-func (r *Repository) CreateWorkflowApproval(ctx context.Context, approval workflowdomain.Approval) error {
+func (r *Repository) CreateWorkflowApproval(ctx context.Context, approval domain.WorkflowApproval) error {
 	const q = `
 INSERT INTO metaldocs.workflow_approvals (
   id, document_id, requested_by, assigned_reviewer, decision_by, status,
@@ -754,7 +753,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 	return nil
 }
 
-func (r *Repository) GetLatestWorkflowApproval(ctx context.Context, documentID string) (workflowdomain.Approval, error) {
+func (r *Repository) GetLatestWorkflowApproval(ctx context.Context, documentID string) (domain.WorkflowApproval, error) {
 	const q = `
 SELECT id, document_id, requested_by, assigned_reviewer, decision_by, status,
        request_reason, decision_reason, requested_at, decided_at
@@ -763,7 +762,7 @@ WHERE document_id = $1
 ORDER BY requested_at DESC
 LIMIT 1
 `
-	var approval workflowdomain.Approval
+	var approval domain.WorkflowApproval
 	var decisionBy sql.NullString
 	var decisionReason sql.NullString
 	var decidedAt sql.NullTime
@@ -780,9 +779,9 @@ LIMIT 1
 		&decidedAt,
 	); err != nil {
 		if err == sql.ErrNoRows {
-			return workflowdomain.Approval{}, workflowdomain.ErrApprovalNotFound
+			return domain.WorkflowApproval{}, domain.ErrWorkflowApprovalNotFound
 		}
-		return workflowdomain.Approval{}, fmt.Errorf("get latest workflow approval: %w", err)
+		return domain.WorkflowApproval{}, fmt.Errorf("get latest workflow approval: %w", err)
 	}
 	if decisionBy.Valid {
 		approval.DecisionBy = decisionBy.String
@@ -812,12 +811,12 @@ WHERE id = $1
 		return fmt.Errorf("rows affected update workflow approval decision: %w", err)
 	}
 	if affected == 0 {
-		return workflowdomain.ErrApprovalNotFound
+		return domain.ErrWorkflowApprovalNotFound
 	}
 	return nil
 }
 
-func (r *Repository) SaveWorkflowApprovalState(ctx context.Context, approval workflowdomain.Approval) error {
+func (r *Repository) SaveWorkflowApprovalState(ctx context.Context, approval domain.WorkflowApproval) error {
 	const q = `
 UPDATE metaldocs.workflow_approvals
 SET requested_by = $2, assigned_reviewer = $3, decision_by = $4, status = $5,
@@ -843,7 +842,7 @@ WHERE id = $1
 		return fmt.Errorf("rows affected save workflow approval state: %w", err)
 	}
 	if affected == 0 {
-		return workflowdomain.ErrApprovalNotFound
+		return domain.ErrWorkflowApprovalNotFound
 	}
 	return nil
 }
@@ -859,12 +858,12 @@ func (r *Repository) DeleteWorkflowApproval(ctx context.Context, approvalID stri
 		return fmt.Errorf("rows affected delete workflow approval: %w", err)
 	}
 	if affected == 0 {
-		return workflowdomain.ErrApprovalNotFound
+		return domain.ErrWorkflowApprovalNotFound
 	}
 	return nil
 }
 
-func (r *Repository) ListWorkflowApprovals(ctx context.Context, documentID string) ([]workflowdomain.Approval, error) {
+func (r *Repository) ListWorkflowApprovals(ctx context.Context, documentID string) ([]domain.WorkflowApproval, error) {
 	_, err := r.GetDocument(ctx, documentID)
 	if err != nil {
 		return nil, err
@@ -883,9 +882,9 @@ ORDER BY requested_at ASC
 	}
 	defer rows.Close()
 
-	var out []workflowdomain.Approval
+	var out []domain.WorkflowApproval
 	for rows.Next() {
-		var approval workflowdomain.Approval
+		var approval domain.WorkflowApproval
 		var decisionBy sql.NullString
 		var decisionReason sql.NullString
 		var decidedAt sql.NullTime

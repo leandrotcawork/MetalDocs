@@ -7,7 +7,6 @@ import (
 
 	"metaldocs/internal/modules/documents/application"
 	"metaldocs/internal/modules/documents/domain"
-	workflowdomain "metaldocs/internal/modules/workflow/domain"
 )
 
 type atomicRepoSpy struct {
@@ -119,19 +118,19 @@ func (r *atomicRepoSpy) ListAttachments(context.Context, string) ([]domain.Attac
 	return nil, nil
 }
 
-func (r *atomicRepoSpy) CreateWorkflowApproval(context.Context, workflowdomain.Approval) error {
+func (r *atomicRepoSpy) CreateWorkflowApproval(context.Context, domain.WorkflowApproval) error {
 	return nil
 }
 
-func (r *atomicRepoSpy) GetLatestWorkflowApproval(context.Context, string) (workflowdomain.Approval, error) {
-	return workflowdomain.Approval{}, workflowdomain.ErrApprovalNotFound
+func (r *atomicRepoSpy) GetLatestWorkflowApproval(context.Context, string) (domain.WorkflowApproval, error) {
+	return domain.WorkflowApproval{}, domain.ErrWorkflowApprovalNotFound
 }
 
 func (r *atomicRepoSpy) UpdateWorkflowApprovalDecision(context.Context, string, string, string, string, time.Time) error {
 	return nil
 }
 
-func (r *atomicRepoSpy) SaveWorkflowApprovalState(context.Context, workflowdomain.Approval) error {
+func (r *atomicRepoSpy) SaveWorkflowApprovalState(context.Context, domain.WorkflowApproval) error {
 	return nil
 }
 
@@ -139,7 +138,7 @@ func (r *atomicRepoSpy) DeleteWorkflowApproval(context.Context, string) error {
 	return nil
 }
 
-func (r *atomicRepoSpy) ListWorkflowApprovals(context.Context, string) ([]workflowdomain.Approval, error) {
+func (r *atomicRepoSpy) ListWorkflowApprovals(context.Context, string) ([]domain.WorkflowApproval, error) {
 	return nil, nil
 }
 

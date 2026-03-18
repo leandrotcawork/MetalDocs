@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -54,8 +55,8 @@ func (s *Service) Transition(ctx context.Context, cmd workflowdomain.TransitionC
 		return workflowdomain.TransitionResult{}, workflowdomain.ErrInvalidTransition
 	}
 
-	var approval workflowdomain.Approval
-	var previousApproval *workflowdomain.Approval
+	var approval docdomain.WorkflowApproval
+	var previousApproval *docdomain.WorkflowApproval
 	now := s.clock.Now()
 
 	switch {
@@ -64,38 +65,38 @@ func (s *Service) Transition(ctx context.Context, cmd workflowdomain.TransitionC
 		if assignedReviewer == "" {
 			return workflowdomain.TransitionResult{}, workflowdomain.ErrInvalidCommand
 		}
-		approval = workflowdomain.Approval{
+		approval = docdomain.WorkflowApproval{
 			ID:               mustNewID(),
 			DocumentID:       doc.ID,
 			RequestedBy:      strings.TrimSpace(cmd.ActorID),
 			AssignedReviewer: assignedReviewer,
-			Status:           workflowdomain.ApprovalStatusPending,
+			Status:           docdomain.WorkflowApprovalStatusPending,
 			RequestReason:    strings.TrimSpace(cmd.Reason),
 			RequestedAt:      now,
 		}
 		if err := s.docRepo.CreateWorkflowApproval(ctx, approval); err != nil {
-			return workflowdomain.TransitionResult{}, err
+			return workflowdomain.TransitionResult{}, mapApprovalError(err)
 		}
 	case doc.Status == docdomain.StatusInReview && (toStatus == docdomain.StatusApproved || toStatus == docdomain.StatusDraft):
 		latestApproval, err := s.docRepo.GetLatestWorkflowApproval(ctx, doc.ID)
 		if err != nil {
-			return workflowdomain.TransitionResult{}, err
+			return workflowdomain.TransitionResult{}, mapApprovalError(err)
 		}
 		copyApproval := latestApproval
 		previousApproval = &copyApproval
-		if latestApproval.Status != workflowdomain.ApprovalStatusPending {
+		if latestApproval.Status != docdomain.WorkflowApprovalStatusPending {
 			return workflowdomain.TransitionResult{}, workflowdomain.ErrApprovalNotFound
 		}
 		if !strings.EqualFold(strings.TrimSpace(latestApproval.AssignedReviewer), strings.TrimSpace(cmd.ActorID)) {
 			return workflowdomain.TransitionResult{}, workflowdomain.ErrApprovalReviewerDenied
 		}
 
-		decisionStatus := workflowdomain.ApprovalStatusApproved
+		decisionStatus := docdomain.WorkflowApprovalStatusApproved
 		if toStatus == docdomain.StatusDraft {
-			decisionStatus = workflowdomain.ApprovalStatusRejected
+			decisionStatus = docdomain.WorkflowApprovalStatusRejected
 		}
 		if err := s.docRepo.UpdateWorkflowApprovalDecision(ctx, latestApproval.ID, decisionStatus, cmd.ActorID, strings.TrimSpace(cmd.Reason), now); err != nil {
-			return workflowdomain.TransitionResult{}, err
+			return workflowdomain.TransitionResult{}, mapApprovalError(err)
 		}
 		latestApproval.Status = decisionStatus
 		latestApproval.DecisionBy = strings.TrimSpace(cmd.ActorID)
@@ -132,11 +133,11 @@ func (s *Service) Transition(ctx context.Context, cmd workflowdomain.TransitionC
 	}, nil
 }
 
-func (s *Service) rollbackApproval(ctx context.Context, doc docdomain.Document, approval workflowdomain.Approval, previousApproval *workflowdomain.Approval) error {
+func (s *Service) rollbackApproval(ctx context.Context, doc docdomain.Document, approval docdomain.WorkflowApproval, previousApproval *docdomain.WorkflowApproval) error {
 	if approval.ID == "" {
 		return nil
 	}
-	if doc.Status == docdomain.StatusDraft && approval.Status == workflowdomain.ApprovalStatusPending && previousApproval == nil {
+	if doc.Status == docdomain.StatusDraft && approval.Status == docdomain.WorkflowApprovalStatusPending && previousApproval == nil {
 		return s.docRepo.DeleteWorkflowApproval(ctx, approval.ID)
 	}
 	if previousApproval != nil {
@@ -149,10 +150,18 @@ func (s *Service) ListApprovals(ctx context.Context, documentID string) ([]workf
 	if strings.TrimSpace(documentID) == "" {
 		return nil, workflowdomain.ErrInvalidCommand
 	}
-	return s.docRepo.ListWorkflowApprovals(ctx, strings.TrimSpace(documentID))
+	approvals, err := s.docRepo.ListWorkflowApprovals(ctx, strings.TrimSpace(documentID))
+	if err != nil {
+		return nil, mapApprovalError(err)
+	}
+	out := make([]workflowdomain.Approval, 0, len(approvals))
+	for _, approval := range approvals {
+		out = append(out, mapDocApprovalToWorkflowApproval(approval))
+	}
+	return out, nil
 }
 
-func (s *Service) recordAudit(ctx context.Context, doc docdomain.Document, toStatus string, cmd workflowdomain.TransitionCommand, approval workflowdomain.Approval, now time.Time) error {
+func (s *Service) recordAudit(ctx context.Context, doc docdomain.Document, toStatus string, cmd workflowdomain.TransitionCommand, approval docdomain.WorkflowApproval, now time.Time) error {
 	if s.audit == nil {
 		return nil
 	}
@@ -182,7 +191,7 @@ func (s *Service) recordAudit(ctx context.Context, doc docdomain.Document, toSta
 	})
 }
 
-func (s *Service) publishTransitionEvents(ctx context.Context, doc docdomain.Document, toStatus string, cmd workflowdomain.TransitionCommand, approval workflowdomain.Approval, now time.Time) {
+func (s *Service) publishTransitionEvents(ctx context.Context, doc docdomain.Document, toStatus string, cmd workflowdomain.TransitionCommand, approval docdomain.WorkflowApproval, now time.Time) {
 	if s.publisher == nil {
 		return
 	}
@@ -214,7 +223,7 @@ func (s *Service) publishTransitionEvents(ctx context.Context, doc docdomain.Doc
 
 	eventType := "workflow.approval.decisioned"
 	idempotencyKey := fmt.Sprintf("workflow-approval-decisioned-%s", approval.ID)
-	if approval.Status == workflowdomain.ApprovalStatusPending {
+	if approval.Status == docdomain.WorkflowApprovalStatusPending {
 		eventType = "workflow.approval.requested"
 		idempotencyKey = fmt.Sprintf("workflow-approval-requested-%s", approval.ID)
 	}
@@ -265,4 +274,26 @@ func mustNewID() string {
 		return fmt.Sprintf("workflow-fallback-%d", time.Now().UnixNano())
 	}
 	return hex.EncodeToString(buf)
+}
+
+func mapApprovalError(err error) error {
+	if errors.Is(err, docdomain.ErrWorkflowApprovalNotFound) {
+		return workflowdomain.ErrApprovalNotFound
+	}
+	return err
+}
+
+func mapDocApprovalToWorkflowApproval(approval docdomain.WorkflowApproval) workflowdomain.Approval {
+	return workflowdomain.Approval{
+		ID:               approval.ID,
+		DocumentID:       approval.DocumentID,
+		RequestedBy:      approval.RequestedBy,
+		AssignedReviewer: approval.AssignedReviewer,
+		DecisionBy:       approval.DecisionBy,
+		Status:           approval.Status,
+		RequestReason:    approval.RequestReason,
+		DecisionReason:   approval.DecisionReason,
+		RequestedAt:      approval.RequestedAt,
+		DecidedAt:        approval.DecidedAt,
+	}
 }

@@ -34,10 +34,62 @@ export interface DocumentTypeItem {
   reviewIntervalDays: number;
 }
 
+export interface DocumentFamilyItem {
+  code: string;
+  name: string;
+  description: string;
+}
+
+export interface DocumentProfileItem {
+  code: string;
+  familyCode: string;
+  name: string;
+  description: string;
+  reviewIntervalDays: number;
+  activeSchemaVersion: number;
+  workflowProfile: string;
+  approvalRequired: boolean;
+  retentionDays: number;
+  validityDays: number;
+}
+
+export interface ProcessAreaItem {
+  code: string;
+  name: string;
+  description: string;
+}
+
+export interface MetadataFieldRuleItem {
+  name: string;
+  type: string;
+  required: boolean;
+}
+
+export interface DocumentProfileSchemaItem {
+  profileCode: string;
+  version: number;
+  isActive: boolean;
+  metadataRules: MetadataFieldRuleItem[];
+}
+
+export interface DocumentProfileGovernanceItem {
+  profileCode: string;
+  workflowProfile: string;
+  reviewIntervalDays: number;
+  approvalRequired: boolean;
+  retentionDays: number;
+  validityDays: number;
+}
+
 export interface DocumentListItem {
   documentId: string;
   title: string;
   documentType: string;
+  documentProfile: string;
+  documentFamily: string;
+  profileSchemaVersion?: number;
+  processArea?: string;
+  subject?: string;
   ownerId: string;
   businessUnit: string;
   department: string;

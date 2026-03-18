@@ -1162,11 +1162,14 @@ components:
           minLength: 1
         documentType:
           type: string
+          description: Legacy alias accepted during transition. Prefer `documentProfile`.
           enum: [policy, procedure, work_instruction, contract, supplier_document, technical_drawing, certificate, report, form, manual, po, it, rg]
         documentProfile:
           type: string
+          description: Canonical document profile code resolved by the registry.
         processArea:
           type: string
+          description: Optional process taxonomy code, such as `marketplaces` or `quality`.
         subject:
           type: string
         ownerId:
@@ -1218,10 +1221,13 @@ components:
           enum: [DRAFT, IN_REVIEW, APPROVED, PUBLISHED, ARCHIVED]
         documentType:
           type: string
+          description: Transitional alias mirroring the resolved profile code.
         documentProfile:
           type: string
+          description: Resolved document profile code.
         documentFamily:
           type: string
+          description: Canonical family resolved from the selected profile.
         profileSchemaVersion:
           type: integer
           minimum: 1
@@ -1239,10 +1245,13 @@ components:
           type: string
         documentType:
           type: string
+          description: Transitional alias mirroring the resolved profile code.
         documentProfile:
           type: string
+          description: Resolved document profile code.
         documentFamily:
           type: string
+          description: Canonical family resolved from the selected profile.
         profileSchemaVersion:
           type: integer
           minimum: 1

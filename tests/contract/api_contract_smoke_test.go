@@ -53,7 +53,7 @@ func TestAPIContractSmoke(t *testing.T) {
 		{name: "list access policies", method: http.MethodGet, path: "/api/v1/access-policies?resourceScope=document&resourceId=" + docID, withUserID: true, wantStatus: http.StatusOK},
 		{name: "list documents", method: http.MethodGet, path: "/api/v1/documents", withUserID: true, wantStatus: http.StatusOK},
 		{name: "get document", method: http.MethodGet, path: "/api/v1/documents/" + docID, withUserID: true, wantStatus: http.StatusOK},
-		{name: "search documents", method: http.MethodGet, path: "/api/v1/search/documents?limit=10&documentType=contract&businessUnit=legal&department=contracts", withUserID: true, wantStatus: http.StatusOK},
+		{name: "search documents", method: http.MethodGet, path: "/api/v1/search/documents?limit=10&documentProfile=po&processArea=marketplaces&businessUnit=commercial&department=marketplaces", withUserID: true, wantStatus: http.StatusOK},
 		{
 			name:       "replace access policies",
 			method:     http.MethodPut,
@@ -176,17 +176,15 @@ func createDocument(t *testing.T, handler http.Handler) string {
 	t.Helper()
 
 	body, err := json.Marshal(map[string]any{
-		"title":          "Contract Seed",
-		"documentType":   "contract",
-		"ownerId":        "owner-contract",
-		"businessUnit":   "legal",
-		"department":     "contracts",
-		"classification": "INTERNAL",
+		"title":           "Marketplace Procedure Seed",
+		"documentProfile": "po",
+		"processArea":     "marketplaces",
+		"ownerId":         "owner-contract",
+		"businessUnit":    "commercial",
+		"department":      "marketplaces",
+		"classification":  "INTERNAL",
 		"metadata": map[string]any{
-			"counterparty":    "Metal Nobre",
-			"contract_number": "CNT-001",
-			"start_date":      "2026-03-01",
-			"end_date":        "2026-12-31",
+			"procedure_code": "PO-MKT-001",
 		},
 		"initialContent": "seed",
 	})

@@ -39,7 +39,7 @@ func TestHealthEndpoints(t *testing.T) {
 func TestCreateAndListVersionsFlow(t *testing.T) {
 	mux := newTestMux()
 
-	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/documents", strings.NewReader(`{"title":"Contract","documentType":"contract","ownerId":"u1","businessUnit":"legal","department":"contracts","classification":"INTERNAL","metadata":{"counterparty":"Metal Nobre","contract_number":"CNT-002","start_date":"2026-03-01","end_date":"2026-12-31"}}`))
+	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/documents", strings.NewReader(`{"title":"Procedimento de Marketplaces","documentProfile":"po","processArea":"marketplaces","ownerId":"u1","businessUnit":"commercial","department":"marketplaces","classification":"INTERNAL","metadata":{"procedure_code":"PO-MKT-002"}}`))
 	createReq.Header.Set("Content-Type", "application/json")
 	createRR := httptest.NewRecorder()
 	mux.ServeHTTP(createRR, createReq)
@@ -52,11 +52,14 @@ func TestCreateAndListVersionsFlow(t *testing.T) {
 	if err := json.Unmarshal(createRR.Body.Bytes(), &created); err != nil {
 		t.Fatalf("invalid create response json: %v", err)
 	}
-	if created["documentProfile"] != "contract" {
-		t.Fatalf("expected documentProfile contract, got %v", created["documentProfile"])
+	if created["documentProfile"] != "po" {
+		t.Fatalf("expected documentProfile po, got %v", created["documentProfile"])
 	}
-	if created["documentFamily"] != "contract" {
-		t.Fatalf("expected documentFamily contract, got %v", created["documentFamily"])
+	if created["documentFamily"] != "procedure" {
+		t.Fatalf("expected documentFamily procedure, got %v", created["documentFamily"])
+	}
+	if created["processArea"] != "marketplaces" {
+		t.Fatalf("expected processArea marketplaces, got %v", created["processArea"])
 	}
 
 	documentID, ok := created["documentId"].(string)

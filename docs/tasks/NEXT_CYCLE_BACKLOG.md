@@ -331,7 +331,7 @@ Saida:
 - profiles `po`, `it`, `rg` e process areas iniciais sem hardcode espalhado na aplicacao
 
 ## Task 020 - Evolve API and UI to create documents by profile
-Status: `todo`
+Status: `done`
 
 Objetivo:
 Fazer a plataforma operar pelo registry configuravel em vez de lista fixa de tipos.
@@ -344,6 +344,8 @@ Escopo:
 
 Saida:
 - experiencia operacional multiempresa sobre a arquitetura correta
+- UI criando documentos por `documentProfile` com schema/governanca carregados do registry
+- exibicao de `documentFamily`, `documentProfile`, `processArea` e `profileSchemaVersion` na experiencia operacional
 
 ## Task 021 - Add audit timeline HTTP surface
 Status: `todo`

@@ -137,6 +137,8 @@ Saida esperada:
 - `documents` persistindo `profileSchemaVersion` para rastreabilidade
 
 ### Step 4. Evolve API and UI to operate by profile
+Status: `done`
+
 Entregaveis:
 - OpenAPI refletindo `document_profile`
 - listagem de registry/perfis

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Component, useEffect, useState } from "react";
 import { api } from "./lib.api";
 import type {
   AccessPolicyItem,
@@ -76,7 +76,53 @@ const emptyUserForm = {
   roles: ["viewer"] as UserRole[],
 };
 
+type AppErrorBoundaryState = {
+  hasError: boolean;
+  message: string;
+};
+
+class AppErrorBoundary extends Component<{ children: React.ReactNode }, AppErrorBoundaryState> {
+  state: AppErrorBoundaryState = {
+    hasError: false,
+    message: "",
+  };
+
+  static getDerivedStateFromError(error: Error): AppErrorBoundaryState {
+    return {
+      hasError: true,
+      message: error.message || "Falha inesperada ao renderizar a interface.",
+    };
+  }
+
+  componentDidCatch(error: Error): void {
+    console.error("MetalDocs UI render error", error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="app-shell">
+          <section className="hero-panel stack">
+            <strong>Falha ao montar a interface.</strong>
+            <p className="hint">{this.state.message}</p>
+            <p className="hint">A API respondeu, mas a interface encontrou um dado inesperado durante o render. Recarregue a pagina apos atualizar o frontend local.</p>
+          </section>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function App() {
+  return (
+    <AppErrorBoundary>
+      <AppContent />
+    </AppErrorBoundary>
+  );
+}
+
+function AppContent() {
   const [authState, setAuthState] = useState<LoadState>("loading");
   const [loadState, setLoadState] = useState<LoadState>("idle");
   const [user, setUser] = useState<CurrentUser | null>(null);
@@ -101,7 +147,8 @@ export default function App() {
   const [policyResourceId, setPolicyResourceId] = useState("");
   const [userForm, setUserForm] = useState(emptyUserForm);
 
-  const isAdmin = user?.roles.includes("admin") ?? false;
+  const currentUserRoles = Array.isArray(user?.roles) ? user.roles : [];
+  const isAdmin = currentUserRoles.includes("admin");
 
   useEffect(() => {
     void bootstrap();
@@ -133,13 +180,17 @@ export default function App() {
         api.listDocumentProfiles(),
         api.listProcessAreas(),
         api.searchDocuments(new URLSearchParams({ limit: "25" })),
-        currentUser.roles.includes("admin") ? api.listUsers() : Promise.resolve({ items: [] as ManagedUserItem[] }),
+        (Array.isArray(currentUser.roles) ? currentUser.roles : []).includes("admin") ? api.listUsers() : Promise.resolve({ items: [] as ManagedUserItem[] }),
       ]);
-      setDocumentProfiles(profilesResponse.items);
-      setProcessAreas(processAreasResponse.items);
-      setDocuments(docsResponse.items);
-      setManagedUsers(usersResponse.items);
-      const nextProfileCode = profilesResponse.items.find((item) => item.code === documentForm.documentProfile)?.code ?? profilesResponse.items[0]?.code ?? "";
+      const profiles = Array.isArray(profilesResponse.items) ? profilesResponse.items : [];
+      const areas = Array.isArray(processAreasResponse.items) ? processAreasResponse.items : [];
+      const docs = Array.isArray(docsResponse.items) ? docsResponse.items : [];
+      const users = Array.isArray(usersResponse.items) ? usersResponse.items : [];
+      setDocumentProfiles(profiles);
+      setProcessAreas(areas);
+      setDocuments(docs);
+      setManagedUsers(users);
+      const nextProfileCode = profiles.find((item) => item.code === documentForm.documentProfile)?.code ?? profiles[0]?.code ?? "";
       if (nextProfileCode) {
         await applyDocumentProfile(nextProfileCode, documentForm.processArea);
       }
@@ -350,7 +401,7 @@ export default function App() {
         <div>
           <p className="eyebrow">MetalDocs Control Room</p>
           <h1>Operacao documental profissional com identidade real.</h1>
-          <p className="hero-copy">Usuario atual: {user.displayName} ({user.username}) � roles: {user.roles.join(", ")}.</p>
+          <p className="hero-copy">Usuario atual: {user.displayName} ({user.username}) - roles: {currentUserRoles.join(", ") || "sem role"}.</p>
         </div>
         <div className="hero-panel">
           <span>Runtime</span>
@@ -403,7 +454,7 @@ export default function App() {
               <div className="two-columns"><input data-testid="document-department" placeholder="Departamento" value={documentForm.department} onChange={(event) => setDocumentForm({ ...documentForm, department: event.target.value })} /><input data-testid="document-tags" placeholder="Tags" value={documentForm.tags} onChange={(event) => setDocumentForm({ ...documentForm, tags: event.target.value })} /></div>
               <textarea data-testid="document-metadata" rows={4} value={documentForm.metadata} onChange={(event) => setDocumentForm({ ...documentForm, metadata: event.target.value })} />
               <p className="hint">O JSON acima nasce do schema ativo do profile selecionado. Ajuste os valores mantendo os campos obrigatorios exigidos pelo registry.</p>
-              {selectedProfileSchema && <p className="hint">Schema ativo: v{selectedProfileSchema.version} com {selectedProfileSchema.metadataRules.length} regra(s) de metadata.</p>}
+              {selectedProfileSchema && <p className="hint">Schema ativo: v{selectedProfileSchema.version} com {(selectedProfileSchema.metadataRules ?? []).length} regra(s) de metadata.</p>}
               <textarea data-testid="document-initial-content" rows={5} value={documentForm.initialContent} onChange={(event) => setDocumentForm({ ...documentForm, initialContent: event.target.value })} placeholder="Conteudo inicial" />
               <button data-testid="document-submit" type="submit">Criar documento</button>
             </form>
@@ -450,7 +501,7 @@ export default function App() {
                 </form>
                 <div className="card">
                   <h3>Base de usuarios</h3>
-                  <ul className="mini-list">{managedUsers.map((item) => <li key={item.userId}><div><strong>{item.displayName}</strong><p>{item.username} � {item.roles.join(", ")}</p></div><span>{item.isActive ? "Ativo" : "Inativo"}</span></li>)}</ul>
+                  <ul className="mini-list">{managedUsers.map((item) => <li key={item.userId}><div><strong>{item.displayName}</strong><p>{item.username} - {(Array.isArray(item.roles) ? item.roles : []).join(", ") || "sem role"}</p></div><span>{item.isActive ? "Ativo" : "Inativo"}</span></li>)}</ul>
                 </div>
               </div>
             </section>
@@ -476,3 +527,4 @@ function formatDate(value?: string): string {
   if (!value) return "-";
   return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
 }
+

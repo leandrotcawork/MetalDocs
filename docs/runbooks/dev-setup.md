@@ -66,6 +66,11 @@ cd frontend/apps/web
 npm run dev
 ```
 
+Observacao:
+- o Vite deriva o proxy da API a partir de `VITE_API_PROXY_TARGET`
+- se esse override nao estiver definido, ele usa `APP_PORT` da `.env` do repo root
+- assim, mudar `APP_PORT` nao deve mais exigir mexer em dois lugares
+
 Abrir no navegador:
 ```text
 http://127.0.0.1:4173

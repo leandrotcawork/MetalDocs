@@ -227,6 +227,7 @@ func (r *Repository) ListDocumentTypes(ctx context.Context) ([]domain.DocumentTy
 SELECT p.code, p.name, p.description, COALESCE(g.review_interval_days, p.review_interval_days)
 FROM metaldocs.document_profiles p
 LEFT JOIN metaldocs.document_profile_governance g ON g.profile_code = p.code
+WHERE p.is_active = TRUE
 ORDER BY p.code ASC
 `
 	rows, err := r.db.QueryContext(ctx, q)
@@ -253,7 +254,8 @@ func (r *Repository) ListDocumentFamilies(ctx context.Context) ([]domain.Documen
 	const q = `
 SELECT code, name, description
 FROM metaldocs.document_families
-ORDER BY p.code ASC
+WHERE is_active = TRUE
+ORDER BY code ASC
 `
 	rows, err := r.db.QueryContext(ctx, q)
 	if err != nil {
@@ -291,6 +293,7 @@ LEFT JOIN (
   GROUP BY profile_code
 ) s ON s.profile_code = p.code
 LEFT JOIN metaldocs.document_profile_governance g ON g.profile_code = p.code
+WHERE p.is_active = TRUE
 ORDER BY code ASC
 `
 	rows, err := r.db.QueryContext(ctx, q)

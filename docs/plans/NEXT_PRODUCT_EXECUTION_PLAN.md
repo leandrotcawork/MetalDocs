@@ -159,6 +159,8 @@ Depois de estabilizar documents configuraveis:
 - `IT` -> `work_instruction`
 - `RG` -> `record`
 
+Status: `implemented` via seed inicial do registry
+
 ## Recommended Metal Nobre Initial Process Areas
 - `quality`
 - `marketplaces`
@@ -166,6 +168,8 @@ Depois de estabilizar documents configuraveis:
 - `purchasing`
 - `logistics`
 - `finance`
+
+Status: `implemented` via seed inicial do registry
 
 ## Recommended Data Modeling
 

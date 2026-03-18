@@ -308,7 +308,7 @@ Saida:
 - `documents` valida metadata pelo schema ativo e persiste `profileSchemaVersion`
 
 ## Task 019 - Seed Metal Nobre document registry
-Status: `todo`
+Status: `done`
 
 Objetivo:
 Materializar o primeiro caso real da plataforma com taxonomia alinhada a ISO-9001 e operacao da Metal Nobre.
@@ -328,6 +328,7 @@ Escopo:
 
 Saida:
 - registry real pronto para organizar os documentos da Metal Nobre
+- profiles `po`, `it`, `rg` e process areas iniciais sem hardcode espalhado na aplicacao
 
 ## Task 020 - Evolve API and UI to create documents by profile
 Status: `todo`

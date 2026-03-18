@@ -788,7 +788,7 @@ paths:
           required: false
           schema:
             type: string
-            enum: [policy, procedure, work_instruction, contract, supplier_document, technical_drawing, certificate, report, form, manual]
+            enum: [policy, procedure, work_instruction, contract, supplier_document, technical_drawing, certificate, report, form, manual, po, it, rg]
         - name: documentProfile
           in: query
           required: false
@@ -1162,7 +1162,7 @@ components:
           minLength: 1
         documentType:
           type: string
-          enum: [policy, procedure, work_instruction, contract, supplier_document, technical_drawing, certificate, report, form, manual]
+          enum: [policy, procedure, work_instruction, contract, supplier_document, technical_drawing, certificate, report, form, manual, po, it, rg]
         documentProfile:
           type: string
         processArea:

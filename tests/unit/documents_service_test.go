@@ -218,6 +218,61 @@ func TestCreateDocumentRejectsInvalidMetadataForType(t *testing.T) {
 	}
 }
 
+func TestCreateDocumentWithMetalNobreProfileAndProcessArea(t *testing.T) {
+	repo := memory.NewRepository()
+	svc := application.NewService(repo, nil, fixedClock{now: time.Now().UTC()})
+
+	doc, err := svc.CreateDocument(context.Background(), domain.CreateDocumentCommand{
+		DocumentID:      "doc-mn-po",
+		Title:           "Procedimento de Marketplaces",
+		DocumentProfile: "po",
+		ProcessArea:     "marketplaces",
+		OwnerID:         "user-1",
+		BusinessUnit:    "commercial",
+		Department:      "marketplaces",
+		MetadataJSON: map[string]any{
+			"procedure_code": "PO-MKT-001",
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if doc.DocumentProfile != "po" {
+		t.Fatalf("expected profile po, got %s", doc.DocumentProfile)
+	}
+	if doc.DocumentFamily != "procedure" {
+		t.Fatalf("expected family procedure, got %s", doc.DocumentFamily)
+	}
+	if doc.ProcessArea != "marketplaces" {
+		t.Fatalf("expected processArea marketplaces, got %s", doc.ProcessArea)
+	}
+	if doc.ProfileSchemaVersion != 1 {
+		t.Fatalf("expected schema version 1, got %d", doc.ProfileSchemaVersion)
+	}
+}
+
+func TestListDocumentProfilesIncludesMetalNobreRegistry(t *testing.T) {
+	repo := memory.NewRepository()
+	svc := application.NewService(repo, nil, fixedClock{now: time.Now().UTC()})
+
+	items, err := svc.ListDocumentProfiles(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := map[string]bool{}
+	for _, item := range items {
+		found[item.Code] = true
+	}
+
+	for _, code := range []string{"po", "it", "rg"} {
+		if !found[code] {
+			t.Fatalf("expected profile %s in registry", code)
+		}
+	}
+}
+
 func TestDiffVersionsDetectsContentChange(t *testing.T) {
 	repo := memory.NewRepository()
 	svc := application.NewService(repo, nil, fixedClock{now: time.Date(2026, 3, 16, 10, 0, 0, 0, time.UTC)})

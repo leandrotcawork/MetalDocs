@@ -59,6 +59,13 @@ export interface ProcessAreaItem {
   description: string;
 }
 
+export interface SubjectItem {
+  code: string;
+  processAreaCode: string;
+  name: string;
+  description: string;
+}
+
 export interface MetadataFieldRuleItem {
   name: string;
   type: string;
@@ -112,6 +119,17 @@ export interface VersionListItem {
   createdAt: string;
 }
 
+export interface VersionDiffResponse {
+  documentId: string;
+  fromVersion: number;
+  toVersion: number;
+  contentChanged: boolean;
+  metadataChanged: string[];
+  classificationChanged: boolean;
+  effectiveAtChanged: boolean;
+  expiryAtChanged: boolean;
+}
+
 export interface WorkflowApprovalItem {
   approvalId: string;
   documentId: string;
@@ -155,6 +173,17 @@ export interface NotificationItem {
   status: "PENDING" | "SENT" | "READ";
   createdAt: string;
   readAt?: string;
+}
+
+export interface AuditEventItem {
+  id: string;
+  occurredAt: string;
+  actorId: string;
+  action: string;
+  resourceType: string;
+  resourceId: string;
+  payload: Record<string, unknown>;
+  traceId: string;
 }
 
 export interface ApiErrorEnvelope {

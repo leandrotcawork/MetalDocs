@@ -29,12 +29,12 @@ func TestWorkflowTransitionUpdatesDocumentStatus(t *testing.T) {
 	_, err := docSvc.CreateDocument(context.Background(), docdomain.CreateDocumentCommand{
 		DocumentID:   "doc-wf-1",
 		Title:        "Workflow Doc",
-		DocumentType: "manual",
+		DocumentType: "it",
 		OwnerID:      "owner-1",
 		BusinessUnit: "ops",
 		Department:   "general",
 		MetadataJSON: map[string]any{
-			"manual_code": "MAN-WF-1",
+			"instruction_code": "IT-WF-1",
 		},
 		InitialContent: "v1",
 	})
@@ -89,12 +89,12 @@ func TestWorkflowTransitionRejectsInvalidPath(t *testing.T) {
 	_, err := docSvc.CreateDocument(context.Background(), docdomain.CreateDocumentCommand{
 		DocumentID:   "doc-wf-2",
 		Title:        "Workflow Doc 2",
-		DocumentType: "manual",
+		DocumentType: "it",
 		OwnerID:      "owner-2",
 		BusinessUnit: "ops",
 		Department:   "general",
 		MetadataJSON: map[string]any{
-			"manual_code": "MAN-WF-2",
+			"instruction_code": "IT-WF-2",
 		},
 		InitialContent: "v1",
 	})
@@ -120,11 +120,11 @@ func TestWorkflowApprovalRequiresAssignedReviewerOwnership(t *testing.T) {
 	_, err := docSvc.CreateDocument(context.Background(), docdomain.CreateDocumentCommand{
 		DocumentID:     "doc-wf-ownership",
 		Title:          "Workflow Ownership",
-		DocumentType:   "manual",
+		DocumentType:   "it",
 		OwnerID:        "owner-4",
 		BusinessUnit:   "ops",
 		Department:     "general",
-		MetadataJSON:   map[string]any{"manual_code": "MAN-WF-4"},
+		MetadataJSON:   map[string]any{"instruction_code": "IT-WF-4"},
 		InitialContent: "v1",
 	})
 	if err != nil {
@@ -161,11 +161,11 @@ func TestWorkflowApprovalApprovesAndRecordsDecision(t *testing.T) {
 	_, err := docSvc.CreateDocument(context.Background(), docdomain.CreateDocumentCommand{
 		DocumentID:     "doc-wf-approve",
 		Title:          "Workflow Approval",
-		DocumentType:   "manual",
+		DocumentType:   "it",
 		OwnerID:        "owner-5",
 		BusinessUnit:   "ops",
 		Department:     "general",
-		MetadataJSON:   map[string]any{"manual_code": "MAN-WF-5"},
+		MetadataJSON:   map[string]any{"instruction_code": "IT-WF-5"},
 		InitialContent: "v1",
 	})
 	if err != nil {
@@ -219,12 +219,12 @@ func TestWorkflowTransitionRollsBackWhenAuditFails(t *testing.T) {
 	_, err := docSvc.CreateDocument(context.Background(), docdomain.CreateDocumentCommand{
 		DocumentID:   "doc-wf-3",
 		Title:        "Workflow Doc 3",
-		DocumentType: "manual",
+		DocumentType: "it",
 		OwnerID:      "owner-3",
 		BusinessUnit: "ops",
 		Department:   "general",
 		MetadataJSON: map[string]any{
-			"manual_code": "MAN-WF-3",
+			"instruction_code": "IT-WF-3",
 		},
 		InitialContent: "v1",
 	})

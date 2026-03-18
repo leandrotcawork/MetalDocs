@@ -953,7 +953,7 @@ paths:
           required: false
           schema:
             type: string
-            enum: [policy, procedure, work_instruction, contract, supplier_document, technical_drawing, certificate, report, form, manual, po, it, rg]
+            enum: [po, it, rg]
         - name: documentProfile
           in: query
           required: false
@@ -1444,7 +1444,7 @@ components:
         documentType:
           type: string
           description: Legacy alias accepted during transition. Prefer `documentProfile`.
-          enum: [policy, procedure, work_instruction, contract, supplier_document, technical_drawing, certificate, report, form, manual, po, it, rg]
+          enum: [po, it, rg]
         documentProfile:
           type: string
           description: Canonical document profile code resolved by the registry.

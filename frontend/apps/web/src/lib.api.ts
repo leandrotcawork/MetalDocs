@@ -1,5 +1,6 @@
 import type {
   AccessPolicyItem,
+  AuditEventItem,
   ApiErrorEnvelope,
   AttachmentItem,
   CurrentUser,
@@ -13,6 +14,8 @@ import type {
   NotificationItem,
   ProcessAreaItem,
   SearchDocumentItem,
+  SubjectItem,
+  VersionDiffResponse,
   VersionListItem,
   WorkflowApprovalItem,
   UserRole,
@@ -82,6 +85,15 @@ function normalizeDocumentProfile(value: DocumentProfileItem): DocumentProfileIt
 function normalizeProcessArea(value: ProcessAreaItem): ProcessAreaItem {
   return {
     code: value?.code ?? "",
+    name: value?.name ?? value?.code ?? "",
+    description: value?.description ?? "",
+  };
+}
+
+function normalizeSubject(value: SubjectItem): SubjectItem {
+  return {
+    code: value?.code ?? "",
+    processAreaCode: value?.processAreaCode ?? "",
     name: value?.name ?? value?.code ?? "",
     description: value?.description ?? "",
   };
@@ -207,6 +219,32 @@ function normalizeNotificationItem(value: NotificationItem): NotificationItem {
   };
 }
 
+function normalizeAuditEventItem(value: AuditEventItem): AuditEventItem {
+  return {
+    id: value?.id ?? "",
+    occurredAt: value?.occurredAt ?? "",
+    actorId: value?.actorId ?? "",
+    action: value?.action ?? "",
+    resourceType: value?.resourceType ?? "",
+    resourceId: value?.resourceId ?? "",
+    payload: typeof value?.payload === "object" && value?.payload !== null ? value.payload : {},
+    traceId: value?.traceId ?? "",
+  };
+}
+
+function normalizeVersionDiff(value: VersionDiffResponse): VersionDiffResponse {
+  return {
+    documentId: value?.documentId ?? "",
+    fromVersion: Number(value?.fromVersion ?? 0),
+    toVersion: Number(value?.toVersion ?? 0),
+    contentChanged: Boolean(value?.contentChanged),
+    metadataChanged: normalizeStringArray(value?.metadataChanged),
+    classificationChanged: Boolean(value?.classificationChanged),
+    effectiveAtChanged: Boolean(value?.effectiveAtChanged),
+    expiryAtChanged: Boolean(value?.expiryAtChanged),
+  };
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     credentials: "include",
@@ -269,6 +307,11 @@ export const api = {
     const response = await request<{ items: ProcessAreaItem[] }>("/process-areas");
     return { items: Array.isArray(response.items) ? response.items.map(normalizeProcessArea) : [] };
   },
+  listSubjects: async (params?: URLSearchParams) => {
+    const query = params?.toString();
+    const response = await request<{ items: SubjectItem[] }>(`/document-subjects${query ? `?${query}` : ""}`);
+    return { items: Array.isArray(response.items) ? response.items.map(normalizeSubject) : [] };
+  },
   listDocuments: async () => {
     const response = await request<{ items: DocumentListItem[] }>("/documents");
     return { items: Array.isArray(response.items) ? response.items.map(normalizeDocumentListItem) : [] };
@@ -284,6 +327,10 @@ export const api = {
     return { items: Array.isArray(response.items) ? response.items.map(normalizeVersionItem) : [] };
   },
   addVersion: (documentId: string, body: Record<string, unknown>) => request<VersionListItem>(`/documents/${documentId}/versions`, { method: "POST", body: JSON.stringify(body) }),
+  getVersionDiff: async (documentId: string, fromVersion: number, toVersion: number) => {
+    const response = await request<VersionDiffResponse>(`/documents/${documentId}/versions/diff?fromVersion=${encodeURIComponent(String(fromVersion))}&toVersion=${encodeURIComponent(String(toVersion))}`);
+    return normalizeVersionDiff(response);
+  },
   listApprovals: async (documentId: string) => {
     const response = await request<{ items: WorkflowApprovalItem[] }>(`/workflow/documents/${documentId}/approvals`);
     return { items: Array.isArray(response.items) ? response.items.map(normalizeApprovalItem) : [] };
@@ -308,6 +355,11 @@ export const api = {
     const query = params?.toString();
     const response = await request<{ items: NotificationItem[] }>(`/notifications${query ? `?${query}` : ""}`);
     return { items: Array.isArray(response.items) ? response.items.map(normalizeNotificationItem) : [] };
+  },
+  listAuditEvents: async (params?: URLSearchParams) => {
+    const query = params?.toString();
+    const response = await request<{ items: AuditEventItem[] }>(`/audit/events${query ? `?${query}` : ""}`);
+    return { items: Array.isArray(response.items) ? response.items.map(normalizeAuditEventItem) : [] };
   },
   markNotificationRead: (notificationId: string) => request<{ id: string; status: string; readAt: string }>(`/notifications/${encodeURIComponent(notificationId)}/read`, { method: "POST" }),
 };

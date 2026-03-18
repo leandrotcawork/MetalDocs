@@ -66,7 +66,7 @@ func TestCreateDocumentAuthorizedBlockedByTypePolicy(t *testing.T) {
 	repo := memory.NewRepository()
 	svc := application.NewService(repo, nil, fixedClock{now: time.Date(2026, 3, 17, 10, 0, 0, 0, time.UTC)})
 
-	err := svc.ReplaceAccessPolicies(context.Background(), "document_type", "contract", []domain.AccessPolicy{
+	err := svc.ReplaceAccessPolicies(context.Background(), "document_type", "po", []domain.AccessPolicy{
 		{
 			SubjectType: domain.SubjectTypeRole,
 			SubjectID:   "reviewer",
@@ -81,11 +81,14 @@ func TestCreateDocumentAuthorizedBlockedByTypePolicy(t *testing.T) {
 	ctx := iamdomain.WithAuthContext(context.Background(), "editor-user", []iamdomain.Role{iamdomain.RoleEditor})
 	_, err = svc.CreateDocumentAuthorized(ctx, domain.CreateDocumentCommand{
 		DocumentID:   "doc-blocked",
-		Title:        "Blocked Contract",
-		DocumentType: "contract",
+		Title:        "Blocked Procedure",
+		DocumentType: "po",
 		OwnerID:      "editor-user",
-		BusinessUnit: "legal",
-		Department:   "contracts",
+		BusinessUnit: "quality",
+		Department:   "qa",
+		MetadataJSON: map[string]any{
+			"procedure_code": "PO-BLOCKED-001",
+		},
 	})
 	if err == nil {
 		t.Fatal("expected create to be blocked by policy")
@@ -98,13 +101,13 @@ func TestListDocumentsAuthorizedFiltersByViewPolicy(t *testing.T) {
 
 	_, err := svc.CreateDocument(context.Background(), domain.CreateDocumentCommand{
 		DocumentID:   "doc-visible",
-		Title:        "Visible Manual",
-		DocumentType: "manual",
+		Title:        "Visible Instruction",
+		DocumentType: "it",
 		OwnerID:      "owner-a",
 		BusinessUnit: "ops",
 		Department:   "general",
 		MetadataJSON: map[string]any{
-			"manual_code": "MAN-001",
+			"instruction_code": "IT-001",
 		},
 	})
 	if err != nil {
@@ -112,13 +115,13 @@ func TestListDocumentsAuthorizedFiltersByViewPolicy(t *testing.T) {
 	}
 	_, err = svc.CreateDocument(context.Background(), domain.CreateDocumentCommand{
 		DocumentID:   "doc-hidden",
-		Title:        "Hidden Manual",
-		DocumentType: "manual",
+		Title:        "Hidden Instruction",
+		DocumentType: "it",
 		OwnerID:      "owner-b",
 		BusinessUnit: "ops",
 		Department:   "general",
 		MetadataJSON: map[string]any{
-			"manual_code": "MAN-002",
+			"instruction_code": "IT-002",
 		},
 	})
 	if err != nil {

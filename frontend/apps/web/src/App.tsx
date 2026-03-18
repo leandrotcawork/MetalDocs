@@ -1,14 +1,18 @@
 import { Component, useEffect, useState } from "react";
 import { api } from "./lib.api";
-import { AppShellHeader } from "./components/AppShellHeader";
 import { AuthShell } from "./components/AuthShell";
+import { DocumentCreateView } from "./components/DocumentCreateView";
+import { DocumentWorkspaceShell, type WorkspaceView } from "./components/DocumentWorkspaceShell";
 import { DocumentsWorkspace } from "./components/DocumentsWorkspace";
 import { ManagedUsersPanel } from "./components/ManagedUsersPanel";
 import { NotificationsPanel } from "./components/NotificationsPanel";
+import { OperationsCenter } from "./components/OperationsCenter";
 import { PasswordChangePanel } from "./components/PasswordChangePanel";
+import { RegistryExplorer } from "./components/RegistryExplorer";
 import type {
   AccessPolicyItem,
   AttachmentItem,
+  AuditEventItem,
   CurrentUser,
   DocumentProfileGovernanceItem,
   DocumentProfileItem,
@@ -18,6 +22,8 @@ import type {
   NotificationItem,
   ProcessAreaItem,
   SearchDocumentItem,
+  SubjectItem,
+  VersionDiffResponse,
   UserRole,
   VersionListItem,
   WorkflowApprovalItem,
@@ -61,8 +67,8 @@ function metadataTextForProfileSchema(profileCode: string, schema?: DocumentProf
 
 const emptyDocumentForm = {
   title: "",
-  documentType: "policy",
-  documentProfile: "policy",
+  documentType: "po",
+  documentProfile: "po",
   processArea: "",
   subject: "",
   ownerId: "",
@@ -145,19 +151,24 @@ function AppContent() {
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [activeView, setActiveView] = useState<WorkspaceView>("operations");
+  const [searchQuery, setSearchQuery] = useState("");
   const [loginForm, setLoginForm] = useState({ identifier: "admin", password: "" });
   const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
   const [documentForm, setDocumentForm] = useState(emptyDocumentForm);
   const [documentProfiles, setDocumentProfiles] = useState<DocumentProfileItem[]>([]);
   const [processAreas, setProcessAreas] = useState<ProcessAreaItem[]>([]);
+  const [subjects, setSubjects] = useState<SubjectItem[]>([]);
   const [selectedProfileSchema, setSelectedProfileSchema] = useState<DocumentProfileSchemaItem | null>(null);
   const [selectedProfileGovernance, setSelectedProfileGovernance] = useState<DocumentProfileGovernanceItem | null>(null);
   const [documents, setDocuments] = useState<SearchDocumentItem[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<DocumentListItem | null>(null);
   const [versions, setVersions] = useState<VersionListItem[]>([]);
+  const [versionDiff, setVersionDiff] = useState<VersionDiffResponse | null>(null);
   const [approvals, setApprovals] = useState<WorkflowApprovalItem[]>([]);
   const [attachments, setAttachments] = useState<AttachmentItem[]>([]);
   const [policies, setPolicies] = useState<AccessPolicyItem[]>([]);
+  const [auditEvents, setAuditEvents] = useState<AuditEventItem[]>([]);
   const [managedUsers, setManagedUsers] = useState<ManagedUserItem[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -168,7 +179,13 @@ function AppContent() {
 
   const currentUserRoles = Array.isArray(user?.roles) ? user.roles : [];
   const isAdmin = currentUserRoles.includes("admin");
+  const userRoleLabel = roleLabelFromRoles(currentUserRoles);
   const selectedManagedUser = managedUsers.find((item) => item.userId === managedUserForm.userId) ?? null;
+  const visibleDocuments = activeView === "my-docs"
+    ? documents.filter((item) => item.ownerId === user?.userId)
+    : activeView === "recent"
+      ? [...documents].sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
+      : documents;
 
   useEffect(() => {
     void bootstrap();
@@ -215,19 +232,22 @@ function AppContent() {
   async function loadWorkspace(currentUser: CurrentUser) {
     setLoadState("loading");
     try {
-      const [profilesResponse, processAreasResponse, docsResponse, usersResponse, notificationsResponse] = await Promise.all([
+      const [profilesResponse, processAreasResponse, subjectsResponse, docsResponse, usersResponse, notificationsResponse] = await Promise.all([
         api.listDocumentProfiles(),
         api.listProcessAreas(),
+        api.listSubjects(),
         api.searchDocuments(new URLSearchParams({ limit: "25" })),
         (Array.isArray(currentUser.roles) ? currentUser.roles : []).includes("admin") ? api.listUsers() : Promise.resolve({ items: [] as ManagedUserItem[] }),
         api.listNotifications(new URLSearchParams({ limit: "10" })),
       ]);
       const profiles = Array.isArray(profilesResponse.items) ? profilesResponse.items : [];
       const areas = Array.isArray(processAreasResponse.items) ? processAreasResponse.items : [];
+      const nextSubjects = Array.isArray(subjectsResponse.items) ? subjectsResponse.items : [];
       const docs = Array.isArray(docsResponse.items) ? docsResponse.items : [];
       const users = Array.isArray(usersResponse.items) ? usersResponse.items : [];
       setDocumentProfiles(profiles);
       setProcessAreas(areas);
+      setSubjects(nextSubjects);
       setDocuments(docs);
       setManagedUsers(users);
       setNotifications(Array.isArray(notificationsResponse.items) ? notificationsResponse.items : []);
@@ -277,11 +297,14 @@ function AppContent() {
     if (!response.user.mustChangePassword) {
       await loadWorkspace(response.user);
     } else {
+      setSubjects([]);
       setDocuments([]);
       setVersions([]);
+      setVersionDiff(null);
       setApprovals([]);
       setAttachments([]);
       setPolicies([]);
+      setAuditEvents([]);
       setManagedUsers([]);
       setNotifications([]);
       setSelectedDocument(null);
@@ -295,11 +318,14 @@ function AppContent() {
     setUser(null);
     setSelectedProfileSchema(null);
     setSelectedProfileGovernance(null);
+    setSubjects([]);
     setDocuments([]);
     setVersions([]);
+    setVersionDiff(null);
     setApprovals([]);
     setAttachments([]);
     setPolicies([]);
+    setAuditEvents([]);
     setManagedUsers([]);
     setNotifications([]);
     setSelectedDocument(null);
@@ -351,6 +377,7 @@ function AppContent() {
         metadata: metadataTextForProfileSchema(documentForm.documentProfile, selectedProfileSchema),
       });
       setMessage("Documento criado com sucesso.");
+      setActiveView("library");
       if (user) await loadWorkspace(user);
     } catch (err) {
       handleError(err);
@@ -359,19 +386,35 @@ function AppContent() {
 
   async function openDocument(documentId: string) {
     try {
-      const [document, versionsResponse, approvalsResponse, attachmentsResponse] = await Promise.all([
+      const [document, versionsResponse, approvalsResponse, attachmentsResponse, auditResponse] = await Promise.all([
         api.getDocument(documentId),
         api.listVersions(documentId),
         api.listApprovals(documentId),
         api.listAttachments(documentId),
+        api.listAuditEvents(new URLSearchParams({ resourceType: "document", resourceId: documentId, limit: "10" })),
       ]);
+      const [schema, governance] = await Promise.all([
+        api.getDocumentProfileSchema(document.documentProfile),
+        api.getDocumentProfileGovernance(document.documentProfile),
+      ]);
+      const orderedVersions = [...versionsResponse.items].sort((left, right) => right.version - left.version);
+      setSelectedProfileSchema(schema);
+      setSelectedProfileGovernance(governance);
       setSelectedDocument(document);
-      setVersions(versionsResponse.items);
+      setVersions(orderedVersions);
       setApprovals(approvalsResponse.items);
       setAttachments(attachmentsResponse.items);
+      setAuditEvents(auditResponse.items);
       setPolicyResourceId(documentId);
-      const policyResponse = await api.listAccessPolicies("document", documentId);
+      setActiveView("library");
+      const [policyResponse, nextDiff] = await Promise.all([
+        api.listAccessPolicies("document", documentId),
+        orderedVersions.length >= 2
+          ? api.getVersionDiff(documentId, orderedVersions[1].version, orderedVersions[0].version)
+          : Promise.resolve(null),
+      ]);
       setPolicies(policyResponse.items);
+      setVersionDiff(nextDiff);
     } catch (err) {
       handleError(err);
     }
@@ -383,6 +426,7 @@ function AppContent() {
     try {
       await api.uploadAttachment(selectedDocument.documentId, selectedFile);
       await openDocument(selectedDocument.documentId);
+      setSelectedFile(null);
       setMessage("Anexo enviado.");
     } catch (err) {
       handleError(err);
@@ -532,9 +576,7 @@ function AppContent() {
   }
 
   return (
-    <div className="app-shell">
-      <AppShellHeader user={user} apiBaseUrl={api.currentApiBaseUrl} currentUserRoles={currentUserRoles} notifications={notifications} onLogout={handleLogout} />
-
+    <div className={`app-shell ${!user.mustChangePassword ? "is-workspace" : ""}`}>
       {(message || error) && <section data-testid="app-banner" className={`banner ${error ? "banner-error" : "banner-success"}`}>{error || message}</section>}
 
       {user.mustChangePassword && (
@@ -542,33 +584,92 @@ function AppContent() {
       )}
 
       {!user.mustChangePassword && (
-        <main className="grid-layout wide-grid">
-          <DocumentsWorkspace
-            loadState={loadState}
-            documentForm={documentForm}
-            documentProfiles={documentProfiles}
-            processAreas={processAreas}
-            selectedProfileSchema={selectedProfileSchema}
-            selectedProfileGovernance={selectedProfileGovernance}
-            documents={documents}
-            selectedDocument={selectedDocument}
-            versions={versions}
-            approvals={approvals}
-            attachments={attachments}
-            policies={policies}
-            selectedFile={selectedFile}
-            policyScope={policyScope}
-            policyResourceId={policyResourceId}
-            onDocumentFormChange={setDocumentForm}
-            onSubmitCreateDocument={handleCreateDocument}
-            onApplyProfile={applyDocumentProfile}
-            onRefreshWorkspace={() => user && loadWorkspace(user)}
-            onOpenDocument={openDocument}
-            onFileChange={setSelectedFile}
-            onUploadAttachment={handleUploadAttachment}
-          />
+        <DocumentWorkspaceShell
+          userDisplayName={user.displayName}
+          userRoleLabel={userRoleLabel}
+          organizationLabel="Metal Nobre"
+          activeView={activeView}
+          searchValue={searchQuery}
+          notificationsPending={notifications.filter((item) => item.status !== "READ").length}
+          documentCount={documents.length}
+          reviewCount={documents.filter((item) => item.status === "IN_REVIEW").length}
+          registryCount={documentProfiles.length}
+          showAdmin={isAdmin}
+          documentProfiles={documentProfiles}
+          documents={documents}
+          onSearchChange={setSearchQuery}
+          onNavigate={setActiveView}
+          onPrimaryAction={() => setActiveView("create")}
+          onLogout={handleLogout}
+        >
+          {(activeView === "operations" || activeView === "approvals" || activeView === "audit") && (
+            <OperationsCenter
+              documents={activeView === "approvals" ? documents.filter((item) => item.status === "IN_REVIEW") : documents}
+              notifications={notifications}
+              documentProfiles={documentProfiles}
+              formatDate={formatDate}
+              onCreateDocument={() => setActiveView("create")}
+              onOpenDocument={openDocument}
+            />
+          )}
 
-          {isAdmin && (
+          {(activeView === "library" || activeView === "my-docs" || activeView === "recent") && (
+            <DocumentsWorkspace
+              loadState={loadState}
+              documentProfiles={documentProfiles}
+              processAreas={processAreas}
+              documents={visibleDocuments}
+              selectedDocument={selectedDocument}
+              selectedProfileGovernance={selectedProfileGovernance}
+              versions={versions}
+              versionDiff={versionDiff}
+              approvals={approvals}
+              attachments={attachments}
+              policies={policies}
+              auditEvents={auditEvents}
+              selectedFile={selectedFile}
+              policyScope={policyScope}
+              policyResourceId={policyResourceId}
+              searchQuery={searchQuery}
+              formatDate={formatDate}
+              onRefreshWorkspace={() => user && loadWorkspace(user)}
+              onOpenDocument={openDocument}
+              onFileChange={setSelectedFile}
+              onUploadAttachment={handleUploadAttachment}
+            />
+          )}
+
+          {activeView === "create" && (
+            <DocumentCreateView
+              documentForm={documentForm}
+              documentProfiles={documentProfiles}
+              processAreas={processAreas}
+              subjects={subjects}
+              selectedProfileSchema={selectedProfileSchema}
+              selectedProfileGovernance={selectedProfileGovernance}
+              onDocumentFormChange={setDocumentForm}
+              onApplyProfile={applyDocumentProfile}
+              onSubmitCreateDocument={handleCreateDocument}
+            />
+          )}
+
+          {activeView === "registry" && (
+            <RegistryExplorer
+              documentProfiles={documentProfiles}
+              processAreas={processAreas}
+              subjects={subjects}
+              selectedProfileCode={documentForm.documentProfile}
+              selectedProfileSchema={selectedProfileSchema}
+              selectedProfileGovernance={selectedProfileGovernance}
+              onSelectProfile={(profileCode) => applyDocumentProfile(profileCode, documentForm.processArea)}
+            />
+          )}
+
+          {activeView === "notifications" && (
+            <NotificationsPanel notifications={notifications} formatDate={formatDate} onMarkRead={handleMarkNotificationRead} />
+          )}
+
+          {activeView === "admin" && isAdmin && (
             <ManagedUsersPanel
               userForm={userForm}
               managedUserForm={managedUserForm}
@@ -585,9 +686,7 @@ function AppContent() {
               onUnlockManagedUser={handleUnlockManagedUser}
             />
           )}
-
-          <NotificationsPanel notifications={notifications} formatDate={formatDate} onMarkRead={handleMarkNotificationRead} />
-        </main>
+        </DocumentWorkspaceShell>
       )}
     </div>
   );
@@ -607,4 +706,11 @@ function statusOf(error: unknown): number | undefined {
 function formatDate(value?: string): string {
   if (!value) return "-";
   return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
+}
+
+function roleLabelFromRoles(roles: UserRole[]): string {
+  if (roles.includes("admin")) return "Administrador";
+  if (roles.includes("reviewer")) return "Revisor";
+  if (roles.includes("editor")) return "Editor";
+  return "Visualizador";
 }

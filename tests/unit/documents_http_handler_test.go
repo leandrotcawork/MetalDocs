@@ -141,7 +141,7 @@ func TestListDocumentTypes(t *testing.T) {
 func TestListDocumentFamiliesAndProfiles(t *testing.T) {
 	mux := newTestMux()
 
-	for _, path := range []string{"/api/v1/document-families", "/api/v1/document-profiles", "/api/v1/process-areas", "/api/v1/document-subjects", "/api/v1/document-profiles/manual/schema", "/api/v1/document-profiles/manual/governance"} {
+	for _, path := range []string{"/api/v1/document-families", "/api/v1/document-profiles", "/api/v1/process-areas", "/api/v1/document-subjects", "/api/v1/document-profiles/it/schema", "/api/v1/document-profiles/it/governance"} {
 		req := httptest.NewRequest(http.MethodGet, path, nil)
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
@@ -176,7 +176,7 @@ func TestReplaceAndListAccessPoliciesHTTP(t *testing.T) {
 func TestUploadListAndDownloadAttachmentFlow(t *testing.T) {
 	mux := newTestMux()
 
-	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/documents", strings.NewReader(`{"title":"Manual","documentType":"manual","ownerId":"u1","businessUnit":"ops","department":"general","metadata":{"manual_code":"MAN-HTTP"}}`))
+	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/documents", strings.NewReader(`{"title":"Instrucao","documentType":"it","ownerId":"u1","businessUnit":"ops","department":"general","metadata":{"instruction_code":"IT-HTTP"}}`))
 	createReq.Header.Set("Content-Type", "application/json")
 	createRR := httptest.NewRecorder()
 	mux.ServeHTTP(createRR, createReq)

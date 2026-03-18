@@ -87,13 +87,13 @@ func TestNotificationServiceEmitsReviewReminderByExpiry(t *testing.T) {
 	expirySoon := time.Date(2026, 3, 25, 0, 0, 0, 0, time.UTC)
 	doc, err := docSvc.CreateDocument(context.Background(), docdomain.CreateDocumentCommand{
 		DocumentID:     "doc-reminder",
-		Title:          "Published Manual",
-		DocumentType:   "manual",
+		Title:          "Published Instruction",
+		DocumentType:   "it",
 		OwnerID:        "owner-reminder",
 		BusinessUnit:   "ops",
 		Department:     "general",
 		ExpiryAt:       &expirySoon,
-		MetadataJSON:   map[string]any{"manual_code": "MAN-REM"},
+		MetadataJSON:   map[string]any{"instruction_code": "IT-REM"},
 		InitialContent: "v1",
 	})
 	if err != nil {

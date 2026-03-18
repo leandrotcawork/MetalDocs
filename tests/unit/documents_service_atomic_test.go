@@ -150,12 +150,12 @@ func TestCreateDocumentPrefersAtomicRepositoryWhenAvailable(t *testing.T) {
 	_, err := svc.CreateDocument(context.Background(), domain.CreateDocumentCommand{
 		DocumentID:   "doc-atomic",
 		Title:        "Atomic",
-		DocumentType: "manual",
+		DocumentType: "it",
 		OwnerID:      "owner-atomic",
 		BusinessUnit: "ops",
 		Department:   "general",
 		MetadataJSON: map[string]any{
-			"manual_code": "MAN-ATOMIC",
+			"instruction_code": "IT-ATOMIC",
 		},
 		InitialContent: "v1",
 	})

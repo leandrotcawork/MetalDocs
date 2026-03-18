@@ -36,16 +36,13 @@ func TestCreateDocumentCreatesVersionAndEvents(t *testing.T) {
 
 	doc, err := svc.CreateDocument(context.Background(), domain.CreateDocumentCommand{
 		DocumentID:   "doc-1",
-		Title:        "Contract",
-		DocumentType: "contract",
+		Title:        "Procedure",
+		DocumentType: "po",
 		OwnerID:      "user-1",
-		BusinessUnit: "legal",
-		Department:   "contracts",
+		BusinessUnit: "quality",
+		Department:   "qa",
 		MetadataJSON: map[string]any{
-			"counterparty":    "Metal Nobre",
-			"contract_number": "CNT-001",
-			"start_date":      "2026-03-01",
-			"end_date":        "2026-12-31",
+			"procedure_code": "PO-001",
 		},
 		InitialContent: "v1",
 		TraceID:        "trace-1",
@@ -57,8 +54,8 @@ func TestCreateDocumentCreatesVersionAndEvents(t *testing.T) {
 	if doc.Status != domain.StatusDraft {
 		t.Fatalf("expected status %s, got %s", domain.StatusDraft, doc.Status)
 	}
-	if doc.DocumentType != "contract" {
-		t.Fatalf("expected document type contract, got %s", doc.DocumentType)
+	if doc.DocumentType != "po" {
+		t.Fatalf("expected document type po, got %s", doc.DocumentType)
 	}
 
 	versions, err := svc.ListVersions(context.Background(), "doc-1")
@@ -86,13 +83,13 @@ func TestAddVersionIncrementsVersionNumber(t *testing.T) {
 
 	_, err := svc.CreateDocument(context.Background(), domain.CreateDocumentCommand{
 		DocumentID:   "doc-2",
-		Title:        "Policy",
-		DocumentType: "policy",
+		Title:        "Procedure",
+		DocumentType: "po",
 		OwnerID:      "user-2",
 		BusinessUnit: "quality",
 		Department:   "qa",
 		MetadataJSON: map[string]any{
-			"policy_code": "POL-001",
+			"procedure_code": "PO-001",
 		},
 		InitialContent: "first",
 		TraceID:        "trace-2",
@@ -104,7 +101,7 @@ func TestAddVersionIncrementsVersionNumber(t *testing.T) {
 	version, err := svc.AddVersion(context.Background(), domain.AddVersionCommand{
 		DocumentID:    "doc-2",
 		Content:       "second",
-		ChangeSummary: "policy updated",
+		ChangeSummary: "procedure updated",
 		TraceID:       "trace-3",
 	})
 	if err != nil {
@@ -132,12 +129,12 @@ func TestListDocumentsReturnsCreatedDocuments(t *testing.T) {
 	_, err := svc.CreateDocument(context.Background(), domain.CreateDocumentCommand{
 		DocumentID:   "doc-a",
 		Title:        "A",
-		DocumentType: "manual",
+		DocumentType: "it",
 		OwnerID:      "user-a",
 		BusinessUnit: "ops",
 		Department:   "general",
 		MetadataJSON: map[string]any{
-			"manual_code": "MAN-001",
+			"instruction_code": "IT-001",
 		},
 		InitialContent: "v1",
 	})
@@ -148,12 +145,12 @@ func TestListDocumentsReturnsCreatedDocuments(t *testing.T) {
 	_, err = svc.CreateDocument(context.Background(), domain.CreateDocumentCommand{
 		DocumentID:   "doc-b",
 		Title:        "B",
-		DocumentType: "report",
+		DocumentType: "rg",
 		OwnerID:      "user-b",
 		BusinessUnit: "ops",
 		Department:   "general",
 		MetadataJSON: map[string]any{
-			"report_period": "2026-Q1",
+			"record_code": "RG-001",
 		},
 		InitialContent: "v1",
 	})
@@ -204,13 +201,13 @@ func TestCreateDocumentRejectsInvalidMetadataForType(t *testing.T) {
 
 	_, err := svc.CreateDocument(context.Background(), domain.CreateDocumentCommand{
 		DocumentID:   "doc-metadata",
-		Title:        "Invalid Contract",
-		DocumentType: "contract",
+		Title:        "Invalid Procedure",
+		DocumentType: "po",
 		OwnerID:      "user-1",
-		BusinessUnit: "legal",
-		Department:   "contracts",
+		BusinessUnit: "quality",
+		Department:   "qa",
 		MetadataJSON: map[string]any{
-			"counterparty": "Metal Nobre",
+			"wrong_field": "bad",
 		},
 	})
 	if err == nil {
@@ -279,13 +276,13 @@ func TestDiffVersionsDetectsContentChange(t *testing.T) {
 
 	_, err := svc.CreateDocument(context.Background(), domain.CreateDocumentCommand{
 		DocumentID:   "doc-diff",
-		Title:        "Manual",
-		DocumentType: "manual",
+		Title:        "Instruction",
+		DocumentType: "it",
 		OwnerID:      "user-1",
 		BusinessUnit: "ops",
 		Department:   "general",
 		MetadataJSON: map[string]any{
-			"manual_code": "MAN-002",
+			"instruction_code": "IT-002",
 		},
 		InitialContent: "v1",
 	})
@@ -328,13 +325,13 @@ func TestUploadAndListAttachmentsAuthorized(t *testing.T) {
 
 	_, err := svc.CreateDocument(context.Background(), domain.CreateDocumentCommand{
 		DocumentID:   "doc-attach",
-		Title:        "Manual",
-		DocumentType: "manual",
+		Title:        "Instruction",
+		DocumentType: "it",
 		OwnerID:      "owner-1",
 		BusinessUnit: "ops",
 		Department:   "general",
 		MetadataJSON: map[string]any{
-			"manual_code": "MAN-ATTACH",
+			"instruction_code": "IT-ATTACH",
 		},
 		InitialContent: "v1",
 	})

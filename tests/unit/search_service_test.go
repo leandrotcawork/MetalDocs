@@ -21,55 +21,49 @@ func TestSearchDocumentsFiltersAndLimits(t *testing.T) {
 
 	_, _ = docSvc.CreateDocument(context.Background(), docdomain.CreateDocumentCommand{
 		DocumentID:   "search-1",
-		Title:        "Contract Alpha",
-		DocumentType: "contract",
+		Title:        "Procedure Alpha",
+		DocumentType: "po",
 		OwnerID:      "owner-a",
-		BusinessUnit: "legal",
-		Department:   "contracts",
+		BusinessUnit: "quality",
+		Department:   "qa",
 		Tags:         []string{"vendor", "critical"},
 		MetadataJSON: map[string]any{
-			"counterparty":    "Alpha",
-			"contract_number": "CNT-A",
-			"start_date":      "2026-01-01",
-			"end_date":        "2026-12-31",
+			"procedure_code": "PO-A",
 		},
 		Classification: docdomain.ClassificationInternal,
 		InitialContent: "v1",
 	})
 	_, _ = docSvc.CreateDocument(context.Background(), docdomain.CreateDocumentCommand{
 		DocumentID:   "search-2",
-		Title:        "Contract Beta",
-		DocumentType: "contract",
+		Title:        "Procedure Beta",
+		DocumentType: "po",
 		OwnerID:      "owner-a",
-		BusinessUnit: "legal",
-		Department:   "contracts",
+		BusinessUnit: "quality",
+		Department:   "qa",
 		Tags:         []string{"vendor"},
 		MetadataJSON: map[string]any{
-			"counterparty":    "Beta",
-			"contract_number": "CNT-B",
-			"start_date":      "2026-01-01",
-			"end_date":        "2026-12-31",
+			"procedure_code": "PO-B",
 		},
 		Classification: docdomain.ClassificationConfidential,
 		InitialContent: "v1",
 	})
 	_, _ = docSvc.CreateDocument(context.Background(), docdomain.CreateDocumentCommand{
 		DocumentID:   "search-3",
-		Title:        "Policy Public",
-		DocumentType: "policy",
+		Title:        "Record Public",
+		DocumentType: "rg",
 		OwnerID:      "owner-b",
 		BusinessUnit: "quality",
 		Department:   "qa",
 		Tags:         []string{"public"},
 		MetadataJSON: map[string]any{
-			"policy_code": "POL-PUBLIC",
+			"record_code": "RG-PUBLIC",
 		},
 		Classification: docdomain.ClassificationPublic,
 		InitialContent: "v1",
 	})
 
 	items, err := searchSvc.SearchDocuments(context.Background(), searchdomain.Query{
-		Text:    "contract",
+		Text:    "procedure",
 		OwnerID: "owner-a",
 		Limit:   1,
 	})
@@ -94,35 +88,29 @@ func TestSearchDocumentsFiltersByTagAndExpiry(t *testing.T) {
 
 	_, _ = docSvc.CreateDocument(context.Background(), docdomain.CreateDocumentCommand{
 		DocumentID:   "search-expiry-1",
-		Title:        "Supplier Contract",
-		DocumentType: "contract",
+		Title:        "Procedure Near Expiry",
+		DocumentType: "po",
 		OwnerID:      "owner-supplier",
-		BusinessUnit: "procurement",
-		Department:   "buyers",
+		BusinessUnit: "quality",
+		Department:   "qa",
 		Tags:         []string{"supplier", "critical"},
 		ExpiryAt:     &expiringSoon,
 		MetadataJSON: map[string]any{
-			"counterparty":    "Supplier A",
-			"contract_number": "CNT-S1",
-			"start_date":      "2026-01-01",
-			"end_date":        "2026-04-01",
+			"procedure_code": "PO-S1",
 		},
 		InitialContent: "v1",
 	})
 	_, _ = docSvc.CreateDocument(context.Background(), docdomain.CreateDocumentCommand{
 		DocumentID:   "search-expiry-2",
-		Title:        "Long Term Contract",
-		DocumentType: "contract",
+		Title:        "Long Term Procedure",
+		DocumentType: "po",
 		OwnerID:      "owner-supplier",
-		BusinessUnit: "procurement",
-		Department:   "buyers",
+		BusinessUnit: "quality",
+		Department:   "qa",
 		Tags:         []string{"supplier"},
 		ExpiryAt:     &expiringLater,
 		MetadataJSON: map[string]any{
-			"counterparty":    "Supplier B",
-			"contract_number": "CNT-S2",
-			"start_date":      "2026-01-01",
-			"end_date":        "2026-08-01",
+			"procedure_code": "PO-S2",
 		},
 		InitialContent: "v1",
 	})
@@ -149,31 +137,25 @@ func TestSearchDocumentsRespectsViewPolicies(t *testing.T) {
 
 	_, _ = docSvc.CreateDocument(context.Background(), docdomain.CreateDocumentCommand{
 		DocumentID:   "search-visible",
-		Title:        "Visible Contract",
-		DocumentType: "contract",
+		Title:        "Visible Procedure",
+		DocumentType: "po",
 		OwnerID:      "owner-a",
-		BusinessUnit: "legal",
-		Department:   "contracts",
+		BusinessUnit: "quality",
+		Department:   "qa",
 		MetadataJSON: map[string]any{
-			"counterparty":    "Visible",
-			"contract_number": "CNT-V",
-			"start_date":      "2026-01-01",
-			"end_date":        "2026-12-31",
+			"procedure_code": "PO-V",
 		},
 		InitialContent: "v1",
 	})
 	_, _ = docSvc.CreateDocument(context.Background(), docdomain.CreateDocumentCommand{
 		DocumentID:   "search-hidden",
-		Title:        "Hidden Contract",
-		DocumentType: "contract",
+		Title:        "Hidden Procedure",
+		DocumentType: "po",
 		OwnerID:      "owner-b",
-		BusinessUnit: "legal",
-		Department:   "contracts",
+		BusinessUnit: "quality",
+		Department:   "qa",
 		MetadataJSON: map[string]any{
-			"counterparty":    "Hidden",
-			"contract_number": "CNT-H",
-			"start_date":      "2026-01-01",
-			"end_date":        "2026-12-31",
+			"procedure_code": "PO-H",
 		},
 		InitialContent: "v1",
 	})
@@ -190,7 +172,7 @@ func TestSearchDocumentsRespectsViewPolicies(t *testing.T) {
 	}
 
 	ctx := iamdomain.WithAuthContext(context.Background(), "viewer-1", []iamdomain.Role{iamdomain.RoleViewer})
-	items, err := searchSvc.SearchDocuments(ctx, searchdomain.Query{DocumentType: "contract"})
+	items, err := searchSvc.SearchDocuments(ctx, searchdomain.Query{DocumentType: "po"})
 	if err != nil {
 		t.Fatalf("unexpected search error: %v", err)
 	}
@@ -214,12 +196,12 @@ func TestSearchDocumentsByStatus(t *testing.T) {
 	doc, err := docSvc.CreateDocument(context.Background(), docdomain.CreateDocumentCommand{
 		DocumentID:   "search-status-1",
 		Title:        "Status Doc",
-		DocumentType: "manual",
+		DocumentType: "it",
 		OwnerID:      "owner-x",
 		BusinessUnit: "ops",
 		Department:   "general",
 		MetadataJSON: map[string]any{
-			"manual_code": "MAN-STATUS",
+			"instruction_code": "IT-STATUS",
 		},
 		Classification: docdomain.ClassificationInternal,
 		InitialContent: "v1",
@@ -254,32 +236,32 @@ func TestSearchDocumentsByDocumentTypeAndArea(t *testing.T) {
 	_, _ = docSvc.CreateDocument(context.Background(), docdomain.CreateDocumentCommand{
 		DocumentID:   "search-area-1",
 		Title:        "Quality Procedure",
-		DocumentType: "procedure",
+		DocumentType: "po",
 		OwnerID:      "owner-qa",
 		BusinessUnit: "quality",
 		Department:   "qa",
 		MetadataJSON: map[string]any{
-			"procedure_code": "PROC-QA",
+			"procedure_code": "PO-QA",
 		},
 		Classification: docdomain.ClassificationInternal,
 		InitialContent: "v1",
 	})
 	_, _ = docSvc.CreateDocument(context.Background(), docdomain.CreateDocumentCommand{
 		DocumentID:   "search-area-2",
-		Title:        "Engineering Manual",
-		DocumentType: "manual",
+		Title:        "Engineering Instruction",
+		DocumentType: "it",
 		OwnerID:      "owner-eng",
 		BusinessUnit: "engineering",
 		Department:   "projects",
 		MetadataJSON: map[string]any{
-			"manual_code": "MAN-ENG",
+			"instruction_code": "IT-ENG",
 		},
 		Classification: docdomain.ClassificationInternal,
 		InitialContent: "v1",
 	})
 
 	items, err := searchSvc.SearchDocuments(context.Background(), searchdomain.Query{
-		DocumentType: "procedure",
+		DocumentType: "po",
 		BusinessUnit: "quality",
 		Department:   "qa",
 	})
@@ -289,7 +271,7 @@ func TestSearchDocumentsByDocumentTypeAndArea(t *testing.T) {
 	if len(items) != 1 {
 		t.Fatalf("expected 1 item, got %d", len(items))
 	}
-	if items[0].DocumentType != "procedure" {
-		t.Fatalf("expected procedure, got %s", items[0].DocumentType)
+	if items[0].DocumentType != "po" {
+		t.Fatalf("expected po, got %s", items[0].DocumentType)
 	}
 }

@@ -751,7 +751,7 @@ Aceite:
 - `go test ./...` verde
 
 ## Task 042 - Decouple documents application from iam domain context helpers
-Status: `todo`
+Status: `done`
 
 Objetivo:
 Evitar dependencia do dominio de IAM para extrair contexto de autenticacao/autorizacao no modulo `documents`.

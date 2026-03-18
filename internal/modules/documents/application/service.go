@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"metaldocs/internal/modules/documents/domain"
-	iamdomain "metaldocs/internal/modules/iam/domain"
+	"metaldocs/internal/platform/authn"
 	"metaldocs/internal/platform/messaging"
 )
 
@@ -475,7 +475,7 @@ func (s *Service) UploadAttachmentAuthorized(ctx context.Context, cmd domain.Upl
 		CreatedAt:   s.clock.Now(),
 	}
 	if attachment.UploadedBy == "" {
-		attachment.UploadedBy = iamdomain.UserIDFromContext(ctx)
+		attachment.UploadedBy = authn.UserIDFromContext(ctx)
 	}
 
 	if err := s.attachmentStore.Save(ctx, storageKey, cmd.Content); err != nil {
@@ -892,11 +892,11 @@ func decidePolicies(ctx context.Context, items []domain.AccessPolicy) bool {
 	if len(items) == 0 {
 		return true
 	}
-	userID := iamdomain.UserIDFromContext(ctx)
-	roles := iamdomain.RolesFromContext(ctx)
+	userID := authn.UserIDFromContext(ctx)
+	roles := authn.RolesFromContext(ctx)
 	rolesSet := map[string]struct{}{}
 	for _, role := range roles {
-		rolesSet[strings.ToLower(strings.TrimSpace(string(role)))] = struct{}{}
+		rolesSet[strings.ToLower(strings.TrimSpace(role))] = struct{}{}
 	}
 
 	matchedAny := false
@@ -941,7 +941,7 @@ func firstNonEmpty(values ...string) string {
 }
 
 func shouldBypassPolicy(ctx context.Context) bool {
-	return iamdomain.UserIDFromContext(ctx) == "" && len(iamdomain.RolesFromContext(ctx)) == 0
+	return authn.UserIDFromContext(ctx) == "" && len(authn.RolesFromContext(ctx)) == 0
 }
 
 func isKnownEffect(raw string) bool {

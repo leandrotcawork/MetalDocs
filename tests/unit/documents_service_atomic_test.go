@@ -47,6 +47,29 @@ func (r *atomicRepoSpy) ListDocumentProfiles(context.Context) ([]domain.Document
 	return domain.DefaultDocumentProfiles(), nil
 }
 
+func (r *atomicRepoSpy) ListDocumentProfileSchemas(_ context.Context, profileCode string) ([]domain.DocumentProfileSchemaVersion, error) {
+	items := domain.DefaultDocumentProfileSchemas()
+	if profileCode == "" {
+		return items, nil
+	}
+	filtered := make([]domain.DocumentProfileSchemaVersion, 0, len(items))
+	for _, item := range items {
+		if item.ProfileCode == profileCode {
+			filtered = append(filtered, item)
+		}
+	}
+	return filtered, nil
+}
+
+func (r *atomicRepoSpy) GetDocumentProfileGovernance(_ context.Context, profileCode string) (domain.DocumentProfileGovernance, error) {
+	for _, item := range domain.DefaultDocumentProfileGovernance() {
+		if item.ProfileCode == profileCode {
+			return item, nil
+		}
+	}
+	return domain.DocumentProfileGovernance{}, domain.ErrInvalidCommand
+}
+
 func (r *atomicRepoSpy) ListProcessAreas(context.Context) ([]domain.ProcessArea, error) {
 	return domain.DefaultProcessAreas(), nil
 }

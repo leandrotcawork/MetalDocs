@@ -65,6 +65,10 @@ func (s *Service) CreateDocument(ctx context.Context, cmd domain.CreateDocumentC
 	if err != nil {
 		return domain.Document{}, domain.ErrInvalidDocumentType
 	}
+	activeSchema, err := s.resolveActiveProfileSchema(ctx, profile.Code)
+	if err != nil {
+		return domain.Document{}, domain.ErrInvalidCommand
+	}
 	processArea, subject, err := s.resolveTaxonomy(ctx, cmd.ProcessArea, cmd.Subject)
 	if err != nil {
 		return domain.Document{}, domain.ErrInvalidCommand
@@ -74,30 +78,31 @@ func (s *Service) CreateDocument(ctx context.Context, cmd domain.CreateDocumentC
 	if _, err := json.Marshal(metadata); err != nil {
 		return domain.Document{}, domain.ErrInvalidCommand
 	}
-	if err := validateMetadata(profile.Code, metadata); err != nil {
+	if err := validateMetadata(activeSchema.MetadataRules, metadata); err != nil {
 		return domain.Document{}, err
 	}
 
 	now := s.clock.Now()
 	doc := domain.Document{
-		ID:              strings.TrimSpace(cmd.DocumentID),
-		Title:           strings.TrimSpace(cmd.Title),
-		DocumentType:    profile.Code,
-		DocumentProfile: profile.Code,
-		DocumentFamily:  profile.FamilyCode,
-		ProcessArea:     processArea,
-		Subject:         subject,
-		OwnerID:         strings.TrimSpace(cmd.OwnerID),
-		BusinessUnit:    strings.TrimSpace(cmd.BusinessUnit),
-		Department:      strings.TrimSpace(cmd.Department),
-		Classification:  classification,
-		Status:          domain.StatusDraft,
-		Tags:            normalizeTags(cmd.Tags),
-		EffectiveAt:     cloneTimePtr(cmd.EffectiveAt),
-		ExpiryAt:        cloneTimePtr(cmd.ExpiryAt),
-		MetadataJSON:    metadata,
-		CreatedAt:       now,
-		UpdatedAt:       now,
+		ID:                   strings.TrimSpace(cmd.DocumentID),
+		Title:                strings.TrimSpace(cmd.Title),
+		DocumentType:         profile.Code,
+		DocumentProfile:      profile.Code,
+		DocumentFamily:       profile.FamilyCode,
+		ProfileSchemaVersion: activeSchema.Version,
+		ProcessArea:          processArea,
+		Subject:              subject,
+		OwnerID:              strings.TrimSpace(cmd.OwnerID),
+		BusinessUnit:         strings.TrimSpace(cmd.BusinessUnit),
+		Department:           strings.TrimSpace(cmd.Department),
+		Classification:       classification,
+		Status:               domain.StatusDraft,
+		Tags:                 normalizeTags(cmd.Tags),
+		EffectiveAt:          cloneTimePtr(cmd.EffectiveAt),
+		ExpiryAt:             cloneTimePtr(cmd.ExpiryAt),
+		MetadataJSON:         metadata,
+		CreatedAt:            now,
+		UpdatedAt:            now,
 	}
 
 	v1 := domain.Version{
@@ -340,6 +345,32 @@ func (s *Service) ListDocumentProfiles(ctx context.Context) ([]domain.DocumentPr
 		return domain.DefaultDocumentProfiles(), nil
 	}
 	return items, nil
+}
+
+func (s *Service) ListDocumentProfileSchemas(ctx context.Context, profileCode string) ([]domain.DocumentProfileSchemaVersion, error) {
+	profileCode = strings.ToLower(strings.TrimSpace(profileCode))
+	items, err := s.repo.ListDocumentProfileSchemas(ctx, profileCode)
+	if err != nil {
+		return nil, err
+	}
+	if len(items) == 0 {
+		return filterDefaultSchemas(profileCode), nil
+	}
+	return items, nil
+}
+
+func (s *Service) GetDocumentProfileGovernance(ctx context.Context, profileCode string) (domain.DocumentProfileGovernance, error) {
+	profileCode = strings.ToLower(strings.TrimSpace(profileCode))
+	item, err := s.repo.GetDocumentProfileGovernance(ctx, profileCode)
+	if err == nil {
+		return item, nil
+	}
+	for _, fallback := range domain.DefaultDocumentProfileGovernance() {
+		if strings.EqualFold(fallback.ProfileCode, profileCode) {
+			return fallback, nil
+		}
+	}
+	return domain.DocumentProfileGovernance{}, err
 }
 
 func (s *Service) ListProcessAreas(ctx context.Context) ([]domain.ProcessArea, error) {
@@ -631,6 +662,22 @@ func (s *Service) resolveTaxonomy(ctx context.Context, processAreaCode, subjectC
 	return "", "", domain.ErrInvalidCommand
 }
 
+func (s *Service) resolveActiveProfileSchema(ctx context.Context, profileCode string) (domain.DocumentProfileSchemaVersion, error) {
+	items, err := s.ListDocumentProfileSchemas(ctx, profileCode)
+	if err != nil {
+		return domain.DocumentProfileSchemaVersion{}, err
+	}
+	for _, item := range items {
+		if item.IsActive {
+			return item, nil
+		}
+	}
+	if len(items) == 0 {
+		return domain.DocumentProfileSchemaVersion{}, domain.ErrInvalidCommand
+	}
+	return items[len(items)-1], nil
+}
+
 func normalizeTags(tags []string) []string {
 	if len(tags) == 0 {
 		return []string{}
@@ -667,10 +714,8 @@ func normalizeMetadata(metadata map[string]any) map[string]any {
 	return out
 }
 
-func validateMetadata(documentType string, metadata map[string]any) error {
-	rulesByType := domain.DefaultMetadataRules()
-	rules, ok := rulesByType[documentType]
-	if !ok {
+func validateMetadata(rules []domain.MetadataFieldRule, metadata map[string]any) error {
+	if len(rules) == 0 {
 		return nil
 	}
 	for _, rule := range rules {
@@ -683,6 +728,20 @@ func validateMetadata(documentType string, metadata map[string]any) error {
 		}
 	}
 	return nil
+}
+
+func filterDefaultSchemas(profileCode string) []domain.DocumentProfileSchemaVersion {
+	if profileCode == "" {
+		return domain.DefaultDocumentProfileSchemas()
+	}
+	items := domain.DefaultDocumentProfileSchemas()
+	filtered := make([]domain.DocumentProfileSchemaVersion, 0, len(items))
+	for _, item := range items {
+		if strings.EqualFold(item.ProfileCode, profileCode) {
+			filtered = append(filtered, item)
+		}
+	}
+	return filtered
 }
 
 func cloneTimePtr(value *time.Time) *time.Time {

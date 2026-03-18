@@ -231,6 +231,62 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
+  /document-profiles/{profileCode}/schema:
+    get:
+      summary: Lista as versoes de schema de metadata de um profile
+      parameters:
+        - name: profileCode
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Schemas do profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDocumentProfileSchemasResponse'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+  /document-profiles/{profileCode}/governance:
+    get:
+      summary: Busca a governanca ativa de um profile
+      parameters:
+        - name: profileCode
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Governanca do profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentProfileGovernance'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
   /process-areas:
     get:
       summary: Lista as areas de processo documentais
@@ -1150,6 +1206,7 @@ components:
         - documentType
         - documentProfile
         - documentFamily
+        - profileSchemaVersion
       properties:
         documentId:
           type: string
@@ -1165,6 +1222,9 @@ components:
           type: string
         documentFamily:
           type: string
+        profileSchemaVersion:
+          type: integer
+          minimum: 1
         processArea:
           type: string
         subject:
@@ -1183,6 +1243,9 @@ components:
           type: string
         documentFamily:
           type: string
+        profileSchemaVersion:
+          type: integer
+          minimum: 1
         processArea:
           type: string
         subject:
@@ -1215,6 +1278,16 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/DocumentListItem'
+    MetadataFieldRule:
+      type: object
+      required: [name, type, required]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        required:
+          type: boolean
     DocumentTypeItem:
       type: object
       required: [code, name, description, reviewIntervalDays]
@@ -1256,7 +1329,7 @@ components:
             $ref: '#/components/schemas/DocumentFamilyItem'
     DocumentProfileItem:
       type: object
-      required: [code, familyCode, name, description, reviewIntervalDays]
+      required: [code, familyCode, name, description, reviewIntervalDays, activeSchemaVersion, workflowProfile, approvalRequired, retentionDays, validityDays]
       properties:
         code:
           type: string
@@ -1269,6 +1342,19 @@ components:
         reviewIntervalDays:
           type: integer
           minimum: 1
+        activeSchemaVersion:
+          type: integer
+          minimum: 1
+        workflowProfile:
+          type: string
+        approvalRequired:
+          type: boolean
+        retentionDays:
+          type: integer
+          minimum: 0
+        validityDays:
+          type: integer
+          minimum: 0
     ListDocumentProfilesResponse:
       type: object
       required: [items]
@@ -1277,6 +1363,48 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/DocumentProfileItem'
+    DocumentProfileSchemaVersionItem:
+      type: object
+      required: [profileCode, version, isActive, metadataRules]
+      properties:
+        profileCode:
+          type: string
+        version:
+          type: integer
+          minimum: 1
+        isActive:
+          type: boolean
+        metadataRules:
+          type: array
+          items:
+            $ref: '#/components/schemas/MetadataFieldRule'
+    ListDocumentProfileSchemasResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentProfileSchemaVersionItem'
+    DocumentProfileGovernance:
+      type: object
+      required: [profileCode, workflowProfile, reviewIntervalDays, approvalRequired, retentionDays, validityDays]
+      properties:
+        profileCode:
+          type: string
+        workflowProfile:
+          type: string
+        reviewIntervalDays:
+          type: integer
+          minimum: 1
+        approvalRequired:
+          type: boolean
+        retentionDays:
+          type: integer
+          minimum: 0
+        validityDays:
+          type: integer
+          minimum: 0
     ProcessAreaItem:
       type: object
       required: [code, name, description]

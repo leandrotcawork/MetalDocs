@@ -18,24 +18,25 @@ const (
 )
 
 type Document struct {
-	ID              string
-	Title           string
-	DocumentType    string
-	DocumentProfile string
-	DocumentFamily  string
-	ProcessArea     string
-	Subject         string
-	OwnerID         string
-	BusinessUnit    string
-	Department      string
-	Classification  string
-	Status          string
-	Tags            []string
-	EffectiveAt     *time.Time
-	ExpiryAt        *time.Time
-	MetadataJSON    map[string]any
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	ID                   string
+	Title                string
+	DocumentType         string
+	DocumentProfile      string
+	DocumentFamily       string
+	ProfileSchemaVersion int
+	ProcessArea          string
+	Subject              string
+	OwnerID              string
+	BusinessUnit         string
+	Department           string
+	Classification       string
+	Status               string
+	Tags                 []string
+	EffectiveAt          *time.Time
+	ExpiryAt             *time.Time
+	MetadataJSON         map[string]any
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
 }
 
 type Version struct {
@@ -118,11 +119,16 @@ type DocumentFamily struct {
 }
 
 type DocumentProfile struct {
-	Code               string
-	FamilyCode         string
-	Name               string
-	Description        string
-	ReviewIntervalDays int
+	Code                string
+	FamilyCode          string
+	Name                string
+	Description         string
+	ReviewIntervalDays  int
+	ActiveSchemaVersion int
+	WorkflowProfile     string
+	ApprovalRequired    bool
+	RetentionDays       int
+	ValidityDays        int
 }
 
 type ProcessArea struct {
@@ -136,6 +142,22 @@ type Subject struct {
 	ProcessAreaCode string
 	Name            string
 	Description     string
+}
+
+type DocumentProfileSchemaVersion struct {
+	ProfileCode   string
+	Version       int
+	IsActive      bool
+	MetadataRules []MetadataFieldRule
+}
+
+type DocumentProfileGovernance struct {
+	ProfileCode        string
+	WorkflowProfile    string
+	ReviewIntervalDays int
+	ApprovalRequired   bool
+	RetentionDays      int
+	ValidityDays       int
 }
 
 type AccessPolicy struct {
@@ -203,17 +225,18 @@ func DefaultDocumentFamilies() []DocumentFamily {
 }
 
 func DefaultDocumentProfiles() []DocumentProfile {
+	governanceByCode := DefaultDocumentProfileGovernanceByCode()
 	return []DocumentProfile{
-		{Code: "policy", FamilyCode: "policy", Name: "Policy", Description: "High-level governance and policy document", ReviewIntervalDays: 365},
-		{Code: "procedure", FamilyCode: "procedure", Name: "Procedure", Description: "Operational procedure with controlled steps", ReviewIntervalDays: 365},
-		{Code: "work_instruction", FamilyCode: "work_instruction", Name: "Work Instruction", Description: "Detailed execution instruction", ReviewIntervalDays: 180},
-		{Code: "contract", FamilyCode: "contract", Name: "Contract", Description: "Commercial or legal agreement", ReviewIntervalDays: 365},
-		{Code: "supplier_document", FamilyCode: "supplier_document", Name: "Supplier Document", Description: "Document received from supplier", ReviewIntervalDays: 180},
-		{Code: "technical_drawing", FamilyCode: "technical_drawing", Name: "Technical Drawing", Description: "Engineering drawing or technical artifact", ReviewIntervalDays: 180},
-		{Code: "certificate", FamilyCode: "certificate", Name: "Certificate", Description: "Certificate with issuer and validity context", ReviewIntervalDays: 365},
-		{Code: "report", FamilyCode: "report", Name: "Report", Description: "Periodic or ad-hoc report", ReviewIntervalDays: 365},
-		{Code: "form", FamilyCode: "form", Name: "Form", Description: "Structured business form", ReviewIntervalDays: 180},
-		{Code: "manual", FamilyCode: "manual", Name: "Manual", Description: "Reference or guidance manual", ReviewIntervalDays: 365},
+		{Code: "policy", FamilyCode: "policy", Name: "Policy", Description: "High-level governance and policy document", ReviewIntervalDays: governanceByCode["policy"].ReviewIntervalDays, ActiveSchemaVersion: 1, WorkflowProfile: governanceByCode["policy"].WorkflowProfile, ApprovalRequired: governanceByCode["policy"].ApprovalRequired, RetentionDays: governanceByCode["policy"].RetentionDays, ValidityDays: governanceByCode["policy"].ValidityDays},
+		{Code: "procedure", FamilyCode: "procedure", Name: "Procedure", Description: "Operational procedure with controlled steps", ReviewIntervalDays: governanceByCode["procedure"].ReviewIntervalDays, ActiveSchemaVersion: 1, WorkflowProfile: governanceByCode["procedure"].WorkflowProfile, ApprovalRequired: governanceByCode["procedure"].ApprovalRequired, RetentionDays: governanceByCode["procedure"].RetentionDays, ValidityDays: governanceByCode["procedure"].ValidityDays},
+		{Code: "work_instruction", FamilyCode: "work_instruction", Name: "Work Instruction", Description: "Detailed execution instruction", ReviewIntervalDays: governanceByCode["work_instruction"].ReviewIntervalDays, ActiveSchemaVersion: 1, WorkflowProfile: governanceByCode["work_instruction"].WorkflowProfile, ApprovalRequired: governanceByCode["work_instruction"].ApprovalRequired, RetentionDays: governanceByCode["work_instruction"].RetentionDays, ValidityDays: governanceByCode["work_instruction"].ValidityDays},
+		{Code: "contract", FamilyCode: "contract", Name: "Contract", Description: "Commercial or legal agreement", ReviewIntervalDays: governanceByCode["contract"].ReviewIntervalDays, ActiveSchemaVersion: 1, WorkflowProfile: governanceByCode["contract"].WorkflowProfile, ApprovalRequired: governanceByCode["contract"].ApprovalRequired, RetentionDays: governanceByCode["contract"].RetentionDays, ValidityDays: governanceByCode["contract"].ValidityDays},
+		{Code: "supplier_document", FamilyCode: "supplier_document", Name: "Supplier Document", Description: "Document received from supplier", ReviewIntervalDays: governanceByCode["supplier_document"].ReviewIntervalDays, ActiveSchemaVersion: 1, WorkflowProfile: governanceByCode["supplier_document"].WorkflowProfile, ApprovalRequired: governanceByCode["supplier_document"].ApprovalRequired, RetentionDays: governanceByCode["supplier_document"].RetentionDays, ValidityDays: governanceByCode["supplier_document"].ValidityDays},
+		{Code: "technical_drawing", FamilyCode: "technical_drawing", Name: "Technical Drawing", Description: "Engineering drawing or technical artifact", ReviewIntervalDays: governanceByCode["technical_drawing"].ReviewIntervalDays, ActiveSchemaVersion: 1, WorkflowProfile: governanceByCode["technical_drawing"].WorkflowProfile, ApprovalRequired: governanceByCode["technical_drawing"].ApprovalRequired, RetentionDays: governanceByCode["technical_drawing"].RetentionDays, ValidityDays: governanceByCode["technical_drawing"].ValidityDays},
+		{Code: "certificate", FamilyCode: "certificate", Name: "Certificate", Description: "Certificate with issuer and validity context", ReviewIntervalDays: governanceByCode["certificate"].ReviewIntervalDays, ActiveSchemaVersion: 1, WorkflowProfile: governanceByCode["certificate"].WorkflowProfile, ApprovalRequired: governanceByCode["certificate"].ApprovalRequired, RetentionDays: governanceByCode["certificate"].RetentionDays, ValidityDays: governanceByCode["certificate"].ValidityDays},
+		{Code: "report", FamilyCode: "report", Name: "Report", Description: "Periodic or ad-hoc report", ReviewIntervalDays: governanceByCode["report"].ReviewIntervalDays, ActiveSchemaVersion: 1, WorkflowProfile: governanceByCode["report"].WorkflowProfile, ApprovalRequired: governanceByCode["report"].ApprovalRequired, RetentionDays: governanceByCode["report"].RetentionDays, ValidityDays: governanceByCode["report"].ValidityDays},
+		{Code: "form", FamilyCode: "form", Name: "Form", Description: "Structured business form", ReviewIntervalDays: governanceByCode["form"].ReviewIntervalDays, ActiveSchemaVersion: 1, WorkflowProfile: governanceByCode["form"].WorkflowProfile, ApprovalRequired: governanceByCode["form"].ApprovalRequired, RetentionDays: governanceByCode["form"].RetentionDays, ValidityDays: governanceByCode["form"].ValidityDays},
+		{Code: "manual", FamilyCode: "manual", Name: "Manual", Description: "Reference or guidance manual", ReviewIntervalDays: governanceByCode["manual"].ReviewIntervalDays, ActiveSchemaVersion: 1, WorkflowProfile: governanceByCode["manual"].WorkflowProfile, ApprovalRequired: governanceByCode["manual"].ApprovalRequired, RetentionDays: governanceByCode["manual"].RetentionDays, ValidityDays: governanceByCode["manual"].ValidityDays},
 	}
 }
 
@@ -232,6 +255,46 @@ func DefaultProcessAreas() []ProcessArea {
 
 func DefaultSubjects() []Subject {
 	return []Subject{}
+}
+
+func DefaultDocumentProfileSchemas() []DocumentProfileSchemaVersion {
+	rulesByType := DefaultMetadataRules()
+	out := make([]DocumentProfileSchemaVersion, 0, len(rulesByType))
+	for profileCode, rules := range rulesByType {
+		copiedRules := make([]MetadataFieldRule, len(rules))
+		copy(copiedRules, rules)
+		out = append(out, DocumentProfileSchemaVersion{
+			ProfileCode:   profileCode,
+			Version:       1,
+			IsActive:      true,
+			MetadataRules: copiedRules,
+		})
+	}
+	return out
+}
+
+func DefaultDocumentProfileGovernance() []DocumentProfileGovernance {
+	return []DocumentProfileGovernance{
+		{ProfileCode: "policy", WorkflowProfile: "standard_approval", ReviewIntervalDays: 365, ApprovalRequired: true, RetentionDays: 0, ValidityDays: 0},
+		{ProfileCode: "procedure", WorkflowProfile: "standard_approval", ReviewIntervalDays: 365, ApprovalRequired: true, RetentionDays: 0, ValidityDays: 0},
+		{ProfileCode: "work_instruction", WorkflowProfile: "standard_approval", ReviewIntervalDays: 180, ApprovalRequired: true, RetentionDays: 0, ValidityDays: 0},
+		{ProfileCode: "contract", WorkflowProfile: "standard_approval", ReviewIntervalDays: 365, ApprovalRequired: true, RetentionDays: 3650, ValidityDays: 0},
+		{ProfileCode: "supplier_document", WorkflowProfile: "standard_approval", ReviewIntervalDays: 180, ApprovalRequired: true, RetentionDays: 3650, ValidityDays: 0},
+		{ProfileCode: "technical_drawing", WorkflowProfile: "standard_approval", ReviewIntervalDays: 180, ApprovalRequired: true, RetentionDays: 0, ValidityDays: 0},
+		{ProfileCode: "certificate", WorkflowProfile: "standard_approval", ReviewIntervalDays: 365, ApprovalRequired: true, RetentionDays: 3650, ValidityDays: 365},
+		{ProfileCode: "report", WorkflowProfile: "standard_approval", ReviewIntervalDays: 365, ApprovalRequired: true, RetentionDays: 3650, ValidityDays: 0},
+		{ProfileCode: "form", WorkflowProfile: "standard_approval", ReviewIntervalDays: 180, ApprovalRequired: true, RetentionDays: 3650, ValidityDays: 0},
+		{ProfileCode: "manual", WorkflowProfile: "standard_approval", ReviewIntervalDays: 365, ApprovalRequired: true, RetentionDays: 0, ValidityDays: 0},
+	}
+}
+
+func DefaultDocumentProfileGovernanceByCode() map[string]DocumentProfileGovernance {
+	items := DefaultDocumentProfileGovernance()
+	out := make(map[string]DocumentProfileGovernance, len(items))
+	for _, item := range items {
+		out[item.ProfileCode] = item
+	}
+	return out
 }
 
 type MetadataFieldRule struct {

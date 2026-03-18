@@ -19,6 +19,8 @@ type Repository struct {
 	workflowApprovals   map[string][]workflowdomain.Approval
 	families            []domain.DocumentFamily
 	profiles            []domain.DocumentProfile
+	profileSchemas      []domain.DocumentProfileSchemaVersion
+	profileGovernance   map[string]domain.DocumentProfileGovernance
 	processAreas        []domain.ProcessArea
 	subjects            []domain.Subject
 	types               []domain.DocumentType
@@ -34,6 +36,8 @@ func NewRepository() *Repository {
 		workflowApprovals:   map[string][]workflowdomain.Approval{},
 		families:            domain.DefaultDocumentFamilies(),
 		profiles:            domain.DefaultDocumentProfiles(),
+		profileSchemas:      domain.DefaultDocumentProfileSchemas(),
+		profileGovernance:   domain.DefaultDocumentProfileGovernanceByCode(),
 		processAreas:        domain.DefaultProcessAreas(),
 		subjects:            domain.DefaultSubjects(),
 		types:               domain.DefaultDocumentTypes(),
@@ -123,6 +127,38 @@ func (r *Repository) ListDocumentProfiles(_ context.Context) ([]domain.DocumentP
 	out := make([]domain.DocumentProfile, len(r.profiles))
 	copy(out, r.profiles)
 	return out, nil
+}
+
+func (r *Repository) ListDocumentProfileSchemas(_ context.Context, profileCode string) ([]domain.DocumentProfileSchemaVersion, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	filtered := make([]domain.DocumentProfileSchemaVersion, 0, len(r.profileSchemas))
+	for _, item := range r.profileSchemas {
+		if profileCode != "" && item.ProfileCode != profileCode {
+			continue
+		}
+		copiedRules := make([]domain.MetadataFieldRule, len(item.MetadataRules))
+		copy(copiedRules, item.MetadataRules)
+		filtered = append(filtered, domain.DocumentProfileSchemaVersion{
+			ProfileCode:   item.ProfileCode,
+			Version:       item.Version,
+			IsActive:      item.IsActive,
+			MetadataRules: copiedRules,
+		})
+	}
+	return filtered, nil
+}
+
+func (r *Repository) GetDocumentProfileGovernance(_ context.Context, profileCode string) (domain.DocumentProfileGovernance, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	item, ok := r.profileGovernance[profileCode]
+	if !ok {
+		return domain.DocumentProfileGovernance{}, domain.ErrInvalidCommand
+	}
+	return item, nil
 }
 
 func (r *Repository) ListProcessAreas(_ context.Context) ([]domain.ProcessArea, error) {

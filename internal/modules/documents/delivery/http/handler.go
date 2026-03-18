@@ -41,32 +41,34 @@ type CreateDocumentRequest struct {
 }
 
 type DocumentResponse struct {
-	DocumentID      string   `json:"documentId"`
-	Title           string   `json:"title"`
-	DocumentType    string   `json:"documentType"`
-	DocumentProfile string   `json:"documentProfile"`
-	DocumentFamily  string   `json:"documentFamily"`
-	ProcessArea     string   `json:"processArea,omitempty"`
-	Subject         string   `json:"subject,omitempty"`
-	OwnerID         string   `json:"ownerId"`
-	BusinessUnit    string   `json:"businessUnit"`
-	Department      string   `json:"department"`
-	Classification  string   `json:"classification"`
-	Status          string   `json:"status"`
-	Tags            []string `json:"tags"`
-	EffectiveAt     string   `json:"effectiveAt,omitempty"`
-	ExpiryAt        string   `json:"expiryAt,omitempty"`
+	DocumentID           string   `json:"documentId"`
+	Title                string   `json:"title"`
+	DocumentType         string   `json:"documentType"`
+	DocumentProfile      string   `json:"documentProfile"`
+	DocumentFamily       string   `json:"documentFamily"`
+	ProfileSchemaVersion int      `json:"profileSchemaVersion"`
+	ProcessArea          string   `json:"processArea,omitempty"`
+	Subject              string   `json:"subject,omitempty"`
+	OwnerID              string   `json:"ownerId"`
+	BusinessUnit         string   `json:"businessUnit"`
+	Department           string   `json:"department"`
+	Classification       string   `json:"classification"`
+	Status               string   `json:"status"`
+	Tags                 []string `json:"tags"`
+	EffectiveAt          string   `json:"effectiveAt,omitempty"`
+	ExpiryAt             string   `json:"expiryAt,omitempty"`
 }
 
 type DocumentCreatedResponse struct {
-	DocumentID      string `json:"documentId"`
-	Version         int    `json:"version"`
-	Status          string `json:"status"`
-	DocumentType    string `json:"documentType"`
-	DocumentProfile string `json:"documentProfile"`
-	DocumentFamily  string `json:"documentFamily"`
-	ProcessArea     string `json:"processArea,omitempty"`
-	Subject         string `json:"subject,omitempty"`
+	DocumentID           string `json:"documentId"`
+	Version              int    `json:"version"`
+	Status               string `json:"status"`
+	DocumentType         string `json:"documentType"`
+	DocumentProfile      string `json:"documentProfile"`
+	DocumentFamily       string `json:"documentFamily"`
+	ProfileSchemaVersion int    `json:"profileSchemaVersion"`
+	ProcessArea          string `json:"processArea,omitempty"`
+	Subject              string `json:"subject,omitempty"`
 }
 
 type VersionResponse struct {
@@ -91,11 +93,32 @@ type DocumentFamilyResponse struct {
 }
 
 type DocumentProfileResponse struct {
-	Code               string `json:"code"`
-	FamilyCode         string `json:"familyCode"`
-	Name               string `json:"name"`
-	Description        string `json:"description"`
+	Code                string `json:"code"`
+	FamilyCode          string `json:"familyCode"`
+	Name                string `json:"name"`
+	Description         string `json:"description"`
+	ReviewIntervalDays  int    `json:"reviewIntervalDays"`
+	ActiveSchemaVersion int    `json:"activeSchemaVersion"`
+	WorkflowProfile     string `json:"workflowProfile"`
+	ApprovalRequired    bool   `json:"approvalRequired"`
+	RetentionDays       int    `json:"retentionDays"`
+	ValidityDays        int    `json:"validityDays"`
+}
+
+type DocumentProfileSchemaResponse struct {
+	ProfileCode   string                     `json:"profileCode"`
+	Version       int                        `json:"version"`
+	IsActive      bool                       `json:"isActive"`
+	MetadataRules []domain.MetadataFieldRule `json:"metadataRules"`
+}
+
+type DocumentProfileGovernanceResponse struct {
+	ProfileCode        string `json:"profileCode"`
+	WorkflowProfile    string `json:"workflowProfile"`
 	ReviewIntervalDays int    `json:"reviewIntervalDays"`
+	ApprovalRequired   bool   `json:"approvalRequired"`
+	RetentionDays      int    `json:"retentionDays"`
+	ValidityDays       int    `json:"validityDays"`
 }
 
 type ProcessAreaResponse struct {
@@ -199,6 +222,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/health/ready", h.handleHealthReady)
 	mux.HandleFunc("/api/v1/document-families", h.handleDocumentFamilies)
 	mux.HandleFunc("/api/v1/document-profiles", h.handleDocumentProfiles)
+	mux.HandleFunc("/api/v1/document-profiles/", h.handleDocumentProfileSubRoutes)
 	mux.HandleFunc("/api/v1/process-areas", h.handleProcessAreas)
 	mux.HandleFunc("/api/v1/document-subjects", h.handleDocumentSubjects)
 	mux.HandleFunc("/api/v1/document-types", h.handleDocumentTypes)
@@ -294,15 +318,75 @@ func (h *Handler) handleDocumentProfiles(w http.ResponseWriter, r *http.Request)
 	out := make([]DocumentProfileResponse, 0, len(items))
 	for _, item := range items {
 		out = append(out, DocumentProfileResponse{
-			Code:               item.Code,
-			FamilyCode:         item.FamilyCode,
-			Name:               item.Name,
-			Description:        item.Description,
-			ReviewIntervalDays: item.ReviewIntervalDays,
+			Code:                item.Code,
+			FamilyCode:          item.FamilyCode,
+			Name:                item.Name,
+			Description:         item.Description,
+			ReviewIntervalDays:  item.ReviewIntervalDays,
+			ActiveSchemaVersion: item.ActiveSchemaVersion,
+			WorkflowProfile:     item.WorkflowProfile,
+			ApprovalRequired:    item.ApprovalRequired,
+			RetentionDays:       item.RetentionDays,
+			ValidityDays:        item.ValidityDays,
 		})
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{"items": out})
+}
+
+func (h *Handler) handleDocumentProfileSubRoutes(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/document-profiles/")
+	parts := strings.Split(path, "/")
+	if len(parts) != 2 || strings.TrimSpace(parts[0]) == "" {
+		writeAPIError(w, http.StatusNotFound, "DOC_NOT_FOUND", "Route not found", requestTraceID(r))
+		return
+	}
+
+	switch {
+	case parts[1] == "schema" && r.Method == http.MethodGet:
+		h.handleDocumentProfileSchemas(w, r, parts[0])
+	case parts[1] == "governance" && r.Method == http.MethodGet:
+		h.handleDocumentProfileGovernance(w, r, parts[0])
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
+func (h *Handler) handleDocumentProfileSchemas(w http.ResponseWriter, r *http.Request, profileCode string) {
+	traceID := requestTraceID(r)
+	items, err := h.service.ListDocumentProfileSchemas(r.Context(), profileCode)
+	if err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+
+	out := make([]DocumentProfileSchemaResponse, 0, len(items))
+	for _, item := range items {
+		out = append(out, DocumentProfileSchemaResponse{
+			ProfileCode:   item.ProfileCode,
+			Version:       item.Version,
+			IsActive:      item.IsActive,
+			MetadataRules: item.MetadataRules,
+		})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": out})
+}
+
+func (h *Handler) handleDocumentProfileGovernance(w http.ResponseWriter, r *http.Request, profileCode string) {
+	traceID := requestTraceID(r)
+	item, err := h.service.GetDocumentProfileGovernance(r.Context(), profileCode)
+	if err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+	writeJSON(w, http.StatusOK, DocumentProfileGovernanceResponse{
+		ProfileCode:        item.ProfileCode,
+		WorkflowProfile:    item.WorkflowProfile,
+		ReviewIntervalDays: item.ReviewIntervalDays,
+		ApprovalRequired:   item.ApprovalRequired,
+		RetentionDays:      item.RetentionDays,
+		ValidityDays:       item.ValidityDays,
+	})
 }
 
 func (h *Handler) handleProcessAreas(w http.ResponseWriter, r *http.Request) {
@@ -476,14 +560,15 @@ func (h *Handler) handleCreateDocument(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusCreated, DocumentCreatedResponse{
-		DocumentID:      doc.ID,
-		Version:         1,
-		Status:          doc.Status,
-		DocumentType:    doc.DocumentType,
-		DocumentProfile: doc.DocumentProfile,
-		DocumentFamily:  doc.DocumentFamily,
-		ProcessArea:     doc.ProcessArea,
-		Subject:         doc.Subject,
+		DocumentID:           doc.ID,
+		Version:              1,
+		Status:               doc.Status,
+		DocumentType:         doc.DocumentType,
+		DocumentProfile:      doc.DocumentProfile,
+		DocumentFamily:       doc.DocumentFamily,
+		ProfileSchemaVersion: doc.ProfileSchemaVersion,
+		ProcessArea:          doc.ProcessArea,
+		Subject:              doc.Subject,
 	})
 }
 
@@ -499,21 +584,22 @@ func (h *Handler) handleListDocuments(w http.ResponseWriter, r *http.Request) {
 	out := make([]DocumentResponse, 0, len(docs))
 	for _, doc := range docs {
 		out = append(out, DocumentResponse{
-			DocumentID:      doc.ID,
-			Title:           doc.Title,
-			DocumentType:    doc.DocumentType,
-			DocumentProfile: doc.DocumentProfile,
-			DocumentFamily:  doc.DocumentFamily,
-			ProcessArea:     doc.ProcessArea,
-			Subject:         doc.Subject,
-			OwnerID:         doc.OwnerID,
-			BusinessUnit:    doc.BusinessUnit,
-			Department:      doc.Department,
-			Classification:  doc.Classification,
-			Status:          doc.Status,
-			Tags:            append([]string(nil), doc.Tags...),
-			EffectiveAt:     formatOptionalTime(doc.EffectiveAt),
-			ExpiryAt:        formatOptionalTime(doc.ExpiryAt),
+			DocumentID:           doc.ID,
+			Title:                doc.Title,
+			DocumentType:         doc.DocumentType,
+			DocumentProfile:      doc.DocumentProfile,
+			DocumentFamily:       doc.DocumentFamily,
+			ProfileSchemaVersion: doc.ProfileSchemaVersion,
+			ProcessArea:          doc.ProcessArea,
+			Subject:              doc.Subject,
+			OwnerID:              doc.OwnerID,
+			BusinessUnit:         doc.BusinessUnit,
+			Department:           doc.Department,
+			Classification:       doc.Classification,
+			Status:               doc.Status,
+			Tags:                 append([]string(nil), doc.Tags...),
+			EffectiveAt:          formatOptionalTime(doc.EffectiveAt),
+			ExpiryAt:             formatOptionalTime(doc.ExpiryAt),
 		})
 	}
 
@@ -572,21 +658,22 @@ func (h *Handler) handleGetDocument(w http.ResponseWriter, r *http.Request, docu
 	}
 
 	writeJSON(w, http.StatusOK, DocumentResponse{
-		DocumentID:      doc.ID,
-		Title:           doc.Title,
-		DocumentType:    doc.DocumentType,
-		DocumentProfile: doc.DocumentProfile,
-		DocumentFamily:  doc.DocumentFamily,
-		ProcessArea:     doc.ProcessArea,
-		Subject:         doc.Subject,
-		OwnerID:         doc.OwnerID,
-		BusinessUnit:    doc.BusinessUnit,
-		Department:      doc.Department,
-		Classification:  doc.Classification,
-		Status:          doc.Status,
-		Tags:            append([]string(nil), doc.Tags...),
-		EffectiveAt:     formatOptionalTime(doc.EffectiveAt),
-		ExpiryAt:        formatOptionalTime(doc.ExpiryAt),
+		DocumentID:           doc.ID,
+		Title:                doc.Title,
+		DocumentType:         doc.DocumentType,
+		DocumentProfile:      doc.DocumentProfile,
+		DocumentFamily:       doc.DocumentFamily,
+		ProfileSchemaVersion: doc.ProfileSchemaVersion,
+		ProcessArea:          doc.ProcessArea,
+		Subject:              doc.Subject,
+		OwnerID:              doc.OwnerID,
+		BusinessUnit:         doc.BusinessUnit,
+		Department:           doc.Department,
+		Classification:       doc.Classification,
+		Status:               doc.Status,
+		Tags:                 append([]string(nil), doc.Tags...),
+		EffectiveAt:          formatOptionalTime(doc.EffectiveAt),
+		ExpiryAt:             formatOptionalTime(doc.ExpiryAt),
 	})
 }
 

@@ -125,6 +125,8 @@ Saida esperada:
 - `marketplaces` e outros assuntos deixam de competir com tipo documental
 
 ### Step 3. Add versioned schema and governance profile
+Status: `done`
+
 Entregaveis:
 - schema versionado por profile
 - regras de validacao backend por profile
@@ -132,6 +134,7 @@ Entregaveis:
 
 Saida esperada:
 - governanca documental configuravel por organizacao
+- `documents` persistindo `profileSchemaVersion` para rastreabilidade
 
 ### Step 4. Evolve API and UI to operate by profile
 Entregaveis:

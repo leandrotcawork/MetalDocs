@@ -24,9 +24,9 @@ func (r *Repository) CreateDocument(ctx context.Context, document domain.Documen
 	const q = `
 INSERT INTO metaldocs.documents (
   id, title, document_type_code, document_profile_code, document_family_code, process_area_code, subject_code,
-  owner_id, business_unit, department, classification, status, tags, effective_at, expiry_at, metadata_json, created_at, updated_at
+  profile_schema_version, owner_id, business_unit, department, classification, status, tags, effective_at, expiry_at, metadata_json, created_at, updated_at
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14, $15, $16::jsonb, $17, $18)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15, $16, $17::jsonb, $18, $19)
 `
 	tagsJSON, metadataJSON, effectiveAt, expiryAt := serializeDocument(document)
 	_, err := r.db.ExecContext(ctx, q,
@@ -37,6 +37,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14, $15,
 		document.DocumentFamily,
 		nullIfEmpty(document.ProcessArea),
 		nullIfEmpty(document.Subject),
+		document.ProfileSchemaVersion,
 		document.OwnerID,
 		document.BusinessUnit,
 		document.Department,
@@ -67,9 +68,9 @@ func (r *Repository) CreateDocumentWithInitialVersion(ctx context.Context, docum
 	const insertDoc = `
 INSERT INTO metaldocs.documents (
   id, title, document_type_code, document_profile_code, document_family_code, process_area_code, subject_code,
-  owner_id, business_unit, department, classification, status, tags, effective_at, expiry_at, metadata_json, created_at, updated_at
+  profile_schema_version, owner_id, business_unit, department, classification, status, tags, effective_at, expiry_at, metadata_json, created_at, updated_at
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14, $15, $16::jsonb, $17, $18)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15, $16, $17::jsonb, $18, $19)
 `
 	tagsJSON, metadataJSON, effectiveAt, expiryAt := serializeDocument(document)
 	if _, err := tx.ExecContext(ctx, insertDoc,
@@ -80,6 +81,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14, $15,
 		document.DocumentFamily,
 		nullIfEmpty(document.ProcessArea),
 		nullIfEmpty(document.Subject),
+		document.ProfileSchemaVersion,
 		document.OwnerID,
 		document.BusinessUnit,
 		document.Department,
@@ -118,8 +120,8 @@ VALUES ($1, $2, $3, $4, $5, $6)
 
 func (r *Repository) GetDocument(ctx context.Context, documentID string) (domain.Document, error) {
 	const q = `
-SELECT id, title, document_type_code, document_profile_code, document_family_code, process_area_code, subject_code, owner_id, business_unit, department,
-       classification, status, tags, effective_at, expiry_at, metadata_json, created_at, updated_at
+SELECT id, title, document_type_code, document_profile_code, document_family_code, process_area_code, subject_code, profile_schema_version,
+       owner_id, business_unit, department, classification, status, tags, effective_at, expiry_at, metadata_json, created_at, updated_at
 FROM metaldocs.documents
 WHERE id = $1
 `
@@ -138,6 +140,7 @@ WHERE id = $1
 		&doc.DocumentFamily,
 		&processArea,
 		&subject,
+		&doc.ProfileSchemaVersion,
 		&doc.OwnerID,
 		&doc.BusinessUnit,
 		&doc.Department,
@@ -164,8 +167,8 @@ WHERE id = $1
 
 func (r *Repository) ListDocuments(ctx context.Context) ([]domain.Document, error) {
 	const q = `
-SELECT id, title, document_type_code, document_profile_code, document_family_code, process_area_code, subject_code, owner_id, business_unit, department,
-       classification, status, tags, effective_at, expiry_at, metadata_json, created_at, updated_at
+SELECT id, title, document_type_code, document_profile_code, document_family_code, process_area_code, subject_code, profile_schema_version,
+       owner_id, business_unit, department, classification, status, tags, effective_at, expiry_at, metadata_json, created_at, updated_at
 FROM metaldocs.documents
 ORDER BY created_at ASC
 `
@@ -192,6 +195,7 @@ ORDER BY created_at ASC
 			&doc.DocumentFamily,
 			&processArea,
 			&subject,
+			&doc.ProfileSchemaVersion,
 			&doc.OwnerID,
 			&doc.BusinessUnit,
 			&doc.Department,
@@ -220,9 +224,10 @@ ORDER BY created_at ASC
 
 func (r *Repository) ListDocumentTypes(ctx context.Context) ([]domain.DocumentType, error) {
 	const q = `
-SELECT code, name, description, review_interval_days
-FROM metaldocs.document_profiles
-ORDER BY code ASC
+SELECT p.code, p.name, p.description, COALESCE(g.review_interval_days, p.review_interval_days)
+FROM metaldocs.document_profiles p
+LEFT JOIN metaldocs.document_profile_governance g ON g.profile_code = p.code
+ORDER BY p.code ASC
 `
 	rows, err := r.db.QueryContext(ctx, q)
 	if err != nil {
@@ -248,7 +253,7 @@ func (r *Repository) ListDocumentFamilies(ctx context.Context) ([]domain.Documen
 	const q = `
 SELECT code, name, description
 FROM metaldocs.document_families
-ORDER BY code ASC
+ORDER BY p.code ASC
 `
 	rows, err := r.db.QueryContext(ctx, q)
 	if err != nil {
@@ -272,8 +277,20 @@ ORDER BY code ASC
 
 func (r *Repository) ListDocumentProfiles(ctx context.Context) ([]domain.DocumentProfile, error) {
 	const q = `
-SELECT code, family_code, name, description, review_interval_days
-FROM metaldocs.document_profiles
+SELECT p.code, p.family_code, p.name, p.description,
+       COALESCE(g.review_interval_days, p.review_interval_days) AS review_interval_days,
+       COALESCE(s.active_version, 1) AS active_schema_version,
+       COALESCE(g.workflow_profile, 'standard_approval') AS workflow_profile,
+       COALESCE(g.approval_required, TRUE) AS approval_required,
+       COALESCE(g.retention_days, 0) AS retention_days,
+       COALESCE(g.validity_days, 0) AS validity_days
+FROM metaldocs.document_profiles p
+LEFT JOIN (
+  SELECT profile_code, MAX(version) FILTER (WHERE is_active) AS active_version
+  FROM metaldocs.document_profile_schema_versions
+  GROUP BY profile_code
+) s ON s.profile_code = p.code
+LEFT JOIN metaldocs.document_profile_governance g ON g.profile_code = p.code
 ORDER BY code ASC
 `
 	rows, err := r.db.QueryContext(ctx, q)
@@ -285,7 +302,18 @@ ORDER BY code ASC
 	var out []domain.DocumentProfile
 	for rows.Next() {
 		var item domain.DocumentProfile
-		if err := rows.Scan(&item.Code, &item.FamilyCode, &item.Name, &item.Description, &item.ReviewIntervalDays); err != nil {
+		if err := rows.Scan(
+			&item.Code,
+			&item.FamilyCode,
+			&item.Name,
+			&item.Description,
+			&item.ReviewIntervalDays,
+			&item.ActiveSchemaVersion,
+			&item.WorkflowProfile,
+			&item.ApprovalRequired,
+			&item.RetentionDays,
+			&item.ValidityDays,
+		); err != nil {
 			return nil, fmt.Errorf("scan document profile: %w", err)
 		}
 		out = append(out, item)
@@ -294,6 +322,62 @@ ORDER BY code ASC
 		return nil, fmt.Errorf("list document profiles rows: %w", err)
 	}
 	return out, nil
+}
+
+func (r *Repository) ListDocumentProfileSchemas(ctx context.Context, profileCode string) ([]domain.DocumentProfileSchemaVersion, error) {
+	const q = `
+SELECT profile_code, version, is_active, metadata_rules_json
+FROM metaldocs.document_profile_schema_versions
+WHERE ($1 = '' OR profile_code = $1)
+ORDER BY profile_code ASC, version ASC
+`
+	rows, err := r.db.QueryContext(ctx, q, profileCode)
+	if err != nil {
+		return nil, fmt.Errorf("list document profile schemas: %w", err)
+	}
+	defer rows.Close()
+
+	var out []domain.DocumentProfileSchemaVersion
+	for rows.Next() {
+		var item domain.DocumentProfileSchemaVersion
+		var rawRules []byte
+		if err := rows.Scan(&item.ProfileCode, &item.Version, &item.IsActive, &rawRules); err != nil {
+			return nil, fmt.Errorf("scan document profile schema: %w", err)
+		}
+		if len(rawRules) > 0 {
+			if err := json.Unmarshal(rawRules, &item.MetadataRules); err != nil {
+				return nil, fmt.Errorf("unmarshal document profile schema rules: %w", err)
+			}
+		}
+		out = append(out, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list document profile schemas rows: %w", err)
+	}
+	return out, nil
+}
+
+func (r *Repository) GetDocumentProfileGovernance(ctx context.Context, profileCode string) (domain.DocumentProfileGovernance, error) {
+	const q = `
+SELECT profile_code, workflow_profile, review_interval_days, approval_required, retention_days, validity_days
+FROM metaldocs.document_profile_governance
+WHERE profile_code = $1
+`
+	var item domain.DocumentProfileGovernance
+	if err := r.db.QueryRowContext(ctx, q, profileCode).Scan(
+		&item.ProfileCode,
+		&item.WorkflowProfile,
+		&item.ReviewIntervalDays,
+		&item.ApprovalRequired,
+		&item.RetentionDays,
+		&item.ValidityDays,
+	); err != nil {
+		if err == sql.ErrNoRows {
+			return domain.DocumentProfileGovernance{}, domain.ErrInvalidCommand
+		}
+		return domain.DocumentProfileGovernance{}, fmt.Errorf("get document profile governance: %w", err)
+	}
+	return item, nil
 }
 
 func (r *Repository) ListProcessAreas(ctx context.Context) ([]domain.ProcessArea, error) {

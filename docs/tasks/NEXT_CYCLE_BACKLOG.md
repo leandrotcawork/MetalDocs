@@ -292,7 +292,7 @@ Saida:
 - `documents` e `search` passam a carregar `processArea` e `subject` como taxonomia separada
 
 ## Task 018 - Add versioned schema and governance by profile
-Status: `todo`
+Status: `done`
 
 Objetivo:
 Permitir que cada profile defina metadata e governanca proprios de forma versionada e auditavel.
@@ -305,6 +305,7 @@ Escopo:
 
 Saida:
 - validacao e governanca documental configuraveis por empresa
+- `documents` valida metadata pelo schema ativo e persiste `profileSchemaVersion`
 
 ## Task 019 - Seed Metal Nobre document registry
 Status: `todo`

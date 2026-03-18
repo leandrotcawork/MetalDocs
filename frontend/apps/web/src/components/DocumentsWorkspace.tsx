@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { TopbarDropdown } from "./TopbarDropdown";
 import type {
   AccessPolicyItem,
   AttachmentItem,
@@ -14,8 +15,10 @@ import type {
 } from "../lib.types";
 
 type PolicyScope = "document" | "document_type" | "area";
+type DocumentsWorkspaceView = "library" | "my-docs" | "recent";
 
 type DocumentsWorkspaceProps = {
+  view: DocumentsWorkspaceView;
   loadState: "idle" | "loading" | "ready" | "error";
   documentProfiles: DocumentProfileItem[];
   processAreas: ProcessAreaItem[];
@@ -62,6 +65,11 @@ function statusClass(status: string): string {
 
 function profileLabel(code: string, profiles: DocumentProfileItem[]): string {
   return profiles.find((item) => item.code === code)?.name ?? code;
+}
+
+function profileAlias(code: string, profiles: DocumentProfileItem[]): string {
+  const profile = profiles.find((item) => item.code === code);
+  return profile?.alias || profile?.name || code;
 }
 
 function areaLabel(code: string, areas: ProcessAreaItem[]): string {
@@ -132,6 +140,9 @@ export function DocumentsWorkspace(props: DocumentsWorkspaceProps) {
     }));
   }
 
+  const viewTitle = props.view === "my-docs" ? "Meus Documentos" : props.view === "recent" ? "Recentes" : "Todos Documentos";
+  const scopeLabel = props.view === "my-docs" ? "Meus documentos" : props.view === "recent" ? "Documentos recentes" : "Documentos";
+
   return (
     <section className="catalog-shell catalog-shell-dense">
       <div className="catalog-toolbar-panel">
@@ -139,9 +150,9 @@ export function DocumentsWorkspace(props: DocumentsWorkspaceProps) {
           <div className="workspace-breadcrumb">
             <span>MetalDocs</span>
             <span>/</span>
-            <span>Documentos</span>
+            <span>{scopeLabel}</span>
             <span>/</span>
-            <strong>Acervo completo</strong>
+            <strong>{viewTitle}</strong>
           </div>
           <div className="catalog-toolbar-spacer" />
           <div className="catalog-view-toggle">
@@ -160,22 +171,32 @@ export function DocumentsWorkspace(props: DocumentsWorkspaceProps) {
               </svg>
             </button>
           </div>
-          <select className="catalog-compact-select" value={areaFilter} onChange={(event) => setAreaFilter(event.target.value)}>
-            <option value="all">Agrupar: por area</option>
-            {props.processAreas.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}
-          </select>
-          <select className="catalog-compact-select" value={profileFilter} onChange={(event) => setProfileFilter(event.target.value)}>
-            <option value="all">Todos os profiles</option>
-            {props.documentProfiles.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}
-          </select>
+          <TopbarDropdown
+            id="catalog-area-filter"
+            value={areaFilter}
+            onChange={setAreaFilter}
+            options={[
+              { value: "all", label: "Agrupar: por area" },
+              ...props.processAreas.map((item) => ({ value: item.code, label: item.name })),
+            ]}
+          />
+          <TopbarDropdown
+            id="catalog-profile-filter"
+            value={profileFilter}
+            onChange={setProfileFilter}
+            options={[
+              { value: "all", label: "Todos os profiles" },
+              ...props.documentProfiles.map((item) => ({ value: item.code, label: item.alias || item.name })),
+            ]}
+          />
         </div>
 
         <div className="catalog-chip-row">
-          <button type="button" className={`catalog-chip ${statusFilter === "all" ? "is-active" : ""}`} onClick={() => setStatusFilter("all")}>Todos <span className="catalog-chip-count">{props.documents.length}</span></button>
+          <button type="button" className={`catalog-chip ${statusFilter === "all" ? "is-active" : ""}`} onClick={() => setStatusFilter("all")}><span>Todos</span><span className="catalog-chip-count">{props.documents.length}</span></button>
           {props.documentProfiles.map((item) => (
             <button key={item.code} type="button" className={`catalog-chip ${profileFilter === item.code ? "is-active" : ""}`} onClick={() => setProfileFilter((current) => current === item.code ? "all" : item.code)}>
               <span className={`catalog-chip-dot profile-${item.code}`} />
-              {item.code.toUpperCase()}
+              {profileAlias(item.code, props.documentProfiles)}
               <span className="catalog-chip-count">{props.documents.filter((doc) => doc.documentProfile === item.code).length}</span>
             </button>
           ))}
@@ -209,7 +230,7 @@ export function DocumentsWorkspace(props: DocumentsWorkspaceProps) {
 
           <div className="catalog-stats">
             <article className="catalog-stat">
-              <span>Total no acervo</span>
+              <span>Total no recorte</span>
               <strong>{props.documents.length}</strong>
               <small>{groupedByArea.length} grupo(s) por area</small>
               <div className="catalog-stat-bar"><div className="catalog-stat-fill vinho" style={{ width: "100%" }} /></div>

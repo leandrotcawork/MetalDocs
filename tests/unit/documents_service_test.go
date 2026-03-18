@@ -259,13 +259,40 @@ func TestListDocumentProfilesIncludesMetalNobreRegistry(t *testing.T) {
 	}
 
 	found := map[string]bool{}
+	aliases := map[string]string{}
 	for _, item := range items {
 		found[item.Code] = true
+		aliases[item.Code] = item.Alias
 	}
 
 	for _, code := range []string{"po", "it", "rg"} {
 		if !found[code] {
 			t.Fatalf("expected profile %s in registry", code)
+		}
+	}
+	if aliases["po"] != "Procedimentos" {
+		t.Fatalf("expected alias Procedimentos for po, got %q", aliases["po"])
+	}
+	if aliases["it"] != "Instrucoes" {
+		t.Fatalf("expected alias Instrucoes for it, got %q", aliases["it"])
+	}
+	if aliases["rg"] != "Registros" {
+		t.Fatalf("expected alias Registros for rg, got %q", aliases["rg"])
+	}
+}
+
+func TestValidateDocumentProfileAlias(t *testing.T) {
+	validCases := []string{"Procedimentos", "Instrucoes", "Registros"}
+	for _, alias := range validCases {
+		if err := domain.ValidateDocumentProfileAlias(alias); err != nil {
+			t.Fatalf("expected alias %q to be valid: %v", alias, err)
+		}
+	}
+
+	invalidCases := []string{"", "   ", "Alias documental extremamente grande"}
+	for _, alias := range invalidCases {
+		if err := domain.ValidateDocumentProfileAlias(alias); err == nil {
+			t.Fatalf("expected alias %q to be invalid", alias)
 		}
 	}
 }

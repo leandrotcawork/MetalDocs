@@ -615,6 +615,7 @@ function AppContent() {
 
           {(activeView === "library" || activeView === "my-docs" || activeView === "recent") && (
             <DocumentsWorkspace
+              view={activeView}
               loadState={loadState}
               documentProfiles={documentProfiles}
               processAreas={processAreas}

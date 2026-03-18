@@ -68,10 +68,12 @@ function normalizeStringArray(value: unknown): string[] {
 }
 
 function normalizeDocumentProfile(value: DocumentProfileItem): DocumentProfileItem {
+  const fallbackName = value?.name ?? value?.code ?? "";
   return {
     code: value?.code ?? "",
     familyCode: value?.familyCode ?? "",
-    name: value?.name ?? value?.code ?? "",
+    name: fallbackName,
+    alias: value?.alias?.trim?.() || fallbackName,
     description: value?.description ?? "",
     reviewIntervalDays: Number(value?.reviewIntervalDays ?? 0),
     activeSchemaVersion: Number(value?.activeSchemaVersion ?? 0),

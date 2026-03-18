@@ -279,7 +279,7 @@ ORDER BY code ASC
 
 func (r *Repository) ListDocumentProfiles(ctx context.Context) ([]domain.DocumentProfile, error) {
 	const q = `
-SELECT p.code, p.family_code, p.name, p.description,
+SELECT p.code, p.family_code, p.name, p.alias, p.description,
        COALESCE(g.review_interval_days, p.review_interval_days) AS review_interval_days,
        COALESCE(s.active_version, 1) AS active_schema_version,
        COALESCE(g.workflow_profile, 'standard_approval') AS workflow_profile,
@@ -309,6 +309,7 @@ ORDER BY code ASC
 			&item.Code,
 			&item.FamilyCode,
 			&item.Name,
+			&item.Alias,
 			&item.Description,
 			&item.ReviewIntervalDays,
 			&item.ActiveSchemaVersion,

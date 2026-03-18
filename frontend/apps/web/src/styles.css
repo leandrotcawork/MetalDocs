@@ -40,6 +40,10 @@ body {
   color: var(--text);
 }
 
+#root {
+  min-height: 100vh;
+}
+
 button,
 input,
 select,
@@ -101,6 +105,8 @@ label span,
 .app-shell.is-workspace {
   padding: 0;
   min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .auth-shell {
@@ -341,6 +347,7 @@ td small {
 }
 
 .workspace-shell {
+  height: 100vh;
   min-height: 100vh;
   display: grid;
   grid-template-rows: 50px minmax(0, 1fr);
@@ -490,6 +497,134 @@ td small {
   margin-left: auto;
 }
 
+.workspace-user-menu {
+  position: relative;
+}
+
+.workspace-user-trigger {
+  height: 32px;
+  min-width: 168px;
+  padding: 0 10px 0 0;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.workspace-user-trigger:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.workspace-user-trigger:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.24);
+}
+
+.workspace-user-copy {
+  min-width: 0;
+  display: grid;
+  gap: 0;
+  text-align: left;
+}
+
+.workspace-user-copy strong {
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.workspace-user-copy small {
+  color: rgba(255, 255, 255, 0.45);
+  font-family: "DM Mono", monospace;
+  font-size: 9.5px;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.workspace-user-chevron {
+  margin-left: auto;
+  color: rgba(255, 255, 255, 0.68);
+  transition: transform 0.18s ease;
+}
+
+.workspace-user-menu[data-open="true"] .workspace-user-chevron {
+  transform: rotate(180deg);
+}
+
+.workspace-user-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 25;
+  min-width: 220px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(60, 19, 28, 0.97);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  padding: 6px;
+  display: grid;
+  gap: 4px;
+}
+
+.workspace-user-meta {
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  display: grid;
+  gap: 2px;
+}
+
+.workspace-user-meta span {
+  font-family: "DM Mono", monospace;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.52);
+  text-transform: uppercase;
+  letter-spacing: 0.35px;
+}
+
+.workspace-user-meta strong {
+  font-size: 12px;
+  font-weight: 500;
+  color: #fff;
+}
+
+.workspace-user-item {
+  width: 100%;
+  text-align: left;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 8px 9px;
+}
+
+.workspace-user-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.workspace-user-item.is-danger {
+  color: #ffd2d2;
+}
+
+.workspace-user-item.is-danger:hover {
+  background: rgba(196, 53, 53, 0.22);
+  border-color: rgba(196, 53, 53, 0.28);
+}
+
 .workspace-icon-button {
   position: relative;
   width: 32px;
@@ -532,6 +667,7 @@ td small {
 
 .workspace-layout {
   display: flex;
+  height: 100%;
   min-height: 0;
   overflow: hidden;
 }
@@ -547,6 +683,7 @@ td small {
   flex-shrink: 0;
   display: grid;
   grid-template-rows: 1fr auto;
+  min-height: 0;
   padding: 0;
   overflow: hidden;
   border: 0;
@@ -565,11 +702,70 @@ td small {
 .workspace-content {
   padding: 18px 24px 24px;
   overflow-y: auto;
+  overscroll-behavior: contain;
   align-content: start;
+}
+
+.workspace-content.is-toolbarless {
+  padding-top: 0;
 }
 
 .workspace-sidebar-scroll {
   padding: 10px 8px 16px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.workspace-sidebar-scroll,
+.workspace-content {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139, 46, 58, 0.72) transparent;
+}
+
+.workspace-sidebar-scroll::-webkit-scrollbar,
+.workspace-content::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.workspace-sidebar-scroll::-webkit-scrollbar-track,
+.workspace-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.workspace-sidebar-scroll::-webkit-scrollbar-thumb,
+.workspace-content::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(176, 88, 102, 0.94), rgba(107, 31, 42, 0.98));
+  border-radius: 999px;
+}
+
+.workspace-sidebar-scroll::-webkit-scrollbar-thumb:hover,
+.workspace-content::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(198, 106, 120, 0.96), rgba(128, 35, 49, 1));
+}
+
+.workspace-sidebar-scroll::-webkit-scrollbar-button,
+.workspace-content::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.workspace-sidebar-scroll::-webkit-scrollbar-button:single-button,
+.workspace-content::-webkit-scrollbar-button:single-button,
+.workspace-sidebar-scroll::-webkit-scrollbar-button:start,
+.workspace-content::-webkit-scrollbar-button:start,
+.workspace-sidebar-scroll::-webkit-scrollbar-button:end,
+.workspace-content::-webkit-scrollbar-button:end,
+.workspace-sidebar-scroll::-webkit-scrollbar-button:vertical:start:decrement,
+.workspace-content::-webkit-scrollbar-button:vertical:start:decrement,
+.workspace-sidebar-scroll::-webkit-scrollbar-button:vertical:end:increment,
+.workspace-content::-webkit-scrollbar-button:vertical:end:increment {
+  display: none;
+  width: 0;
+  height: 0;
+  background: transparent;
 }
 
 .workspace-sidebar-footer {
@@ -597,14 +793,14 @@ td small {
 
 .workspace-context-copy strong {
   display: block;
-  font-size: 12.5px;
+  font-size: 14px;
   font-weight: 500;
   font-family: "DM Sans", sans-serif;
   color: #fff;
 }
 
 .workspace-context-copy small {
-  font-size: 10px;
+  font-size: 11.5px;
   font-weight: 400;
   font-family: "DM Sans", sans-serif;
   color: rgba(255, 255, 255, 0.6);
@@ -636,7 +832,7 @@ td small {
   align-items: center;
   justify-content: flex-start;
   padding: 12px 8px 4px;
-  font-size: 10px;
+  font-size: 11.5px;
   font-weight: 500;
   font-family: "DM Sans", sans-serif;
   letter-spacing: 0.9px;
@@ -655,7 +851,7 @@ td small {
   background: transparent;
   color: rgba(255, 255, 255, 0.82);
   border: 0;
-  font-size: 12.5px;
+  font-size: 14px;
   font-weight: 500;
   font-family: "DM Sans", sans-serif;
 }
@@ -682,7 +878,7 @@ td small {
 }
 
 .workspace-section-label {
-  font-size: 12.5px;
+  font-size: 14px;
   font-weight: 500;
   font-family: "DM Sans", sans-serif;
   color: currentColor;
@@ -692,7 +888,7 @@ td small {
 .workspace-section-count {
   margin-left: auto;
   font-family: "DM Mono", monospace;
-  font-size: 10px;
+  font-size: 11px;
   color: rgba(255, 255, 255, 0.48);
 }
 
@@ -737,14 +933,14 @@ td small {
   background: transparent;
   color: rgba(255, 255, 255, 0.82);
   border: 1px solid transparent;
-  font-size: 12px;
+  font-size: 13px;
   font-family: "DM Sans", sans-serif;
   position: relative;
 }
 
 .workspace-flat-nav-item {
   padding: 6px 8px;
-  font-size: 12.5px;
+  font-size: 14px;
   font-weight: 400;
   color: rgba(255, 255, 255, 0.82);
   line-height: 1.15;
@@ -821,8 +1017,8 @@ td small {
 }
 
 .workspace-subnav.typed .workspace-subnav-item {
-  padding-left: 36px;
-  font-size: 12px;
+  padding-left: 28px;
+  font-size: 13px;
   font-weight: 400;
   color: rgba(255, 255, 255, 0.7);
 }
@@ -850,7 +1046,7 @@ td small {
 .workspace-sub-count {
   margin-left: auto;
   font-family: "DM Mono", monospace;
-  font-size: 10px;
+  font-size: 11px;
   color: rgba(255, 255, 255, 0.48);
 }
 
@@ -858,7 +1054,7 @@ td small {
   padding: 1px 6px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.14);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 400;
   color: #fff;
   font-family: "DM Mono", monospace;
@@ -887,33 +1083,61 @@ td small {
   margin: 0.35rem 0;
   word-break: break-all;
   color: #fff;
-  font-size: 12px;
+  font-size: 13.5px;
 }
 
 .workspace-runtime-card span,
 .workspace-runtime-card small {
+  font-size: 11.5px;
   color: rgba(255, 255, 255, 0.58);
 }
 
 .workspace-main {
   flex: 1;
+  display: grid;
+  grid-template-rows: 44px minmax(0, 1fr);
   min-width: 0;
+  min-height: 0;
   padding: 0;
   overflow: hidden;
   background: var(--bg);
   border: 0;
 }
 
+.workspace-main.is-toolbarless {
+  grid-template-rows: minmax(0, 1fr);
+}
+
 .workspace-toolbar {
   display: flex;
-  justify-content: space-between;
-  gap: 1rem;
   align-items: center;
-  margin-bottom: 0;
+  justify-content: flex-start;
+  gap: 1rem;
   padding: 0 24px;
   height: 44px;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
+}
+
+.workspace-toolbar-as-panel {
+  background: var(--surface);
+  box-shadow: inset 0 -1px 0 var(--border);
+}
+
+.workspace-toolbar-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+}
+
+.workspace-toolbar-kicker {
+  margin: 0;
+  font-family: "DM Mono", monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.55px;
+  text-transform: uppercase;
+  color: var(--muted-soft);
 }
 
 .workspace-breadcrumb {
@@ -1006,6 +1230,125 @@ td small {
   background: var(--surface);
   font-size: 12px;
   color: var(--text-soft);
+}
+
+.catalog-dropdown {
+  position: relative;
+  min-width: 180px;
+}
+
+.catalog-dropdown-trigger {
+  width: 100%;
+  min-height: 30px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text-soft);
+  font-size: 12px;
+  font-weight: 500;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.catalog-dropdown-trigger:hover {
+  border-color: color-mix(in srgb, var(--vinho) 42%, var(--border));
+}
+
+.catalog-dropdown-trigger:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--vinho) 24%, transparent);
+}
+
+.catalog-dropdown-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.catalog-dropdown-chevron {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  transform: rotate(0deg);
+  color: color-mix(in srgb, var(--vinho) 86%, #ef476f 14%);
+  pointer-events: none;
+  transition: transform 0.18s ease;
+}
+
+.catalog-dropdown[data-open="true"] .catalog-dropdown-chevron {
+  transform: rotate(180deg);
+}
+
+.catalog-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 18;
+  min-width: 100%;
+  width: max-content;
+  max-width: min(360px, calc(100vw - 56px));
+  max-height: min(320px, 52vh);
+  overflow-y: auto;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--vinho) 20%, var(--border));
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  box-shadow: var(--shadow-soft), 0 1px 0 rgba(255, 255, 255, 0.35) inset;
+  backdrop-filter: blur(20px) saturate(165%);
+  -webkit-backdrop-filter: blur(20px) saturate(165%);
+  padding: 5px;
+  display: grid;
+  gap: 4px;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--muted) 45%, transparent) transparent;
+}
+
+.catalog-dropdown-menu::-webkit-scrollbar {
+  width: 8px;
+}
+
+.catalog-dropdown-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.catalog-dropdown-menu::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted) 45%, transparent);
+}
+
+.catalog-dropdown-menu::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--muted) 62%, transparent);
+}
+
+.catalog-dropdown-option {
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  text-align: left;
+  padding: 7px 8px;
+  cursor: pointer;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.catalog-dropdown-option:hover {
+  background: rgba(139, 21, 56, 0.08);
+  border-color: rgba(139, 21, 56, 0.18);
+}
+
+.catalog-dropdown-option.is-active {
+  background: rgba(139, 21, 56, 0.12);
+  border-color: rgba(139, 21, 56, 0.2);
+  color: var(--vinho);
 }
 
 .catalog-chip-row {
@@ -1415,6 +1758,9 @@ td small {
 }
 
 .catalog-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   background: var(--surface);
   color: var(--text-soft);
   border: 1px solid var(--border-2);

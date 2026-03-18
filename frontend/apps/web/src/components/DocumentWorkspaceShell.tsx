@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DocumentProfileItem, SearchDocumentItem } from "../lib.types";
 
 export type WorkspaceView = "operations" | "approvals" | "audit" | "library" | "my-docs" | "recent" | "create" | "registry" | "notifications" | "admin";
@@ -88,7 +88,7 @@ function sections(props: WorkspaceShellProps): NavSection[] {
     items: [
       {
         key: "library",
-        label: "Acervo completo",
+        label: "Todos Documentos",
         badge: String(props.documentCount),
         icon: (
           <svg viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.4">
@@ -125,18 +125,6 @@ function sections(props: WorkspaceShellProps): NavSection[] {
       label: "Workspace",
       items: [
         {
-          key: "notifications",
-          label: "Notificacoes",
-          badge: String(props.notificationsPending),
-          accent: props.notificationsPending > 0 ? "danger" : "default",
-          icon: (
-            <svg viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.4">
-              <path d="M7.5 2a3.5 3.5 0 0 1 3.5 3.5v2L12 9H3l1-1.5v-2A3.5 3.5 0 0 1 7.5 2Z" />
-              <path d="M6.5 11a1 1 0 0 0 2 0" strokeLinecap="round" />
-            </svg>
-          ),
-        },
-        {
           key: "create",
           label: "Novo documento",
           icon: (
@@ -147,7 +135,7 @@ function sections(props: WorkspaceShellProps): NavSection[] {
         },
         {
           key: "registry",
-          label: "Registry explorer",
+          label: "Tipos documentais",
           badge: String(props.registryCount),
           icon: (
             <svg viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.4">
@@ -194,7 +182,7 @@ function profileAccordions(props: WorkspaceShellProps): ProfileAccordion[] {
 
     return {
       code: profile.code,
-      label: profile.name,
+      label: profile.alias || profile.name,
       count: profileDocuments.length,
       areas: Array.from(areaMap.entries())
         .map(([label, count]) => ({ label, count }))
@@ -213,7 +201,7 @@ function activeTitle(activeView: WorkspaceView): string {
     case "audit":
       return "Audit Trail";
     case "library":
-      return "Acervo Completo";
+      return "Todos Documentos";
     case "my-docs":
       return "Meus Documentos";
     case "recent":
@@ -221,7 +209,7 @@ function activeTitle(activeView: WorkspaceView): string {
     case "create":
       return "Novo Documento";
     case "registry":
-      return "Registry Explorer";
+      return "Tipos Documentais";
     case "notifications":
       return "Notificacoes";
     case "admin":
@@ -231,16 +219,49 @@ function activeTitle(activeView: WorkspaceView): string {
   }
 }
 
+function isDocumentCatalogView(activeView: WorkspaceView): boolean {
+  return activeView === "library" || activeView === "my-docs" || activeView === "recent";
+}
+
 export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
   const navSections = sections(props);
+  const primarySections = navSections.slice(0, 2);
+  const secondarySections = navSections.slice(2);
   const typedSections = profileAccordions(props);
   const currentTitle = activeTitle(props.activeView);
+  const isCatalogView = isDocumentCatalogView(props.activeView);
+  const userMenuRef = useRef<HTMLDivElement | null>(null);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     po: true,
     it: false,
     rg: false,
     fm: false,
   });
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+
+  useEffect(() => {
+    function handlePointerDown(event: MouseEvent) {
+      if (!userMenuRef.current) {
+        return;
+      }
+      if (!userMenuRef.current.contains(event.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    }
+
+    function handleKeydown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setUserMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeydown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeydown);
+    };
+  }, []);
 
   function toggleSection(sectionKey: string) {
     setOpenSections((current) => ({
@@ -297,8 +318,48 @@ export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
             </svg>
             Novo documento
           </button>
-          <div className="workspace-avatar" title={props.userDisplayName}>{props.userDisplayName.slice(0, 2).toUpperCase()}</div>
-          <button data-testid="logout-button" type="button" className="workspace-icon-button" onClick={() => void props.onLogout()} title="Logout">Sair</button>
+          <div className="workspace-user-menu" ref={userMenuRef} data-open={userMenuOpen ? "true" : "false"}>
+            <button
+              type="button"
+              className="workspace-user-trigger"
+              aria-haspopup="menu"
+              aria-expanded={userMenuOpen}
+              onClick={() => setUserMenuOpen((current) => !current)}
+              title={props.userDisplayName}
+            >
+              <div className="workspace-avatar">{props.userDisplayName.slice(0, 2).toUpperCase()}</div>
+              <span className="workspace-user-copy">
+                <strong>{props.userDisplayName}</strong>
+                <small>{props.userRoleLabel}</small>
+              </span>
+              <span className="workspace-user-chevron" aria-hidden="true">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4">
+                  <path d="M3 4.5 6 7.5l3-3" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </span>
+            </button>
+
+            {userMenuOpen && (
+              <div className="workspace-user-dropdown" role="menu">
+                <div className="workspace-user-meta">
+                  <span>Workspace</span>
+                  <strong>{props.organizationLabel}</strong>
+                </div>
+                <button
+                  data-testid="logout-button"
+                  type="button"
+                  className="workspace-user-item is-danger"
+                  role="menuitem"
+                  onClick={() => {
+                    setUserMenuOpen(false);
+                    void props.onLogout();
+                  }}
+                >
+                  Sair da sessao
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -325,7 +386,7 @@ export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
 
             <div className="workspace-divider" />
 
-            {navSections.map((section, index) => (
+            {primarySections.map((section, index) => (
               <div key={section.label} className="workspace-nav-group">
                 <div className="workspace-sidebar-section-label">{section.label}</div>
                 <div className="workspace-flat-nav">
@@ -359,8 +420,7 @@ export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
                         <path d="M4.5 3 7.5 6l-3 3" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     </span>
-                    <span className={`workspace-type-icon profile-${section.code}`}>{section.code.toUpperCase()}</span>
-                    <span className="workspace-section-label">{section.label}</span>
+                    <span className="workspace-section-label" title={props.documentProfiles.find((item) => item.code === section.code)?.name ?? section.label}>{section.label}</span>
                     <span className="workspace-section-count">{section.count}</span>
                   </button>
 
@@ -368,7 +428,6 @@ export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
                     <div className="workspace-subnav typed">
                       <button type="button" className={`workspace-subnav-item ${props.activeView === "library" ? "is-active" : ""}`} onClick={() => props.onNavigate("library")}>
                         <span className="workspace-subnav-main">
-                          <span className={`workspace-sub-pill profile-${section.code}`}>{section.code.toUpperCase()}</span>
                           <span className="workspace-subnav-label">Todos</span>
                         </span>
                         <span className="workspace-sub-count">{section.count}</span>
@@ -387,6 +446,30 @@ export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
                 </div>
               );
             })}
+
+            {typedSections.length > 0 && <div className="workspace-divider" />}
+
+            {secondarySections.map((section) => (
+              <div key={section.label} className="workspace-nav-group">
+                <div className="workspace-sidebar-section-label">{section.label}</div>
+                <div className="workspace-flat-nav">
+                  {section.items.map((item) => (
+                    <button
+                      key={`${section.label}-${item.label}`}
+                      type="button"
+                      className={`workspace-flat-nav-item ${props.activeView === item.key ? "is-active" : ""}`}
+                      onClick={() => props.onNavigate(item.key)}
+                    >
+                      <span className="workspace-flat-nav-main">
+                        <span className="workspace-nav-icon">{item.icon}</span>
+                        <span className="workspace-flat-nav-label">{item.label}</span>
+                      </span>
+                      {item.badge && <span className={`workspace-nav-badge ${item.accent === "danger" ? "is-danger" : item.accent === "warning" ? "is-warning" : ""}`}>{item.badge}</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
 
           <div className="workspace-sidebar-footer">
@@ -398,15 +481,18 @@ export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
           </div>
         </aside>
 
-        <main className="workspace-main">
-          <div className="workspace-toolbar">
-            <div className="workspace-breadcrumb">
-              <span>MetalDocs</span>
-              <span>/</span>
-              <strong>{currentTitle}</strong>
+        <main className={`workspace-main ${isCatalogView ? "is-toolbarless" : ""}`}>
+          {!isCatalogView && (
+            <div className="workspace-toolbar workspace-toolbar-as-panel">
+              <div className="workspace-toolbar-top">
+                <p className="workspace-toolbar-kicker">Workspace</p>
+                <div className="workspace-breadcrumb">
+                  <strong>{currentTitle}</strong>
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="workspace-content">{props.children}</div>
+          )}
+          <div className={`workspace-content ${isCatalogView ? "is-toolbarless" : ""}`}>{props.children}</div>
         </main>
       </div>
     </div>

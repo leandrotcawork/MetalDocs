@@ -139,7 +139,7 @@ export function DocumentCreateView(props: DocumentCreateViewProps) {
                 <div>
                   <label htmlFor="document-profile"><span>Profile</span></label>
                   <select id="document-profile" data-testid="document-profile" value={props.documentForm.documentProfile} onChange={(event) => void props.onApplyProfile(event.target.value, props.documentForm.processArea)}>
-                    {props.documentProfiles.map((item) => <option key={item.code} value={item.code}>{item.name} ({item.code})</option>)}
+                    {props.documentProfiles.map((item) => <option key={item.code} value={item.code}>{item.name} ({item.alias})</option>)}
                   </select>
                 </div>
               </div>

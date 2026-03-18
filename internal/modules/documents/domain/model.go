@@ -1,6 +1,9 @@
 package domain
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 const (
 	StatusDraft     = "DRAFT"
@@ -122,6 +125,7 @@ type DocumentProfile struct {
 	Code                string
 	FamilyCode          string
 	Name                string
+	Alias               string
 	Description         string
 	ReviewIntervalDays  int
 	ActiveSchemaVersion int
@@ -195,6 +199,8 @@ const (
 	PolicyEffectDeny  = "deny"
 )
 
+const DocumentProfileAliasMaxLength = 24
+
 func DefaultDocumentTypes() []DocumentType {
 	profiles := DefaultDocumentProfiles()
 	out := make([]DocumentType, 0, len(profiles))
@@ -220,9 +226,9 @@ func DefaultDocumentFamilies() []DocumentFamily {
 func DefaultDocumentProfiles() []DocumentProfile {
 	governanceByCode := DefaultDocumentProfileGovernanceByCode()
 	return []DocumentProfile{
-		{Code: "po", FamilyCode: "procedure", Name: "PO", Description: "Procedimento operacional da Metal Nobre", ReviewIntervalDays: governanceByCode["po"].ReviewIntervalDays, ActiveSchemaVersion: 1, WorkflowProfile: governanceByCode["po"].WorkflowProfile, ApprovalRequired: governanceByCode["po"].ApprovalRequired, RetentionDays: governanceByCode["po"].RetentionDays, ValidityDays: governanceByCode["po"].ValidityDays},
-		{Code: "it", FamilyCode: "work_instruction", Name: "IT", Description: "Instrucao de trabalho da Metal Nobre", ReviewIntervalDays: governanceByCode["it"].ReviewIntervalDays, ActiveSchemaVersion: 1, WorkflowProfile: governanceByCode["it"].WorkflowProfile, ApprovalRequired: governanceByCode["it"].ApprovalRequired, RetentionDays: governanceByCode["it"].RetentionDays, ValidityDays: governanceByCode["it"].ValidityDays},
-		{Code: "rg", FamilyCode: "record", Name: "RG", Description: "Registro operacional da Metal Nobre", ReviewIntervalDays: governanceByCode["rg"].ReviewIntervalDays, ActiveSchemaVersion: 1, WorkflowProfile: governanceByCode["rg"].WorkflowProfile, ApprovalRequired: governanceByCode["rg"].ApprovalRequired, RetentionDays: governanceByCode["rg"].RetentionDays, ValidityDays: governanceByCode["rg"].ValidityDays},
+		{Code: "po", FamilyCode: "procedure", Name: "Procedimento Operacional", Alias: "Procedimentos", Description: "Procedimento operacional da Metal Nobre", ReviewIntervalDays: governanceByCode["po"].ReviewIntervalDays, ActiveSchemaVersion: 1, WorkflowProfile: governanceByCode["po"].WorkflowProfile, ApprovalRequired: governanceByCode["po"].ApprovalRequired, RetentionDays: governanceByCode["po"].RetentionDays, ValidityDays: governanceByCode["po"].ValidityDays},
+		{Code: "it", FamilyCode: "work_instruction", Name: "Instrucao de Trabalho", Alias: "Instrucoes", Description: "Instrucao de trabalho da Metal Nobre", ReviewIntervalDays: governanceByCode["it"].ReviewIntervalDays, ActiveSchemaVersion: 1, WorkflowProfile: governanceByCode["it"].WorkflowProfile, ApprovalRequired: governanceByCode["it"].ApprovalRequired, RetentionDays: governanceByCode["it"].RetentionDays, ValidityDays: governanceByCode["it"].ValidityDays},
+		{Code: "rg", FamilyCode: "record", Name: "Registro", Alias: "Registros", Description: "Registro operacional da Metal Nobre", ReviewIntervalDays: governanceByCode["rg"].ReviewIntervalDays, ActiveSchemaVersion: 1, WorkflowProfile: governanceByCode["rg"].WorkflowProfile, ApprovalRequired: governanceByCode["rg"].ApprovalRequired, RetentionDays: governanceByCode["rg"].RetentionDays, ValidityDays: governanceByCode["rg"].ValidityDays},
 	}
 }
 
@@ -294,6 +300,34 @@ func DefaultDocumentProfileGovernanceByCode() map[string]DocumentProfileGovernan
 		out[item.ProfileCode] = item
 	}
 	return out
+}
+
+func NormalizeDocumentProfileAlias(value string) string {
+	return strings.TrimSpace(value)
+}
+
+func ValidateDocumentProfileAlias(value string) error {
+	alias := NormalizeDocumentProfileAlias(value)
+	if alias == "" {
+		return ErrInvalidDocumentProfileAlias
+	}
+	if len([]rune(alias)) > DocumentProfileAliasMaxLength {
+		return ErrInvalidDocumentProfileAlias
+	}
+	return nil
+}
+
+func NormalizeDocumentProfile(profile DocumentProfile) (DocumentProfile, error) {
+	profile.Code = strings.ToLower(strings.TrimSpace(profile.Code))
+	profile.FamilyCode = strings.ToLower(strings.TrimSpace(profile.FamilyCode))
+	profile.Name = strings.TrimSpace(profile.Name)
+	profile.Description = strings.TrimSpace(profile.Description)
+	profile.WorkflowProfile = strings.TrimSpace(profile.WorkflowProfile)
+	profile.Alias = NormalizeDocumentProfileAlias(profile.Alias)
+	if err := ValidateDocumentProfileAlias(profile.Alias); err != nil {
+		return DocumentProfile{}, err
+	}
+	return profile, nil
 }
 
 type MetadataFieldRule struct {

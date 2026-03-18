@@ -96,6 +96,7 @@ type DocumentProfileResponse struct {
 	Code                string `json:"code"`
 	FamilyCode          string `json:"familyCode"`
 	Name                string `json:"name"`
+	Alias               string `json:"alias"`
 	Description         string `json:"description"`
 	ReviewIntervalDays  int    `json:"reviewIntervalDays"`
 	ActiveSchemaVersion int    `json:"activeSchemaVersion"`
@@ -310,6 +311,7 @@ func (h *Handler) handleDocumentProfiles(w http.ResponseWriter, r *http.Request)
 			Code:                item.Code,
 			FamilyCode:          item.FamilyCode,
 			Name:                item.Name,
+			Alias:               item.Alias,
 			Description:         item.Description,
 			ReviewIntervalDays:  item.ReviewIntervalDays,
 			ActiveSchemaVersion: item.ActiveSchemaVersion,

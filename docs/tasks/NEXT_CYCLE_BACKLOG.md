@@ -684,3 +684,112 @@ Escopo:
 
 Saida:
 - base para experiencia colaborativa mais profunda sem improviso arquitetural
+
+## Task 039 - Fix OpenAPI v1 compatibility for DocumentProfile alias
+Status: `done`
+
+Objetivo:
+Garantir evolucao compat no contrato v1 ao introduzir `alias` em `DocumentProfileItem` sem quebrar clientes estritos.
+
+Contexto:
+Follow-up documentado em `../hardening/DOCUMENTS_ARCH_FOLLOWUPS_20260318.md`.
+
+Escopo:
+- manter `alias` sempre presente no payload do backend
+- ajustar OpenAPI v1 para `alias` nao ser `required` em response
+- atualizar contract tests para validar presenca de `alias` sem exigir `required` em schema
+
+Saida:
+- OpenAPI v1 compativel (additive)
+- smoke contract mantendo garantia de `alias` presente
+
+Aceite:
+- `go test ./tests/contract -count=1` verde
+- `GET /api/v1/document-profiles` sempre retorna `alias` preenchido
+
+## Task 040 - Remove destructive cleanup from official migrations (dev-only tooling)
+Status: `done`
+
+Objetivo:
+Alinhar migrations com politica additive-first e invariavel append-only de auditoria, isolando reset/cleanup em tooling dev.
+
+Contexto:
+Follow-up documentado em `../hardening/DOCUMENTS_ARCH_FOLLOWUPS_20260318.md`.
+
+Escopo:
+- remover uso de `DELETE` em `audit_events` de qualquer migration oficial
+- mover "reset do registry legado" para `scripts/` + runbook dedicado
+- documentar janela/rollback e impacto operacional (quando aplicavel)
+
+Saida:
+- cadeia de migrations conforme ADR-0007
+- reset de ambiente dev suportado por script/runbook, nao por migration de produto
+
+Aceite:
+- `docs/adr/0007-schema-migration-policy.md` obedecido
+- nenhum `DELETE/UPDATE` em `audit_events` em migrations oficiais
+
+## Task 041 - Decouple documents domain from workflow domain types
+Status: `todo`
+
+Objetivo:
+Restaurar disciplina de boundary: `documents/domain` nao deve depender de tipos do modulo `workflow`.
+
+Contexto:
+Follow-up documentado em `../hardening/DOCUMENTS_ARCH_FOLLOWUPS_20260318.md`.
+
+Escopo:
+- substituir `workflowdomain.Approval` em `internal/modules/documents/domain/port.go` por tipo/DTO do proprio modulo
+- manter integracao via porta dedicada (application) ou evento interno (quando aplicavel)
+- ajustar repositorios `memory/postgres` e testes afetados
+
+Saida:
+- dominio `documents` compilando sem import de `internal/modules/workflow/domain`
+
+Aceite:
+- `rg -n \"internal/modules/workflow/domain\" internal/modules/documents/domain` nao retorna resultados
+- `go test ./...` verde
+
+## Task 042 - Decouple documents application from iam domain context helpers
+Status: `todo`
+
+Objetivo:
+Evitar dependencia do dominio de IAM para extrair contexto de autenticacao/autorizacao no modulo `documents`.
+
+Contexto:
+Follow-up documentado em `../hardening/DOCUMENTS_ARCH_FOLLOWUPS_20260318.md`.
+
+Escopo:
+- criar/usar helper de plataforma (ex.: `internal/platform/authn`) para `UserIDFromContext` e roles
+- atualizar `internal/modules/documents/application/service.go` para depender de plataforma, nao de `iam/domain`
+- manter authz sempre validada no backend
+
+Saida:
+- `documents/application` sem import de `internal/modules/iam/domain`
+
+Aceite:
+- `rg -n \"internal/modules/iam/domain\" internal/modules/documents/application` nao retorna resultados
+- `go test ./...` verde
+
+## Task 043 - Frontend structure: UI primitives, feature slices, and catalog summary performance
+Status: `todo`
+
+Objetivo:
+Evoluir `apps/web` para estrutura escalavel: primitives reutilizaveis, feature slices e performance previsivel do shell.
+
+Contexto:
+Follow-up documentado em `../hardening/DOCUMENTS_ARCH_FOLLOWUPS_20260318.md`.
+
+Escopo:
+- separar `frontend/apps/web/src/components/ui/*` (primitives) de views/features
+- mover `TopbarDropdown` e futuros primitives para `ui/`
+- reduzir recomputacoes O(P*N) no shell (memoizacao e/ou adapter)
+- definir contrato de "catalog summary" (frontend-only adapter ou endpoint backend em task propria)
+
+Saida:
+- organizacao de pastas clara por tipo de componente
+- shell sem agregacao cara em render
+
+Aceite:
+- `frontend` build e typecheck verdes
+- sem logica de negocio no frontend (apenas adaptacao/formatacao)

@@ -342,9 +342,17 @@ func (s *Service) ListDocumentProfiles(ctx context.Context) ([]domain.DocumentPr
 		return nil, err
 	}
 	if len(items) == 0 {
-		return domain.DefaultDocumentProfiles(), nil
+		items = domain.DefaultDocumentProfiles()
 	}
-	return items, nil
+	out := make([]domain.DocumentProfile, 0, len(items))
+	for _, item := range items {
+		normalized, err := domain.NormalizeDocumentProfile(item)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, normalized)
+	}
+	return out, nil
 }
 
 func (s *Service) ListDocumentProfileSchemas(ctx context.Context, profileCode string) ([]domain.DocumentProfileSchemaVersion, error) {

@@ -194,6 +194,25 @@ func TestAPIContractSmoke(t *testing.T) {
 					t.Fatalf("expected ready status, got %v", payload["status"])
 				}
 			}
+			if tc.path == "/api/v1/document-profiles" {
+				var payload struct {
+					Items []struct {
+						Code  string `json:"code"`
+						Alias string `json:"alias"`
+					} `json:"items"`
+				}
+				if err := json.Unmarshal(rr.Body.Bytes(), &payload); err != nil {
+					t.Fatalf("invalid document profiles json: %v", err)
+				}
+				if len(payload.Items) == 0 {
+					t.Fatal("expected document profiles payload")
+				}
+				for _, item := range payload.Items {
+					if item.Alias == "" {
+						t.Fatalf("expected alias for profile %s", item.Code)
+					}
+				}
+			}
 		})
 	}
 }

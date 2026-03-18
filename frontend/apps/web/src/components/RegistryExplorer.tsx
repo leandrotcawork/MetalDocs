@@ -36,7 +36,7 @@ export function RegistryExplorer(props: RegistryExplorerProps) {
               <li key={item.code}>
                 <button type="button" className={`registry-profile-button ${selectedProfile?.code === item.code ? "is-active" : ""}`} onClick={() => void props.onSelectProfile(item.code)}>
                   <span>{item.name}</span>
-                  <small>{item.code} / family {item.familyCode}</small>
+                  <small>{item.alias} / {item.code} / family {item.familyCode}</small>
                 </button>
               </li>
             ))}
@@ -54,6 +54,7 @@ export function RegistryExplorer(props: RegistryExplorerProps) {
           <div className="catalog-detail-stack">
             <div className="catalog-info-grid">
               <div><span>Code</span><strong>{selectedProfile?.code ?? "-"}</strong></div>
+              <div><span>Alias</span><strong>{selectedProfile?.alias ?? "-"}</strong></div>
               <div><span>Family</span><strong>{selectedProfile?.familyCode ?? "-"}</strong></div>
               <div><span>Schema ativo</span><strong>{props.selectedProfileSchema ? `v${props.selectedProfileSchema.version}` : "-"}</strong></div>
               <div><span>Workflow</span><strong>{props.selectedProfileGovernance?.workflowProfile ?? "-"}</strong></div>

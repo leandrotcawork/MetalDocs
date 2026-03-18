@@ -44,6 +44,7 @@ export interface DocumentProfileItem {
   code: string;
   familyCode: string;
   name: string;
+  alias: string;
   description: string;
   reviewIntervalDays: number;
   activeSchemaVersion: number;

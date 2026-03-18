@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	auditapp "metaldocs/internal/modules/audit/application"
+	auditdelivery "metaldocs/internal/modules/audit/delivery/http"
 	authapp "metaldocs/internal/modules/auth/application"
 	authdelivery "metaldocs/internal/modules/auth/delivery/http"
 	docapp "metaldocs/internal/modules/documents/application"
@@ -60,7 +62,9 @@ func main() {
 		log.Fatalf("bootstrap local admin: %v", err)
 	}
 
+	auditService := auditapp.NewService(deps.AuditReader)
 	docService := docapp.NewService(deps.DocumentsRepo, deps.Publisher, nil).WithAttachmentStore(deps.AttachmentStore)
+	auditHandler := auditdelivery.NewHandler(auditService)
 	docHandler := docdelivery.NewHandler(docService).WithAttachmentDownloads(security.NewAttachmentSigner(attachmentsCfg.DownloadSecret), time.Duration(attachmentsCfg.DownloadTTLSeconds)*time.Second)
 	searchService := searchapp.NewService(searchdocs.NewReader(deps.DocumentsRepo))
 	searchHandler := searchdelivery.NewHandler(searchService)
@@ -86,6 +90,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	authHandler.RegisterRoutes(mux)
+	auditHandler.RegisterRoutes(mux)
 	docHandler.RegisterRoutes(mux)
 	searchHandler.RegisterRoutes(mux)
 	workflowHandler.RegisterRoutes(mux)

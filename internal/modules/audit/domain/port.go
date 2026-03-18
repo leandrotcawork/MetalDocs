@@ -16,6 +16,16 @@ type Event struct {
 	TraceID      string
 }
 
+type ListEventsQuery struct {
+	ResourceType string
+	ResourceID   string
+	Limit        int
+}
+
 type Writer interface {
 	Record(ctx context.Context, event Event) error
+}
+
+type Reader interface {
+	ListEvents(ctx context.Context, query ListEventsQuery) ([]Event, error)
 }

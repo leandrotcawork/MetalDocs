@@ -33,6 +33,7 @@ type APIDependencies struct {
 	RoleAdminRepo   iamdomain.RoleAdminRepository
 	AuthRepo        authdomain.Repository
 	AuditWriter     auditdomain.Writer
+	AuditReader     auditdomain.Reader
 	Publisher       messaging.Publisher
 	Cleanup         func()
 }
@@ -67,6 +68,7 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 			RoleAdminRepo:   iampg.NewRoleAdminRepository(db),
 			AuthRepo:        authRepo,
 			AuditWriter:     auditpg.NewWriter(db),
+			AuditReader:     auditpg.NewWriter(db),
 			Publisher:       outboxpg.NewPublisher(db),
 			Cleanup:         func() { _ = closeDB(db) },
 		}, nil
@@ -87,13 +89,15 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 				}
 			}
 		}
+		auditStore := auditmemory.NewWriter()
 		return APIDependencies{
 			DocumentsRepo:   memoryrepo.NewRepository(),
 			AttachmentStore: store,
 			RoleProvider:    authRepo,
 			RoleAdminRepo:   authRepo,
 			AuthRepo:        authRepo,
-			AuditWriter:     auditmemory.NewWriter(),
+			AuditWriter:     auditStore,
+			AuditReader:     auditStore,
 			Publisher:       nooppub.NewPublisher(),
 			Cleanup:         func() {},
 		}, nil

@@ -348,7 +348,7 @@ Saida:
 - exibicao de `documentFamily`, `documentProfile`, `processArea` e `profileSchemaVersion` na experiencia operacional
 
 ## Task 021 - Add audit timeline HTTP surface
-Status: `todo`
+Status: `done`
 
 Objetivo:
 Fechar a timeline operacional do produto com trilha HTTP de auditoria real.
@@ -361,6 +361,7 @@ Escopo:
 
 Saida:
 - timeline operacional completa via backend
+- endpoint `/api/v1/audit/events` com filtro por recurso, ordenacao decrescente por tempo e payload alinhado aos eventos append-only
 
 ## Task 022 - Build operational notifications experience
 Status: `todo`

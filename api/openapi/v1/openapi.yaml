@@ -338,6 +338,52 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
+  /audit/events:
+    get:
+      summary: Lista eventos de auditoria append-only
+      parameters:
+        - name: resourceType
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: resourceId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+      responses:
+        '200':
+          description: Lista de eventos de auditoria
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListAuditEventsResponse'
+        '400':
+          description: Parametro invalido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
   /access-policies:
     get:
       summary: Lista policies de acesso por recurso
@@ -1452,6 +1498,36 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SubjectItem'
+    AuditEventItem:
+      type: object
+      required: [id, occurredAt, actorId, action, resourceType, resourceId, payload, traceId]
+      properties:
+        id:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+        actorId:
+          type: string
+        action:
+          type: string
+        resourceType:
+          type: string
+        resourceId:
+          type: string
+        payload:
+          type: object
+          additionalProperties: true
+        traceId:
+          type: string
+    ListAuditEventsResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditEventItem'
     AccessPolicyItem:
       type: object
       required: [subjectType, subjectId, resourceScope, resourceId, capability, effect]

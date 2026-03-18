@@ -9,6 +9,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	auditapp "metaldocs/internal/modules/audit/application"
+	auditdelivery "metaldocs/internal/modules/audit/delivery/http"
 	auditmemory "metaldocs/internal/modules/audit/infrastructure/memory"
 	docapp "metaldocs/internal/modules/documents/application"
 	docdelivery "metaldocs/internal/modules/documents/delivery/http"
@@ -77,6 +79,7 @@ func TestAPIContractSmoke(t *testing.T) {
 			withUserID: true,
 			wantStatus: http.StatusOK,
 		},
+		{name: "list audit events", method: http.MethodGet, path: "/api/v1/audit/events?resourceType=document&resourceId=" + docID + "&limit=20", withUserID: true, wantStatus: http.StatusOK},
 		{
 			name:       "list versions",
 			method:     http.MethodGet,
@@ -147,14 +150,16 @@ func buildContractTestHandler() http.Handler {
 		0,
 	)
 	roleAdminRepo := iammemory.NewRoleAdminRepository()
-	auditWriter := auditmemory.NewWriter()
+	auditStore := auditmemory.NewWriter()
 	authorizer := iamapp.NewStaticAuthorizer()
 
+	auditService := auditapp.NewService(auditStore)
 	docService := docapp.NewService(docRepo, nil, nil).WithAttachmentStore(attachmentStore)
+	auditHandler := auditdelivery.NewHandler(auditService)
 	docHandler := docdelivery.NewHandler(docService)
 	searchService := searchapp.NewService(searchdocs.NewReader(docRepo))
 	searchHandler := searchdelivery.NewHandler(searchService)
-	workflowService := workflowapp.NewService(docRepo, auditWriter, nil, nil)
+	workflowService := workflowapp.NewService(docRepo, auditStore, nil, nil)
 	workflowHandler := workflowdelivery.NewHandler(workflowService)
 	iamAdminService := iamapp.NewAdminService(roleAdminRepo, cachedProvider)
 	iamAdminHandler := iamdelivery.NewAdminHandler(iamAdminService)
@@ -163,6 +168,7 @@ func buildContractTestHandler() http.Handler {
 	rateLimiter := security.NewRateLimiter(config.RateLimitConfig{Enabled: false})
 
 	mux := http.NewServeMux()
+	auditHandler.RegisterRoutes(mux)
 	docHandler.RegisterRoutes(mux)
 	searchHandler.RegisterRoutes(mux)
 	workflowHandler.RegisterRoutes(mux)

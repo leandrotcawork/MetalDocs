@@ -23,6 +23,8 @@ type Document struct {
 	DocumentType    string
 	DocumentProfile string
 	DocumentFamily  string
+	ProcessArea     string
+	Subject         string
 	OwnerID         string
 	BusinessUnit    string
 	Department      string
@@ -61,6 +63,8 @@ type CreateDocumentCommand struct {
 	Title           string
 	DocumentType    string
 	DocumentProfile string
+	ProcessArea     string
+	Subject         string
 	OwnerID         string
 	BusinessUnit    string
 	Department      string
@@ -119,6 +123,19 @@ type DocumentProfile struct {
 	Name               string
 	Description        string
 	ReviewIntervalDays int
+}
+
+type ProcessArea struct {
+	Code        string
+	Name        string
+	Description string
+}
+
+type Subject struct {
+	Code            string
+	ProcessAreaCode string
+	Name            string
+	Description     string
 }
 
 type AccessPolicy struct {
@@ -207,6 +224,14 @@ func DefaultDocumentProfilesByCode() map[string]DocumentProfile {
 		out[item.Code] = item
 	}
 	return out
+}
+
+func DefaultProcessAreas() []ProcessArea {
+	return []ProcessArea{}
+}
+
+func DefaultSubjects() []Subject {
+	return []Subject{}
 }
 
 type MetadataFieldRule struct {

@@ -27,6 +27,8 @@ type CreateDocumentRequest struct {
 	Title           string         `json:"title"`
 	DocumentType    string         `json:"documentType"`
 	DocumentProfile string         `json:"documentProfile,omitempty"`
+	ProcessArea     string         `json:"processArea,omitempty"`
+	Subject         string         `json:"subject,omitempty"`
 	OwnerID         string         `json:"ownerId"`
 	BusinessUnit    string         `json:"businessUnit"`
 	Department      string         `json:"department"`
@@ -44,6 +46,8 @@ type DocumentResponse struct {
 	DocumentType    string   `json:"documentType"`
 	DocumentProfile string   `json:"documentProfile"`
 	DocumentFamily  string   `json:"documentFamily"`
+	ProcessArea     string   `json:"processArea,omitempty"`
+	Subject         string   `json:"subject,omitempty"`
 	OwnerID         string   `json:"ownerId"`
 	BusinessUnit    string   `json:"businessUnit"`
 	Department      string   `json:"department"`
@@ -61,6 +65,8 @@ type DocumentCreatedResponse struct {
 	DocumentType    string `json:"documentType"`
 	DocumentProfile string `json:"documentProfile"`
 	DocumentFamily  string `json:"documentFamily"`
+	ProcessArea     string `json:"processArea,omitempty"`
+	Subject         string `json:"subject,omitempty"`
 }
 
 type VersionResponse struct {
@@ -90,6 +96,19 @@ type DocumentProfileResponse struct {
 	Name               string `json:"name"`
 	Description        string `json:"description"`
 	ReviewIntervalDays int    `json:"reviewIntervalDays"`
+}
+
+type ProcessAreaResponse struct {
+	Code        string `json:"code"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+type SubjectResponse struct {
+	Code            string `json:"code"`
+	ProcessAreaCode string `json:"processAreaCode"`
+	Name            string `json:"name"`
+	Description     string `json:"description"`
 }
 
 type AccessPolicyRequest struct {
@@ -180,6 +199,8 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/health/ready", h.handleHealthReady)
 	mux.HandleFunc("/api/v1/document-families", h.handleDocumentFamilies)
 	mux.HandleFunc("/api/v1/document-profiles", h.handleDocumentProfiles)
+	mux.HandleFunc("/api/v1/process-areas", h.handleProcessAreas)
+	mux.HandleFunc("/api/v1/document-subjects", h.handleDocumentSubjects)
 	mux.HandleFunc("/api/v1/document-types", h.handleDocumentTypes)
 	mux.HandleFunc("/api/v1/access-policies", h.handleAccessPolicies)
 	mux.HandleFunc("/api/v1/documents", h.handleDocuments)
@@ -284,6 +305,59 @@ func (h *Handler) handleDocumentProfiles(w http.ResponseWriter, r *http.Request)
 	writeJSON(w, http.StatusOK, map[string]any{"items": out})
 }
 
+func (h *Handler) handleProcessAreas(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	traceID := requestTraceID(r)
+	items, err := h.service.ListProcessAreas(r.Context())
+	if err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+
+	out := make([]ProcessAreaResponse, 0, len(items))
+	for _, item := range items {
+		out = append(out, ProcessAreaResponse{
+			Code:        item.Code,
+			Name:        item.Name,
+			Description: item.Description,
+		})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": out})
+}
+
+func (h *Handler) handleDocumentSubjects(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	traceID := requestTraceID(r)
+	processArea := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("processArea")))
+	items, err := h.service.ListSubjects(r.Context())
+	if err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+
+	out := make([]SubjectResponse, 0, len(items))
+	for _, item := range items {
+		if processArea != "" && !strings.EqualFold(item.ProcessAreaCode, processArea) {
+			continue
+		}
+		out = append(out, SubjectResponse{
+			Code:            item.Code,
+			ProcessAreaCode: item.ProcessAreaCode,
+			Name:            item.Name,
+			Description:     item.Description,
+		})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": out})
+}
+
 func (h *Handler) handleAccessPolicies(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
@@ -383,6 +457,8 @@ func (h *Handler) handleCreateDocument(w http.ResponseWriter, r *http.Request) {
 		Title:           req.Title,
 		DocumentType:    req.DocumentType,
 		DocumentProfile: req.DocumentProfile,
+		ProcessArea:     req.ProcessArea,
+		Subject:         req.Subject,
 		OwnerID:         req.OwnerID,
 		BusinessUnit:    req.BusinessUnit,
 		Department:      req.Department,
@@ -406,6 +482,8 @@ func (h *Handler) handleCreateDocument(w http.ResponseWriter, r *http.Request) {
 		DocumentType:    doc.DocumentType,
 		DocumentProfile: doc.DocumentProfile,
 		DocumentFamily:  doc.DocumentFamily,
+		ProcessArea:     doc.ProcessArea,
+		Subject:         doc.Subject,
 	})
 }
 
@@ -426,6 +504,8 @@ func (h *Handler) handleListDocuments(w http.ResponseWriter, r *http.Request) {
 			DocumentType:    doc.DocumentType,
 			DocumentProfile: doc.DocumentProfile,
 			DocumentFamily:  doc.DocumentFamily,
+			ProcessArea:     doc.ProcessArea,
+			Subject:         doc.Subject,
 			OwnerID:         doc.OwnerID,
 			BusinessUnit:    doc.BusinessUnit,
 			Department:      doc.Department,
@@ -497,6 +577,8 @@ func (h *Handler) handleGetDocument(w http.ResponseWriter, r *http.Request, docu
 		DocumentType:    doc.DocumentType,
 		DocumentProfile: doc.DocumentProfile,
 		DocumentFamily:  doc.DocumentFamily,
+		ProcessArea:     doc.ProcessArea,
+		Subject:         doc.Subject,
 		OwnerID:         doc.OwnerID,
 		BusinessUnit:    doc.BusinessUnit,
 		Department:      doc.Department,

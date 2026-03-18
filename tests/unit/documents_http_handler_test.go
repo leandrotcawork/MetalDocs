@@ -126,7 +126,7 @@ func TestListDocumentTypes(t *testing.T) {
 func TestListDocumentFamiliesAndProfiles(t *testing.T) {
 	mux := newTestMux()
 
-	for _, path := range []string{"/api/v1/document-families", "/api/v1/document-profiles"} {
+	for _, path := range []string{"/api/v1/document-families", "/api/v1/document-profiles", "/api/v1/process-areas", "/api/v1/document-subjects"} {
 		req := httptest.NewRequest(http.MethodGet, path, nil)
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)

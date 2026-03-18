@@ -114,6 +114,8 @@ Saida esperada:
 - nomenclaturas como `PO`, `IT`, `RG` deixam de ser hardcoded no frontend/backend
 
 ### Step 2. Add process area and subject taxonomy
+Status: `done`
+
 Entregaveis:
 - `process_area`
 - opcionalmente `subject/domain`

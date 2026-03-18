@@ -19,6 +19,8 @@ type Repository struct {
 	workflowApprovals   map[string][]workflowdomain.Approval
 	families            []domain.DocumentFamily
 	profiles            []domain.DocumentProfile
+	processAreas        []domain.ProcessArea
+	subjects            []domain.Subject
 	types               []domain.DocumentType
 	policies            map[string][]domain.AccessPolicy
 }
@@ -32,6 +34,8 @@ func NewRepository() *Repository {
 		workflowApprovals:   map[string][]workflowdomain.Approval{},
 		families:            domain.DefaultDocumentFamilies(),
 		profiles:            domain.DefaultDocumentProfiles(),
+		processAreas:        domain.DefaultProcessAreas(),
+		subjects:            domain.DefaultSubjects(),
 		types:               domain.DefaultDocumentTypes(),
 		policies:            map[string][]domain.AccessPolicy{},
 	}
@@ -118,6 +122,24 @@ func (r *Repository) ListDocumentProfiles(_ context.Context) ([]domain.DocumentP
 
 	out := make([]domain.DocumentProfile, len(r.profiles))
 	copy(out, r.profiles)
+	return out, nil
+}
+
+func (r *Repository) ListProcessAreas(_ context.Context) ([]domain.ProcessArea, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	out := make([]domain.ProcessArea, len(r.processAreas))
+	copy(out, r.processAreas)
+	return out, nil
+}
+
+func (r *Repository) ListSubjects(_ context.Context) ([]domain.Subject, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	out := make([]domain.Subject, len(r.subjects))
+	copy(out, r.subjects)
 	return out, nil
 }
 

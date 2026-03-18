@@ -47,6 +47,14 @@ func (r *atomicRepoSpy) ListDocumentProfiles(context.Context) ([]domain.Document
 	return domain.DefaultDocumentProfiles(), nil
 }
 
+func (r *atomicRepoSpy) ListProcessAreas(context.Context) ([]domain.ProcessArea, error) {
+	return domain.DefaultProcessAreas(), nil
+}
+
+func (r *atomicRepoSpy) ListSubjects(context.Context) ([]domain.Subject, error) {
+	return domain.DefaultSubjects(), nil
+}
+
 func (r *atomicRepoSpy) ListAccessPolicies(context.Context, string, string) ([]domain.AccessPolicy, error) {
 	return nil, nil
 }

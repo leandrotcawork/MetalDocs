@@ -65,6 +65,10 @@ func (s *Service) CreateDocument(ctx context.Context, cmd domain.CreateDocumentC
 	if err != nil {
 		return domain.Document{}, domain.ErrInvalidDocumentType
 	}
+	processArea, subject, err := s.resolveTaxonomy(ctx, cmd.ProcessArea, cmd.Subject)
+	if err != nil {
+		return domain.Document{}, domain.ErrInvalidCommand
+	}
 
 	metadata := normalizeMetadata(cmd.MetadataJSON)
 	if _, err := json.Marshal(metadata); err != nil {
@@ -81,6 +85,8 @@ func (s *Service) CreateDocument(ctx context.Context, cmd domain.CreateDocumentC
 		DocumentType:    profile.Code,
 		DocumentProfile: profile.Code,
 		DocumentFamily:  profile.FamilyCode,
+		ProcessArea:     processArea,
+		Subject:         subject,
 		OwnerID:         strings.TrimSpace(cmd.OwnerID),
 		BusinessUnit:    strings.TrimSpace(cmd.BusinessUnit),
 		Department:      strings.TrimSpace(cmd.Department),
@@ -128,11 +134,15 @@ func (s *Service) CreateDocument(ctx context.Context, cmd domain.CreateDocumentC
 			Producer:          "documents",
 			TraceID:           cmd.TraceID,
 			Payload: map[string]any{
-				"document_id":   doc.ID,
-				"title":         doc.Title,
-				"document_type": doc.DocumentType,
-				"business_unit": doc.BusinessUnit,
-				"department":    doc.Department,
+				"document_id":      doc.ID,
+				"title":            doc.Title,
+				"document_type":    doc.DocumentType,
+				"document_profile": doc.DocumentProfile,
+				"document_family":  doc.DocumentFamily,
+				"process_area":     doc.ProcessArea,
+				"subject":          doc.Subject,
+				"business_unit":    doc.BusinessUnit,
+				"department":       doc.Department,
 			},
 		})
 
@@ -328,6 +338,28 @@ func (s *Service) ListDocumentProfiles(ctx context.Context) ([]domain.DocumentPr
 	}
 	if len(items) == 0 {
 		return domain.DefaultDocumentProfiles(), nil
+	}
+	return items, nil
+}
+
+func (s *Service) ListProcessAreas(ctx context.Context) ([]domain.ProcessArea, error) {
+	items, err := s.repo.ListProcessAreas(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(items) == 0 {
+		return domain.DefaultProcessAreas(), nil
+	}
+	return items, nil
+}
+
+func (s *Service) ListSubjects(ctx context.Context) ([]domain.Subject, error) {
+	items, err := s.repo.ListSubjects(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(items) == 0 {
+		return domain.DefaultSubjects(), nil
 	}
 	return items, nil
 }
@@ -547,6 +579,56 @@ func (s *Service) resolveDocumentProfile(ctx context.Context, preferredProfile, 
 		}
 	}
 	return domain.DocumentProfile{}, domain.ErrInvalidDocumentType
+}
+
+func (s *Service) resolveTaxonomy(ctx context.Context, processAreaCode, subjectCode string) (string, string, error) {
+	processAreaCode = strings.ToLower(strings.TrimSpace(processAreaCode))
+	subjectCode = strings.ToLower(strings.TrimSpace(subjectCode))
+
+	if processAreaCode == "" && subjectCode == "" {
+		return "", "", nil
+	}
+
+	var selectedArea domain.ProcessArea
+	if processAreaCode != "" {
+		areas, err := s.ListProcessAreas(ctx)
+		if err != nil {
+			return "", "", err
+		}
+		found := false
+		for _, item := range areas {
+			if strings.EqualFold(strings.TrimSpace(item.Code), processAreaCode) {
+				selectedArea = item
+				found = true
+				break
+			}
+		}
+		if !found {
+			return "", "", domain.ErrInvalidCommand
+		}
+	}
+
+	if subjectCode == "" {
+		return processAreaCode, "", nil
+	}
+
+	subjects, err := s.ListSubjects(ctx)
+	if err != nil {
+		return "", "", err
+	}
+	for _, item := range subjects {
+		if !strings.EqualFold(strings.TrimSpace(item.Code), subjectCode) {
+			continue
+		}
+		if processAreaCode != "" && !strings.EqualFold(strings.TrimSpace(item.ProcessAreaCode), selectedArea.Code) {
+			return "", "", domain.ErrInvalidCommand
+		}
+		if processAreaCode == "" {
+			processAreaCode = strings.ToLower(strings.TrimSpace(item.ProcessAreaCode))
+		}
+		return processAreaCode, subjectCode, nil
+	}
+	return "", "", domain.ErrInvalidCommand
 }
 
 func normalizeTags(tags []string) []string {

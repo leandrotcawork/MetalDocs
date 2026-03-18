@@ -23,10 +23,10 @@ func NewRepository(db *sql.DB) *Repository {
 func (r *Repository) CreateDocument(ctx context.Context, document domain.Document) error {
 	const q = `
 INSERT INTO metaldocs.documents (
-  id, title, document_type_code, document_profile_code, document_family_code, owner_id, business_unit, department,
-  classification, status, tags, effective_at, expiry_at, metadata_json, created_at, updated_at
+  id, title, document_type_code, document_profile_code, document_family_code, process_area_code, subject_code,
+  owner_id, business_unit, department, classification, status, tags, effective_at, expiry_at, metadata_json, created_at, updated_at
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13, $14::jsonb, $15, $16)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14, $15, $16::jsonb, $17, $18)
 `
 	tagsJSON, metadataJSON, effectiveAt, expiryAt := serializeDocument(document)
 	_, err := r.db.ExecContext(ctx, q,
@@ -35,6 +35,8 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13, $14::json
 		document.DocumentType,
 		document.DocumentProfile,
 		document.DocumentFamily,
+		nullIfEmpty(document.ProcessArea),
+		nullIfEmpty(document.Subject),
 		document.OwnerID,
 		document.BusinessUnit,
 		document.Department,
@@ -64,10 +66,10 @@ func (r *Repository) CreateDocumentWithInitialVersion(ctx context.Context, docum
 
 	const insertDoc = `
 INSERT INTO metaldocs.documents (
-  id, title, document_type_code, document_profile_code, document_family_code, owner_id, business_unit, department,
-  classification, status, tags, effective_at, expiry_at, metadata_json, created_at, updated_at
+  id, title, document_type_code, document_profile_code, document_family_code, process_area_code, subject_code,
+  owner_id, business_unit, department, classification, status, tags, effective_at, expiry_at, metadata_json, created_at, updated_at
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13, $14::jsonb, $15, $16)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14, $15, $16::jsonb, $17, $18)
 `
 	tagsJSON, metadataJSON, effectiveAt, expiryAt := serializeDocument(document)
 	if _, err := tx.ExecContext(ctx, insertDoc,
@@ -76,6 +78,8 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13, $14::json
 		document.DocumentType,
 		document.DocumentProfile,
 		document.DocumentFamily,
+		nullIfEmpty(document.ProcessArea),
+		nullIfEmpty(document.Subject),
 		document.OwnerID,
 		document.BusinessUnit,
 		document.Department,
@@ -114,7 +118,7 @@ VALUES ($1, $2, $3, $4, $5, $6)
 
 func (r *Repository) GetDocument(ctx context.Context, documentID string) (domain.Document, error) {
 	const q = `
-SELECT id, title, document_type_code, document_profile_code, document_family_code, owner_id, business_unit, department,
+SELECT id, title, document_type_code, document_profile_code, document_family_code, process_area_code, subject_code, owner_id, business_unit, department,
        classification, status, tags, effective_at, expiry_at, metadata_json, created_at, updated_at
 FROM metaldocs.documents
 WHERE id = $1
@@ -124,12 +128,16 @@ WHERE id = $1
 	var metadataJSON []byte
 	var effectiveAt sql.NullTime
 	var expiryAt sql.NullTime
+	var processArea sql.NullString
+	var subject sql.NullString
 	err := r.db.QueryRowContext(ctx, q, documentID).Scan(
 		&doc.ID,
 		&doc.Title,
 		&doc.DocumentType,
 		&doc.DocumentProfile,
 		&doc.DocumentFamily,
+		&processArea,
+		&subject,
 		&doc.OwnerID,
 		&doc.BusinessUnit,
 		&doc.Department,
@@ -148,13 +156,15 @@ WHERE id = $1
 		}
 		return domain.Document{}, fmt.Errorf("get document: %w", err)
 	}
+	doc.ProcessArea = strings.TrimSpace(processArea.String)
+	doc.Subject = strings.TrimSpace(subject.String)
 	applyOptionalFields(&doc, tagsJSON, metadataJSON, effectiveAt, expiryAt)
 	return doc, nil
 }
 
 func (r *Repository) ListDocuments(ctx context.Context) ([]domain.Document, error) {
 	const q = `
-SELECT id, title, document_type_code, document_profile_code, document_family_code, owner_id, business_unit, department,
+SELECT id, title, document_type_code, document_profile_code, document_family_code, process_area_code, subject_code, owner_id, business_unit, department,
        classification, status, tags, effective_at, expiry_at, metadata_json, created_at, updated_at
 FROM metaldocs.documents
 ORDER BY created_at ASC
@@ -172,12 +182,16 @@ ORDER BY created_at ASC
 		var metadataJSON []byte
 		var effectiveAt sql.NullTime
 		var expiryAt sql.NullTime
+		var processArea sql.NullString
+		var subject sql.NullString
 		if err := rows.Scan(
 			&doc.ID,
 			&doc.Title,
 			&doc.DocumentType,
 			&doc.DocumentProfile,
 			&doc.DocumentFamily,
+			&processArea,
+			&subject,
 			&doc.OwnerID,
 			&doc.BusinessUnit,
 			&doc.Department,
@@ -192,6 +206,8 @@ ORDER BY created_at ASC
 		); err != nil {
 			return nil, fmt.Errorf("scan document: %w", err)
 		}
+		doc.ProcessArea = strings.TrimSpace(processArea.String)
+		doc.Subject = strings.TrimSpace(subject.String)
 		applyOptionalFields(&doc, tagsJSON, metadataJSON, effectiveAt, expiryAt)
 		out = append(out, doc)
 	}
@@ -276,6 +292,58 @@ ORDER BY code ASC
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("list document profiles rows: %w", err)
+	}
+	return out, nil
+}
+
+func (r *Repository) ListProcessAreas(ctx context.Context) ([]domain.ProcessArea, error) {
+	const q = `
+SELECT code, name, description
+FROM metaldocs.document_process_areas
+ORDER BY code ASC
+`
+	rows, err := r.db.QueryContext(ctx, q)
+	if err != nil {
+		return nil, fmt.Errorf("list process areas: %w", err)
+	}
+	defer rows.Close()
+
+	var out []domain.ProcessArea
+	for rows.Next() {
+		var item domain.ProcessArea
+		if err := rows.Scan(&item.Code, &item.Name, &item.Description); err != nil {
+			return nil, fmt.Errorf("scan process area: %w", err)
+		}
+		out = append(out, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list process areas rows: %w", err)
+	}
+	return out, nil
+}
+
+func (r *Repository) ListSubjects(ctx context.Context) ([]domain.Subject, error) {
+	const q = `
+SELECT code, process_area_code, name, description
+FROM metaldocs.document_subjects
+ORDER BY process_area_code ASC, code ASC
+`
+	rows, err := r.db.QueryContext(ctx, q)
+	if err != nil {
+		return nil, fmt.Errorf("list subjects: %w", err)
+	}
+	defer rows.Close()
+
+	var out []domain.Subject
+	for rows.Next() {
+		var item domain.Subject
+		if err := rows.Scan(&item.Code, &item.ProcessAreaCode, &item.Name, &item.Description); err != nil {
+			return nil, fmt.Errorf("scan subject: %w", err)
+		}
+		out = append(out, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list subjects rows: %w", err)
 	}
 	return out, nil
 }
@@ -774,6 +842,9 @@ func mapError(err error) error {
 		if strings.Contains(msg, "document_type") || strings.Contains(msg, "document_profile") || strings.Contains(msg, "document_family") {
 			return domain.ErrInvalidDocumentType
 		}
+		if strings.Contains(msg, "process_area") || strings.Contains(msg, "subject") {
+			return domain.ErrInvalidCommand
+		}
 		return domain.ErrDocumentNotFound
 	}
 	if strings.Contains(msg, "document_attachments") && strings.Contains(msg, "duplicate key value") {
@@ -809,10 +880,11 @@ func serializeDocument(document domain.Document) (tagsJSON string, metadataJSON 
 }
 
 func nullIfEmpty(value string) any {
-	if strings.TrimSpace(value) == "" {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
 		return nil
 	}
-	return strings.TrimSpace(value)
+	return trimmed
 }
 
 func applyOptionalFields(doc *domain.Document, tagsJSON []byte, metadataJSON []byte, effectiveAt sql.NullTime, expiryAt sql.NullTime) {

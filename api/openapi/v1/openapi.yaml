@@ -231,6 +231,57 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
+  /process-areas:
+    get:
+      summary: Lista as areas de processo documentais
+      parameters:
+      responses:
+        '200':
+          description: Lista de areas de processo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListProcessAreasResponse'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+  /document-subjects:
+    get:
+      summary: Lista os assuntos documentais
+      parameters:
+        - name: processArea
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lista de assuntos documentais
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListSubjectsResponse'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
   /access-policies:
     get:
       summary: Lista policies de acesso por recurso
@@ -682,6 +733,26 @@ paths:
           schema:
             type: string
             enum: [policy, procedure, work_instruction, contract, supplier_document, technical_drawing, certificate, report, form, manual]
+        - name: documentProfile
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: documentFamily
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: processArea
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: subject
+          in: query
+          required: false
+          schema:
+            type: string
         - name: businessUnit
           in: query
           required: false
@@ -1038,6 +1109,10 @@ components:
           enum: [policy, procedure, work_instruction, contract, supplier_document, technical_drawing, certificate, report, form, manual]
         documentProfile:
           type: string
+        processArea:
+          type: string
+        subject:
+          type: string
         ownerId:
           type: string
           minLength: 1
@@ -1090,6 +1165,10 @@ components:
           type: string
         documentFamily:
           type: string
+        processArea:
+          type: string
+        subject:
+          type: string
     DocumentListItem:
       type: object
       required: [documentId, title, documentType, documentProfile, documentFamily, ownerId, businessUnit, department, classification, status, tags]
@@ -1103,6 +1182,10 @@ components:
         documentProfile:
           type: string
         documentFamily:
+          type: string
+        processArea:
+          type: string
+        subject:
           type: string
         ownerId:
           type: string
@@ -1194,6 +1277,44 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/DocumentProfileItem'
+    ProcessAreaItem:
+      type: object
+      required: [code, name, description]
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+    ListProcessAreasResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProcessAreaItem'
+    SubjectItem:
+      type: object
+      required: [code, processAreaCode, name, description]
+      properties:
+        code:
+          type: string
+        processAreaCode:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+    ListSubjectsResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubjectItem'
     AccessPolicyItem:
       type: object
       required: [subjectType, subjectId, resourceScope, resourceId, capability, effect]
@@ -1451,6 +1572,10 @@ components:
         documentProfile:
           type: string
         documentFamily:
+          type: string
+        processArea:
+          type: string
+        subject:
           type: string
         ownerId:
           type: string

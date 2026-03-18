@@ -15,6 +15,8 @@ type Repository interface {
 	ListDocuments(ctx context.Context) ([]Document, error)
 	ListDocumentFamilies(ctx context.Context) ([]DocumentFamily, error)
 	ListDocumentProfiles(ctx context.Context) ([]DocumentProfile, error)
+	ListProcessAreas(ctx context.Context) ([]ProcessArea, error)
+	ListSubjects(ctx context.Context) ([]Subject, error)
 	ListDocumentTypes(ctx context.Context) ([]DocumentType, error)
 	ListAccessPolicies(ctx context.Context, resourceScope, resourceID string) ([]AccessPolicy, error)
 	ReplaceAccessPolicies(ctx context.Context, resourceScope, resourceID string, policies []AccessPolicy) error

@@ -38,6 +38,10 @@ func (s *Service) SearchDocuments(ctx context.Context, q domain.Query) ([]domain
 
 	text := strings.ToLower(strings.TrimSpace(q.Text))
 	documentType := strings.ToLower(strings.TrimSpace(q.DocumentType))
+	documentProfile := strings.ToLower(strings.TrimSpace(q.DocumentProfile))
+	documentFamily := strings.ToLower(strings.TrimSpace(q.DocumentFamily))
+	processArea := strings.ToLower(strings.TrimSpace(q.ProcessArea))
+	subject := strings.ToLower(strings.TrimSpace(q.Subject))
 	ownerID := strings.TrimSpace(q.OwnerID)
 	businessUnit := strings.TrimSpace(q.BusinessUnit)
 	department := strings.TrimSpace(q.Department)
@@ -58,6 +62,18 @@ func (s *Service) SearchDocuments(ctx context.Context, q domain.Query) ([]domain
 			continue
 		}
 		if documentType != "" && strings.ToLower(doc.DocumentType) != documentType {
+			continue
+		}
+		if documentProfile != "" && strings.ToLower(doc.DocumentProfile) != documentProfile {
+			continue
+		}
+		if documentFamily != "" && strings.ToLower(doc.DocumentFamily) != documentFamily {
+			continue
+		}
+		if processArea != "" && strings.ToLower(doc.ProcessArea) != processArea {
+			continue
+		}
+		if subject != "" && strings.ToLower(doc.Subject) != subject {
 			continue
 		}
 		if ownerID != "" && doc.OwnerID != ownerID {
@@ -127,7 +143,7 @@ func (s *Service) policiesForDocument(ctx context.Context, doc domain.Document) 
 		id    string
 	}{
 		{scope: searchScopeDocument, id: doc.ID},
-		{scope: searchScopeDocumentType, id: doc.DocumentType},
+		{scope: searchScopeDocumentType, id: doc.DocumentProfile},
 		{scope: searchScopeArea, id: areaResourceID(doc.BusinessUnit, doc.Department)},
 	}
 

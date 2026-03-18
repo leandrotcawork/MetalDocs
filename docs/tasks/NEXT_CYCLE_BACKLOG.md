@@ -276,7 +276,7 @@ Saida:
 - compatibilidade preservada com `documentType` como alias transitório de `documentProfile`
 
 ## Task 017 - Add process area and subject taxonomy
-Status: `todo`
+Status: `done`
 
 Objetivo:
 Separar assunto/processo da natureza documental para evitar crescimento caotico de tipos.
@@ -289,6 +289,7 @@ Escopo:
 
 Saida:
 - `marketplaces` e outros contextos deixam de competir com tipo documental
+- `documents` e `search` passam a carregar `processArea` e `subject` como taxonomia separada
 
 ## Task 018 - Add versioned schema and governance by profile
 Status: `todo`

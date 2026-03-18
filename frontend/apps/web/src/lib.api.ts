@@ -10,6 +10,7 @@ import type {
   DocumentProfileSchemaItem,
   DocumentTypeItem,
   ManagedUserItem,
+  NotificationItem,
   ProcessAreaItem,
   SearchDocumentItem,
   VersionListItem,
@@ -191,6 +192,21 @@ function normalizeAccessPolicyItem(value: AccessPolicyItem): AccessPolicyItem {
   };
 }
 
+function normalizeNotificationItem(value: NotificationItem): NotificationItem {
+  return {
+    id: value?.id ?? "",
+    recipientUserId: value?.recipientUserId ?? "",
+    eventType: value?.eventType ?? "",
+    resourceType: value?.resourceType ?? "",
+    resourceId: value?.resourceId ?? "",
+    title: value?.title ?? "",
+    message: value?.message ?? "",
+    status: value?.status ?? "PENDING",
+    createdAt: value?.createdAt ?? "",
+    readAt: value?.readAt ?? "",
+  };
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     credentials: "include",
@@ -285,4 +301,10 @@ export const api = {
     return { items: Array.isArray(response.items) ? response.items.map(normalizeAccessPolicyItem) : [] };
   },
   replaceAccessPolicies: (body: Record<string, unknown>) => request<{ replacedCount: number }>("/access-policies", { method: "PUT", body: JSON.stringify(body) }),
+  listNotifications: async (params?: URLSearchParams) => {
+    const query = params?.toString();
+    const response = await request<{ items: NotificationItem[] }>(`/notifications${query ? `?${query}` : ""}`);
+    return { items: Array.isArray(response.items) ? response.items.map(normalizeNotificationItem) : [] };
+  },
+  markNotificationRead: (notificationId: string) => request<{ id: string; status: string; readAt: string }>(`/notifications/${encodeURIComponent(notificationId)}/read`, { method: "POST" }),
 };

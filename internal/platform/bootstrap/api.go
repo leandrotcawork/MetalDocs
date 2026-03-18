@@ -16,6 +16,9 @@ import (
 	pgrepo "metaldocs/internal/modules/documents/infrastructure/postgres"
 	iamdomain "metaldocs/internal/modules/iam/domain"
 	iampg "metaldocs/internal/modules/iam/infrastructure/postgres"
+	notificationdomain "metaldocs/internal/modules/notifications/domain"
+	notificationmemory "metaldocs/internal/modules/notifications/infrastructure/memory"
+	notificationpg "metaldocs/internal/modules/notifications/infrastructure/postgres"
 	"metaldocs/internal/platform/authn"
 	"metaldocs/internal/platform/config"
 	pgdb "metaldocs/internal/platform/db/postgres"
@@ -27,15 +30,16 @@ import (
 )
 
 type APIDependencies struct {
-	DocumentsRepo   docdomain.Repository
-	AttachmentStore docdomain.AttachmentStore
-	RoleProvider    iamdomain.RoleProvider
-	RoleAdminRepo   iamdomain.RoleAdminRepository
-	AuthRepo        authdomain.Repository
-	AuditWriter     auditdomain.Writer
-	AuditReader     auditdomain.Reader
-	Publisher       messaging.Publisher
-	Cleanup         func()
+	DocumentsRepo     docdomain.Repository
+	AttachmentStore   docdomain.AttachmentStore
+	RoleProvider      iamdomain.RoleProvider
+	RoleAdminRepo     iamdomain.RoleAdminRepository
+	AuthRepo          authdomain.Repository
+	NotificationsRepo notificationdomain.Repository
+	AuditWriter       auditdomain.Writer
+	AuditReader       auditdomain.Reader
+	Publisher         messaging.Publisher
+	Cleanup           func()
 }
 
 type bucketEnsurer interface {
@@ -62,15 +66,16 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 
 		authRepo := authpg.NewRepository(db)
 		return APIDependencies{
-			DocumentsRepo:   pgrepo.NewRepository(db),
-			AttachmentStore: store,
-			RoleProvider:    iampg.NewRoleProvider(db),
-			RoleAdminRepo:   iampg.NewRoleAdminRepository(db),
-			AuthRepo:        authRepo,
-			AuditWriter:     auditpg.NewWriter(db),
-			AuditReader:     auditpg.NewWriter(db),
-			Publisher:       outboxpg.NewPublisher(db),
-			Cleanup:         func() { _ = closeDB(db) },
+			DocumentsRepo:     pgrepo.NewRepository(db),
+			AttachmentStore:   store,
+			RoleProvider:      iampg.NewRoleProvider(db),
+			RoleAdminRepo:     iampg.NewRoleAdminRepository(db),
+			AuthRepo:          authRepo,
+			NotificationsRepo: notificationpg.NewRepository(db),
+			AuditWriter:       auditpg.NewWriter(db),
+			AuditReader:       auditpg.NewWriter(db),
+			Publisher:         outboxpg.NewPublisher(db),
+			Cleanup:           func() { _ = closeDB(db) },
 		}, nil
 	default:
 		roles := authn.DevRoleMap()
@@ -91,15 +96,16 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 		}
 		auditStore := auditmemory.NewWriter()
 		return APIDependencies{
-			DocumentsRepo:   memoryrepo.NewRepository(),
-			AttachmentStore: store,
-			RoleProvider:    authRepo,
-			RoleAdminRepo:   authRepo,
-			AuthRepo:        authRepo,
-			AuditWriter:     auditStore,
-			AuditReader:     auditStore,
-			Publisher:       nooppub.NewPublisher(),
-			Cleanup:         func() {},
+			DocumentsRepo:     memoryrepo.NewRepository(),
+			AttachmentStore:   store,
+			RoleProvider:      authRepo,
+			RoleAdminRepo:     authRepo,
+			AuthRepo:          authRepo,
+			NotificationsRepo: notificationmemory.NewRepository(),
+			AuditWriter:       auditStore,
+			AuditReader:       auditStore,
+			Publisher:         nooppub.NewPublisher(),
+			Cleanup:           func() {},
 		}, nil
 	}
 }

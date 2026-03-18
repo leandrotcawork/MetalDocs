@@ -19,6 +19,10 @@ import (
 	iamdelivery "metaldocs/internal/modules/iam/delivery/http"
 	iamdomain "metaldocs/internal/modules/iam/domain"
 	iammemory "metaldocs/internal/modules/iam/infrastructure/memory"
+	notificationapp "metaldocs/internal/modules/notifications/application"
+	notificationdelivery "metaldocs/internal/modules/notifications/delivery/http"
+	notificationdomain "metaldocs/internal/modules/notifications/domain"
+	notificationmemory "metaldocs/internal/modules/notifications/infrastructure/memory"
 	searchapp "metaldocs/internal/modules/search/application"
 	searchdelivery "metaldocs/internal/modules/search/delivery/http"
 	searchdocs "metaldocs/internal/modules/search/infrastructure/documents"
@@ -80,6 +84,8 @@ func TestAPIContractSmoke(t *testing.T) {
 			wantStatus: http.StatusOK,
 		},
 		{name: "list audit events", method: http.MethodGet, path: "/api/v1/audit/events?resourceType=document&resourceId=" + docID + "&limit=20", withUserID: true, wantStatus: http.StatusOK},
+		{name: "list notifications", method: http.MethodGet, path: "/api/v1/notifications?limit=20", withUserID: true, wantStatus: http.StatusOK},
+		{name: "mark notification read", method: http.MethodPost, path: "/api/v1/notifications/notif-contract/read", withUserID: true, wantStatus: http.StatusOK},
 		{
 			name:       "list versions",
 			method:     http.MethodGet,
@@ -152,11 +158,14 @@ func buildContractTestHandler() http.Handler {
 	roleAdminRepo := iammemory.NewRoleAdminRepository()
 	auditStore := auditmemory.NewWriter()
 	authorizer := iamapp.NewStaticAuthorizer()
+	notifRepo := notificationmemory.NewRepository()
 
 	auditService := auditapp.NewService(auditStore)
 	docService := docapp.NewService(docRepo, nil, nil).WithAttachmentStore(attachmentStore)
 	auditHandler := auditdelivery.NewHandler(auditService)
 	docHandler := docdelivery.NewHandler(docService)
+	notificationService := notificationapp.NewService(notifRepo, docRepo, nil)
+	notificationHandler := notificationdelivery.NewHandler(notificationService)
 	searchService := searchapp.NewService(searchdocs.NewReader(docRepo))
 	searchHandler := searchdelivery.NewHandler(searchService)
 	workflowService := workflowapp.NewService(docRepo, auditStore, nil, nil)
@@ -172,8 +181,21 @@ func buildContractTestHandler() http.Handler {
 	docHandler.RegisterRoutes(mux)
 	searchHandler.RegisterRoutes(mux)
 	workflowHandler.RegisterRoutes(mux)
+	notificationHandler.RegisterRoutes(mux)
 	iamAdminHandler.RegisterRoutes(mux)
 	mux.Handle("/api/v1/metrics", httpObs.MetricsHandler())
+
+	_ = notifRepo.Create(httptest.NewRequest(http.MethodGet, "/", nil).Context(), notificationdomain.Notification{
+		ID:              "notif-contract",
+		RecipientUserID: "admin-local",
+		EventType:       "workflow.approval.requested",
+		ResourceType:    "document",
+		ResourceID:      "doc-contract",
+		Title:           "Approval requested",
+		Message:         "A contract smoke notification is available.",
+		Status:          notificationdomain.StatusPending,
+		IdempotencyKey:  "notif-contract",
+	})
 
 	return httpObs.Wrap(rateLimiter.Wrap(iamMiddleware.Wrap(mux)))
 }

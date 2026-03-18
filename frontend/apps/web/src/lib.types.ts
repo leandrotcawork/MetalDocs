@@ -144,6 +144,19 @@ export interface AccessPolicyItem {
   effect: "allow" | "deny";
 }
 
+export interface NotificationItem {
+  id: string;
+  recipientUserId: string;
+  eventType: string;
+  resourceType: string;
+  resourceId: string;
+  title: string;
+  message: string;
+  status: "PENDING" | "SENT" | "READ";
+  createdAt: string;
+  readAt?: string;
+}
+
 export interface ApiErrorEnvelope {
   error: {
     code: string;

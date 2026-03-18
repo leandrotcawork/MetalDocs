@@ -364,7 +364,7 @@ Saida:
 - endpoint `/api/v1/audit/events` com filtro por recurso, ordenacao decrescente por tempo e payload alinhado aos eventos append-only
 
 ## Task 022 - Build operational notifications experience
-Status: `todo`
+Status: `done`
 
 Objetivo:
 Expor no produto a camada de notificacoes que hoje ja existe no worker/backend.
@@ -376,6 +376,9 @@ Escopo:
 
 Saida:
 - notificacoes visiveis e utilizaveis na web app
+- endpoint `/api/v1/notifications` para listagem operacional
+- endpoint `/api/v1/notifications/{notificationId}/read` para marcacao de leitura
+- painel web de notificacoes com estado operacional
 
 ## Task 023 - Expand administrative user management
 Status: `todo`

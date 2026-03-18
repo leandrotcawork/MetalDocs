@@ -13,9 +13,17 @@ type Notification struct {
 	Status          string
 	IdempotencyKey  string
 	CreatedAt       time.Time
+	ReadAt          *time.Time
+}
+
+type ListNotificationsQuery struct {
+	RecipientUserID string
+	Status          string
+	Limit           int
 }
 
 const (
 	StatusPending = "PENDING"
 	StatusSent    = "SENT"
+	StatusRead    = "READ"
 )

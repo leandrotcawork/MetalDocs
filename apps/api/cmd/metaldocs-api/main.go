@@ -17,6 +17,8 @@ import (
 	docdelivery "metaldocs/internal/modules/documents/delivery/http"
 	iamapp "metaldocs/internal/modules/iam/application"
 	iamdelivery "metaldocs/internal/modules/iam/delivery/http"
+	notificationapp "metaldocs/internal/modules/notifications/application"
+	notificationdelivery "metaldocs/internal/modules/notifications/delivery/http"
 	searchapp "metaldocs/internal/modules/search/application"
 	searchdelivery "metaldocs/internal/modules/search/delivery/http"
 	searchdocs "metaldocs/internal/modules/search/infrastructure/documents"
@@ -68,6 +70,8 @@ func main() {
 	docHandler := docdelivery.NewHandler(docService).WithAttachmentDownloads(security.NewAttachmentSigner(attachmentsCfg.DownloadSecret), time.Duration(attachmentsCfg.DownloadTTLSeconds)*time.Second)
 	searchService := searchapp.NewService(searchdocs.NewReader(deps.DocumentsRepo))
 	searchHandler := searchdelivery.NewHandler(searchService)
+	notificationService := notificationapp.NewService(deps.NotificationsRepo, deps.DocumentsRepo, nil)
+	notificationHandler := notificationdelivery.NewHandler(notificationService)
 	workflowService := workflowapp.NewService(deps.DocumentsRepo, deps.AuditWriter, deps.Publisher, nil)
 	workflowHandler := workflowdelivery.NewHandler(workflowService)
 	authHandler := authdelivery.NewHandler(authService)
@@ -93,6 +97,7 @@ func main() {
 	auditHandler.RegisterRoutes(mux)
 	docHandler.RegisterRoutes(mux)
 	searchHandler.RegisterRoutes(mux)
+	notificationHandler.RegisterRoutes(mux)
 	workflowHandler.RegisterRoutes(mux)
 	iamAdminHandler.RegisterRoutes(mux)
 	mux.Handle("/api/v1/metrics", httpObs.MetricsHandler())

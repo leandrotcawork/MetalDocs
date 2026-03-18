@@ -9,6 +9,7 @@ import type {
   DocumentProfileSchemaItem,
   DocumentListItem,
   ManagedUserItem,
+  NotificationItem,
   ProcessAreaItem,
   SearchDocumentItem,
   UserRole,
@@ -142,6 +143,7 @@ function AppContent() {
   const [attachments, setAttachments] = useState<AttachmentItem[]>([]);
   const [policies, setPolicies] = useState<AccessPolicyItem[]>([]);
   const [managedUsers, setManagedUsers] = useState<ManagedUserItem[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [policyScope, setPolicyScope] = useState<PolicyScope>("document");
   const [policyResourceId, setPolicyResourceId] = useState("");
@@ -176,11 +178,12 @@ function AppContent() {
   async function loadWorkspace(currentUser: CurrentUser) {
     setLoadState("loading");
     try {
-      const [profilesResponse, processAreasResponse, docsResponse, usersResponse] = await Promise.all([
+      const [profilesResponse, processAreasResponse, docsResponse, usersResponse, notificationsResponse] = await Promise.all([
         api.listDocumentProfiles(),
         api.listProcessAreas(),
         api.searchDocuments(new URLSearchParams({ limit: "25" })),
         (Array.isArray(currentUser.roles) ? currentUser.roles : []).includes("admin") ? api.listUsers() : Promise.resolve({ items: [] as ManagedUserItem[] }),
+        api.listNotifications(new URLSearchParams({ limit: "10" })),
       ]);
       const profiles = Array.isArray(profilesResponse.items) ? profilesResponse.items : [];
       const areas = Array.isArray(processAreasResponse.items) ? processAreasResponse.items : [];
@@ -190,6 +193,7 @@ function AppContent() {
       setProcessAreas(areas);
       setDocuments(docs);
       setManagedUsers(users);
+      setNotifications(Array.isArray(notificationsResponse.items) ? notificationsResponse.items : []);
       const nextProfileCode = profiles.find((item) => item.code === documentForm.documentProfile)?.code ?? profiles[0]?.code ?? "";
       if (nextProfileCode) {
         await applyDocumentProfile(nextProfileCode, documentForm.processArea);
@@ -242,6 +246,7 @@ function AppContent() {
       setAttachments([]);
       setPolicies([]);
       setManagedUsers([]);
+      setNotifications([]);
       setSelectedDocument(null);
       setLoadState("idle");
     }
@@ -259,6 +264,7 @@ function AppContent() {
     setAttachments([]);
     setPolicies([]);
     setManagedUsers([]);
+    setNotifications([]);
     setSelectedDocument(null);
     setMessage("");
     setError("");
@@ -360,6 +366,15 @@ function AppContent() {
     }
   }
 
+  async function handleMarkNotificationRead(notificationId: string) {
+    try {
+      await api.markNotificationRead(notificationId);
+      setNotifications((current) => current.map((item) => item.id === notificationId ? { ...item, status: "READ", readAt: new Date().toISOString() } : item));
+    } catch (err) {
+      handleError(err);
+    }
+  }
+
   function handleError(err: unknown) {
     if (statusOf(err) === 401) {
       setUser(null);
@@ -406,6 +421,7 @@ function AppContent() {
         <div className="hero-panel">
           <span>Runtime</span>
           <strong>{api.currentApiBaseUrl}</strong>
+          <small>{notifications.filter((item) => item.status !== "READ").length} notificacao(oes) pendentes</small>
           <button data-testid="logout-button" type="button" className="ghost-button" onClick={() => void handleLogout()}>Logout</button>
         </div>
       </header>
@@ -506,6 +522,14 @@ function AppContent() {
               </div>
             </section>
           )}
+
+          <section className="panel">
+            <div className="panel-heading"><p className="kicker">Operacao</p><h2>Notificacoes</h2></div>
+            <ul className="mini-list">
+              {notifications.map((item) => <li key={item.id}><div><strong>{item.title}</strong><p>{item.message}</p><small>{item.eventType} / {formatDate(item.createdAt)}</small></div><div className="stack"><span>{item.status}</span>{item.status !== "READ" && <button type="button" className="ghost-button" onClick={() => void handleMarkNotificationRead(item.id)}>Marcar como lida</button>}</div></li>)}
+              {notifications.length === 0 && <li><span>Nenhuma notificacao disponivel.</span></li>}
+            </ul>
+          </section>
         </main>
       )}
     </div>

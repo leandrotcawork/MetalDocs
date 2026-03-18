@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -29,11 +30,27 @@ type Service struct {
 	clock   Clock
 }
 
+var ErrNotificationNotFound = errors.New("notification not found")
+
 func NewService(repo notificationdomain.Repository, docRepo docdomain.Repository, clock Clock) *Service {
 	if clock == nil {
 		clock = realClock{}
 	}
 	return &Service{repo: repo, docRepo: docRepo, clock: clock}
+}
+
+func (s *Service) ListNotifications(ctx context.Context, query notificationdomain.ListNotificationsQuery) ([]notificationdomain.Notification, error) {
+	if query.Limit <= 0 {
+		query.Limit = 50
+	}
+	return s.repo.List(ctx, query)
+}
+
+func (s *Service) MarkNotificationRead(ctx context.Context, notificationID, recipientUserID string) error {
+	if strings.TrimSpace(notificationID) == "" || strings.TrimSpace(recipientUserID) == "" {
+		return ErrNotificationNotFound
+	}
+	return s.repo.MarkRead(ctx, strings.TrimSpace(notificationID), strings.TrimSpace(recipientUserID), s.clock.Now())
 }
 
 func (s *Service) HandleEvent(ctx context.Context, event messaging.Event) error {

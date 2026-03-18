@@ -384,6 +384,75 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
+  /notifications:
+    get:
+      summary: Lista notificacoes operacionais do usuario autenticado
+      parameters:
+        - name: recipientUserId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [PENDING, SENT, READ]
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+      responses:
+        '200':
+          description: Lista de notificacoes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListNotificationsResponse'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+  /notifications/{notificationId}/read:
+    post:
+      summary: Marca notificacao como lida
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Notificacao marcada como lida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarkNotificationReadResponse'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '404':
+          description: Notificacao nao encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
   /access-policies:
     get:
       summary: Lista policies de acesso por recurso
@@ -1528,6 +1597,53 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AuditEventItem'
+    NotificationItem:
+      type: object
+      required: [id, recipientUserId, eventType, resourceType, resourceId, title, message, status, createdAt]
+      properties:
+        id:
+          type: string
+        recipientUserId:
+          type: string
+        eventType:
+          type: string
+        resourceType:
+          type: string
+        resourceId:
+          type: string
+        title:
+          type: string
+        message:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, SENT, READ]
+        createdAt:
+          type: string
+          format: date-time
+        readAt:
+          type: string
+          format: date-time
+    ListNotificationsResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotificationItem'
+    MarkNotificationReadResponse:
+      type: object
+      required: [id, status, readAt]
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [READ]
+        readAt:
+          type: string
+          format: date-time
     AccessPolicyItem:
       type: object
       required: [subjectType, subjectId, resourceScope, resourceId, capability, effect]

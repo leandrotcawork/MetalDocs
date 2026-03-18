@@ -38,6 +38,14 @@ func (f failingNotificationRepo) Create(context.Context, notificationdomain.Noti
 	return fmt.Errorf("forced notification failure")
 }
 
+func (f failingNotificationRepo) List(context.Context, notificationdomain.ListNotificationsQuery) ([]notificationdomain.Notification, error) {
+	return nil, nil
+}
+
+func (f failingNotificationRepo) MarkRead(context.Context, string, string, time.Time) error {
+	return nil
+}
+
 func (f *fakeConsumer) MarkFailed(_ context.Context, failure messaging.FailedEvent) error {
 	f.failed = append(f.failed, failure)
 	return nil

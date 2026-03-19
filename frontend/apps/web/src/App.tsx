@@ -9,6 +9,7 @@ import { NotificationsPanel } from "./components/NotificationsPanel";
 import { OperationsCenter } from "./components/OperationsCenter";
 import { PasswordChangePanel } from "./components/PasswordChangePanel";
 import { RegistryExplorer } from "./components/RegistryExplorer";
+import { WorkspacePlaceholder } from "./components/WorkspacePlaceholder";
 import type {
   AccessPolicyItem,
   AttachmentItem,
@@ -575,6 +576,123 @@ function AppContent() {
     return <AuthShell identifier={loginForm.identifier} password={loginForm.password} message={message} error={error} onIdentifierChange={(identifier) => setLoginForm({ ...loginForm, identifier })} onPasswordChange={(password) => setLoginForm({ ...loginForm, password })} onSubmit={handleLogin} />;
   }
 
+  function renderWorkspaceView() {
+    if (activeView === "operations" || activeView === "approvals" || activeView === "audit") {
+      return (
+        <OperationsCenter
+          documents={activeView === "approvals" ? documents.filter((item) => item.status === "IN_REVIEW") : documents}
+          notifications={notifications}
+          documentProfiles={documentProfiles}
+          formatDate={formatDate}
+          onCreateDocument={() => setActiveView("create")}
+          onOpenDocument={openDocument}
+        />
+      );
+    }
+
+    if (activeView === "library" || activeView === "my-docs" || activeView === "recent") {
+      return (
+        <DocumentsWorkspace
+          view={activeView}
+          loadState={loadState}
+          documentProfiles={documentProfiles}
+          processAreas={processAreas}
+          documents={visibleDocuments}
+          selectedDocument={selectedDocument}
+          selectedProfileGovernance={selectedProfileGovernance}
+          versions={versions}
+          versionDiff={versionDiff}
+          approvals={approvals}
+          attachments={attachments}
+          policies={policies}
+          auditEvents={auditEvents}
+          selectedFile={selectedFile}
+          policyScope={policyScope}
+          policyResourceId={policyResourceId}
+          searchQuery={searchQuery}
+          formatDate={formatDate}
+          onRefreshWorkspace={() => {
+            if (user) {
+              return loadWorkspace(user);
+            }
+          }}
+          onOpenDocument={openDocument}
+          onFileChange={setSelectedFile}
+          onUploadAttachment={handleUploadAttachment}
+        />
+      );
+    }
+
+    if (activeView === "create") {
+      return (
+        <DocumentCreateView
+          documentForm={documentForm}
+          documentProfiles={documentProfiles}
+          processAreas={processAreas}
+          subjects={subjects}
+          selectedProfileSchema={selectedProfileSchema}
+          selectedProfileGovernance={selectedProfileGovernance}
+          onDocumentFormChange={setDocumentForm}
+          onApplyProfile={applyDocumentProfile}
+          onSubmitCreateDocument={handleCreateDocument}
+        />
+      );
+    }
+
+    if (activeView === "registry") {
+      return (
+        <RegistryExplorer
+          documentProfiles={documentProfiles}
+          processAreas={processAreas}
+          subjects={subjects}
+          selectedProfileCode={documentForm.documentProfile}
+          selectedProfileSchema={selectedProfileSchema}
+          selectedProfileGovernance={selectedProfileGovernance}
+          onSelectProfile={(profileCode) => applyDocumentProfile(profileCode, documentForm.processArea)}
+        />
+      );
+    }
+
+    if (activeView === "notifications") {
+      return <NotificationsPanel notifications={notifications} formatDate={formatDate} onMarkRead={handleMarkNotificationRead} />;
+    }
+
+    if (activeView === "admin" && isAdmin) {
+      return (
+        <ManagedUsersPanel
+          userForm={userForm}
+          managedUserForm={managedUserForm}
+          managedUsers={managedUsers}
+          selectedManagedUser={selectedManagedUser}
+          formatDate={formatDate}
+          onUserFormChange={setUserForm}
+          onManagedUserFormChange={setManagedUserForm}
+          onSubmitCreateUser={handleCreateUser}
+          onSelectManagedUser={selectManagedUser}
+          onToggleRole={toggleManagedUserRole}
+          onSaveManagedUser={handleSaveManagedUser}
+          onAdminResetPassword={handleAdminResetPassword}
+          onUnlockManagedUser={handleUnlockManagedUser}
+        />
+      );
+    }
+
+    return (
+      <WorkspacePlaceholder
+        kicker="Workspace"
+        title="Workspace"
+        description="Selecione uma visao operacional na barra lateral para continuar."
+        bullets={[
+          "Acesse Documentos para explorar o acervo e revisar detalhes.",
+          "Use Novo documento para iniciar o fluxo Profile -> Metadata -> Content -> Review.",
+          "Abra Tipos documentais para consultar regras e governanca por perfil.",
+        ]}
+      />
+    );
+  }
+
+  const workspaceView = renderWorkspaceView();
+
   return (
     <div className={`app-shell ${!user.mustChangePassword ? "is-workspace" : ""}`}>
       {(message || error) && <section data-testid="app-banner" className={`banner ${error ? "banner-error" : "banner-success"}`}>{error || message}</section>}
@@ -602,91 +720,7 @@ function AppContent() {
           onPrimaryAction={() => setActiveView("create")}
           onLogout={handleLogout}
         >
-          {(activeView === "operations" || activeView === "approvals" || activeView === "audit") && (
-            <OperationsCenter
-              documents={activeView === "approvals" ? documents.filter((item) => item.status === "IN_REVIEW") : documents}
-              notifications={notifications}
-              documentProfiles={documentProfiles}
-              formatDate={formatDate}
-              onCreateDocument={() => setActiveView("create")}
-              onOpenDocument={openDocument}
-            />
-          )}
-
-          {(activeView === "library" || activeView === "my-docs" || activeView === "recent") && (
-            <DocumentsWorkspace
-              view={activeView}
-              loadState={loadState}
-              documentProfiles={documentProfiles}
-              processAreas={processAreas}
-              documents={visibleDocuments}
-              selectedDocument={selectedDocument}
-              selectedProfileGovernance={selectedProfileGovernance}
-              versions={versions}
-              versionDiff={versionDiff}
-              approvals={approvals}
-              attachments={attachments}
-              policies={policies}
-              auditEvents={auditEvents}
-              selectedFile={selectedFile}
-              policyScope={policyScope}
-              policyResourceId={policyResourceId}
-              searchQuery={searchQuery}
-              formatDate={formatDate}
-              onRefreshWorkspace={() => user && loadWorkspace(user)}
-              onOpenDocument={openDocument}
-              onFileChange={setSelectedFile}
-              onUploadAttachment={handleUploadAttachment}
-            />
-          )}
-
-          {activeView === "create" && (
-            <DocumentCreateView
-              documentForm={documentForm}
-              documentProfiles={documentProfiles}
-              processAreas={processAreas}
-              subjects={subjects}
-              selectedProfileSchema={selectedProfileSchema}
-              selectedProfileGovernance={selectedProfileGovernance}
-              onDocumentFormChange={setDocumentForm}
-              onApplyProfile={applyDocumentProfile}
-              onSubmitCreateDocument={handleCreateDocument}
-            />
-          )}
-
-          {activeView === "registry" && (
-            <RegistryExplorer
-              documentProfiles={documentProfiles}
-              processAreas={processAreas}
-              subjects={subjects}
-              selectedProfileCode={documentForm.documentProfile}
-              selectedProfileSchema={selectedProfileSchema}
-              selectedProfileGovernance={selectedProfileGovernance}
-              onSelectProfile={(profileCode) => applyDocumentProfile(profileCode, documentForm.processArea)}
-            />
-          )}
-
-          {activeView === "notifications" && (
-            <NotificationsPanel notifications={notifications} formatDate={formatDate} onMarkRead={handleMarkNotificationRead} />
-          )}
-
-          {activeView === "admin" && isAdmin && (
-            <ManagedUsersPanel
-              userForm={userForm}
-              managedUserForm={managedUserForm}
-              managedUsers={managedUsers}
-              selectedManagedUser={selectedManagedUser}
-              formatDate={formatDate}
-              onUserFormChange={setUserForm}
-              onManagedUserFormChange={setManagedUserForm}
-              onSubmitCreateUser={handleCreateUser}
-              onSelectManagedUser={selectManagedUser}
-              onToggleRole={toggleManagedUserRole}
-              onSaveManagedUser={handleSaveManagedUser}
-              onAdminResetPassword={handleAdminResetPassword}
-              onUnlockManagedUser={handleUnlockManagedUser}
-            />
-          )}
+          {workspaceView}
         </DocumentWorkspaceShell>
       )}
     </div>

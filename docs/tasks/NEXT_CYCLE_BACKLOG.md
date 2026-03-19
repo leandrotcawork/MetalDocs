@@ -600,7 +600,7 @@ Saida:
 - base pronta para `Task 034` e `Task 035` sem reabrir o modelo de dominio
 
 ## Task 034 - Document workspace UX
-Status: `pending`
+Status: `doing`
 
 Objetivo:
 Traduzir o modelo de authoring em experiencia visual e navegacao operacional de alto nivel.
@@ -620,6 +620,11 @@ Escopo:
 
 Saida:
 - UX documental consistente, profissional e preparada para empresas diferentes
+
+Progresso fase 1:
+- shell documental consolidado como ponto unico de composicao das views
+- renderizacao de views em `App.tsx` unificada por roteamento interno (`renderWorkspaceView`)
+- fallback explicito de view com placeholder para evitar estados vazios/improvisados
 
 ## Task 035 - Metal Nobre applied experience
 Status: `pending`

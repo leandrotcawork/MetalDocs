@@ -518,6 +518,47 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
+  /document-profiles/{profileCode}/template/docx:
+    get:
+      summary: Gera template DOCX em branco para o profile
+      parameters:
+        - name: profileCode
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Template DOCX do profile
+          content:
+            application/vnd.openxmlformats-officedocument.wordprocessingml.document:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '404':
+          description: Profile nao encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
     put:
       summary: Atualiza governanca ativa de um profile
       parameters:
@@ -1473,6 +1514,266 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
+  /documents/{documentId}/content/native:
+    get:
+      summary: Obtem conteudo nativo estruturado do documento
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      responses:
+        '200':
+          description: Conteudo nativo do documento
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentContentNativeResponse'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '404':
+          description: Documento ou versao nao encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+    post:
+      summary: Cria nova versao com conteudo nativo
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentContentNativeRequest'
+      responses:
+        '201':
+          description: Conteudo salvo e PDF gerado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentContentSaveResponse'
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '404':
+          description: Documento nao encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+  /documents/{documentId}/content/pdf:
+    get:
+      summary: Obtem URL assinada do PDF do documento
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      responses:
+        '200':
+          description: URL assinada do PDF
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentContentPdfResponse'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '404':
+          description: Documento ou PDF nao encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+  /documents/{documentId}/content/render-pdf:
+    post:
+      summary: Forca re-render do PDF do documento
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      responses:
+        '200':
+          description: PDF re-renderizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentContentPdfResponse'
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '404':
+          description: Documento nao encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+  /documents/{documentId}/template/docx:
+    get:
+      summary: Gera template DOCX com metadados do documento
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      responses:
+        '200':
+          description: Template DOCX preenchido
+          content:
+            application/vnd.openxmlformats-officedocument.wordprocessingml.document:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '404':
+          description: Documento nao encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+  /documents/{documentId}/content/upload:
+    post:
+      summary: Faz upload de DOCX preenchido para o documento
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                contentMode:
+                  type: string
+                  enum: [docx_upload]
+      responses:
+        '200':
+          description: DOCX importado e PDF gerado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentContentUploadResponse'
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '404':
+          description: Documento nao encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '413':
+          description: Arquivo muito grande
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '415':
+          description: Tipo de arquivo nao suportado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+  /documents/{documentId}/content/docx:
+    get:
+      summary: Obtem URL assinada do DOCX original
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      responses:
+        '200':
+          description: URL assinada do DOCX
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentContentDocxResponse'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '404':
+          description: Documento ou DOCX nao encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
   /documents/{documentId}/collaboration/presence:
     get:
       summary: Lista presencas colaborativas ativas no documento
@@ -2361,6 +2662,83 @@ components:
           type: array
           items:
             type: string
+    DocumentContentSource:
+      type: string
+      enum: [native, docx_upload]
+    DocumentContentNativeRequest:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: object
+          additionalProperties: true
+    DocumentContentNativeResponse:
+      type: object
+      required: [documentId, version, content, contentSource]
+      properties:
+        documentId:
+          type: string
+        version:
+          type: integer
+          minimum: 1
+        contentSource:
+          $ref: '#/components/schemas/DocumentContentSource'
+        content:
+          type: object
+          additionalProperties: true
+    DocumentContentPdfResponse:
+      type: object
+      required: [pdfUrl, expiresAt]
+      properties:
+        pdfUrl:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        pageCount:
+          type: integer
+          minimum: 1
+    DocumentContentDocxResponse:
+      type: object
+      required: [docxUrl, expiresAt]
+      properties:
+        docxUrl:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+    DocumentContentSaveResponse:
+      type: object
+      required: [documentId, version, pdfUrl, expiresAt, contentSource]
+      properties:
+        documentId:
+          type: string
+        version:
+          type: integer
+          minimum: 1
+        contentSource:
+          $ref: '#/components/schemas/DocumentContentSource'
+        pdfUrl:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+    DocumentContentUploadResponse:
+      type: object
+      required: [docxUrl, pdfUrl, expiresAt, contentSource]
+      properties:
+        contentSource:
+          $ref: '#/components/schemas/DocumentContentSource'
+        docxUrl:
+          type: string
+        pdfUrl:
+          type: string
+        pageCount:
+          type: integer
+          minimum: 1
+        expiresAt:
+          type: string
+          format: date-time
     DocumentTypeItem:
       type: object
       required: [code, name, description, reviewIntervalDays]

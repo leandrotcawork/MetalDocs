@@ -1211,7 +1211,7 @@ Aceite:
 - Nenhuma coluna existente e removida.
 
 ## Task 058 - Contract: OpenAPI content endpoints + schemas
-Status: `todo`
+Status: `done`
 
 Escopo:
 - Atualizar `api/openapi/v1/openapi.yaml` com endpoints:

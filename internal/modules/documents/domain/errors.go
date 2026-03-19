@@ -8,7 +8,6 @@ var (
 	ErrDocumentAlreadyExists       = errors.New("document already exists")
 	ErrInvalidDocumentType         = errors.New("invalid document type")
 	ErrInvalidDocumentProfileAlias = errors.New("invalid document profile alias")
-	ErrWorkflowApprovalNotFound    = errors.New("workflow approval not found")
 	ErrInvalidAccessPolicy         = errors.New("invalid access policy")
 	ErrInvalidMetadata             = errors.New("invalid metadata")
 	ErrVersioningNotAllowed        = errors.New("versioning not allowed for current status")

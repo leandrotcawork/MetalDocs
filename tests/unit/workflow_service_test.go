@@ -13,6 +13,7 @@ import (
 	docmemory "metaldocs/internal/modules/documents/infrastructure/memory"
 	workflowapp "metaldocs/internal/modules/workflow/application"
 	workflowdomain "metaldocs/internal/modules/workflow/domain"
+	workflowmemory "metaldocs/internal/modules/workflow/infrastructure/memory"
 )
 
 type failingAuditWriter struct{}
@@ -24,7 +25,7 @@ func (f failingAuditWriter) Record(context.Context, auditdomain.Event) error {
 func TestWorkflowTransitionUpdatesDocumentStatus(t *testing.T) {
 	repo := docmemory.NewRepository()
 	docSvc := docapp.NewService(repo, nil, fixedClock{now: time.Date(2026, 3, 16, 10, 0, 0, 0, time.UTC)})
-	workflowSvc := workflowapp.NewService(repo, auditmemory.NewWriter(), nil, fixedClock{now: time.Date(2026, 3, 16, 10, 1, 0, 0, time.UTC)})
+	workflowSvc := workflowapp.NewService(repo, workflowmemory.NewApprovalRepository(), auditmemory.NewWriter(), nil, fixedClock{now: time.Date(2026, 3, 16, 10, 1, 0, 0, time.UTC)})
 
 	_, err := docSvc.CreateDocument(context.Background(), docdomain.CreateDocumentCommand{
 		DocumentID:   "doc-wf-1",
@@ -84,7 +85,7 @@ func TestWorkflowTransitionUpdatesDocumentStatus(t *testing.T) {
 func TestWorkflowTransitionRejectsInvalidPath(t *testing.T) {
 	repo := docmemory.NewRepository()
 	docSvc := docapp.NewService(repo, nil, fixedClock{now: time.Date(2026, 3, 16, 10, 0, 0, 0, time.UTC)})
-	workflowSvc := workflowapp.NewService(repo, auditmemory.NewWriter(), nil, fixedClock{now: time.Date(2026, 3, 16, 10, 1, 0, 0, time.UTC)})
+	workflowSvc := workflowapp.NewService(repo, workflowmemory.NewApprovalRepository(), auditmemory.NewWriter(), nil, fixedClock{now: time.Date(2026, 3, 16, 10, 1, 0, 0, time.UTC)})
 
 	_, err := docSvc.CreateDocument(context.Background(), docdomain.CreateDocumentCommand{
 		DocumentID:   "doc-wf-2",
@@ -115,7 +116,7 @@ func TestWorkflowTransitionRejectsInvalidPath(t *testing.T) {
 func TestWorkflowApprovalRequiresAssignedReviewerOwnership(t *testing.T) {
 	repo := docmemory.NewRepository()
 	docSvc := docapp.NewService(repo, nil, fixedClock{now: time.Date(2026, 3, 16, 10, 0, 0, 0, time.UTC)})
-	workflowSvc := workflowapp.NewService(repo, auditmemory.NewWriter(), nil, fixedClock{now: time.Date(2026, 3, 16, 10, 1, 0, 0, time.UTC)})
+	workflowSvc := workflowapp.NewService(repo, workflowmemory.NewApprovalRepository(), auditmemory.NewWriter(), nil, fixedClock{now: time.Date(2026, 3, 16, 10, 1, 0, 0, time.UTC)})
 
 	_, err := docSvc.CreateDocument(context.Background(), docdomain.CreateDocumentCommand{
 		DocumentID:     "doc-wf-ownership",
@@ -156,7 +157,7 @@ func TestWorkflowApprovalRequiresAssignedReviewerOwnership(t *testing.T) {
 func TestWorkflowApprovalApprovesAndRecordsDecision(t *testing.T) {
 	repo := docmemory.NewRepository()
 	docSvc := docapp.NewService(repo, nil, fixedClock{now: time.Date(2026, 3, 16, 10, 0, 0, 0, time.UTC)})
-	workflowSvc := workflowapp.NewService(repo, auditmemory.NewWriter(), nil, fixedClock{now: time.Date(2026, 3, 16, 10, 1, 0, 0, time.UTC)})
+	workflowSvc := workflowapp.NewService(repo, workflowmemory.NewApprovalRepository(), auditmemory.NewWriter(), nil, fixedClock{now: time.Date(2026, 3, 16, 10, 1, 0, 0, time.UTC)})
 
 	_, err := docSvc.CreateDocument(context.Background(), docdomain.CreateDocumentCommand{
 		DocumentID:     "doc-wf-approve",
@@ -214,7 +215,7 @@ func TestWorkflowApprovalApprovesAndRecordsDecision(t *testing.T) {
 func TestWorkflowTransitionRollsBackWhenAuditFails(t *testing.T) {
 	repo := docmemory.NewRepository()
 	docSvc := docapp.NewService(repo, nil, fixedClock{now: time.Date(2026, 3, 16, 10, 0, 0, 0, time.UTC)})
-	workflowSvc := workflowapp.NewService(repo, failingAuditWriter{}, nil, fixedClock{now: time.Date(2026, 3, 16, 10, 1, 0, 0, time.UTC)})
+	workflowSvc := workflowapp.NewService(repo, workflowmemory.NewApprovalRepository(), failingAuditWriter{}, nil, fixedClock{now: time.Date(2026, 3, 16, 10, 1, 0, 0, time.UTC)})
 
 	_, err := docSvc.CreateDocument(context.Background(), docdomain.CreateDocumentCommand{
 		DocumentID:   "doc-wf-3",

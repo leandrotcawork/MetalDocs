@@ -19,6 +19,9 @@ import (
 	notificationdomain "metaldocs/internal/modules/notifications/domain"
 	notificationmemory "metaldocs/internal/modules/notifications/infrastructure/memory"
 	notificationpg "metaldocs/internal/modules/notifications/infrastructure/postgres"
+	workflowdomain "metaldocs/internal/modules/workflow/domain"
+	workflowmemory "metaldocs/internal/modules/workflow/infrastructure/memory"
+	workflowpg "metaldocs/internal/modules/workflow/infrastructure/postgres"
 	"metaldocs/internal/platform/authn"
 	"metaldocs/internal/platform/config"
 	pgdb "metaldocs/internal/platform/db/postgres"
@@ -32,6 +35,7 @@ import (
 
 type APIDependencies struct {
 	DocumentsRepo     docdomain.Repository
+	WorkflowApprovals workflowdomain.ApprovalRepository
 	AttachmentStore   docdomain.AttachmentStore
 	RoleProvider      iamdomain.RoleProvider
 	RoleAdminRepo     iamdomain.RoleAdminRepository
@@ -69,6 +73,7 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 		authRepo := authpg.NewRepository(db)
 		return APIDependencies{
 			DocumentsRepo:     pgrepo.NewRepository(db),
+			WorkflowApprovals: workflowpg.NewApprovalRepository(db),
 			AttachmentStore:   store,
 			RoleProvider:      iampg.NewRoleProvider(db),
 			RoleAdminRepo:     iampg.NewRoleAdminRepository(db),
@@ -100,6 +105,7 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 		auditStore := auditmemory.NewWriter()
 		return APIDependencies{
 			DocumentsRepo:     memoryrepo.NewRepository(),
+			WorkflowApprovals: workflowmemory.NewApprovalRepository(),
 			AttachmentStore:   store,
 			RoleProvider:      authRepo,
 			RoleAdminRepo:     authRepo,

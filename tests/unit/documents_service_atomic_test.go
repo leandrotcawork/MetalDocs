@@ -118,30 +118,6 @@ func (r *atomicRepoSpy) ListAttachments(context.Context, string) ([]domain.Attac
 	return nil, nil
 }
 
-func (r *atomicRepoSpy) CreateWorkflowApproval(context.Context, domain.WorkflowApproval) error {
-	return nil
-}
-
-func (r *atomicRepoSpy) GetLatestWorkflowApproval(context.Context, string) (domain.WorkflowApproval, error) {
-	return domain.WorkflowApproval{}, domain.ErrWorkflowApprovalNotFound
-}
-
-func (r *atomicRepoSpy) UpdateWorkflowApprovalDecision(context.Context, string, string, string, string, time.Time) error {
-	return nil
-}
-
-func (r *atomicRepoSpy) SaveWorkflowApprovalState(context.Context, domain.WorkflowApproval) error {
-	return nil
-}
-
-func (r *atomicRepoSpy) DeleteWorkflowApproval(context.Context, string) error {
-	return nil
-}
-
-func (r *atomicRepoSpy) ListWorkflowApprovals(context.Context, string) ([]domain.WorkflowApproval, error) {
-	return nil, nil
-}
-
 func TestCreateDocumentPrefersAtomicRepositoryWhenAvailable(t *testing.T) {
 	repo := &atomicRepoSpy{}
 	svc := application.NewService(repo, nil, fixedClock{now: time.Date(2026, 3, 16, 10, 0, 0, 0, time.UTC)})

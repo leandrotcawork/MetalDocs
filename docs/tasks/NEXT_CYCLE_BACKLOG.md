@@ -795,7 +795,7 @@ Aceite:
 - sem logica de negocio no frontend (apenas adaptacao/formatacao)
 
 ## Task 044 - Fix storage boundary: workflow approvals persistence
-Status: `todo`
+Status: `done`
 
 Objetivo:
 Remover acoplamento por storage onde `documents` persiste `workflow_approvals`.

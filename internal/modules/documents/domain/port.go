@@ -3,7 +3,6 @@ package domain
 import (
 	"context"
 	"io"
-	"time"
 )
 
 // Repository defines persistence operations for the documents module.
@@ -28,12 +27,6 @@ type Repository interface {
 	CreateAttachment(ctx context.Context, attachment Attachment) error
 	GetAttachment(ctx context.Context, attachmentID string) (Attachment, error)
 	ListAttachments(ctx context.Context, documentID string) ([]Attachment, error)
-	CreateWorkflowApproval(ctx context.Context, approval WorkflowApproval) error
-	GetLatestWorkflowApproval(ctx context.Context, documentID string) (WorkflowApproval, error)
-	UpdateWorkflowApprovalDecision(ctx context.Context, approvalID, status, decisionBy, decisionReason string, decidedAt time.Time) error
-	SaveWorkflowApprovalState(ctx context.Context, approval WorkflowApproval) error
-	DeleteWorkflowApproval(ctx context.Context, approvalID string) error
-	ListWorkflowApprovals(ctx context.Context, documentID string) ([]WorkflowApproval, error)
 }
 
 // AtomicCreateRepository is an optional capability for strong consistency on create flow.

@@ -35,6 +35,7 @@ import (
 	"metaldocs/internal/platform/config"
 	"metaldocs/internal/platform/observability"
 	"metaldocs/internal/platform/security"
+	workflowmemory "metaldocs/internal/modules/workflow/infrastructure/memory"
 )
 
 func TestAPIContractSmoke(t *testing.T) {
@@ -240,7 +241,7 @@ func buildContractTestHandler() http.Handler {
 	notificationHandler := notificationdelivery.NewHandler(notificationService)
 	searchService := searchapp.NewService(searchdocs.NewReader(docRepo))
 	searchHandler := searchdelivery.NewHandler(searchService)
-	workflowService := workflowapp.NewService(docRepo, auditStore, nil, nil)
+	workflowService := workflowapp.NewService(docRepo, workflowmemory.NewApprovalRepository(), auditStore, nil, nil)
 	workflowHandler := workflowdelivery.NewHandler(workflowService)
 	iamAdminService := iamapp.NewAdminService(roleAdminRepo, cachedProvider)
 	iamAdminHandler := iamdelivery.NewAdminHandler(iamAdminService, authapp.NewService(authRepo, cachedProvider, authapp.Config{PasswordMinLength: 8, LoginMaxFailedAttempts: 5, LoginLockDuration: time.Minute}), auditStore)

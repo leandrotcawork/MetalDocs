@@ -73,7 +73,7 @@ func main() {
 	searchHandler := searchdelivery.NewHandler(searchService)
 	notificationService := notificationapp.NewService(deps.NotificationsRepo, deps.DocumentsRepo, nil)
 	notificationHandler := notificationdelivery.NewHandler(notificationService)
-	workflowService := workflowapp.NewService(deps.DocumentsRepo, deps.AuditWriter, deps.Publisher, nil)
+	workflowService := workflowapp.NewService(deps.DocumentsRepo, deps.WorkflowApprovals, deps.AuditWriter, deps.Publisher, nil)
 	workflowHandler := workflowdelivery.NewHandler(workflowService)
 	authHandler := authdelivery.NewHandler(authService)
 	healthHandler := observability.NewHealthHandler(deps.StatusProvider)

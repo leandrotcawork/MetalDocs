@@ -20,6 +20,13 @@ const (
 	ClassificationRestricted   = "RESTRICTED"
 )
 
+const (
+	AudienceModeInternal   = "INTERNAL"
+	AudienceModeDepartment = "DEPARTMENT"
+	AudienceModeAreas      = "AREAS"
+	AudienceModeExplicit   = "EXPLICIT"
+)
+
 type Document struct {
 	ID                   string
 	Title                string
@@ -73,12 +80,21 @@ type CreateDocumentCommand struct {
 	BusinessUnit    string
 	Department      string
 	Classification  string
+	Audience        *DocumentAudience
 	Tags            []string
 	EffectiveAt     *time.Time
 	ExpiryAt        *time.Time
 	MetadataJSON    map[string]any
 	InitialContent  string
 	TraceID         string
+}
+
+type DocumentAudience struct {
+	Mode             string
+	DepartmentCodes  []string
+	ProcessAreaCodes []string
+	RoleCodes        []string
+	UserIDs          []string
 }
 
 type AddVersionCommand struct {

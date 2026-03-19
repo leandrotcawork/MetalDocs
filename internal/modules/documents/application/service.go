@@ -82,6 +82,11 @@ func (s *Service) CreateDocument(ctx context.Context, cmd domain.CreateDocumentC
 		return domain.Document{}, err
 	}
 
+	policies, err := buildAudiencePolicies(cmd, classification)
+	if err != nil {
+		return domain.Document{}, err
+	}
+
 	now := s.clock.Now()
 	doc := domain.Document{
 		ID:                   strings.TrimSpace(cmd.DocumentID),
@@ -115,7 +120,20 @@ func (s *Service) CreateDocument(ctx context.Context, cmd domain.CreateDocumentC
 	}
 
 	if atomicRepo, ok := s.repo.(domain.AtomicCreateRepository); ok {
-		if err := atomicRepo.CreateDocumentWithInitialVersion(ctx, doc, v1); err != nil {
+		if len(policies) > 0 {
+			if atomicWithPolicies, ok := s.repo.(domain.AtomicCreateRepositoryWithPolicies); ok {
+				if err := atomicWithPolicies.CreateDocumentWithInitialVersionAndPolicies(ctx, doc, v1, policies); err != nil {
+					return domain.Document{}, err
+				}
+			} else {
+				if err := atomicRepo.CreateDocumentWithInitialVersion(ctx, doc, v1); err != nil {
+					return domain.Document{}, err
+				}
+				if err := s.repo.ReplaceAccessPolicies(ctx, domain.ResourceScopeDocument, doc.ID, policies); err != nil {
+					return domain.Document{}, err
+				}
+			}
+		} else if err := atomicRepo.CreateDocumentWithInitialVersion(ctx, doc, v1); err != nil {
 			return domain.Document{}, err
 		}
 	} else {
@@ -124,6 +142,11 @@ func (s *Service) CreateDocument(ctx context.Context, cmd domain.CreateDocumentC
 		}
 		if err := s.repo.SaveVersion(ctx, v1); err != nil {
 			return domain.Document{}, err
+		}
+		if len(policies) > 0 {
+			if err := s.repo.ReplaceAccessPolicies(ctx, domain.ResourceScopeDocument, doc.ID, policies); err != nil {
+				return domain.Document{}, err
+			}
 		}
 	}
 
@@ -994,6 +1017,205 @@ func cloneTimePtr(value *time.Time) *time.Time {
 func contentHash(value string) string {
 	sum := md5.Sum([]byte(value))
 	return fmt.Sprintf("%x", sum[:])
+}
+
+func buildAudiencePolicies(cmd domain.CreateDocumentCommand, classification string) ([]domain.AccessPolicy, error) {
+	audience, err := normalizeAudience(cmd, classification)
+	if err != nil {
+		return nil, err
+	}
+	if audience == nil {
+		return nil, nil
+	}
+
+	policies := make([]domain.AccessPolicy, 0)
+	seen := map[string]struct{}{}
+	addPolicy := func(subjectType, subjectID, capability string) error {
+		item, ok := normalizeAccessPolicy(domain.ResourceScopeDocument, cmd.DocumentID, domain.AccessPolicy{
+			SubjectType: subjectType,
+			SubjectID:   subjectID,
+			Capability:  capability,
+			Effect:      domain.PolicyEffectAllow,
+		})
+		if !ok {
+			return domain.ErrInvalidAccessPolicy
+		}
+		key := item.SubjectType + "|" + item.SubjectID + "|" + item.Capability
+		if _, exists := seen[key]; exists {
+			return nil
+		}
+		seen[key] = struct{}{}
+		policies = append(policies, item)
+		return nil
+	}
+
+	ownerID := strings.TrimSpace(cmd.OwnerID)
+	if ownerID == "" {
+		return nil, domain.ErrInvalidAccessPolicy
+	}
+	for _, capability := range []string{
+		domain.CapabilityDocumentView,
+		domain.CapabilityDocumentEdit,
+		domain.CapabilityDocumentUploadAttachment,
+	} {
+		if err := addPolicy(domain.SubjectTypeUser, ownerID, capability); err != nil {
+			return nil, err
+		}
+	}
+
+	const adminRoleCode = "admin"
+	for _, capability := range []string{
+		domain.CapabilityDocumentView,
+		domain.CapabilityDocumentEdit,
+		domain.CapabilityDocumentUploadAttachment,
+	} {
+		if err := addPolicy(domain.SubjectTypeRole, adminRoleCode, capability); err != nil {
+			return nil, err
+		}
+	}
+
+	switch audience.Mode {
+	case domain.AudienceModeDepartment:
+		for _, dept := range audience.DepartmentCodes {
+			if err := addPolicy(domain.SubjectTypeRole, "dept:"+dept, domain.CapabilityDocumentView); err != nil {
+				return nil, err
+			}
+		}
+	case domain.AudienceModeAreas:
+		for _, dept := range audience.DepartmentCodes {
+			if err := addPolicy(domain.SubjectTypeRole, "dept:"+dept, domain.CapabilityDocumentView); err != nil {
+				return nil, err
+			}
+		}
+		for _, area := range audience.ProcessAreaCodes {
+			if err := addPolicy(domain.SubjectTypeRole, "area:"+area, domain.CapabilityDocumentView); err != nil {
+				return nil, err
+			}
+		}
+	case domain.AudienceModeExplicit:
+		for _, role := range audience.RoleCodes {
+			if err := addPolicy(domain.SubjectTypeRole, role, domain.CapabilityDocumentView); err != nil {
+				return nil, err
+			}
+		}
+		for _, userID := range audience.UserIDs {
+			if err := addPolicy(domain.SubjectTypeUser, userID, domain.CapabilityDocumentView); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return policies, nil
+}
+
+func normalizeAudience(cmd domain.CreateDocumentCommand, classification string) (*domain.DocumentAudience, error) {
+	mode := ""
+	if cmd.Audience != nil {
+		mode = strings.ToUpper(strings.TrimSpace(cmd.Audience.Mode))
+	}
+
+	if mode == "" {
+		switch classification {
+		case domain.ClassificationConfidential, domain.ClassificationRestricted:
+			dept := strings.ToLower(strings.TrimSpace(cmd.Department))
+			if dept == "" {
+				return nil, domain.ErrInvalidAccessPolicy
+			}
+			return &domain.DocumentAudience{
+				Mode:            domain.AudienceModeDepartment,
+				DepartmentCodes: []string{dept},
+			}, nil
+		default:
+			return nil, nil
+		}
+	}
+
+	switch mode {
+	case domain.AudienceModeInternal:
+		return nil, nil
+	case domain.AudienceModeDepartment:
+		departments := normalizeCodeList(cmd.Audience.DepartmentCodes)
+		if len(departments) == 0 {
+			if dept := strings.ToLower(strings.TrimSpace(cmd.Department)); dept != "" {
+				departments = []string{dept}
+			}
+		}
+		if len(departments) == 0 {
+			return nil, domain.ErrInvalidAccessPolicy
+		}
+		return &domain.DocumentAudience{
+			Mode:            domain.AudienceModeDepartment,
+			DepartmentCodes: departments,
+		}, nil
+	case domain.AudienceModeAreas:
+		departments := normalizeCodeList(cmd.Audience.DepartmentCodes)
+		if len(departments) == 0 {
+			if dept := strings.ToLower(strings.TrimSpace(cmd.Department)); dept != "" {
+				departments = []string{dept}
+			}
+		}
+		areas := normalizeCodeList(cmd.Audience.ProcessAreaCodes)
+		if len(areas) == 0 {
+			if area := strings.ToLower(strings.TrimSpace(cmd.ProcessArea)); area != "" {
+				areas = []string{area}
+			}
+		}
+		if len(departments) == 0 || len(areas) == 0 {
+			return nil, domain.ErrInvalidAccessPolicy
+		}
+		return &domain.DocumentAudience{
+			Mode:             domain.AudienceModeAreas,
+			DepartmentCodes:  departments,
+			ProcessAreaCodes: areas,
+		}, nil
+	case domain.AudienceModeExplicit:
+		roleCodes := normalizeCodeList(cmd.Audience.RoleCodes)
+		userIDs := normalizeUserIDList(cmd.Audience.UserIDs)
+		if len(roleCodes) == 0 && len(userIDs) == 0 {
+			return nil, domain.ErrInvalidAccessPolicy
+		}
+		return &domain.DocumentAudience{
+			Mode:      domain.AudienceModeExplicit,
+			RoleCodes: roleCodes,
+			UserIDs:   userIDs,
+		}, nil
+	default:
+		return nil, domain.ErrInvalidAccessPolicy
+	}
+}
+
+func normalizeCodeList(values []string) []string {
+	seen := map[string]struct{}{}
+	out := make([]string, 0, len(values))
+	for _, raw := range values {
+		value := strings.ToLower(strings.TrimSpace(raw))
+		if value == "" {
+			continue
+		}
+		if _, exists := seen[value]; exists {
+			continue
+		}
+		seen[value] = struct{}{}
+		out = append(out, value)
+	}
+	return out
+}
+
+func normalizeUserIDList(values []string) []string {
+	seen := map[string]struct{}{}
+	out := make([]string, 0, len(values))
+	for _, raw := range values {
+		value := strings.TrimSpace(raw)
+		if value == "" {
+			continue
+		}
+		if _, exists := seen[value]; exists {
+			continue
+		}
+		seen[value] = struct{}{}
+		out = append(out, value)
+	}
+	return out
 }
 
 func normalizeAccessPolicy(resourceScope, resourceID string, policy domain.AccessPolicy) (domain.AccessPolicy, bool) {

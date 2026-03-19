@@ -68,6 +68,27 @@ func (r *Repository) CreateDocumentWithInitialVersion(ctx context.Context, docum
 	return nil
 }
 
+func (r *Repository) CreateDocumentWithInitialVersionAndPolicies(ctx context.Context, document domain.Document, version domain.Version, policies []domain.AccessPolicy) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if err := r.createDocumentLocked(ctx, document); err != nil {
+		return err
+	}
+	if err := r.saveVersionLocked(ctx, version); err != nil {
+		delete(r.documents, document.ID)
+		delete(r.versions, document.ID)
+		return err
+	}
+	if len(policies) > 0 {
+		key := policies[0].ResourceScope + ":" + policies[0].ResourceID
+		items := make([]domain.AccessPolicy, len(policies))
+		copy(items, policies)
+		r.policies[key] = items
+	}
+	return nil
+}
+
 func (r *Repository) createDocumentLocked(_ context.Context, document domain.Document) error {
 	if _, exists := r.documents[document.ID]; exists {
 		return domain.ErrDocumentAlreadyExists

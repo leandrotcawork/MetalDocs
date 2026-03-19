@@ -117,6 +117,89 @@ VALUES ($1, $2, $3, $4, $5, $6)
 	return nil
 }
 
+func (r *Repository) CreateDocumentWithInitialVersionAndPolicies(ctx context.Context, document domain.Document, version domain.Version, policies []domain.AccessPolicy) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx create document with policies: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	const insertDoc = `
+INSERT INTO metaldocs.documents (
+  id, title, document_type_code, document_profile_code, document_family_code, process_area_code, subject_code,
+  profile_schema_version, owner_id, business_unit, department, classification, status, tags, effective_at, expiry_at, metadata_json, created_at, updated_at
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15, $16, $17::jsonb, $18, $19)
+`
+	tagsJSON, metadataJSON, effectiveAt, expiryAt := serializeDocument(document)
+	if _, err := tx.ExecContext(ctx, insertDoc,
+		document.ID,
+		document.Title,
+		document.DocumentType,
+		document.DocumentProfile,
+		document.DocumentFamily,
+		nullIfEmpty(document.ProcessArea),
+		nullIfEmpty(document.Subject),
+		document.ProfileSchemaVersion,
+		document.OwnerID,
+		document.BusinessUnit,
+		document.Department,
+		document.Classification,
+		document.Status,
+		tagsJSON,
+		effectiveAt,
+		expiryAt,
+		metadataJSON,
+		document.CreatedAt,
+		document.UpdatedAt,
+	); err != nil {
+		return mapError(err)
+	}
+
+	const insertVersion = `
+INSERT INTO metaldocs.document_versions (document_id, version_number, content, content_hash, change_summary, created_at)
+VALUES ($1, $2, $3, $4, $5, $6)
+`
+	if _, err := tx.ExecContext(ctx, insertVersion,
+		version.DocumentID,
+		version.Number,
+		version.Content,
+		version.ContentHash,
+		version.ChangeSummary,
+		version.CreatedAt,
+	); err != nil {
+		return mapError(err)
+	}
+
+	if len(policies) > 0 {
+		const insertPolicy = `
+INSERT INTO metaldocs.document_access_policies (
+  subject_type, subject_id, resource_scope, resource_id, capability, effect, created_at
+)
+VALUES ($1, $2, $3, $4, $5, $6, NOW())
+`
+		for _, policy := range policies {
+			if _, err := tx.ExecContext(ctx, insertPolicy,
+				policy.SubjectType,
+				policy.SubjectID,
+				policy.ResourceScope,
+				policy.ResourceID,
+				policy.Capability,
+				policy.Effect,
+			); err != nil {
+				return mapError(err)
+			}
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit tx create document with policies: %w", err)
+	}
+	return nil
+}
+
 func (r *Repository) GetDocument(ctx context.Context, documentID string) (domain.Document, error) {
 	const q = `
 SELECT id, title, document_type_code, document_profile_code, document_family_code, process_area_code, subject_code, profile_schema_version,

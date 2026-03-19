@@ -34,11 +34,20 @@ type CreateDocumentRequest struct {
 	BusinessUnit    string         `json:"businessUnit"`
 	Department      string         `json:"department"`
 	Classification  string         `json:"classification"`
+	Audience        *DocumentAudienceRequest `json:"audience,omitempty"`
 	Tags            []string       `json:"tags,omitempty"`
 	EffectiveAt     string         `json:"effectiveAt,omitempty"`
 	ExpiryAt        string         `json:"expiryAt,omitempty"`
 	Metadata        map[string]any `json:"metadata,omitempty"`
 	InitialContent  string         `json:"initialContent,omitempty"`
+}
+
+type DocumentAudienceRequest struct {
+	Mode             string   `json:"mode"`
+	DepartmentCodes  []string `json:"departmentCodes,omitempty"`
+	ProcessAreaCodes []string `json:"processAreaCodes,omitempty"`
+	RoleCodes        []string `json:"roleCodes,omitempty"`
+	UserIDs          []string `json:"userIds,omitempty"`
 }
 
 type DocumentResponse struct {
@@ -942,6 +951,17 @@ func (h *Handler) handleCreateDocument(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var audience *domain.DocumentAudience
+	if req.Audience != nil {
+		audience = &domain.DocumentAudience{
+			Mode:             req.Audience.Mode,
+			DepartmentCodes:  req.Audience.DepartmentCodes,
+			ProcessAreaCodes: req.Audience.ProcessAreaCodes,
+			RoleCodes:        req.Audience.RoleCodes,
+			UserIDs:          req.Audience.UserIDs,
+		}
+	}
+
 	doc, err := h.service.CreateDocumentAuthorized(r.Context(), domain.CreateDocumentCommand{
 		DocumentID:      docID,
 		Title:           req.Title,
@@ -953,6 +973,7 @@ func (h *Handler) handleCreateDocument(w http.ResponseWriter, r *http.Request) {
 		BusinessUnit:    req.BusinessUnit,
 		Department:      req.Department,
 		Classification:  req.Classification,
+		Audience:        audience,
 		Tags:            req.Tags,
 		EffectiveAt:     effectiveAt,
 		ExpiryAt:        expiryAt,

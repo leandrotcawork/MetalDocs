@@ -1035,7 +1035,7 @@ Aceite:
 - Frontend nao hardcoda regra de permissao; apenas envia `audience` quando selecionado.
 
 ## Task 051 - Persist and enforce audience policies for documents
-Status: `todo`
+Status: `done`
 
 Objetivo:
 Implementar enforcement real de acesso baseado em `audience` gerando `access_policies` por documento, mantendo o modelo atual (capability-based) como fonte de verdade.
@@ -1074,6 +1074,10 @@ Aceite:
 - Testes:
   - unit: policy building (audience -> policies)
   - integration: enforcement na rota de `GetDocument` e `ListDocuments` (ao menos smoke).
+
+Entrega:
+- `CreateDocument` gera policies por documento quando `audience` exige.
+- Repositorio Postgres/Memoria suportam create atomico com policies.
 
 ## Task 052 - Departments registry + role conventions for access
 Status: `todo`

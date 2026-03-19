@@ -51,6 +51,11 @@ type AtomicCreateRepository interface {
 	CreateDocumentWithInitialVersion(ctx context.Context, document Document, version Version) error
 }
 
+// AtomicCreateRepositoryWithPolicies extends atomic create with access policies.
+type AtomicCreateRepositoryWithPolicies interface {
+	CreateDocumentWithInitialVersionAndPolicies(ctx context.Context, document Document, version Version, policies []AccessPolicy) error
+}
+
 type AttachmentStore interface {
 	Save(ctx context.Context, storageKey string, content []byte) error
 	Open(ctx context.Context, storageKey string) (io.ReadCloser, error)

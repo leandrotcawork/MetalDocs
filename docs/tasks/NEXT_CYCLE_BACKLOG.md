@@ -793,3 +793,91 @@ Saida:
 Aceite:
 - `frontend` build e typecheck verdes
 - sem logica de negocio no frontend (apenas adaptacao/formatacao)
+
+## Task 044 - Fix storage boundary: workflow approvals persistence
+Status: `todo`
+
+Objetivo:
+Remover acoplamento por storage onde `documents` persiste `workflow_approvals`.
+
+Escopo:
+- mover CRUD de approvals para `internal/modules/workflow/infrastructure/*`
+- definir porta no `workflow/domain` para persistencia de approvals
+- `workflow/application` usa seu proprio repo (nao `documents` repo) para approvals
+- `documents` nao acessa `metaldocs.workflow_approvals` diretamente
+
+Aceite:
+- `rg -n "workflow_approvals" internal/modules/documents/infrastructure/postgres` nao retorna resultados
+- `go test ./...` verde
+
+## Task 045 - Clarify IAM/Auth module ownership and persistence boundaries
+Status: `todo`
+
+Objetivo:
+Eliminar acesso cruzado a tabelas `iam_*` via `auth` e tornar ownership claro (um modulo ou portas dedicadas).
+
+Escopo:
+- decidir: unificar `auth+iam` ou manter separado com ports
+- remover `auth` escrevendo/consultando `iam_users` e `iam_user_roles` diretamente
+- atualizar bootstrap, repos e testes conforme decisao
+
+Aceite:
+- nenhum `JOIN/INSERT` em `metaldocs.iam_*` dentro de `internal/modules/auth/infrastructure/*`
+- gates + `go test ./...` verdes
+
+## Task 046 - Replace hardcoded route permission matching with declarative policy
+Status: `doing`
+
+Objetivo:
+Evitar autorizacao baseada em string match de path, reduzindo risco de drift de rota e bug de seguranca.
+
+Escopo (faseado):
+- fase 1 (feito): middleware usa `r.Context()` e suporta `PermissionResolver`
+- fase 2: mover mapping para composition root/registro declarativo por rota
+- fase 3: teste que falha se existir rota guardada sem regra declarada
+
+Aceite:
+- `requiredPermission()` nao contem lista hardcoded de rotas (ou fica apenas como fallback dev)
+- contract baseline verde
+
+## Task 047 - Use platform auth context helpers across application modules
+Status: `done`
+
+Objetivo:
+Padronizar extracao de `userId/roles` via `internal/platform/authn` (nao via `iam/domain`) nos casos de uso.
+
+Escopo:
+- atualizar `search/application` para `internal/platform/authn`
+- manter policy enforcement no backend
+
+Aceite:
+- `rg -n "internal/modules/iam/domain" internal/modules/search/application` nao retorna resultados
+- `go test ./...` verde
+
+## Task 048 - Scale review reminder emission
+Status: `todo`
+
+Objetivo:
+Evitar varredura de todos documentos em reminder; suportar query incremental.
+
+Escopo:
+- repo query dedicada para docs expirando nos proximos X dias
+- worker/reminder usa query (nao `ListDocuments`)
+- benchmark simples ou evidencias no runbook
+
+Aceite:
+- reminders nao fazem O(N) sobre todo acervo por tick
+
+## Task 049 - Frontend: remove external font dependency and prepare CSP-ready assets
+Status: `todo`
+
+Objetivo:
+Remover dependencia runtime em Google Fonts e preparar app para CSP mais restrito.
+
+Escopo:
+- self-host DM Sans/DM Mono no bundle ou via assets locais
+- atualizar `styles.css` para importar fontes locais
+- documentar em runbook do frontend
+
+Aceite:
+- sem request para `fonts.googleapis.com` em runtime

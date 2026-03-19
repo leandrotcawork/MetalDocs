@@ -1,7 +1,6 @@
 package httpdelivery
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -16,14 +15,33 @@ type Middleware struct {
 	roleProvider iamdomain.RoleProvider
 	enabled      bool
 	legacyHeader bool
+	resolver     PermissionResolver
 }
+
+type PermissionResolver func(method, path string) (iamdomain.Permission, bool)
 
 func NewMiddleware(authorizer iamdomain.Authorizer, roleProvider iamdomain.RoleProvider, enabled bool, legacyHeader ...bool) *Middleware {
 	allowLegacy := false
 	if len(legacyHeader) > 0 {
 		allowLegacy = legacyHeader[0]
 	}
-	return &Middleware{authorizer: authorizer, roleProvider: roleProvider, enabled: enabled, legacyHeader: allowLegacy}
+	return &Middleware{
+		authorizer:   authorizer,
+		roleProvider: roleProvider,
+		enabled:      enabled,
+		legacyHeader: allowLegacy,
+		resolver:     requiredPermission,
+	}
+}
+
+// WithPermissionResolver allows composition root to define the route->permission mapping
+// closer to where routes are registered, reducing the risk of drift.
+func (m *Middleware) WithPermissionResolver(resolver PermissionResolver) *Middleware {
+	if resolver == nil {
+		return m
+	}
+	m.resolver = resolver
+	return m
 }
 
 func (m *Middleware) Wrap(next http.Handler) http.Handler {
@@ -32,7 +50,11 @@ func (m *Middleware) Wrap(next http.Handler) http.Handler {
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		perm, guarded := requiredPermission(r.Method, r.URL.Path)
+		resolver := m.resolver
+		if resolver == nil {
+			resolver = requiredPermission
+		}
+		perm, guarded := resolver(r.Method, r.URL.Path)
 		if !guarded {
 			next.ServeHTTP(w, r)
 			return
@@ -50,7 +72,7 @@ func (m *Middleware) Wrap(next http.Handler) http.Handler {
 		}
 
 		if len(roles) == 0 {
-			resolvedRoles, err := m.roleProvider.RolesByUserID(context.Background(), userID)
+			resolvedRoles, err := m.roleProvider.RolesByUserID(r.Context(), userID)
 			if err != nil {
 				if errors.Is(err, iamdomain.ErrUserNotFound) || errors.Is(err, iamdomain.ErrUserInactive) {
 					writeAPIError(w, http.StatusUnauthorized, "AUTH_UNAUTHORIZED", "User is not authorized", traceID)

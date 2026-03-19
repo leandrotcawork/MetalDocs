@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	iamdomain "metaldocs/internal/modules/iam/domain"
 	"metaldocs/internal/modules/search/domain"
+	"metaldocs/internal/platform/authn"
 )
 
 const (
@@ -166,18 +166,18 @@ func (s *Service) policiesForDocument(ctx context.Context, doc domain.Document) 
 }
 
 func shouldBypassPolicy(ctx context.Context) bool {
-	return iamdomain.UserIDFromContext(ctx) == "" && len(iamdomain.RolesFromContext(ctx)) == 0
+	return authn.UserIDFromContext(ctx) == "" && len(authn.RolesFromContext(ctx)) == 0
 }
 
 func decidePolicies(ctx context.Context, items []domain.AccessPolicy) bool {
 	if len(items) == 0 {
 		return true
 	}
-	userID := iamdomain.UserIDFromContext(ctx)
-	roles := iamdomain.RolesFromContext(ctx)
+	userID := authn.UserIDFromContext(ctx)
+	roles := authn.RolesFromContext(ctx)
 	rolesSet := map[string]struct{}{}
 	for _, role := range roles {
-		rolesSet[strings.ToLower(strings.TrimSpace(string(role)))] = struct{}{}
+		rolesSet[strings.ToLower(strings.TrimSpace(role))] = struct{}{}
 	}
 
 	matchedAny := false

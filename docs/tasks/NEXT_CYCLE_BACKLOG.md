@@ -626,6 +626,10 @@ Progresso fase 1:
 - renderizacao de views em `App.tsx` unificada por roteamento interno (`renderWorkspaceView`)
 - fallback explicito de view com placeholder para evitar estados vazios/improvisados
 
+Progresso fase 2:
+- views de `notifications` e `admin` migradas para padrao `catalog-shell` (header, grid e painel consistente)
+- padrao visual unificado entre telas operacionais sem quebrar contratos de dados existentes
+
 ## Task 035 - Metal Nobre applied experience
 Status: `pending`
 

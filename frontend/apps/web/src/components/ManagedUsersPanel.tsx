@@ -37,11 +37,23 @@ type ManagedUsersPanelProps = {
 
 export function ManagedUsersPanel(props: ManagedUsersPanelProps) {
   return (
-    <section data-testid="managed-users-panel" className="panel panel-admin">
-      <div className="panel-heading"><p className="kicker">IAM + Auth</p><h2>Usuarios internos</h2></div>
-      <div className="subgrid wide">
-        <form data-testid="user-create-form" className="card stack" onSubmit={props.onSubmitCreateUser}>
-          <h3>Criar usuario</h3>
+    <section data-testid="managed-users-panel" className="catalog-shell">
+      <div className="catalog-header">
+        <div>
+          <p className="catalog-kicker">IAM + Auth</p>
+          <h1>Usuarios internos</h1>
+          <p>Administracao operacional de identidades internas, roles, estado de acesso e recuperacao de senha.</p>
+        </div>
+      </div>
+
+      <div className="catalog-grid">
+        <form data-testid="user-create-form" className="catalog-panel stack" onSubmit={props.onSubmitCreateUser}>
+          <div className="catalog-panel-head">
+            <div>
+              <p className="catalog-kicker">Provisioning</p>
+              <h2>Criar usuario</h2>
+            </div>
+          </div>
           <input data-testid="user-id" placeholder="userId opcional" value={props.userForm.userId} onChange={(event) => props.onUserFormChange({ ...props.userForm, userId: event.target.value })} />
           <input data-testid="user-username" placeholder="username" value={props.userForm.username} onChange={(event) => props.onUserFormChange({ ...props.userForm, username: event.target.value })} required />
           <input data-testid="user-email" placeholder="email" value={props.userForm.email} onChange={(event) => props.onUserFormChange({ ...props.userForm, email: event.target.value })} />
@@ -50,9 +62,14 @@ export function ManagedUsersPanel(props: ManagedUsersPanelProps) {
           <select data-testid="user-role" value={props.userForm.roles[0]} onChange={(event) => props.onUserFormChange({ ...props.userForm, roles: [event.target.value as UserRole] })}>{["admin", "editor", "reviewer", "viewer"].map((role) => <option key={role} value={role}>{role}</option>)}</select>
           <button data-testid="user-submit" type="submit">Criar usuario</button>
         </form>
-        <div className="card">
-          <h3>Base de usuarios</h3>
-          <ul className="mini-list">
+        <section className="catalog-panel catalog-list-panel">
+          <div className="catalog-panel-head">
+            <div>
+              <p className="catalog-kicker">Directory</p>
+              <h2>Base de usuarios</h2>
+            </div>
+          </div>
+          <ul className="catalog-mini-list">
             {props.managedUsers.map((item) => (
               <li key={item.userId} onClick={() => props.onSelectManagedUser(item)}>
                 <div>
@@ -64,9 +81,14 @@ export function ManagedUsersPanel(props: ManagedUsersPanelProps) {
               </li>
             ))}
           </ul>
-        </div>
-        <div className="card stack">
-          <h3>Editar usuario</h3>
+        </section>
+        <section className="catalog-panel stack">
+          <div className="catalog-panel-head">
+            <div>
+              <p className="catalog-kicker">Lifecycle</p>
+              <h2>Editar usuario</h2>
+            </div>
+          </div>
           {!props.selectedManagedUser ? <p className="hint">Selecione um usuario da lista para editar estado operacional e roles.</p> : (
             <>
               <p className="hint">Auth state atual: {props.selectedManagedUser.isActive ? "ativo" : "inativo"} / {props.selectedManagedUser.mustChangePassword ? "troca obrigatoria" : "senha estabilizada"} / falhas: {props.selectedManagedUser.failedLoginAttempts}</p>
@@ -85,7 +107,7 @@ export function ManagedUsersPanel(props: ManagedUsersPanelProps) {
               </div>
             </>
           )}
-        </div>
+        </section>
       </div>
     </section>
   );

@@ -49,6 +49,18 @@ services:
     volumes:
       - metaldocs_minio_data:/data
 
+  carbone:
+    image: carbone/carbone-ee:full
+    container_name: metaldocs-carbone
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    volumes:
+      - ../../carbone/templates:/app/template
+      - ../../carbone/renders:/app/render
+    environment:
+      CARBONE_EE_AUTHENTICATION: "false"
+
   api:
     build:
       context: ../..
@@ -62,6 +74,8 @@ services:
       redis:
         condition: service_healthy
       minio:
+        condition: service_started
+      carbone:
         condition: service_started
     environment:
       APP_ENV: ${APP_ENV}
@@ -97,6 +111,7 @@ services:
       METALDOCS_MINIO_BUCKET: ${METALDOCS_MINIO_BUCKET}
       METALDOCS_MINIO_USE_SSL: ${METALDOCS_MINIO_USE_SSL}
       METALDOCS_MINIO_AUTO_CREATE_BUCKET: ${METALDOCS_MINIO_AUTO_CREATE_BUCKET}
+      METALDOCS_CARBONE_API_URL: ${METALDOCS_CARBONE_API_URL}
       PGHOST: postgres
       PGPORT: 5432
       PGDATABASE: ${POSTGRES_DB}

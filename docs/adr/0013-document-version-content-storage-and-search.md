@@ -1,7 +1,7 @@
 # ADR-0013: Version Content Storage, Files, and Full-Text Search
 
 ## Status
-Proposed
+Accepted
 
 ## Context
 Hoje `document_versions` armazena apenas `content` (texto) e `content_hash`. Com autoria estruturada e fluxo DOCX, uma versao precisa carregar:
@@ -32,4 +32,3 @@ Precisamos fazer isso mantendo:
 - Leitura de versoes deve mapear os novos campos para o dominio/DTO.
 - Search module deve usar `search_vector` quando presente.
 - Storage keys devem seguir convencao de namespace (ex: `documents/{documentId}/versions/{n}/...`).
-

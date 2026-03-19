@@ -1170,7 +1170,7 @@ Aceite:
 - Tests cobrindo a avaliacao AND no fluxo de `GetDocument`.
 
 ## Task 055 - Content authoring ADRs (modes + storage)
-Status: `todo`
+Status: `done`
 
 Objetivo:
 Congelar decisoes de produto e arquitetura para autoria de conteudo (native + docx) e persistencia em `document_versions`, antes de alterar schema/contratos.
@@ -1184,7 +1184,7 @@ Aceite:
 - Fluxo nao viola versionamento imutavel e policy de migrations (ADR-0007).
 
 ## Task 056 - Infra: Carbone service in compose + config
-Status: `todo`
+Status: `done`
 
 Escopo:
 - Adicionar servico `carbone` em `deploy/compose/docker-compose.yml` (porta interna 4000).

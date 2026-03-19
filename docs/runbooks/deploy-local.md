@@ -11,6 +11,7 @@
 - `worker` processa notificacoes e lembretes
 - `minio` e o storage oficial de anexos/blobs
 - `postgres` persiste em volume Docker nomeado (`metaldocs_postgres_data`)
+- `carbone` renderiza DOCX/PDF (conteudo)
 
 ## Passos
 1. Copiar `.env.example` para `.env` e ajustar valores.
@@ -39,6 +40,7 @@
 3. Validar saude:
    - `curl http://localhost/api/v1/health/live`
    - `curl http://localhost/api/v1/health/ready`
+   - `curl http://localhost:4000/`
 4. Validar UI:
    - abrir `http://localhost/`
    - login inicial:

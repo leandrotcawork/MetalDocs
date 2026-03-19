@@ -1,7 +1,7 @@
 # ADR-0012: Content Authoring Modes + Carbone Rendering
 
 ## Status
-Proposed
+Accepted
 
 ## Context
 MetalDocs precisa suportar autoria de conteudo em dois modos:
@@ -28,4 +28,3 @@ O sistema ja possui versionamento imutavel e persistencia de anexos em storage (
 ## Notes
 - O sistema continua RBAC/policy-first: permissao de view/edit/upload e sempre validada no backend.
 - Renderizacao pode ser sincrona no MVP; async via worker/outbox vira evolucao.
-

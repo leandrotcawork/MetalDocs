@@ -889,7 +889,7 @@ Entrega:
 - evidencia registrada em `docs/runbooks/performance-baseline.md`
 
 ## Task 049 - Frontend: remove external font dependency and prepare CSP-ready assets
-Status: `todo`
+Status: `done`
 
 Objetivo:
 Remover dependencia runtime em Google Fonts e preparar app para CSP mais restrito.
@@ -901,3 +901,9 @@ Escopo:
 
 Aceite:
 - sem request para `fonts.googleapis.com` em runtime
+
+Entrega:
+- `@fontsource/dm-sans` e `@fontsource/dm-mono` adicionados no app web
+- `main.tsx` importa pesos necessarios localmente
+- `styles.css` remove `@import` de Google Fonts
+- runbook de dev atualizado com regra CSP/fonts

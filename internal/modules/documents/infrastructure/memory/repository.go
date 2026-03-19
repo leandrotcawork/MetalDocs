@@ -159,6 +159,41 @@ func (r *Repository) ListDocumentProfiles(_ context.Context) ([]domain.DocumentP
 	return out, nil
 }
 
+func (r *Repository) UpsertDocumentProfile(_ context.Context, item domain.DocumentProfile) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for index := range r.profiles {
+		if r.profiles[index].Code == item.Code {
+			r.profiles[index] = item
+			return nil
+		}
+	}
+	r.profiles = append(r.profiles, item)
+	return nil
+}
+
+func (r *Repository) DeactivateDocumentProfile(_ context.Context, code string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	filtered := make([]domain.DocumentProfile, 0, len(r.profiles))
+	found := false
+	for _, item := range r.profiles {
+		if item.Code == code {
+			found = true
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+	if !found {
+		return domain.ErrInvalidCommand
+	}
+	r.profiles = filtered
+	delete(r.profileGovernance, code)
+	return nil
+}
+
 func (r *Repository) ListDocumentProfileSchemas(_ context.Context, profileCode string) ([]domain.DocumentProfileSchemaVersion, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -189,6 +224,14 @@ func (r *Repository) GetDocumentProfileGovernance(_ context.Context, profileCode
 		return domain.DocumentProfileGovernance{}, domain.ErrInvalidCommand
 	}
 	return item, nil
+}
+
+func (r *Repository) UpsertDocumentProfileGovernance(_ context.Context, item domain.DocumentProfileGovernance) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.profileGovernance[item.ProfileCode] = item
+	return nil
 }
 
 func (r *Repository) ListProcessAreas(_ context.Context) ([]domain.ProcessArea, error) {

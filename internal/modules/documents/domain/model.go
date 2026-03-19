@@ -324,10 +324,31 @@ func NormalizeDocumentProfile(profile DocumentProfile) (DocumentProfile, error) 
 	profile.Description = strings.TrimSpace(profile.Description)
 	profile.WorkflowProfile = strings.TrimSpace(profile.WorkflowProfile)
 	profile.Alias = NormalizeDocumentProfileAlias(profile.Alias)
+	if profile.Code == "" || profile.FamilyCode == "" || profile.Name == "" {
+		return DocumentProfile{}, ErrInvalidCommand
+	}
+	if profile.ReviewIntervalDays <= 0 {
+		return DocumentProfile{}, ErrInvalidCommand
+	}
+	if profile.ActiveSchemaVersion <= 0 {
+		profile.ActiveSchemaVersion = 1
+	}
 	if err := ValidateDocumentProfileAlias(profile.Alias); err != nil {
 		return DocumentProfile{}, err
 	}
 	return profile, nil
+}
+
+func NormalizeDocumentProfileGovernance(item DocumentProfileGovernance) (DocumentProfileGovernance, error) {
+	item.ProfileCode = strings.ToLower(strings.TrimSpace(item.ProfileCode))
+	item.WorkflowProfile = strings.TrimSpace(item.WorkflowProfile)
+	if item.ProfileCode == "" || item.WorkflowProfile == "" {
+		return DocumentProfileGovernance{}, ErrInvalidCommand
+	}
+	if item.ReviewIntervalDays <= 0 || item.RetentionDays < 0 || item.ValidityDays < 0 {
+		return DocumentProfileGovernance{}, ErrInvalidCommand
+	}
+	return item, nil
 }
 
 func NormalizeProcessArea(item ProcessArea) (ProcessArea, error) {

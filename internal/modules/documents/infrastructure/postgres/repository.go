@@ -388,6 +388,48 @@ ORDER BY code ASC
 	return out, nil
 }
 
+func (r *Repository) UpsertDocumentProfile(ctx context.Context, item domain.DocumentProfile) error {
+	const q = `
+INSERT INTO metaldocs.document_profiles (code, family_code, name, alias, description, review_interval_days, is_active)
+VALUES ($1, $2, $3, $4, $5, $6, TRUE)
+ON CONFLICT (code) DO UPDATE
+SET family_code = EXCLUDED.family_code,
+    name = EXCLUDED.name,
+    alias = EXCLUDED.alias,
+    description = EXCLUDED.description,
+    review_interval_days = EXCLUDED.review_interval_days,
+    is_active = TRUE
+`
+	if _, err := r.db.ExecContext(ctx, q,
+		item.Code,
+		item.FamilyCode,
+		item.Name,
+		item.Alias,
+		item.Description,
+		item.ReviewIntervalDays,
+	); err != nil {
+		return mapError(err)
+	}
+	return nil
+}
+
+func (r *Repository) DeactivateDocumentProfile(ctx context.Context, code string) error {
+	const q = `
+UPDATE metaldocs.document_profiles
+SET is_active = FALSE
+WHERE code = $1 AND is_active = TRUE
+`
+	result, err := r.db.ExecContext(ctx, q, code)
+	if err != nil {
+		return mapError(err)
+	}
+	affected, _ := result.RowsAffected()
+	if affected == 0 {
+		return domain.ErrInvalidCommand
+	}
+	return nil
+}
+
 func (r *Repository) ListDocumentProfileSchemas(ctx context.Context, profileCode string) ([]domain.DocumentProfileSchemaVersion, error) {
 	const q = `
 SELECT profile_code, version, is_active, metadata_rules_json
@@ -442,6 +484,32 @@ WHERE profile_code = $1
 		return domain.DocumentProfileGovernance{}, fmt.Errorf("get document profile governance: %w", err)
 	}
 	return item, nil
+}
+
+func (r *Repository) UpsertDocumentProfileGovernance(ctx context.Context, item domain.DocumentProfileGovernance) error {
+	const q = `
+INSERT INTO metaldocs.document_profile_governance (
+  profile_code, workflow_profile, review_interval_days, approval_required, retention_days, validity_days
+)
+VALUES ($1, $2, $3, $4, $5, $6)
+ON CONFLICT (profile_code) DO UPDATE
+SET workflow_profile = EXCLUDED.workflow_profile,
+    review_interval_days = EXCLUDED.review_interval_days,
+    approval_required = EXCLUDED.approval_required,
+    retention_days = EXCLUDED.retention_days,
+    validity_days = EXCLUDED.validity_days
+`
+	if _, err := r.db.ExecContext(ctx, q,
+		item.ProfileCode,
+		item.WorkflowProfile,
+		item.ReviewIntervalDays,
+		item.ApprovalRequired,
+		item.RetentionDays,
+		item.ValidityDays,
+	); err != nil {
+		return mapError(err)
+	}
+	return nil
 }
 
 func (r *Repository) ListProcessAreas(ctx context.Context) ([]domain.ProcessArea, error) {

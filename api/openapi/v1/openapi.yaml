@@ -281,6 +281,108 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
+    post:
+      summary: Cria um profile documental
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentProfileCreateRequest'
+      responses:
+        '201':
+          description: Profile criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistryMutationResponse'
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+  /document-profiles/{profileCode}:
+    put:
+      summary: Atualiza um profile documental
+      parameters:
+        - name: profileCode
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentProfileUpdateRequest'
+      responses:
+        '200':
+          description: Profile atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistryMutationResponse'
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+    delete:
+      summary: Desativa um profile documental
+      parameters:
+        - name: profileCode
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Profile desativado
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
   /document-profiles/{profileCode}/schema:
     get:
       summary: Lista as versoes de schema de metadata de um profile
@@ -325,6 +427,45 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DocumentProfileGovernance'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+    put:
+      summary: Atualiza governanca ativa de um profile
+      parameters:
+        - name: profileCode
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentProfileGovernanceUpdateRequest'
+      responses:
+        '200':
+          description: Governanca atualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistryMutationResponse'
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
         '401':
           description: Nao autenticado
           content:
@@ -1853,6 +1994,42 @@ components:
         validityDays:
           type: integer
           minimum: 0
+    DocumentProfileCreateRequest:
+      type: object
+      required: [code, familyCode, name, alias, reviewIntervalDays]
+      properties:
+        code:
+          type: string
+        familyCode:
+          type: string
+        name:
+          type: string
+        alias:
+          type: string
+          minLength: 1
+          maxLength: 24
+        description:
+          type: string
+        reviewIntervalDays:
+          type: integer
+          minimum: 1
+    DocumentProfileUpdateRequest:
+      type: object
+      required: [familyCode, name, alias, reviewIntervalDays]
+      properties:
+        familyCode:
+          type: string
+        name:
+          type: string
+        alias:
+          type: string
+          minLength: 1
+          maxLength: 24
+        description:
+          type: string
+        reviewIntervalDays:
+          type: integer
+          minimum: 1
     ListDocumentProfilesResponse:
       type: object
       required: [items]
@@ -1890,6 +2067,23 @@ components:
       properties:
         profileCode:
           type: string
+        workflowProfile:
+          type: string
+        reviewIntervalDays:
+          type: integer
+          minimum: 1
+        approvalRequired:
+          type: boolean
+        retentionDays:
+          type: integer
+          minimum: 0
+        validityDays:
+          type: integer
+          minimum: 0
+    DocumentProfileGovernanceUpdateRequest:
+      type: object
+      required: [workflowProfile, reviewIntervalDays, approvalRequired, retentionDays, validityDays]
+      properties:
         workflowProfile:
           type: string
         reviewIntervalDays:

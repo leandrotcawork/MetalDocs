@@ -129,6 +129,21 @@ func requiredPermission(method, path string) (iamdomain.Permission, bool) {
 	if method == http.MethodGet && path == "/api/v1/document-types" {
 		return iamdomain.PermDocumentRead, true
 	}
+	if method == http.MethodGet && path == "/api/v1/document-profiles" {
+		return iamdomain.PermDocumentRead, true
+	}
+	if method == http.MethodGet && strings.HasPrefix(path, "/api/v1/document-profiles/") {
+		return iamdomain.PermDocumentRead, true
+	}
+	if method == http.MethodPost && path == "/api/v1/document-profiles" {
+		return iamdomain.PermIAMManageRoles, true
+	}
+	if method == http.MethodPut && strings.HasPrefix(path, "/api/v1/document-profiles/") {
+		return iamdomain.PermIAMManageRoles, true
+	}
+	if method == http.MethodDelete && strings.HasPrefix(path, "/api/v1/document-profiles/") {
+		return iamdomain.PermIAMManageRoles, true
+	}
 	if method == http.MethodGet && path == "/api/v1/process-areas" {
 		return iamdomain.PermDocumentRead, true
 	}

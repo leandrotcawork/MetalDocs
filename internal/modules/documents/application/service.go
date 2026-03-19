@@ -355,6 +355,36 @@ func (s *Service) ListDocumentProfiles(ctx context.Context) ([]domain.DocumentPr
 	return out, nil
 }
 
+func (s *Service) UpsertDocumentProfile(ctx context.Context, item domain.DocumentProfile) error {
+	normalized, err := domain.NormalizeDocumentProfile(item)
+	if err != nil {
+		return err
+	}
+	families, err := s.ListDocumentFamilies(ctx)
+	if err != nil {
+		return err
+	}
+	hasFamily := false
+	for _, family := range families {
+		if strings.EqualFold(family.Code, normalized.FamilyCode) {
+			hasFamily = true
+			break
+		}
+	}
+	if !hasFamily {
+		return domain.ErrInvalidCommand
+	}
+	return s.repo.UpsertDocumentProfile(ctx, normalized)
+}
+
+func (s *Service) DeactivateDocumentProfile(ctx context.Context, code string) error {
+	normalizedCode := strings.ToLower(strings.TrimSpace(code))
+	if normalizedCode == "" {
+		return domain.ErrInvalidCommand
+	}
+	return s.repo.DeactivateDocumentProfile(ctx, normalizedCode)
+}
+
 func (s *Service) ListDocumentProfileSchemas(ctx context.Context, profileCode string) ([]domain.DocumentProfileSchemaVersion, error) {
 	profileCode = strings.ToLower(strings.TrimSpace(profileCode))
 	items, err := s.repo.ListDocumentProfileSchemas(ctx, profileCode)
@@ -379,6 +409,28 @@ func (s *Service) GetDocumentProfileGovernance(ctx context.Context, profileCode 
 		}
 	}
 	return domain.DocumentProfileGovernance{}, err
+}
+
+func (s *Service) UpsertDocumentProfileGovernance(ctx context.Context, item domain.DocumentProfileGovernance) error {
+	normalized, err := domain.NormalizeDocumentProfileGovernance(item)
+	if err != nil {
+		return err
+	}
+	profiles, err := s.ListDocumentProfiles(ctx)
+	if err != nil {
+		return err
+	}
+	hasProfile := false
+	for _, profile := range profiles {
+		if strings.EqualFold(profile.Code, normalized.ProfileCode) {
+			hasProfile = true
+			break
+		}
+	}
+	if !hasProfile {
+		return domain.ErrInvalidCommand
+	}
+	return s.repo.UpsertDocumentProfileGovernance(ctx, normalized)
 }
 
 func (s *Service) ListProcessAreas(ctx context.Context) ([]domain.ProcessArea, error) {

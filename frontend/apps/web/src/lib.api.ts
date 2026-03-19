@@ -299,12 +299,16 @@ export const api = {
     const response = await request<{ items: DocumentProfileItem[] }>("/document-profiles");
     return { items: Array.isArray(response.items) ? response.items.map(normalizeDocumentProfile) : [] };
   },
+  createDocumentProfile: (body: Record<string, unknown>) => request<{ code: string }>("/document-profiles", { method: "POST", body: JSON.stringify(body) }),
+  updateDocumentProfile: (code: string, body: Record<string, unknown>) => request<{ code: string }>(`/document-profiles/${encodeURIComponent(code)}`, { method: "PUT", body: JSON.stringify(body) }),
+  deleteDocumentProfile: (code: string) => request<void>(`/document-profiles/${encodeURIComponent(code)}`, { method: "DELETE" }),
   getDocumentProfileSchema: async (profileCode: string) => {
     const response = await request<{ items: DocumentProfileSchemaItem[] }>(`/document-profiles/${encodeURIComponent(profileCode)}/schema`);
     const items = Array.isArray(response.items) ? response.items.map(normalizeDocumentProfileSchema) : [];
     return items.find((item) => item.isActive) ?? items[0] ?? null;
   },
   getDocumentProfileGovernance: async (profileCode: string) => normalizeDocumentProfileGovernance(await request<DocumentProfileGovernanceItem>(`/document-profiles/${encodeURIComponent(profileCode)}/governance`)),
+  updateDocumentProfileGovernance: (profileCode: string, body: Record<string, unknown>) => request<{ code: string }>(`/document-profiles/${encodeURIComponent(profileCode)}/governance`, { method: "PUT", body: JSON.stringify(body) }),
   listProcessAreas: async () => {
     const response = await request<{ items: ProcessAreaItem[] }>("/process-areas");
     return { items: Array.isArray(response.items) ? response.items.map(normalizeProcessArea) : [] };

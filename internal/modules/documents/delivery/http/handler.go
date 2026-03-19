@@ -107,6 +107,19 @@ type DocumentProfileResponse struct {
 	ValidityDays        int    `json:"validityDays"`
 }
 
+type UpsertDocumentProfileRequest struct {
+	FamilyCode          string `json:"familyCode"`
+	Name                string `json:"name"`
+	Alias               string `json:"alias"`
+	Description         string `json:"description"`
+	ReviewIntervalDays  int    `json:"reviewIntervalDays"`
+	ActiveSchemaVersion int    `json:"activeSchemaVersion"`
+	WorkflowProfile     string `json:"workflowProfile"`
+	ApprovalRequired    bool   `json:"approvalRequired"`
+	RetentionDays       int    `json:"retentionDays"`
+	ValidityDays        int    `json:"validityDays"`
+}
+
 type DocumentProfileSchemaResponse struct {
 	ProfileCode   string                     `json:"profileCode"`
 	Version       int                        `json:"version"`
@@ -116,6 +129,14 @@ type DocumentProfileSchemaResponse struct {
 
 type DocumentProfileGovernanceResponse struct {
 	ProfileCode        string `json:"profileCode"`
+	WorkflowProfile    string `json:"workflowProfile"`
+	ReviewIntervalDays int    `json:"reviewIntervalDays"`
+	ApprovalRequired   bool   `json:"approvalRequired"`
+	RetentionDays      int    `json:"retentionDays"`
+	ValidityDays       int    `json:"validityDays"`
+}
+
+type UpsertDocumentProfileGovernanceRequest struct {
 	WorkflowProfile    string `json:"workflowProfile"`
 	ReviewIntervalDays int    `json:"reviewIntervalDays"`
 	ApprovalRequired   bool   `json:"approvalRequired"`
@@ -307,11 +328,17 @@ func (h *Handler) handleDocumentFamilies(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *Handler) handleDocumentProfiles(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
+	switch r.Method {
+	case http.MethodGet:
+		h.handleListDocumentProfiles(w, r)
+	case http.MethodPost:
+		h.handleCreateDocumentProfile(w, r)
+	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
 	}
+}
 
+func (h *Handler) handleListDocumentProfiles(w http.ResponseWriter, r *http.Request) {
 	traceID := requestTraceID(r)
 	items, err := h.service.ListDocumentProfiles(r.Context())
 	if err != nil {
@@ -342,16 +369,22 @@ func (h *Handler) handleDocumentProfiles(w http.ResponseWriter, r *http.Request)
 func (h *Handler) handleDocumentProfileSubRoutes(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/document-profiles/")
 	parts := strings.Split(path, "/")
-	if len(parts) != 2 || strings.TrimSpace(parts[0]) == "" {
+	if strings.TrimSpace(parts[0]) == "" {
 		writeAPIError(w, http.StatusNotFound, "DOC_NOT_FOUND", "Route not found", requestTraceID(r))
 		return
 	}
 
 	switch {
-	case parts[1] == "schema" && r.Method == http.MethodGet:
+	case len(parts) == 1 && r.Method == http.MethodPut:
+		h.handleUpdateDocumentProfile(w, r, parts[0])
+	case len(parts) == 1 && r.Method == http.MethodDelete:
+		h.handleDeleteDocumentProfile(w, r, parts[0])
+	case len(parts) == 2 && parts[1] == "schema" && r.Method == http.MethodGet:
 		h.handleDocumentProfileSchemas(w, r, parts[0])
-	case parts[1] == "governance" && r.Method == http.MethodGet:
+	case len(parts) == 2 && parts[1] == "governance" && r.Method == http.MethodGet:
 		h.handleDocumentProfileGovernance(w, r, parts[0])
+	case len(parts) == 2 && parts[1] == "governance" && r.Method == http.MethodPut:
+		h.handleUpdateDocumentProfileGovernance(w, r, parts[0])
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
@@ -392,6 +425,107 @@ func (h *Handler) handleDocumentProfileGovernance(w http.ResponseWriter, r *http
 		RetentionDays:      item.RetentionDays,
 		ValidityDays:       item.ValidityDays,
 	})
+}
+
+func (h *Handler) handleCreateDocumentProfile(w http.ResponseWriter, r *http.Request) {
+	traceID := requestTraceID(r)
+	if !isRegistryAdmin(r.Context()) {
+		writeAPIError(w, http.StatusForbidden, "AUTH_FORBIDDEN", "Insufficient permissions", traceID)
+		return
+	}
+	var req struct {
+		Code string `json:"code"`
+		UpsertDocumentProfileRequest
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid JSON payload", traceID)
+		return
+	}
+	if err := h.service.UpsertDocumentProfile(r.Context(), domain.DocumentProfile{
+		Code:                req.Code,
+		FamilyCode:          req.FamilyCode,
+		Name:                req.Name,
+		Alias:               req.Alias,
+		Description:         req.Description,
+		ReviewIntervalDays:  req.ReviewIntervalDays,
+		ActiveSchemaVersion: req.ActiveSchemaVersion,
+		WorkflowProfile:     req.WorkflowProfile,
+		ApprovalRequired:    req.ApprovalRequired,
+		RetentionDays:       req.RetentionDays,
+		ValidityDays:        req.ValidityDays,
+	}); err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]any{"code": strings.ToLower(strings.TrimSpace(req.Code))})
+}
+
+func (h *Handler) handleUpdateDocumentProfile(w http.ResponseWriter, r *http.Request, code string) {
+	traceID := requestTraceID(r)
+	if !isRegistryAdmin(r.Context()) {
+		writeAPIError(w, http.StatusForbidden, "AUTH_FORBIDDEN", "Insufficient permissions", traceID)
+		return
+	}
+	var req UpsertDocumentProfileRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid JSON payload", traceID)
+		return
+	}
+	if err := h.service.UpsertDocumentProfile(r.Context(), domain.DocumentProfile{
+		Code:                code,
+		FamilyCode:          req.FamilyCode,
+		Name:                req.Name,
+		Alias:               req.Alias,
+		Description:         req.Description,
+		ReviewIntervalDays:  req.ReviewIntervalDays,
+		ActiveSchemaVersion: req.ActiveSchemaVersion,
+		WorkflowProfile:     req.WorkflowProfile,
+		ApprovalRequired:    req.ApprovalRequired,
+		RetentionDays:       req.RetentionDays,
+		ValidityDays:        req.ValidityDays,
+	}); err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"code": code})
+}
+
+func (h *Handler) handleDeleteDocumentProfile(w http.ResponseWriter, r *http.Request, code string) {
+	traceID := requestTraceID(r)
+	if !isRegistryAdmin(r.Context()) {
+		writeAPIError(w, http.StatusForbidden, "AUTH_FORBIDDEN", "Insufficient permissions", traceID)
+		return
+	}
+	if err := h.service.DeactivateDocumentProfile(r.Context(), code); err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) handleUpdateDocumentProfileGovernance(w http.ResponseWriter, r *http.Request, profileCode string) {
+	traceID := requestTraceID(r)
+	if !isRegistryAdmin(r.Context()) {
+		writeAPIError(w, http.StatusForbidden, "AUTH_FORBIDDEN", "Insufficient permissions", traceID)
+		return
+	}
+	var req UpsertDocumentProfileGovernanceRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid JSON payload", traceID)
+		return
+	}
+	if err := h.service.UpsertDocumentProfileGovernance(r.Context(), domain.DocumentProfileGovernance{
+		ProfileCode:        profileCode,
+		WorkflowProfile:    req.WorkflowProfile,
+		ReviewIntervalDays: req.ReviewIntervalDays,
+		ApprovalRequired:   req.ApprovalRequired,
+		RetentionDays:      req.RetentionDays,
+		ValidityDays:       req.ValidityDays,
+	}); err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"code": profileCode})
 }
 
 func (h *Handler) handleProcessAreas(w http.ResponseWriter, r *http.Request) {
@@ -1065,6 +1199,8 @@ func (h *Handler) writeDomainError(w http.ResponseWriter, err error, traceID str
 		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid request data", traceID)
 	case errors.Is(err, domain.ErrInvalidDocumentType):
 		writeAPIError(w, http.StatusBadRequest, "INVALID_DOCUMENT_TYPE", "Invalid document type", traceID)
+	case errors.Is(err, domain.ErrInvalidDocumentProfileAlias):
+		writeAPIError(w, http.StatusBadRequest, "INVALID_DOCUMENT_PROFILE_ALIAS", "Invalid document profile alias", traceID)
 	case errors.Is(err, domain.ErrInvalidAccessPolicy):
 		writeAPIError(w, http.StatusBadRequest, "INVALID_ACCESS_POLICY", "Invalid access policy", traceID)
 	case errors.Is(err, domain.ErrInvalidMetadata):

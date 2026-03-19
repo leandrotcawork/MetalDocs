@@ -50,6 +50,14 @@ func (r *atomicRepoSpy) ListDocumentProfiles(context.Context) ([]domain.Document
 	return domain.DefaultDocumentProfiles(), nil
 }
 
+func (r *atomicRepoSpy) UpsertDocumentProfile(context.Context, domain.DocumentProfile) error {
+	return nil
+}
+
+func (r *atomicRepoSpy) DeactivateDocumentProfile(context.Context, string) error {
+	return nil
+}
+
 func (r *atomicRepoSpy) ListDocumentProfileSchemas(_ context.Context, profileCode string) ([]domain.DocumentProfileSchemaVersion, error) {
 	items := domain.DefaultDocumentProfileSchemas()
 	if profileCode == "" {
@@ -71,6 +79,10 @@ func (r *atomicRepoSpy) GetDocumentProfileGovernance(_ context.Context, profileC
 		}
 	}
 	return domain.DocumentProfileGovernance{}, domain.ErrInvalidCommand
+}
+
+func (r *atomicRepoSpy) UpsertDocumentProfileGovernance(context.Context, domain.DocumentProfileGovernance) error {
+	return nil
 }
 
 func (r *atomicRepoSpy) ListProcessAreas(context.Context) ([]domain.ProcessArea, error) {

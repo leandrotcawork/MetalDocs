@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { metalNobreProcessAreaHint, metalNobreProfileContext } from "../features/documents/adapters/metalNobreExperience";
 import type { DocumentProfileGovernanceItem, DocumentProfileItem, DocumentProfileSchemaItem, ProcessAreaItem, SubjectItem } from "../lib.types";
 import { WorkspaceDataState } from "./WorkspaceDataState";
@@ -23,13 +23,40 @@ type RegistryExplorerProps = {
   onCreateSubject: (payload: { code: string; processAreaCode: string; name: string; description: string }) => void | Promise<void>;
   onUpdateSubject: (payload: { code: string; processAreaCode: string; name: string; description: string }) => void | Promise<void>;
   onDeleteSubject: (code: string) => void | Promise<void>;
+  onCreateDocumentProfile: (payload: { code: string; familyCode: string; name: string; alias: string; description: string; reviewIntervalDays: number }) => void | Promise<void>;
+  onUpdateDocumentProfile: (payload: { code: string; familyCode: string; name: string; alias: string; description: string; reviewIntervalDays: number }) => void | Promise<void>;
+  onDeleteDocumentProfile: (code: string) => void | Promise<void>;
+  onUpdateDocumentProfileGovernance: (payload: { profileCode: string; workflowProfile: string; reviewIntervalDays: number; approvalRequired: boolean; retentionDays: number; validityDays: number }) => void | Promise<void>;
 };
 
 export function RegistryExplorer(props: RegistryExplorerProps) {
   const selectedProfile = props.documentProfiles.find((item) => item.code === props.selectedProfileCode) ?? props.documentProfiles[0] ?? null;
   const hasRegistryData = props.documentProfiles.length > 0;
+  const [profileForm, setProfileForm] = useState({ code: "", familyCode: "", name: "", alias: "", description: "", reviewIntervalDays: 365 });
+  const [governanceForm, setGovernanceForm] = useState({ workflowProfile: "standard_approval", reviewIntervalDays: 365, approvalRequired: true, retentionDays: 3650, validityDays: 0 });
   const [processAreaForm, setProcessAreaForm] = useState({ code: "", name: "", description: "" });
   const [subjectForm, setSubjectForm] = useState({ code: "", processAreaCode: "", name: "", description: "" });
+
+  useEffect(() => {
+    if (!selectedProfile) {
+      return;
+    }
+    setProfileForm({
+      code: selectedProfile.code,
+      familyCode: selectedProfile.familyCode,
+      name: selectedProfile.name,
+      alias: selectedProfile.alias,
+      description: selectedProfile.description,
+      reviewIntervalDays: selectedProfile.reviewIntervalDays,
+    });
+    setGovernanceForm({
+      workflowProfile: props.selectedProfileGovernance?.workflowProfile ?? "standard_approval",
+      reviewIntervalDays: props.selectedProfileGovernance?.reviewIntervalDays ?? selectedProfile.reviewIntervalDays,
+      approvalRequired: props.selectedProfileGovernance?.approvalRequired ?? true,
+      retentionDays: props.selectedProfileGovernance?.retentionDays ?? 0,
+      validityDays: props.selectedProfileGovernance?.validityDays ?? 0,
+    });
+  }, [props.selectedProfileGovernance, selectedProfile]);
 
   return (
     <WorkspaceViewFrame
@@ -106,11 +133,109 @@ export function RegistryExplorer(props: RegistryExplorerProps) {
                 <li><span>Retention</span><small>{props.selectedProfileGovernance?.retentionDays ? `${props.selectedProfileGovernance.retentionDays} dias` : "-"}</small></li>
                 <li><span>Validity</span><small>{props.selectedProfileGovernance?.validityDays ? `${props.selectedProfileGovernance.validityDays} dias` : "-"}</small></li>
               </ul>
+              {props.showAdmin && selectedProfile && (
+                <div className="stack">
+                  <input
+                    placeholder="Workflow profile"
+                    value={governanceForm.workflowProfile}
+                    onChange={(event) => setGovernanceForm((current) => ({ ...current, workflowProfile: event.target.value }))}
+                  />
+                  <input
+                    type="number"
+                    min={1}
+                    placeholder="Intervalo de revisao (dias)"
+                    value={governanceForm.reviewIntervalDays}
+                    onChange={(event) => setGovernanceForm((current) => ({ ...current, reviewIntervalDays: Number(event.target.value || 0) }))}
+                  />
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="Retencao (dias)"
+                    value={governanceForm.retentionDays}
+                    onChange={(event) => setGovernanceForm((current) => ({ ...current, retentionDays: Number(event.target.value || 0) }))}
+                  />
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="Validade (dias)"
+                    value={governanceForm.validityDays}
+                    onChange={(event) => setGovernanceForm((current) => ({ ...current, validityDays: Number(event.target.value || 0) }))}
+                  />
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={governanceForm.approvalRequired}
+                      onChange={(event) => setGovernanceForm((current) => ({ ...current, approvalRequired: event.target.checked }))}
+                    />
+                    Aprovacao obrigatoria
+                  </label>
+                  <div className="stack-inline">
+                    <button
+                      type="button"
+                      onClick={() => void props.onUpdateDocumentProfileGovernance({
+                        profileCode: selectedProfile.code,
+                        workflowProfile: governanceForm.workflowProfile,
+                        reviewIntervalDays: governanceForm.reviewIntervalDays,
+                        approvalRequired: governanceForm.approvalRequired,
+                        retentionDays: governanceForm.retentionDays,
+                        validityDays: governanceForm.validityDays,
+                      })}
+                    >
+                      Atualizar governanca
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="catalog-card">
               <h3>Contexto aplicado</h3>
               <p className="catalog-muted">{selectedProfile ? metalNobreProfileContext(selectedProfile.code) : "Selecione um profile."}</p>
+            </div>
+
+            <div className="catalog-card">
+              <h3>Profiles (admin)</h3>
+              {props.showAdmin && (
+                <div className="stack">
+                  <input
+                    placeholder="Codigo do profile"
+                    value={profileForm.code}
+                    onChange={(event) => setProfileForm((current) => ({ ...current, code: event.target.value }))}
+                  />
+                  <input
+                    placeholder="Family code"
+                    value={profileForm.familyCode}
+                    onChange={(event) => setProfileForm((current) => ({ ...current, familyCode: event.target.value }))}
+                  />
+                  <input
+                    placeholder="Nome do profile"
+                    value={profileForm.name}
+                    onChange={(event) => setProfileForm((current) => ({ ...current, name: event.target.value }))}
+                  />
+                  <input
+                    placeholder="Alias curto"
+                    value={profileForm.alias}
+                    onChange={(event) => setProfileForm((current) => ({ ...current, alias: event.target.value }))}
+                  />
+                  <input
+                    placeholder="Descricao"
+                    value={profileForm.description}
+                    onChange={(event) => setProfileForm((current) => ({ ...current, description: event.target.value }))}
+                  />
+                  <input
+                    type="number"
+                    min={1}
+                    placeholder="Revisao (dias)"
+                    value={profileForm.reviewIntervalDays}
+                    onChange={(event) => setProfileForm((current) => ({ ...current, reviewIntervalDays: Number(event.target.value || 0) }))}
+                  />
+                  <div className="stack-inline">
+                    <button type="button" onClick={() => void props.onCreateDocumentProfile(profileForm)}>Criar profile</button>
+                    <button type="button" className="ghost-button" onClick={() => void props.onUpdateDocumentProfile(profileForm)}>Atualizar profile</button>
+                    <button type="button" className="ghost-button" onClick={() => void props.onDeleteDocumentProfile(profileForm.code)}>Desativar profile</button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="catalog-card">

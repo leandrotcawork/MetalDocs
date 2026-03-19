@@ -701,6 +701,11 @@ Progresso fase 1:
 - OpenAPI v1 atualizado para novos endpoints de administracao do taxonomy registry
 - `RegistryExplorer` recebeu controles admin para operar CRUD de `process areas` e `subjects` consumindo os novos endpoints
 
+Progresso fase 2:
+- backend passou a suportar write-path admin para `document profiles` (create/update/deactivate) e update de `governance`
+- OpenAPI v1 evoluiu para cobrir os novos contratos de profile/governance write mantendo compatibilidade additive
+- `RegistryExplorer` ganhou controles admin para perfil e governanca, mantendo `registry` como superficie unica de administracao
+
 ## Task 037 - Realtime event stream for operations center
 Status: `pending`
 

@@ -14,8 +14,11 @@ type Repository interface {
 	ListDocumentsForReviewReminder(ctx context.Context, fromInclusive, toInclusive time.Time) ([]Document, error)
 	ListDocumentFamilies(ctx context.Context) ([]DocumentFamily, error)
 	ListDocumentProfiles(ctx context.Context) ([]DocumentProfile, error)
+	UpsertDocumentProfile(ctx context.Context, item DocumentProfile) error
+	DeactivateDocumentProfile(ctx context.Context, code string) error
 	ListDocumentProfileSchemas(ctx context.Context, profileCode string) ([]DocumentProfileSchemaVersion, error)
 	GetDocumentProfileGovernance(ctx context.Context, profileCode string) (DocumentProfileGovernance, error)
+	UpsertDocumentProfileGovernance(ctx context.Context, item DocumentProfileGovernance) error
 	ListProcessAreas(ctx context.Context) ([]ProcessArea, error)
 	UpsertProcessArea(ctx context.Context, item ProcessArea) error
 	DeactivateProcessArea(ctx context.Context, code string) error

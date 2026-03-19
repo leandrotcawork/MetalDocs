@@ -569,6 +569,50 @@ function AppContent() {
     }
   }
 
+  async function handleCreateDocumentProfile(payload: { code: string; familyCode: string; name: string; alias: string; description: string; reviewIntervalDays: number }) {
+    try {
+      setError("");
+      await api.createDocumentProfile(payload);
+      setMessage("Profile criado.");
+      await refreshWorkspace();
+    } catch (err) {
+      handleError(err);
+    }
+  }
+
+  async function handleUpdateDocumentProfile(payload: { code: string; familyCode: string; name: string; alias: string; description: string; reviewIntervalDays: number }) {
+    try {
+      setError("");
+      await api.updateDocumentProfile(payload.code, payload);
+      setMessage("Profile atualizado.");
+      await refreshWorkspace();
+    } catch (err) {
+      handleError(err);
+    }
+  }
+
+  async function handleDeleteDocumentProfile(code: string) {
+    try {
+      setError("");
+      await api.deleteDocumentProfile(code);
+      setMessage("Profile desativado.");
+      await refreshWorkspace();
+    } catch (err) {
+      handleError(err);
+    }
+  }
+
+  async function handleUpdateDocumentProfileGovernance(payload: { profileCode: string; workflowProfile: string; reviewIntervalDays: number; approvalRequired: boolean; retentionDays: number; validityDays: number }) {
+    try {
+      setError("");
+      await api.updateDocumentProfileGovernance(payload.profileCode, payload);
+      setMessage("Governanca atualizada.");
+      await refreshWorkspace();
+    } catch (err) {
+      handleError(err);
+    }
+  }
+
   async function handleUpdateProcessArea(payload: { code: string; name: string; description: string }) {
     try {
       setError("");
@@ -729,6 +773,10 @@ function AppContent() {
           onCreateSubject={handleCreateSubject}
           onUpdateSubject={handleUpdateSubject}
           onDeleteSubject={handleDeleteSubject}
+          onCreateDocumentProfile={handleCreateDocumentProfile}
+          onUpdateDocumentProfile={handleUpdateDocumentProfile}
+          onDeleteDocumentProfile={handleDeleteDocumentProfile}
+          onUpdateDocumentProfileGovernance={handleUpdateDocumentProfileGovernance}
         />
       );
     }

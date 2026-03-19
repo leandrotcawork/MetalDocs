@@ -64,7 +64,9 @@ function metadataValueExample(rule: { name: string; type: string }, profileCode:
 function metadataTextForProfileSchema(profileCode: string, schema?: DocumentProfileSchemaItem | null): string {
   const metadata: Record<string, string> = {};
   for (const rule of schema?.metadataRules ?? []) {
-    metadata[rule.name] = metadataValueExample(rule, profileCode);
+    const key = rule.name.trim();
+    if (!key) continue;
+    metadata[key] = "";
   }
   return JSON.stringify(metadata, null, 2);
 }
@@ -80,6 +82,8 @@ const emptyDocumentForm = {
   department: "Operations",
   classification: "INTERNAL",
   tags: "",
+  effectiveAt: "",
+  expiryAt: "",
   metadata: "{}",
   initialContent: "",
 };
@@ -448,6 +452,8 @@ function AppContent() {
         documentType: documentForm.documentProfile,
         documentProfile: documentForm.documentProfile,
         tags: documentForm.tags.split(",").map((item) => item.trim()).filter(Boolean),
+        effectiveAt: documentForm.effectiveAt ? new Date(documentForm.effectiveAt).toISOString() : undefined,
+        expiryAt: documentForm.expiryAt ? new Date(documentForm.expiryAt).toISOString() : undefined,
         metadata: documentForm.metadata.trim() ? JSON.parse(documentForm.metadata) : {},
       });
       setDocumentForm({

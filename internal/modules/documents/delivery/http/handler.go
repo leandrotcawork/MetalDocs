@@ -124,13 +124,19 @@ type DocumentProfileSchemaResponse struct {
 	ProfileCode   string                     `json:"profileCode"`
 	Version       int                        `json:"version"`
 	IsActive      bool                       `json:"isActive"`
-	MetadataRules []domain.MetadataFieldRule `json:"metadataRules"`
+	MetadataRules []MetadataFieldRuleResponse `json:"metadataRules"`
 }
 
 type UpsertDocumentProfileSchemaRequest struct {
 	Version       int                        `json:"version"`
 	IsActive      bool                       `json:"isActive"`
 	MetadataRules []domain.MetadataFieldRule `json:"metadataRules"`
+}
+
+type MetadataFieldRuleResponse struct {
+	Name     string `json:"name"`
+	Type     string `json:"type"`
+	Required bool   `json:"required"`
 }
 
 type DocumentProfileGovernanceResponse struct {
@@ -442,11 +448,19 @@ func (h *Handler) handleDocumentProfileSchemas(w http.ResponseWriter, r *http.Re
 
 	out := make([]DocumentProfileSchemaResponse, 0, len(items))
 	for _, item := range items {
+		rules := make([]MetadataFieldRuleResponse, 0, len(item.MetadataRules))
+		for _, rule := range item.MetadataRules {
+			rules = append(rules, MetadataFieldRuleResponse{
+				Name:     rule.Name,
+				Type:     rule.Type,
+				Required: rule.Required,
+			})
+		}
 		out = append(out, DocumentProfileSchemaResponse{
 			ProfileCode:   item.ProfileCode,
 			Version:       item.Version,
 			IsActive:      item.IsActive,
-			MetadataRules: item.MetadataRules,
+			MetadataRules: rules,
 		})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": out})

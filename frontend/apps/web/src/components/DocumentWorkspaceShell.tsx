@@ -208,6 +208,7 @@ export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
     [props.documentProfiles, props.documents, props.processAreas],
   );
   const currentTitle = activeTitle(props.activeView);
+  const isCreateView = props.activeView === "create";
   const isCatalogView = isDocumentCatalogView(props.activeView);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -475,8 +476,8 @@ export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
           </div>
         </aside>
 
-        <main className={`workspace-main ${isCatalogView ? "is-toolbarless" : ""}`}>
-          {!isCatalogView && (
+        <main className={`workspace-main ${isCatalogView || isCreateView ? "is-toolbarless" : ""} ${isCreateView ? "is-create-view" : ""}`}>
+          {!isCatalogView && !isCreateView && (
             <div className="workspace-toolbar workspace-toolbar-as-panel">
               <div className="workspace-toolbar-top">
                 <p className="workspace-toolbar-kicker">Workspace</p>
@@ -486,7 +487,9 @@ export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
               </div>
             </div>
           )}
-          <div className={`workspace-content ${isCatalogView ? "is-toolbarless" : ""}`}>{props.children}</div>
+          {isCreateView
+            ? props.children
+            : <div className={`workspace-content ${isCatalogView ? "is-toolbarless" : ""}`}>{props.children}</div>}
         </main>
       </div>
     </div>

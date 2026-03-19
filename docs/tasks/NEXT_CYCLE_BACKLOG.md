@@ -993,3 +993,137 @@ Entrega:
 - `main.tsx` importa pesos necessarios localmente
 - `styles.css` remove `@import` de Google Fonts
 - runbook de dev atualizado com regra CSP/fonts
+
+## Task 050 - Classification semantics + audience model (ADR + contract)
+Status: `todo`
+
+Objetivo:
+Congelar uma semantica profissional e escalavel para `classification` (sensibilidade) e `audience` (quem pode ver/editar), evitando acoplamento de regra no frontend e prevenindo drift de contrato.
+
+Contexto:
+Hoje `classification` existe no documento, mas nao muda permissao. Permissao real e decidida por `access_policies`.
+
+Decisao (a ser registrada em ADR):
+- `classification` = label de sensibilidade (PUBLIC/INTERNAL/CONFIDENTIAL/RESTRICTED). Nao e ACL.
+- `audience` = policy explicita que gera/enforce policies no backend.
+- Modelo inicial v1 baseado em RBAC (roles), sem grupos complexos.
+
+Entregaveis:
+- ADR novo: `docs/adr/0009-document-audience-and-classification.md`
+- OpenAPI v1 atualizado com novo bloco opcional `audience` no create.
+
+Contrato (OpenAPI):
+Adicionar em `CreateDocumentRequest`:
+- `audience` (opcional):
+  - `mode` enum: `INTERNAL` | `DEPARTMENT` | `AREAS` | `EXPLICIT`
+  - `departmentCodes` array string (opcional; usado em `DEPARTMENT/AREAS`)
+  - `processAreaCodes` array string (opcional; usado em `AREAS`)
+  - `roleCodes` array string (opcional; usado em `EXPLICIT`)
+  - `userIds` array string (opcional; usado em `EXPLICIT` para RESTRICTED)
+
+Regras de negocio (descricao, nao implementacao aqui):
+- `PUBLIC`: sem restricao adicional (policies podem ser vazias).
+- `INTERNAL`: sem restricao adicional (padrao atual).
+- `CONFIDENTIAL`:
+  - default `audience.mode = DEPARTMENT` usando `department` selecionado no documento.
+- `RESTRICTED`:
+  - default `audience.mode = DEPARTMENT` (mais fechado por padrao) e permite EXPLICIT mais tarde.
+
+Aceite:
+- ADR aceito descrevendo semantica, defaults e tradeoffs.
+- OpenAPI compila e contract tests passam.
+- Frontend nao hardcoda regra de permissao; apenas envia `audience` quando selecionado.
+
+## Task 051 - Persist and enforce audience policies for documents
+Status: `todo`
+
+Objetivo:
+Implementar enforcement real de acesso baseado em `audience` gerando `access_policies` por documento, mantendo o modelo atual (capability-based) como fonte de verdade.
+
+Escopo backend:
+- Domain:
+  - novo tipo `domain.DocumentAudience` (ou equivalente) apenas como comando de aplicacao (nao como regra no frontend).
+- Application:
+  - `CreateDocument` passa a criar policies por `document` scope quando `audience` exigir (CONFIDENTIAL/RESTRICTED).
+  - policies minimas por documento para capabilities:
+    - `document.view`
+    - `document.edit` (opcional v1: apenas owner/admin)
+    - `document.upload_attachment` (seguir `edit`)
+- Infrastructure:
+  - reuse `metaldocs.document_access_policies` (nao criar tabela nova).
+  - inserir policies no mesmo fluxo atomico da criacao (ideal: transacao/AtomicCreateRepository).
+
+Modelo RBAC recomendado (sem grupos):
+- Mapear audiencias para `subject_type=role`:
+  - dept role: `dept:<departmentCode>`
+  - area role: `area:<processAreaCode>`
+  - explicit roles: conforme `roleCodes`
+  - explicit users: `subject_type=user` com `userId`
+
+Defaults de policy:
+- Sempre garantir `owner` tem `document.view` e `document.edit`.
+- `admin` role sempre tem todas capabilities.
+- Para `audience.mode=DEPARTMENT`: adicionar allow de `document.view` para `dept:<departmentCode>`.
+- Para `audience.mode=AREAS`: allow `document.view` para `dept:<departmentCode>` e `area:<processAreaCode>` selecionados.
+- Para `audience.mode=EXPLICIT`: allow `document.view` para `roleCodes/userIds`.
+
+Aceite:
+- Criar documento `CONFIDENTIAL/RESTRICTED` resulta em policies persistidas por `ResourceScopeDocument`.
+- Usuario sem role/allow nao consegue `GET /documents/{id}` (retorna `DOC_NOT_FOUND` por design atual).
+- Usuario com role apropriado consegue visualizar.
+- Testes:
+  - unit: policy building (audience -> policies)
+  - integration: enforcement na rota de `GetDocument` e `ListDocuments` (ao menos smoke).
+
+## Task 052 - Departments registry + role conventions for access
+Status: `todo`
+
+Objetivo:
+Parar de tratar `department` como string livre e criar uma registry canonica para:
+1) padronizar UI (dropdown)
+2) padronizar roles `dept:<code>` e defaults de audience.
+
+Escopo:
+- DB migration:
+  - tabela `metaldocs.document_departments`:
+    - `code` TEXT PK
+    - `name` TEXT NOT NULL
+    - `description` TEXT NOT NULL DEFAULT ''
+    - `is_active` BOOLEAN NOT NULL DEFAULT TRUE
+    - timestamps
+  - seed inicial Metal Nobre (exemplos): `quality`, `operations`, `commercial`, `finance`, `logistics`
+- Backend:
+  - endpoints CRUD admin-only (pode ser faseado: list/read primeiro).
+  - validação: code lowercase, name trimmed.
+- IAM/Admin:
+  - orientar que usuarios recebam roles `dept:<code>` (via tela de roles existente) para viabilizar enforcement.
+
+Aceite:
+- Create document usa dropdown de departamentos.
+- Roles `dept:<code>` reconhecidas pelo enforcement de `Task 051`.
+
+## Task 053 - UI: Access selector tied to classification (Create Document)
+Status: `todo`
+
+Objetivo:
+Evoluir a UX de classificacao para um padrao profissional:
+1) classificacao com explicacao rica
+2) quando CONFIDENTIAL/RESTRICTED, exibir seletor de audiencia
+3) defaults seguros e feedback claro.
+
+Escopo frontend:
+- `DocumentCreateContentStep`:
+  - manter chips (PUBLIC/INTERNAL/CONFIDENTIAL/RESTRICTED) com copy melhor.
+  - ao escolher CONFIDENTIAL/RESTRICTED, mostrar bloco "Quem pode ver":
+    - modo: Departamento / Areas / Explicito (pode iniciar apenas Departamento)
+    - selecao de departamento(s) (multi-select) e/ou areas (process areas)
+  - nao aplicar regra no frontend: apenas montar payload `audience` do contrato.
+
+Escopo backend (suporte):
+- `CreateDocumentRequest` aceita `audience`.
+- backend calcula defaults quando `audience` omitido (para manter compatibilidade).
+
+Aceite:
+- Criar doc CONFIDENTIAL sem mexer em nada gera audience default seguro (departamento).
+- UI deixa explicito que permissao e aplicada pelo backend (sem promessa falsa).
+- Nenhum hardcode de "departamentos/areas" fora da API.

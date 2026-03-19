@@ -2115,6 +2115,8 @@ components:
         expiryAt:
           type: string
           format: date-time
+        audience:
+          $ref: '#/components/schemas/DocumentAudience'
         metadata:
           type: object
           additionalProperties: true
@@ -2217,6 +2219,29 @@ components:
           type: string
         required:
           type: boolean
+    DocumentAudience:
+      type: object
+      required: [mode]
+      properties:
+        mode:
+          type: string
+          enum: [INTERNAL, DEPARTMENT, AREAS, EXPLICIT]
+        departmentCodes:
+          type: array
+          items:
+            type: string
+        processAreaCodes:
+          type: array
+          items:
+            type: string
+        roleCodes:
+          type: array
+          items:
+            type: string
+        userIds:
+          type: array
+          items:
+            type: string
     DocumentTypeItem:
       type: object
       required: [code, name, description, reviewIntervalDays]

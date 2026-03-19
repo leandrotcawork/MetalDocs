@@ -262,25 +262,19 @@ func DefaultDocumentProfileSchemas() []DocumentProfileSchemaVersion {
 			ProfileCode: "po",
 			Version:     1,
 			IsActive:    true,
-			MetadataRules: []MetadataFieldRule{
-				{Name: "procedure_code", Type: "string", Required: true},
-			},
+			MetadataRules: []MetadataFieldRule{},
 		},
 		DocumentProfileSchemaVersion{
 			ProfileCode: "it",
 			Version:     1,
 			IsActive:    true,
-			MetadataRules: []MetadataFieldRule{
-				{Name: "instruction_code", Type: "string", Required: true},
-			},
+			MetadataRules: []MetadataFieldRule{},
 		},
 		DocumentProfileSchemaVersion{
 			ProfileCode: "rg",
 			Version:     1,
 			IsActive:    true,
-			MetadataRules: []MetadataFieldRule{
-				{Name: "record_code", Type: "string", Required: true},
-			},
+			MetadataRules: []MetadataFieldRule{},
 		},
 	}
 }
@@ -402,14 +396,8 @@ type MetadataFieldRule struct {
 
 func DefaultMetadataRules() map[string][]MetadataFieldRule {
 	return map[string][]MetadataFieldRule{
-		"po": {
-			{Name: "procedure_code", Type: "string", Required: true},
-		},
-		"it": {
-			{Name: "instruction_code", Type: "string", Required: true},
-		},
-		"rg": {
-			{Name: "record_code", Type: "string", Required: true},
-		},
+		"po": {},
+		"it": {},
+		"rg": {},
 	}
 }

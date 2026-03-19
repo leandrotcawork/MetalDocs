@@ -3,6 +3,7 @@ import { metalNobreProcessAreaHint, metalNobreProfileContext } from "../features
 import type { DocumentProfileGovernanceItem, DocumentProfileItem, DocumentProfileSchemaItem, MetadataFieldRuleItem, ProcessAreaItem, SubjectItem } from "../lib.types";
 import { WorkspaceDataState } from "./WorkspaceDataState";
 import { WorkspaceViewFrame } from "./WorkspaceViewFrame";
+import { FilterDropdown, type SelectMenuOption } from "./ui/FilterDropdown";
 
 type LoadState = "idle" | "loading" | "ready" | "error";
 
@@ -195,14 +196,12 @@ export function RegistryExplorer(props: RegistryExplorerProps) {
                           value={rule.name}
                           onChange={(event) => updateSchemaRule(index, { ...rule, name: event.target.value })}
                         />
-                        <select
+                        <FilterDropdown
+                          id={`schema-rule-type-${index}`}
                           value={rule.type}
-                          onChange={(event) => updateSchemaRule(index, { ...rule, type: event.target.value })}
-                        >
-                          {metadataTypeOptions.map((type) => (
-                            <option key={type} value={type}>{type}</option>
-                          ))}
-                        </select>
+                          options={metadataTypeOptions.map<SelectMenuOption>((type) => ({ value: type, label: type }))}
+                          onSelect={(value) => updateSchemaRule(index, { ...rule, type: value })}
+                        />
                         <label>
                           <input
                             type="checkbox"
@@ -412,13 +411,15 @@ export function RegistryExplorer(props: RegistryExplorerProps) {
                     value={subjectForm.code}
                     onChange={(event) => setSubjectForm((current) => ({ ...current, code: event.target.value }))}
                   />
-                  <select
+                  <FilterDropdown
+                    id="subject-process-area"
                     value={subjectForm.processAreaCode}
-                    onChange={(event) => setSubjectForm((current) => ({ ...current, processAreaCode: event.target.value }))}
-                  >
-                    <option value="">Selecione a area</option>
-                    {props.processAreas.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}
-                  </select>
+                    options={[
+                      { value: "", label: "Selecione a area" },
+                      ...props.processAreas.map<SelectMenuOption>((item) => ({ value: item.code, label: item.name })),
+                    ]}
+                    onSelect={(value) => setSubjectForm((current) => ({ ...current, processAreaCode: value }))}
+                  />
                   <input
                     placeholder="Nome do subject"
                     value={subjectForm.name}

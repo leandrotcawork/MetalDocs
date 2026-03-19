@@ -16,9 +16,9 @@ INSERT INTO metaldocs.document_profile_schema_versions (
   profile_code, version, metadata_rules_json, is_active
 )
 VALUES
-  ('po', 1, '[{"name":"procedure_code","type":"string","required":true}]'::jsonb, TRUE),
-  ('it', 1, '[{"name":"instruction_code","type":"string","required":true}]'::jsonb, TRUE),
-  ('rg', 1, '[{"name":"record_code","type":"string","required":true}]'::jsonb, TRUE)
+  ('po', 1, '[]'::jsonb, TRUE),
+  ('it', 1, '[]'::jsonb, TRUE),
+  ('rg', 1, '[]'::jsonb, TRUE)
 ON CONFLICT (profile_code, version) DO NOTHING;
 
 INSERT INTO metaldocs.document_profile_governance (

@@ -1,6 +1,7 @@
 import type { ManagedUserItem, UserRole } from "../lib.types";
 import { WorkspaceViewFrame } from "./WorkspaceViewFrame";
 import { WorkspaceDataState } from "./WorkspaceDataState";
+import { FilterDropdown, type SelectMenuOption } from "./ui/FilterDropdown";
 
 type CreateUserForm = {
   userId: string;
@@ -40,6 +41,11 @@ type ManagedUsersPanelProps = {
 };
 
 export function ManagedUsersPanel(props: ManagedUsersPanelProps) {
+  const roleOptions: SelectMenuOption[] = ["admin", "editor", "reviewer", "viewer"].map((role) => ({
+    value: role,
+    label: role,
+  }));
+
   return (
     <WorkspaceViewFrame
       testId="managed-users-panel"
@@ -69,7 +75,12 @@ export function ManagedUsersPanel(props: ManagedUsersPanelProps) {
           <input data-testid="user-email" placeholder="email" value={props.userForm.email} onChange={(event) => props.onUserFormChange({ ...props.userForm, email: event.target.value })} />
           <input data-testid="user-display-name" placeholder="display name" value={props.userForm.displayName} onChange={(event) => props.onUserFormChange({ ...props.userForm, displayName: event.target.value })} required />
           <input data-testid="user-password" type="password" placeholder="senha inicial" value={props.userForm.password} onChange={(event) => props.onUserFormChange({ ...props.userForm, password: event.target.value })} required />
-          <select data-testid="user-role" value={props.userForm.roles[0]} onChange={(event) => props.onUserFormChange({ ...props.userForm, roles: [event.target.value as UserRole] })}>{["admin", "editor", "reviewer", "viewer"].map((role) => <option key={role} value={role}>{role}</option>)}</select>
+          <FilterDropdown
+            id="user-role"
+            value={props.userForm.roles[0]}
+            options={roleOptions}
+            onSelect={(value) => props.onUserFormChange({ ...props.userForm, roles: [value as UserRole] })}
+          />
           <button data-testid="user-submit" type="submit">Criar usuario</button>
         </form>
         <section className="catalog-panel catalog-list-panel">

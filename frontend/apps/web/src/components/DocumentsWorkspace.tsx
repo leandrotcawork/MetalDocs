@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { buildDocumentProfileCountMap } from "../features/documents/adapters/catalogSummary";
 import { metalNobreProcessAreaHint } from "../features/documents/adapters/metalNobreExperience";
-import { TopbarDropdown } from "./ui/TopbarDropdown";
+import { FilterDropdown } from "./ui/FilterDropdown";
 import { WorkspaceDataState } from "./WorkspaceDataState";
 import type {
   AccessPolicyItem,
@@ -210,19 +210,19 @@ export function DocumentsWorkspace(props: DocumentsWorkspaceProps) {
               </svg>
             </button>
           </div>
-          <TopbarDropdown
+          <FilterDropdown
             id="catalog-area-filter"
             value={areaFilter}
-            onChange={setAreaFilter}
+            onSelect={setAreaFilter}
             options={[
               { value: "all", label: "Agrupar: por area" },
               ...props.processAreas.map((item) => ({ value: item.code, label: item.name })),
             ]}
           />
-          <TopbarDropdown
+          <FilterDropdown
             id="catalog-profile-filter"
             value={profileFilter}
-            onChange={setProfileFilter}
+            onSelect={setProfileFilter}
             options={[
               { value: "all", label: "Todos os profiles" },
               ...props.documentProfiles.map((item) => ({ value: item.code, label: item.alias || item.name })),

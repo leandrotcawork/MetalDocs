@@ -647,7 +647,7 @@ Progresso fase 6:
 - arquitetura de frontend pronta para avancar para customizacao Metal Nobre (`Task 035`) e evolucao de registry/admin (`Task 036`) sem refatoracao de base
 
 ## Task 035 - Metal Nobre applied experience
-Status: `pending`
+Status: `in_progress`
 
 Objetivo:
 Aplicar a experiencia documental ao caso real da Metal Nobre.
@@ -659,6 +659,11 @@ Escopo:
 
 Saida:
 - experiencia documental aplicada ao caso de negocio da Metal Nobre sem hardcode de plataforma
+
+Progresso fase 1:
+- UX de `authoring` e `registry` alinhada ao contexto Metal Nobre com nomenclatura operacional e hints ISO-inspired
+- adapter de experiencia (`metalNobreExperience`) centralizado no frontend para evitar texto hardcoded espalhado em componentes
+- sidebar `Por tipo` corrigida na raiz para usar nomes canonicos de `processAreas` no agrupamento (em vez de codigos crus)
 
 ## Task 036 - Registry administration CRUD
 Status: `pending`

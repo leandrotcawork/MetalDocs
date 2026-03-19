@@ -1,3 +1,4 @@
+import { metalNobreProcessAreaHint, metalNobreProfileContext } from "../features/documents/adapters/metalNobreExperience";
 import type { DocumentProfileGovernanceItem, DocumentProfileItem, DocumentProfileSchemaItem, ProcessAreaItem, SubjectItem } from "../lib.types";
 import { WorkspaceViewFrame } from "./WorkspaceViewFrame";
 
@@ -17,8 +18,8 @@ export function RegistryExplorer(props: RegistryExplorerProps) {
   return (
     <WorkspaceViewFrame
       kicker="Registry explorer"
-      title="Motor profile-first"
-      description="Modo leitura forte para families, profiles, schema, governanca, process areas e subjects, sem prometer CRUD administrativo antes da Task 036."
+      title="Registry documental"
+      description="Leitura operacional do motor profile-first aplicado ao contexto Metal Nobre, com foco em governanca e rastreabilidade."
     >
       <div className="catalog-grid">
         <section className="catalog-panel catalog-list-panel">
@@ -81,9 +82,14 @@ export function RegistryExplorer(props: RegistryExplorerProps) {
             </div>
 
             <div className="catalog-card">
+              <h3>Contexto aplicado</h3>
+              <p className="catalog-muted">{selectedProfile ? metalNobreProfileContext(selectedProfile.code) : "Selecione um profile."}</p>
+            </div>
+
+            <div className="catalog-card">
               <h3>Process areas</h3>
               <ul className="catalog-mini-list">
-                {props.processAreas.map((item) => <li key={item.code}><span>{item.name}</span><small>{item.code}</small></li>)}
+                {props.processAreas.map((item) => <li key={item.code}><span>{item.name}</span><small>{metalNobreProcessAreaHint(item.code)}</small></li>)}
               </ul>
             </div>
 

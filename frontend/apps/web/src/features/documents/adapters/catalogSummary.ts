@@ -1,4 +1,4 @@
-import type { DocumentProfileItem, SearchDocumentItem } from "../../../lib.types";
+import type { DocumentProfileItem, ProcessAreaItem, SearchDocumentItem } from "../../../lib.types";
 
 export type ProfileAccordionSummary = {
   code: string;
@@ -12,9 +12,33 @@ type DocumentAggregate = {
   profileAreaCountByCode: Record<string, Record<string, number>>;
 };
 
-function aggregateDocuments(documents: SearchDocumentItem[]): DocumentAggregate {
+function normalizeAreaLabel(value: string): string {
+  const trimmed = value.trim();
+  if (trimmed === "") {
+    return "Sem area";
+  }
+  return trimmed;
+}
+
+function areaLabelByCode(processAreas: ProcessAreaItem[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const area of processAreas) {
+    if (!area.code) {
+      continue;
+    }
+    const key = area.code.trim().toLowerCase();
+    if (key === "") {
+      continue;
+    }
+    out[key] = normalizeAreaLabel(area.name || area.code);
+  }
+  return out;
+}
+
+function aggregateDocuments(documents: SearchDocumentItem[], processAreas: ProcessAreaItem[]): DocumentAggregate {
   const profileCountByCode: Record<string, number> = {};
   const profileAreaCountByCode: Record<string, Record<string, number>> = {};
+  const labelsByAreaCode = areaLabelByCode(processAreas);
 
   for (const document of documents) {
     const profileCode = document.documentProfile;
@@ -24,7 +48,8 @@ function aggregateDocuments(documents: SearchDocumentItem[]): DocumentAggregate 
 
     profileCountByCode[profileCode] = (profileCountByCode[profileCode] ?? 0) + 1;
 
-    const areaLabel = document.processArea || "Sem area";
+    const areaCode = (document.processArea ?? "").trim().toLowerCase();
+    const areaLabel = areaCode === "" ? "Sem area" : (labelsByAreaCode[areaCode] ?? normalizeAreaLabel(document.processArea ?? areaCode));
     const currentAreas = profileAreaCountByCode[profileCode] ?? {};
     currentAreas[areaLabel] = (currentAreas[areaLabel] ?? 0) + 1;
     profileAreaCountByCode[profileCode] = currentAreas;
@@ -34,14 +59,15 @@ function aggregateDocuments(documents: SearchDocumentItem[]): DocumentAggregate 
 }
 
 export function buildDocumentProfileCountMap(documents: SearchDocumentItem[]): Record<string, number> {
-  return aggregateDocuments(documents).profileCountByCode;
+  return aggregateDocuments(documents, []).profileCountByCode;
 }
 
 export function buildProfileAccordions(
   profiles: DocumentProfileItem[],
   documents: SearchDocumentItem[],
+  processAreas: ProcessAreaItem[],
 ): ProfileAccordionSummary[] {
-  const aggregate = aggregateDocuments(documents);
+  const aggregate = aggregateDocuments(documents, processAreas);
   return profiles.map((profile) => {
     const areas = aggregate.profileAreaCountByCode[profile.code] ?? {};
     return {

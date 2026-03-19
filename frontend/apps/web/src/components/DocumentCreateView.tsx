@@ -1,4 +1,10 @@
 import { useMemo, useState } from "react";
+import {
+  metalNobreProcessAreaHint,
+  metalNobreProcessAreaOptionLabel,
+  metalNobreProfileContext,
+  metalNobreProfileOptionLabel,
+} from "../features/documents/adapters/metalNobreExperience";
 import type { DocumentProfileGovernanceItem, DocumentProfileItem, DocumentProfileSchemaItem, ProcessAreaItem, SubjectItem } from "../lib.types";
 import { WorkspaceViewFrame } from "./WorkspaceViewFrame";
 
@@ -32,10 +38,10 @@ type DocumentCreateViewProps = {
 };
 
 const wizardSteps: Array<{ key: WizardStep; label: string; description: string }> = [
-  { key: "profile", label: "Profile", description: "Escolha o modelo documental e contexto operacional." },
+  { key: "profile", label: "Perfil", description: "Escolha o modelo documental e o contexto operacional." },
   { key: "metadata", label: "Metadata", description: "Preencha campos guiados pelo schema ativo." },
-  { key: "content", label: "Content", description: "Registre o texto base da versao inicial." },
-  { key: "review", label: "Review", description: "Valide governanca, metadata e payload antes de criar." },
+  { key: "content", label: "Conteudo", description: "Registre o texto base da versao inicial." },
+  { key: "review", label: "Revisao", description: "Valide governanca, metadata e payload antes de criar." },
 ];
 
 function parseMetadata(value: string): Record<string, string> {
@@ -81,7 +87,7 @@ export function DocumentCreateView(props: DocumentCreateViewProps) {
   return (
     <WorkspaceViewFrame
       kicker="Authoring"
-      title="Document authoring wizard"
+      title="Novo documento"
       description="Fluxo profile-first em quatro etapas, com governanca sempre visivel e metadata dinamica baseada no schema ativo."
     >
       <div className="wizard-layout">
@@ -136,8 +142,9 @@ export function DocumentCreateView(props: DocumentCreateViewProps) {
                 <div>
                   <label htmlFor="document-profile"><span>Profile</span></label>
                   <select id="document-profile" data-testid="document-profile" value={props.documentForm.documentProfile} onChange={(event) => void props.onApplyProfile(event.target.value, props.documentForm.processArea)}>
-                    {props.documentProfiles.map((item) => <option key={item.code} value={item.code}>{item.name} ({item.alias})</option>)}
+                    {props.documentProfiles.map((item) => <option key={item.code} value={item.code}>{metalNobreProfileOptionLabel(item)}</option>)}
                   </select>
+                  <small>{selectedProfile ? metalNobreProfileContext(selectedProfile.code) : "Selecione um perfil documental."}</small>
                 </div>
               </div>
 
@@ -153,8 +160,9 @@ export function DocumentCreateView(props: DocumentCreateViewProps) {
                   <label htmlFor="document-process-area"><span>Process area</span></label>
                   <select id="document-process-area" data-testid="document-process-area" value={props.documentForm.processArea} onChange={(event) => props.onDocumentFormChange({ ...props.documentForm, processArea: event.target.value, subject: "" })}>
                     <option value="">Sem process area</option>
-                    {props.processAreas.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}
+                    {props.processAreas.map((item) => <option key={item.code} value={item.code}>{metalNobreProcessAreaOptionLabel(item)}</option>)}
                   </select>
+                  <small>{props.documentForm.processArea ? metalNobreProcessAreaHint(props.documentForm.processArea) : "Selecione a area para guiar subjects e classificacao operacional."}</small>
                 </div>
                 <div>
                   <label htmlFor="document-subject"><span>Subject</span></label>

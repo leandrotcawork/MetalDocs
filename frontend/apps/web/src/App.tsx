@@ -726,6 +726,7 @@ function AppContent() {
           registryCount={documentProfiles.length}
           showAdmin={isAdmin}
           documentProfiles={documentProfiles}
+          processAreas={processAreas}
           documents={documents}
           onSearchChange={setSearchQuery}
           onNavigate={setActiveView}

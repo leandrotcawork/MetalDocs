@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { buildProfileAccordions } from "../features/documents/adapters/catalogSummary";
-import type { DocumentProfileItem, SearchDocumentItem } from "../lib.types";
+import type { DocumentProfileItem, ProcessAreaItem, SearchDocumentItem } from "../lib.types";
 
 export type WorkspaceView = "operations" | "approvals" | "audit" | "library" | "my-docs" | "recent" | "create" | "registry" | "notifications" | "admin";
 
@@ -16,6 +16,7 @@ type WorkspaceShellProps = {
   registryCount: number;
   showAdmin: boolean;
   documentProfiles: DocumentProfileItem[];
+  processAreas: ProcessAreaItem[];
   documents: SearchDocumentItem[];
   onSearchChange: (value: string) => void;
   onNavigate: (view: WorkspaceView) => void;
@@ -170,7 +171,7 @@ function sections(props: WorkspaceShellProps): NavSection[] {
 function activeTitle(activeView: WorkspaceView): string {
   switch (activeView) {
     case "operations":
-      return "Operations Center";
+      return "Centro Operacional";
     case "approvals":
       return "Aprovacoes";
     case "audit":
@@ -203,8 +204,8 @@ export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
   const primarySections = navSections.slice(0, 2);
   const secondarySections = navSections.slice(2);
   const typedSections = useMemo(
-    () => buildProfileAccordions(props.documentProfiles, props.documents),
-    [props.documentProfiles, props.documents],
+    () => buildProfileAccordions(props.documentProfiles, props.documents, props.processAreas),
+    [props.documentProfiles, props.documents, props.processAreas],
   );
   const currentTitle = activeTitle(props.activeView);
   const isCatalogView = isDocumentCatalogView(props.activeView);

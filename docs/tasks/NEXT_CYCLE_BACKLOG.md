@@ -826,6 +826,10 @@ Progresso fase 1:
 - `auth/infrastructure/postgres` nao grava mais em `metaldocs.iam_user_roles` (write path movido para IAM)
 - composicao e testes atualizados para injetar repo administrativo de roles
 
+Progresso fase 2:
+- `auth/infrastructure/postgres` nao consulta mais `metaldocs.iam_user_roles` em `FindIdentity*` e `ListUsers`
+- `auth/application.ListUsers` passou a resolver roles via `RoleProvider` (ownership de role-read centralizado em IAM)
+
 Aceite:
 - nenhum `JOIN/INSERT` em `metaldocs.iam_*` dentro de `internal/modules/auth/infrastructure/*`
 - gates + `go test ./...` verdes

@@ -8,7 +8,6 @@ import (
 	"time"
 
 	authdomain "metaldocs/internal/modules/auth/domain"
-	iamdomain "metaldocs/internal/modules/iam/domain"
 )
 
 type Repository struct {
@@ -187,12 +186,9 @@ VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6, NULL, 0, NULL, NOW(), NOW())
 func (r *Repository) ListUsers(ctx context.Context) ([]authdomain.ManagedUser, error) {
 	const q = `
 SELECT u.user_id, i.username, COALESCE(i.email, ''), u.display_name, u.is_active, i.must_change_password,
-       i.last_login_at, i.failed_login_attempts, i.locked_until, u.created_at, u.updated_at,
-       COALESCE(string_agg(r.role_code, ',' ORDER BY r.role_code) FILTER (WHERE r.role_code IS NOT NULL), '')
+       i.last_login_at, i.failed_login_attempts, i.locked_until, u.created_at, u.updated_at
 FROM metaldocs.iam_users u
 JOIN metaldocs.auth_identities i ON i.user_id = u.user_id
-LEFT JOIN metaldocs.iam_user_roles r ON r.user_id = u.user_id
-GROUP BY u.user_id, i.username, i.email, u.display_name, u.is_active, i.must_change_password, i.last_login_at, i.failed_login_attempts, i.locked_until, u.created_at, u.updated_at
 ORDER BY u.created_at DESC
 `
 	rows, err := r.db.QueryContext(ctx, q)
@@ -204,7 +200,6 @@ ORDER BY u.created_at DESC
 	items := make([]authdomain.ManagedUser, 0)
 	for rows.Next() {
 		var item authdomain.ManagedUser
-		var rolesCSV string
 		if err := rows.Scan(
 			&item.UserID,
 			&item.Username,
@@ -217,11 +212,9 @@ ORDER BY u.created_at DESC
 			&item.LockedUntil,
 			&item.CreatedAt,
 			&item.UpdatedAt,
-			&rolesCSV,
 		); err != nil {
 			return nil, fmt.Errorf("scan managed user: %w", err)
 		}
-		item.Roles = csvRolesToDomain(rolesCSV)
 		items = append(items, item)
 	}
 	if err := rows.Err(); err != nil {
@@ -348,39 +341,7 @@ func (r *Repository) loadIdentity(ctx context.Context, query string, arg string)
 		}
 		return authdomain.Identity{}, fmt.Errorf("load auth identity: %w", err)
 	}
-
-	roles, err := r.loadRoles(ctx, identity.UserID)
-	if err != nil {
-		return authdomain.Identity{}, err
-	}
-	identity.Roles = roles
 	return identity, nil
-}
-
-func (r *Repository) loadRoles(ctx context.Context, userID string) ([]iamdomain.Role, error) {
-	rows, err := r.db.QueryContext(ctx, `
-SELECT role_code
-FROM metaldocs.iam_user_roles
-WHERE user_id = $1
-ORDER BY role_code ASC
-`, userID)
-	if err != nil {
-		return nil, fmt.Errorf("load auth roles: %w", err)
-	}
-	defer rows.Close()
-
-	roles := make([]iamdomain.Role, 0, 4)
-	for rows.Next() {
-		var roleCode string
-		if err := rows.Scan(&roleCode); err != nil {
-			return nil, fmt.Errorf("scan auth role: %w", err)
-		}
-		roles = append(roles, iamdomain.Role(roleCode))
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate auth roles: %w", err)
-	}
-	return roles, nil
 }
 
 func ensureUniqueIdentity(ctx context.Context, tx *sql.Tx, userID, username, email string) error {
@@ -414,25 +375,6 @@ WHERE lower(email) = lower($1)
 		}
 	}
 	return nil
-}
-
-func stringRolesToDomain(roles []string) []iamdomain.Role {
-	out := make([]iamdomain.Role, 0, len(roles))
-	for _, role := range roles {
-		role = strings.TrimSpace(role)
-		if role == "" {
-			continue
-		}
-		out = append(out, iamdomain.Role(role))
-	}
-	return out
-}
-
-func csvRolesToDomain(rolesCSV string) []iamdomain.Role {
-	if strings.TrimSpace(rolesCSV) == "" {
-		return nil
-	}
-	return stringRolesToDomain(strings.Split(rolesCSV, ","))
 }
 
 func nullableText(value *string) any {

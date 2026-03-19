@@ -235,7 +235,18 @@ func (s *Service) ChangePasswordForUser(ctx context.Context, currentUser authdom
 }
 
 func (s *Service) ListUsers(ctx context.Context) ([]authdomain.ManagedUser, error) {
-	return s.repo.ListUsers(ctx)
+	items, err := s.repo.ListUsers(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for i := range items {
+		roles, roleErr := s.roleProvider.RolesByUserID(ctx, items[i].UserID)
+		if roleErr != nil {
+			return nil, roleErr
+		}
+		items[i].Roles = roles
+	}
+	return items, nil
 }
 
 func (s *Service) CreateUser(ctx context.Context, userID, username, email, displayName, password string, roles []iamdomain.Role, createdBy string) error {

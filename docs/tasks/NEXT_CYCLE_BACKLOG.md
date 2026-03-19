@@ -740,6 +740,10 @@ Progresso fase 1:
 - authz integrado ao middleware IAM (`PermDocumentRead`) sem bypass
 - frontend conectado ao stream com refresh resiliente e fallback preservado (sem acoplamento forte ao authoring)
 
+Progresso fase 2:
+- adapter de stream operacional centralizado em `frontend/apps/web/src/lib.api.ts` para evitar wiring SSE espalhado
+- `App` passou a consumir stream via API client (boundary mais limpo e evolutivo para retry/observabilidade futura)
+
 ## Task 038 - Collaborative editing and presence
 Status: `pending`
 

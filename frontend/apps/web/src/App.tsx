@@ -218,21 +218,14 @@ function AppContent() {
     if (authState !== "ready" || !user || user.mustChangePassword) {
       return;
     }
-
-    const stream = new EventSource(`${api.currentApiBaseUrl}/operations/stream`, { withCredentials: true });
-    const onSnapshot = () => {
-      void refreshOperationalSignals();
-    };
-
-    stream.addEventListener("snapshot", onSnapshot);
-    stream.onerror = () => {
-      // EventSource already handles retries; keep fallback polling/manual refresh active.
-    };
-
-    return () => {
-      stream.removeEventListener("snapshot", onSnapshot);
-      stream.close();
-    };
+    return api.subscribeOperationsStream(
+      () => {
+        void refreshOperationalSignals();
+      },
+      () => {
+        // Stream keeps retrying in browser; UI fallback remains available.
+      },
+    );
   }, [authState, user?.mustChangePassword, user?.userId]);
 
   async function bootstrap() {

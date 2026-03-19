@@ -23,6 +23,13 @@ import type {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 
+export type OperationsStreamSnapshot = {
+  pendingNotifications: number;
+  documentsInReview: number;
+  totalDocuments: number;
+  generatedAt: string;
+};
+
 const allowedRoles = new Set<UserRole>(["admin", "editor", "reviewer", "viewer"]);
 
 function normalizeRoles(value: unknown): UserRole[] {
@@ -380,4 +387,35 @@ export const api = {
     return { items: Array.isArray(response.items) ? response.items.map(normalizeAuditEventItem) : [] };
   },
   markNotificationRead: (notificationId: string) => request<{ id: string; status: string; readAt: string }>(`/notifications/${encodeURIComponent(notificationId)}/read`, { method: "POST" }),
+  subscribeOperationsStream: (
+    onSnapshot: (snapshot: OperationsStreamSnapshot) => void,
+    onError?: (error: Event) => void,
+  ) => {
+    const stream = new EventSource(`${API_BASE_URL}/operations/stream`, { withCredentials: true });
+    const listener = (event: MessageEvent<string>) => {
+      try {
+        const payload = JSON.parse(event.data) as OperationsStreamSnapshot;
+        onSnapshot({
+          pendingNotifications: Number(payload?.pendingNotifications ?? 0),
+          documentsInReview: Number(payload?.documentsInReview ?? 0),
+          totalDocuments: Number(payload?.totalDocuments ?? 0),
+          generatedAt: payload?.generatedAt ?? "",
+        });
+      } catch {
+        // Ignore malformed payload and keep stream alive.
+      }
+    };
+
+    stream.addEventListener("snapshot", listener as EventListener);
+    stream.onerror = (error) => {
+      if (onError) {
+        onError(error);
+      }
+    };
+
+    return () => {
+      stream.removeEventListener("snapshot", listener as EventListener);
+      stream.close();
+    };
+  },
 };

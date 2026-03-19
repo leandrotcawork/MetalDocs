@@ -78,9 +78,10 @@ func TestIAMAdminHandlerResetPassword(t *testing.T) {
 	inv := &fakeInvalidator{}
 	service := iamapp.NewAdminService(repo, inv)
 	authRepo := authmemory.NewRepository()
+	roleAdminRepo := iammemory.NewRoleAdminRepository()
 	authService := authapp.NewService(authRepo, iamapp.NewDevRoleProvider(map[string][]iamdomain.Role{
 		"test-user": {iamdomain.RoleViewer},
-	}), authapp.Config{
+	}), roleAdminRepo, authapp.Config{
 		PasswordMinLength:      8,
 		LoginMaxFailedAttempts: 5,
 		LoginLockDuration:      time.Minute,
@@ -126,9 +127,10 @@ func TestIAMAdminHandlerUnlockUser(t *testing.T) {
 	inv := &fakeInvalidator{}
 	service := iamapp.NewAdminService(repo, inv)
 	authRepo := authmemory.NewRepository()
+	roleAdminRepo := iammemory.NewRoleAdminRepository()
 	authService := authapp.NewService(authRepo, iamapp.NewDevRoleProvider(map[string][]iamdomain.Role{
 		"test-user": {iamdomain.RoleViewer},
-	}), authapp.Config{
+	}), roleAdminRepo, authapp.Config{
 		PasswordMinLength:      8,
 		LoginMaxFailedAttempts: 5,
 		LoginLockDuration:      time.Minute,

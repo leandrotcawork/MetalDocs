@@ -244,7 +244,7 @@ func buildContractTestHandler() http.Handler {
 	workflowService := workflowapp.NewService(docRepo, workflowmemory.NewApprovalRepository(), auditStore, nil, nil)
 	workflowHandler := workflowdelivery.NewHandler(workflowService)
 	iamAdminService := iamapp.NewAdminService(roleAdminRepo, cachedProvider)
-	iamAdminHandler := iamdelivery.NewAdminHandler(iamAdminService, authapp.NewService(authRepo, cachedProvider, authapp.Config{PasswordMinLength: 8, LoginMaxFailedAttempts: 5, LoginLockDuration: time.Minute}), auditStore)
+	iamAdminHandler := iamdelivery.NewAdminHandler(iamAdminService, authapp.NewService(authRepo, cachedProvider, roleAdminRepo, authapp.Config{PasswordMinLength: 8, LoginMaxFailedAttempts: 5, LoginLockDuration: time.Minute}), auditStore)
 	iamMiddleware := iamdelivery.NewMiddleware(authorizer, cachedProvider, true, true)
 	statusProvider := observability.NewStaticRuntimeStatusProvider("memory", "memory", true)
 	httpObs := observability.NewHTTPObservability(statusProvider)

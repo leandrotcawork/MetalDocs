@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
@@ -179,17 +178,6 @@ VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6, NULL, 0, NULL, NOW(), NOW())
 		return fmt.Errorf("insert auth identity: %w", err)
 	}
 
-	for _, role := range uniqueRoles(params.Roles) {
-		if _, err := tx.ExecContext(ctx, `
-INSERT INTO metaldocs.iam_user_roles (user_id, role_code, assigned_at, assigned_by)
-VALUES ($1, $2, NOW(), $3)
-ON CONFLICT (user_id, role_code)
-DO UPDATE SET assigned_at = NOW(), assigned_by = EXCLUDED.assigned_by
-`, params.UserID, string(role), params.CreatedBy); err != nil {
-			return fmt.Errorf("insert iam user role: %w", err)
-		}
-	}
-
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit create user tx: %w", err)
 	}
@@ -332,15 +320,6 @@ DO UPDATE SET username = EXCLUDED.username,
 `, params.UserID, params.Username, params.Email, params.PasswordHash, params.PasswordAlgo, params.MustChangePassword); err != nil {
 		return false, fmt.Errorf("bootstrap auth identity: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, `
-INSERT INTO metaldocs.iam_user_roles (user_id, role_code, assigned_at, assigned_by)
-VALUES ($1, 'admin', NOW(), 'bootstrap')
-ON CONFLICT (user_id, role_code)
-DO UPDATE SET assigned_at = NOW(), assigned_by = EXCLUDED.assigned_by
-`, params.UserID); err != nil {
-		return false, fmt.Errorf("bootstrap admin role: %w", err)
-	}
-
 	if err := tx.Commit(); err != nil {
 		return false, fmt.Errorf("commit bootstrap admin tx: %w", err)
 	}
@@ -435,24 +414,6 @@ WHERE lower(email) = lower($1)
 		}
 	}
 	return nil
-}
-
-func uniqueRoles(in []iamdomain.Role) []iamdomain.Role {
-	seen := make(map[iamdomain.Role]struct{}, len(in))
-	out := make([]iamdomain.Role, 0, len(in))
-	for _, role := range in {
-		role = iamdomain.Role(strings.TrimSpace(string(role)))
-		if role == "" {
-			continue
-		}
-		if _, ok := seen[role]; ok {
-			continue
-		}
-		seen[role] = struct{}{}
-		out = append(out, role)
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
-	return out
 }
 
 func stringRolesToDomain(roles []string) []iamdomain.Role {

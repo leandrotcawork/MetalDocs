@@ -43,11 +43,12 @@ type Config struct {
 type Service struct {
 	repo         authdomain.Repository
 	roleProvider iamdomain.RoleProvider
+	roleAdmin    iamdomain.RoleAdminRepository
 	cfg          Config
 }
 
-func NewService(repo authdomain.Repository, roleProvider iamdomain.RoleProvider, cfg Config) *Service {
-	return &Service{repo: repo, roleProvider: roleProvider, cfg: cfg}
+func NewService(repo authdomain.Repository, roleProvider iamdomain.RoleProvider, roleAdmin iamdomain.RoleAdminRepository, cfg Config) *Service {
+	return &Service{repo: repo, roleProvider: roleProvider, roleAdmin: roleAdmin, cfg: cfg}
 }
 
 func (s *Service) BootstrapLocalAdmin(ctx context.Context) error {
@@ -60,7 +61,7 @@ func (s *Service) BootstrapLocalAdmin(ctx context.Context) error {
 		return err
 	}
 
-	_, err = s.repo.BootstrapAdmin(ctx, authdomain.BootstrapAdminParams{
+	created, err := s.repo.BootstrapAdmin(ctx, authdomain.BootstrapAdminParams{
 		UserID:             strings.TrimSpace(s.cfg.BootstrapAdminUserID),
 		Username:           strings.TrimSpace(s.cfg.BootstrapAdminUsername),
 		Email:              strings.TrimSpace(s.cfg.BootstrapAdminEmail),
@@ -69,7 +70,19 @@ func (s *Service) BootstrapLocalAdmin(ctx context.Context) error {
 		PasswordAlgo:       passwordAlgoBcrypt,
 		MustChangePassword: true,
 	})
-	return err
+	if err != nil || !created {
+		return err
+	}
+	if s.roleAdmin == nil {
+		return fmt.Errorf("role admin repository is required")
+	}
+	return s.roleAdmin.UpsertUserAndAssignRole(
+		ctx,
+		strings.TrimSpace(s.cfg.BootstrapAdminUserID),
+		strings.TrimSpace(s.cfg.BootstrapAdminName),
+		iamdomain.RoleAdmin,
+		"bootstrap",
+	)
 }
 
 func (s *Service) Authenticate(ctx context.Context, identifier, password string, r *http.Request) (authdomain.AuthenticatedSession, error) {
@@ -251,7 +264,7 @@ func (s *Service) CreateUser(ctx context.Context, userID, username, email, displ
 		return err
 	}
 
-	return s.repo.CreateUser(ctx, authdomain.CreateUserParams{
+	if err := s.repo.CreateUser(ctx, authdomain.CreateUserParams{
 		UserID:             userID,
 		Username:           username,
 		Email:              email,
@@ -260,9 +273,15 @@ func (s *Service) CreateUser(ctx context.Context, userID, username, email, displ
 		PasswordAlgo:       passwordAlgoBcrypt,
 		MustChangePassword: true,
 		IsActive:           true,
-		Roles:              roles,
+		Roles:              nil,
 		CreatedBy:          createdBy,
-	})
+	}); err != nil {
+		return err
+	}
+	if s.roleAdmin == nil {
+		return fmt.Errorf("role admin repository is required")
+	}
+	return s.roleAdmin.ReplaceUserRoles(ctx, userID, displayName, roles, createdBy)
 }
 
 func (s *Service) UpdateUser(ctx context.Context, params authdomain.UpdateUserParams, newPassword string) error {

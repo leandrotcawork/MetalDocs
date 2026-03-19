@@ -59,7 +59,7 @@ func main() {
 	}
 	defer deps.Cleanup()
 
-	authService := authapp.NewService(deps.AuthRepo, deps.RoleProvider, authCfg)
+	authService := authapp.NewService(deps.AuthRepo, deps.RoleProvider, deps.RoleAdminRepo, authCfg)
 	if err := authService.BootstrapLocalAdmin(context.Background()); err != nil {
 		log.Fatalf("bootstrap local admin: %v", err)
 	}

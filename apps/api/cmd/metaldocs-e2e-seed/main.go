@@ -49,7 +49,7 @@ func main() {
 	}
 	defer deps.Cleanup()
 
-	authService := authapp.NewService(deps.AuthRepo, deps.RoleProvider, authCfg)
+	authService := authapp.NewService(deps.AuthRepo, deps.RoleProvider, deps.RoleAdminRepo, authCfg)
 	iamAdmin := iamapp.NewAdminService(deps.RoleAdminRepo, nil)
 	seed := loadSeedConfig()
 

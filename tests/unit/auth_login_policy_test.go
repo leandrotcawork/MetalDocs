@@ -22,7 +22,7 @@ func TestAuthenticateLocksAfterRepeatedFailures(t *testing.T) {
 		LoginMaxFailedAttempts: 3,
 		LoginLockDuration:      5 * time.Minute,
 	}
-	svc := authapp.NewService(repo, repo, cfg)
+	svc := authapp.NewService(repo, repo, repo, cfg)
 	if err := svc.CreateUser(context.Background(), "lock-user", "lock.user", "lock.user@test.local", "Lock User", "abc12345", []iamdomain.Role{iamdomain.RoleViewer}, "test"); err != nil {
 		t.Fatalf("create user: %v", err)
 	}
@@ -49,7 +49,7 @@ func TestAuthenticateRejectsInactiveUser(t *testing.T) {
 		LoginMaxFailedAttempts: 5,
 		LoginLockDuration:      5 * time.Minute,
 	}
-	svc := authapp.NewService(repo, repo, cfg)
+	svc := authapp.NewService(repo, repo, repo, cfg)
 	if err := svc.CreateUser(context.Background(), "inactive-user", "inactive.user", "inactive.user@test.local", "Inactive User", "abc12345", []iamdomain.Role{iamdomain.RoleViewer}, "test"); err != nil {
 		t.Fatalf("create user: %v", err)
 	}

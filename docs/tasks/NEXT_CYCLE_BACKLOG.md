@@ -811,7 +811,7 @@ Aceite:
 - `go test ./...` verde
 
 ## Task 045 - Clarify IAM/Auth module ownership and persistence boundaries
-Status: `todo`
+Status: `doing`
 
 Objetivo:
 Eliminar acesso cruzado a tabelas `iam_*` via `auth` e tornar ownership claro (um modulo ou portas dedicadas).
@@ -821,20 +821,25 @@ Escopo:
 - remover `auth` escrevendo/consultando `iam_users` e `iam_user_roles` diretamente
 - atualizar bootstrap, repos e testes conforme decisao
 
+Progresso fase 1:
+- `auth/application` passou a depender de `iam/domain.RoleAdminRepository` para bootstrap e atribuicao de roles
+- `auth/infrastructure/postgres` nao grava mais em `metaldocs.iam_user_roles` (write path movido para IAM)
+- composicao e testes atualizados para injetar repo administrativo de roles
+
 Aceite:
 - nenhum `JOIN/INSERT` em `metaldocs.iam_*` dentro de `internal/modules/auth/infrastructure/*`
 - gates + `go test ./...` verdes
 
 ## Task 046 - Replace hardcoded route permission matching with declarative policy
-Status: `doing`
+Status: `done`
 
 Objetivo:
 Evitar autorizacao baseada em string match de path, reduzindo risco de drift de rota e bug de seguranca.
 
 Escopo (faseado):
 - fase 1 (feito): middleware usa `r.Context()` e suporta `PermissionResolver`
-- fase 2: mover mapping para composition root/registro declarativo por rota
-- fase 3: teste que falha se existir rota guardada sem regra declarada
+- fase 2 (feito): mapping movido para composition root/registro declarativo por rota
+- fase 3 (feito): teste de resolver declarativo adicionado em `apps/api/cmd/metaldocs-api/permissions_test.go`
 
 Aceite:
 - `requiredPermission()` nao contem lista hardcoded de rotas (ou fica apenas como fallback dev)

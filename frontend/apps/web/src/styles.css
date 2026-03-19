@@ -2235,6 +2235,12 @@ td small {
   line-height: 1;
 }
 
+.create-doc-step-glyph svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
 .create-doc-step-item[data-status="active"] .create-doc-step-num {
   background: var(--vinho);
   border-color: var(--vinho);

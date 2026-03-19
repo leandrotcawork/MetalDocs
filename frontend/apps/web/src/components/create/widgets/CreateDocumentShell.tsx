@@ -9,6 +9,24 @@ type CreateDocumentShellProps = {
   children: ReactNode;
 };
 
+function glyphFor(status: StepStatus, index: number): ReactNode {
+  if (status === "done") {
+    return (
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M3 8.5 6.3 11.5 13 4.8" />
+      </svg>
+    );
+  }
+  if (status === "error") {
+    return (
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M4.2 4.2 11.8 11.8M11.8 4.2 4.2 11.8" />
+      </svg>
+    );
+  }
+  return index + 1;
+}
+
 export function CreateDocumentShell(props: CreateDocumentShellProps) {
   return (
     <div className="create-doc-layout">
@@ -26,7 +44,7 @@ export function CreateDocumentShell(props: CreateDocumentShellProps) {
               >
                 <span className="create-doc-step-num">
                   <span className="create-doc-step-glyph">
-                    {props.stepStates[item.key] === "done" ? "✓" : props.stepStates[item.key] === "error" ? "×" : index + 1}
+                    {glyphFor(props.stepStates[item.key], index)}
                   </span>
                 </span>
                 <div>
@@ -46,3 +64,4 @@ export function CreateDocumentShell(props: CreateDocumentShellProps) {
     </div>
   );
 }
+

@@ -1,4 +1,5 @@
 import type { ManagedUserItem, UserRole } from "../lib.types";
+import { WorkspaceViewFrame } from "./WorkspaceViewFrame";
 
 type CreateUserForm = {
   userId: string;
@@ -37,15 +38,12 @@ type ManagedUsersPanelProps = {
 
 export function ManagedUsersPanel(props: ManagedUsersPanelProps) {
   return (
-    <section data-testid="managed-users-panel" className="catalog-shell">
-      <div className="catalog-header">
-        <div>
-          <p className="catalog-kicker">IAM + Auth</p>
-          <h1>Usuarios internos</h1>
-          <p>Administracao operacional de identidades internas, roles, estado de acesso e recuperacao de senha.</p>
-        </div>
-      </div>
-
+    <WorkspaceViewFrame
+      testId="managed-users-panel"
+      kicker="IAM + Auth"
+      title="Usuarios internos"
+      description="Administracao operacional de identidades internas, roles, estado de acesso e recuperacao de senha."
+    >
       <div className="catalog-grid">
         <form data-testid="user-create-form" className="catalog-panel stack" onSubmit={props.onSubmitCreateUser}>
           <div className="catalog-panel-head">
@@ -109,6 +107,6 @@ export function ManagedUsersPanel(props: ManagedUsersPanelProps) {
           )}
         </section>
       </div>
-    </section>
+    </WorkspaceViewFrame>
   );
 }

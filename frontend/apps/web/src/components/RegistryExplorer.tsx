@@ -1,4 +1,5 @@
 import type { DocumentProfileGovernanceItem, DocumentProfileItem, DocumentProfileSchemaItem, ProcessAreaItem, SubjectItem } from "../lib.types";
+import { WorkspaceViewFrame } from "./WorkspaceViewFrame";
 
 type RegistryExplorerProps = {
   documentProfiles: DocumentProfileItem[];
@@ -14,15 +15,11 @@ export function RegistryExplorer(props: RegistryExplorerProps) {
   const selectedProfile = props.documentProfiles.find((item) => item.code === props.selectedProfileCode) ?? props.documentProfiles[0] ?? null;
 
   return (
-    <section className="catalog-shell">
-      <div className="catalog-header">
-        <div>
-          <p className="catalog-kicker">Registry explorer</p>
-          <h1>Motor profile-first</h1>
-          <p>Modo leitura forte para families, profiles, schema, governanca, process areas e subjects, sem prometer CRUD administrativo antes da `Task 036`.</p>
-        </div>
-      </div>
-
+    <WorkspaceViewFrame
+      kicker="Registry explorer"
+      title="Motor profile-first"
+      description="Modo leitura forte para families, profiles, schema, governanca, process areas e subjects, sem prometer CRUD administrativo antes da Task 036."
+    >
       <div className="catalog-grid">
         <section className="catalog-panel catalog-list-panel">
           <div className="catalog-panel-head">
@@ -100,6 +97,6 @@ export function RegistryExplorer(props: RegistryExplorerProps) {
           </div>
         </aside>
       </div>
-    </section>
+    </WorkspaceViewFrame>
   );
 }

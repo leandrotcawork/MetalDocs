@@ -630,6 +630,10 @@ Progresso fase 2:
 - views de `notifications` e `admin` migradas para padrao `catalog-shell` (header, grid e painel consistente)
 - padrao visual unificado entre telas operacionais sem quebrar contratos de dados existentes
 
+Progresso fase 3:
+- componente compartilhado `WorkspaceViewFrame` criado para padronizar estrutura base (`kicker`, `title`, `description`, `actions`, `stats`)
+- `operations`, `create`, `registry`, `notifications` e `admin` migrados para o frame comum
+
 ## Task 035 - Metal Nobre applied experience
 Status: `pending`
 

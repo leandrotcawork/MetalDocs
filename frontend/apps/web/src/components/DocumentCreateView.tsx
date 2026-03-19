@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import type { DocumentProfileGovernanceItem, DocumentProfileItem, DocumentProfileSchemaItem, ProcessAreaItem, SubjectItem } from "../lib.types";
+import { WorkspaceViewFrame } from "./WorkspaceViewFrame";
 
 type DocumentForm = {
   title: string;
@@ -78,15 +79,11 @@ export function DocumentCreateView(props: DocumentCreateViewProps) {
   }
 
   return (
-    <section className="catalog-shell">
-      <div className="catalog-header">
-        <div>
-          <p className="catalog-kicker">Authoring</p>
-          <h1>Document authoring wizard</h1>
-          <p>Fluxo profile-first em quatro etapas, com governanca sempre visivel e metadata dinamica baseada no schema ativo.</p>
-        </div>
-      </div>
-
+    <WorkspaceViewFrame
+      kicker="Authoring"
+      title="Document authoring wizard"
+      description="Fluxo profile-first em quatro etapas, com governanca sempre visivel e metadata dinamica baseada no schema ativo."
+    >
       <div className="wizard-layout">
         <aside className="catalog-panel wizard-sidebar">
           <div className="catalog-panel-head">
@@ -251,6 +248,6 @@ export function DocumentCreateView(props: DocumentCreateViewProps) {
           </div>
         </form>
       </div>
-    </section>
+    </WorkspaceViewFrame>
   );
 }

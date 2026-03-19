@@ -1,4 +1,5 @@
 import type { DocumentProfileItem, NotificationItem, SearchDocumentItem } from "../lib.types";
+import { WorkspaceViewFrame } from "./WorkspaceViewFrame";
 
 type OperationsCenterProps = {
   documents: SearchDocumentItem[];
@@ -24,23 +25,20 @@ export function OperationsCenter(props: OperationsCenterProps) {
     .slice(0, 5);
 
   return (
-    <section className="catalog-shell">
-      <div className="catalog-header">
-        <div>
-          <p className="catalog-kicker">Operations center</p>
-          <h1>Painel documental</h1>
-          <p>Visao executiva do que pede atencao agora, sem depender de realtime obrigatorio para ser util no dia a dia.</p>
+    <WorkspaceViewFrame
+      kicker="Operations center"
+      title="Painel documental"
+      description="Visao executiva do que pede atencao agora, sem depender de realtime obrigatorio para ser util no dia a dia."
+      actions={<button type="button" onClick={props.onCreateDocument}>Criar novo documento</button>}
+      stats={(
+        <div className="catalog-stats">
+          <article className="catalog-stat"><span>Documentos ativos</span><strong>{props.documents.length}</strong><small>Acervo indexado no workspace</small></article>
+          <article className="catalog-stat"><span>Em revisao</span><strong>{pendingReviews.length}</strong><small>Fila operacional imediata</small></article>
+          <article className="catalog-stat"><span>Notificacoes pendentes</span><strong>{unreadNotifications.length}</strong><small>Leitura do usuario autenticado</small></article>
+          <article className="catalog-stat"><span>Profiles disponiveis</span><strong>{props.documentProfiles.length}</strong><small>Motor profile-first pronto para authoring</small></article>
         </div>
-        <button type="button" onClick={props.onCreateDocument}>Criar novo documento</button>
-      </div>
-
-      <div className="catalog-stats">
-        <article className="catalog-stat"><span>Documentos ativos</span><strong>{props.documents.length}</strong><small>Acervo indexado no workspace</small></article>
-        <article className="catalog-stat"><span>Em revisao</span><strong>{pendingReviews.length}</strong><small>Fila operacional imediata</small></article>
-        <article className="catalog-stat"><span>Notificacoes pendentes</span><strong>{unreadNotifications.length}</strong><small>Leitura do usuario autenticado</small></article>
-        <article className="catalog-stat"><span>Profiles disponiveis</span><strong>{props.documentProfiles.length}</strong><small>Motor profile-first pronto para authoring</small></article>
-      </div>
-
+      )}
+    >
       <div className="operations-grid">
         <section className="catalog-panel">
           <div className="catalog-panel-head">
@@ -114,6 +112,6 @@ export function OperationsCenter(props: OperationsCenterProps) {
           </ul>
         </section>
       </div>
-    </section>
+    </WorkspaceViewFrame>
   );
 }

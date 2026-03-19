@@ -811,7 +811,7 @@ Aceite:
 - `go test ./...` verde
 
 ## Task 045 - Clarify IAM/Auth module ownership and persistence boundaries
-Status: `doing`
+Status: `done`
 
 Objetivo:
 Eliminar acesso cruzado a tabelas `iam_*` via `auth` e tornar ownership claro (um modulo ou portas dedicadas).
@@ -829,6 +829,11 @@ Progresso fase 1:
 Progresso fase 2:
 - `auth/infrastructure/postgres` nao consulta mais `metaldocs.iam_user_roles` em `FindIdentity*` e `ListUsers`
 - `auth/application.ListUsers` passou a resolver roles via `RoleProvider` (ownership de role-read centralizado em IAM)
+
+Progresso fase 3:
+- `auth/infrastructure/postgres` nao acessa mais `metaldocs.iam_users`; `display_name/is_active` passam a ser lidos/escritos em `auth_identities`
+- migration `0036_decouple_auth_identity_from_iam_user_tables.sql` remove FKs de auth para `iam_users` e liga `auth_sessions` -> `auth_identities`
+- bootstrap admin agora consulta existencia de role admin via `iam/domain.RoleAdminRepository.HasAnyRole`
 
 Aceite:
 - nenhum `JOIN/INSERT` em `metaldocs.iam_*` dentro de `internal/modules/auth/infrastructure/*`

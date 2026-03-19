@@ -17,6 +17,18 @@ func NewRoleAdminRepository(db *sql.DB) *RoleAdminRepository {
 	return &RoleAdminRepository{db: db}
 }
 
+func (r *RoleAdminRepository) HasAnyRole(ctx context.Context, role domain.Role) (bool, error) {
+	var count int
+	if err := r.db.QueryRowContext(ctx, `
+SELECT COUNT(*)
+FROM metaldocs.iam_user_roles
+WHERE role_code = $1
+`, string(role)).Scan(&count); err != nil {
+		return false, fmt.Errorf("count role assignments: %w", err)
+	}
+	return count > 0, nil
+}
+
 func (r *RoleAdminRepository) UpsertUserAndAssignRole(ctx context.Context, userID, displayName string, role domain.Role, assignedBy string) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {

@@ -21,6 +21,18 @@ func NewRoleAdminRepository() *RoleAdminRepository {
 	return &RoleAdminRepository{users: map[string]userRecord{}}
 }
 
+func (r *RoleAdminRepository) HasAnyRole(_ context.Context, role domain.Role) (bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for _, rec := range r.users {
+		if rec.roles[role] {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func (r *RoleAdminRepository) UpsertUserAndAssignRole(_ context.Context, userID, displayName string, role domain.Role, _ string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -55,6 +56,17 @@ func (s *Service) BootstrapLocalAdmin(ctx context.Context) error {
 	if !s.cfg.BootstrapAdminEnabled || strings.TrimSpace(s.cfg.BootstrapAdminPassword) == "" {
 		return nil
 	}
+	if s.roleAdmin == nil {
+		return fmt.Errorf("role admin repository is required")
+	}
+
+	hasAdmin, err := s.roleAdmin.HasAnyRole(ctx, iamdomain.RoleAdmin)
+	if err != nil {
+		return err
+	}
+	if hasAdmin {
+		return nil
+	}
 
 	passwordHash, err := s.hashPassword(strings.TrimSpace(s.cfg.BootstrapAdminPassword))
 	if err != nil {
@@ -72,9 +84,6 @@ func (s *Service) BootstrapLocalAdmin(ctx context.Context) error {
 	})
 	if err != nil || !created {
 		return err
-	}
-	if s.roleAdmin == nil {
-		return fmt.Errorf("role admin repository is required")
 	}
 	return s.roleAdmin.UpsertUserAndAssignRole(
 		ctx,
@@ -242,6 +251,10 @@ func (s *Service) ListUsers(ctx context.Context) ([]authdomain.ManagedUser, erro
 	for i := range items {
 		roles, roleErr := s.roleProvider.RolesByUserID(ctx, items[i].UserID)
 		if roleErr != nil {
+			if errors.Is(roleErr, iamdomain.ErrUserNotFound) {
+				items[i].Roles = nil
+				continue
+			}
 			return nil, roleErr
 		}
 		items[i].Roles = roles

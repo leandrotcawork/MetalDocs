@@ -20,11 +20,10 @@ func NewRepository(db *sql.DB) *Repository {
 
 func (r *Repository) FindIdentityByIdentifier(ctx context.Context, identifier string) (authdomain.Identity, error) {
 	const q = `
-SELECT i.user_id, i.username, COALESCE(i.email, ''), u.display_name, i.password_hash, i.password_algo,
-       i.must_change_password, i.last_login_at, i.failed_login_attempts, i.locked_until, u.is_active,
+SELECT i.user_id, i.username, COALESCE(i.email, ''), i.display_name, i.password_hash, i.password_algo,
+       i.must_change_password, i.last_login_at, i.failed_login_attempts, i.locked_until, i.is_active,
        i.created_at, i.updated_at
 FROM metaldocs.auth_identities i
-JOIN metaldocs.iam_users u ON u.user_id = i.user_id
 WHERE lower(i.username) = lower($1) OR lower(COALESCE(i.email, '')) = lower($1)
 `
 	return r.loadIdentity(ctx, q, identifier)
@@ -32,11 +31,10 @@ WHERE lower(i.username) = lower($1) OR lower(COALESCE(i.email, '')) = lower($1)
 
 func (r *Repository) FindIdentityByUserID(ctx context.Context, userID string) (authdomain.Identity, error) {
 	const q = `
-SELECT i.user_id, i.username, COALESCE(i.email, ''), u.display_name, i.password_hash, i.password_algo,
-       i.must_change_password, i.last_login_at, i.failed_login_attempts, i.locked_until, u.is_active,
+SELECT i.user_id, i.username, COALESCE(i.email, ''), i.display_name, i.password_hash, i.password_algo,
+       i.must_change_password, i.last_login_at, i.failed_login_attempts, i.locked_until, i.is_active,
        i.created_at, i.updated_at
 FROM metaldocs.auth_identities i
-JOIN metaldocs.iam_users u ON u.user_id = i.user_id
 WHERE i.user_id = $1
 `
 	return r.loadIdentity(ctx, q, userID)
@@ -161,19 +159,11 @@ func (r *Repository) CreateUser(ctx context.Context, params authdomain.CreateUse
 		return err
 	}
 
-	const insertUser = `
-INSERT INTO metaldocs.iam_users (user_id, display_name, is_active, created_at, updated_at)
-VALUES ($1, $2, $3, NOW(), NOW())
-`
-	if _, err := tx.ExecContext(ctx, insertUser, params.UserID, params.DisplayName, params.IsActive); err != nil {
-		return fmt.Errorf("insert iam user: %w", err)
-	}
-
 	const insertIdentity = `
-INSERT INTO metaldocs.auth_identities (user_id, username, email, password_hash, password_algo, must_change_password, last_login_at, failed_login_attempts, locked_until, created_at, updated_at)
-VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6, NULL, 0, NULL, NOW(), NOW())
+INSERT INTO metaldocs.auth_identities (user_id, username, email, display_name, is_active, password_hash, password_algo, must_change_password, last_login_at, failed_login_attempts, locked_until, created_at, updated_at)
+VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6, $7, $8, NULL, 0, NULL, NOW(), NOW())
 `
-	if _, err := tx.ExecContext(ctx, insertIdentity, params.UserID, params.Username, params.Email, params.PasswordHash, params.PasswordAlgo, params.MustChangePassword); err != nil {
+	if _, err := tx.ExecContext(ctx, insertIdentity, params.UserID, params.Username, params.Email, params.DisplayName, params.IsActive, params.PasswordHash, params.PasswordAlgo, params.MustChangePassword); err != nil {
 		return fmt.Errorf("insert auth identity: %w", err)
 	}
 
@@ -185,11 +175,10 @@ VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6, NULL, 0, NULL, NOW(), NOW())
 
 func (r *Repository) ListUsers(ctx context.Context) ([]authdomain.ManagedUser, error) {
 	const q = `
-SELECT u.user_id, i.username, COALESCE(i.email, ''), u.display_name, u.is_active, i.must_change_password,
-       i.last_login_at, i.failed_login_attempts, i.locked_until, u.created_at, u.updated_at
-FROM metaldocs.iam_users u
-JOIN metaldocs.auth_identities i ON i.user_id = u.user_id
-ORDER BY u.created_at DESC
+SELECT i.user_id, i.username, COALESCE(i.email, ''), i.display_name, i.is_active, i.must_change_password,
+       i.last_login_at, i.failed_login_attempts, i.locked_until, i.created_at, i.updated_at
+FROM metaldocs.auth_identities i
+ORDER BY i.created_at DESC
 `
 	rows, err := r.db.QueryContext(ctx, q)
 	if err != nil {
@@ -232,13 +221,13 @@ func (r *Repository) UpdateUser(ctx context.Context, params authdomain.UpdateUse
 
 	if params.DisplayName != nil || params.IsActive != nil {
 		if _, err := tx.ExecContext(ctx, `
-UPDATE metaldocs.iam_users
+UPDATE metaldocs.auth_identities
 SET display_name = COALESCE($2, display_name),
     is_active = COALESCE($3, is_active),
     updated_at = NOW()
 WHERE user_id = $1
 `, params.UserID, nullableText(params.DisplayName), nullableBool(params.IsActive)); err != nil {
-			return fmt.Errorf("update iam user: %w", err)
+			return fmt.Errorf("update auth identity profile: %w", err)
 		}
 	}
 
@@ -276,41 +265,22 @@ func (r *Repository) BootstrapAdmin(ctx context.Context, params authdomain.Boots
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	var adminCount int
-	if err := tx.QueryRowContext(ctx, `
-SELECT COUNT(*)
-FROM metaldocs.iam_user_roles
-WHERE role_code = 'admin'
-`).Scan(&adminCount); err != nil {
-		return false, fmt.Errorf("count admin roles: %w", err)
-	}
-	if adminCount > 0 {
-		return false, nil
-	}
-
 	if err := ensureUniqueIdentity(ctx, tx, params.UserID, params.Username, params.Email); err != nil {
 		return false, err
 	}
-
 	if _, err := tx.ExecContext(ctx, `
-INSERT INTO metaldocs.iam_users (user_id, display_name, is_active, created_at, updated_at)
-VALUES ($1, $2, TRUE, NOW(), NOW())
-ON CONFLICT (user_id)
-DO UPDATE SET display_name = EXCLUDED.display_name, is_active = TRUE, updated_at = NOW()
-`, params.UserID, params.DisplayName); err != nil {
-		return false, fmt.Errorf("bootstrap iam user: %w", err)
-	}
-	if _, err := tx.ExecContext(ctx, `
-INSERT INTO metaldocs.auth_identities (user_id, username, email, password_hash, password_algo, must_change_password, last_login_at, failed_login_attempts, locked_until, created_at, updated_at)
-VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6, NULL, 0, NULL, NOW(), NOW())
+INSERT INTO metaldocs.auth_identities (user_id, username, email, display_name, is_active, password_hash, password_algo, must_change_password, last_login_at, failed_login_attempts, locked_until, created_at, updated_at)
+VALUES ($1, $2, NULLIF($3, ''), $4, TRUE, $5, $6, $7, NULL, 0, NULL, NOW(), NOW())
 ON CONFLICT (user_id)
 DO UPDATE SET username = EXCLUDED.username,
               email = EXCLUDED.email,
+              display_name = EXCLUDED.display_name,
+              is_active = TRUE,
               password_hash = EXCLUDED.password_hash,
               password_algo = EXCLUDED.password_algo,
               must_change_password = EXCLUDED.must_change_password,
               updated_at = NOW()
-`, params.UserID, params.Username, params.Email, params.PasswordHash, params.PasswordAlgo, params.MustChangePassword); err != nil {
+`, params.UserID, params.Username, params.Email, params.DisplayName, params.PasswordHash, params.PasswordAlgo, params.MustChangePassword); err != nil {
 		return false, fmt.Errorf("bootstrap auth identity: %w", err)
 	}
 	if err := tx.Commit(); err != nil {

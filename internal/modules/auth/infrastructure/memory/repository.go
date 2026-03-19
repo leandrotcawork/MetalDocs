@@ -319,6 +319,20 @@ func (r *Repository) UpsertUserAndAssignRole(_ context.Context, userID, displayN
 	return nil
 }
 
+func (r *Repository) HasAnyRole(_ context.Context, role iamdomain.Role) (bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for _, identity := range r.users {
+		for _, assigned := range identity.Roles {
+			if assigned == role {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
+}
+
 func (r *Repository) ReplaceUserRoles(_ context.Context, userID, displayName string, roles []iamdomain.Role, _ string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

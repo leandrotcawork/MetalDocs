@@ -84,6 +84,7 @@ const emptyDocumentForm = {
   classification: "INTERNAL",
   audienceMode: "DEPARTMENT",
   audienceDepartment: "operacoes",
+  audienceDepartments: ["operacoes"],
   audienceProcessArea: "",
   tags: "",
   effectiveAt: "",
@@ -457,9 +458,12 @@ function AppContent() {
     try {
       const needsAudience = ["CONFIDENTIAL", "RESTRICTED"].includes(documentForm.classification);
       const audienceMode = documentForm.audienceMode || "DEPARTMENT";
+      const audienceDepartments = documentForm.classification === "CONFIDENTIAL"
+        ? documentForm.audienceDepartments
+        : [documentForm.audienceDepartment || documentForm.department].filter(Boolean);
       const audience = needsAudience ? {
         mode: audienceMode,
-        departmentCodes: [documentForm.audienceDepartment || documentForm.department].filter(Boolean),
+        departmentCodes: audienceDepartments,
         processAreaCodes: audienceMode === "AREAS"
           ? [documentForm.audienceProcessArea || documentForm.processArea].filter(Boolean)
           : undefined,

@@ -1110,13 +1110,11 @@ func buildAudiencePolicies(cmd domain.CreateDocumentCommand, classification stri
 		}
 	case domain.AudienceModeAreas:
 		for _, dept := range audience.DepartmentCodes {
-			if err := addPolicy(domain.SubjectTypeRole, "dept:"+dept, domain.CapabilityDocumentView); err != nil {
-				return nil, err
-			}
-		}
-		for _, area := range audience.ProcessAreaCodes {
-			if err := addPolicy(domain.SubjectTypeRole, "area:"+area, domain.CapabilityDocumentView); err != nil {
-				return nil, err
+			for _, area := range audience.ProcessAreaCodes {
+				compoundRole := "dept:" + dept + ":area:" + area
+				if err := addPolicy(domain.SubjectTypeRole, compoundRole, domain.CapabilityDocumentView); err != nil {
+					return nil, err
+				}
 			}
 		}
 	case domain.AudienceModeExplicit:
@@ -1148,6 +1146,17 @@ func normalizeAudience(cmd domain.CreateDocumentCommand, classification string) 
 			if dept == "" {
 				return nil, domain.ErrInvalidAccessPolicy
 			}
+			if classification == domain.ClassificationRestricted {
+				area := strings.ToLower(strings.TrimSpace(cmd.ProcessArea))
+				if area == "" {
+					return nil, domain.ErrInvalidAccessPolicy
+				}
+				return &domain.DocumentAudience{
+					Mode:             domain.AudienceModeAreas,
+					DepartmentCodes:  []string{dept},
+					ProcessAreaCodes: []string{area},
+				}, nil
+			}
 			return &domain.DocumentAudience{
 				Mode:            domain.AudienceModeDepartment,
 				DepartmentCodes: []string{dept},
@@ -1161,6 +1170,9 @@ func normalizeAudience(cmd domain.CreateDocumentCommand, classification string) 
 	case domain.AudienceModeInternal:
 		return nil, nil
 	case domain.AudienceModeDepartment:
+		if classification == domain.ClassificationRestricted {
+			return nil, domain.ErrInvalidAccessPolicy
+		}
 		departments := normalizeCodeList(cmd.Audience.DepartmentCodes)
 		if len(departments) == 0 {
 			if dept := strings.ToLower(strings.TrimSpace(cmd.Department)); dept != "" {

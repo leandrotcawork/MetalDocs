@@ -1400,7 +1400,7 @@ td small {
   min-height: 36px;
   padding: 0 34px 0 10px;
   background: #fff;
-  border: 1px solid rgba(145, 19, 42, 0.22);
+  border: 1.5px solid var(--vinho);
   border-radius: 12px;
   font-size: 12px;
   font-weight: 700;
@@ -2414,6 +2414,14 @@ td small {
   border: 1px solid var(--border-2);
 }
 
+.create-doc-content input:focus,
+.create-doc-content select:focus,
+.create-doc-content textarea:focus {
+  outline: none;
+  border-color: var(--vinho);
+  box-shadow: 0 0 0 2px rgba(139, 21, 56, 0.14);
+}
+
 .create-doc-content input,
 .create-doc-content select {
   height: 36px;
@@ -2422,6 +2430,199 @@ td small {
 
 .create-doc-content textarea {
   padding: 9px 11px;
+}
+
+.create-date-field {
+  position: relative;
+  display: block;
+}
+
+.create-date-input {
+  width: 100%;
+  height: 36px;
+  padding: 0 12px 0 11px;
+  border-radius: 8px;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  cursor: pointer;
+  text-align: left;
+  font-size: 13px;
+}
+
+.create-date-input:focus-visible {
+  outline: none;
+  border-color: var(--vinho);
+  box-shadow: 0 0 0 2px rgba(139, 21, 56, 0.14);
+}
+
+.create-date-value {
+  font-size: inherit;
+  color: var(--text);
+}
+
+.create-date-value.is-placeholder {
+  color: var(--text-soft);
+}
+
+.create-date-icon {
+  margin-left: auto;
+  width: 16px;
+  height: 16px;
+  color: var(--text-soft);
+  pointer-events: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.create-date-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.create-date-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 40;
+  width: 280px;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 12px 32px rgba(30, 10, 20, 0.12);
+  display: grid;
+  gap: 10px;
+}
+
+.create-date-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.create-date-nav {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.create-date-title {
+  text-transform: capitalize;
+}
+
+.create-date-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-soft);
+  text-align: center;
+}
+
+.create-date-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.create-date-day,
+.create-date-empty {
+  height: 28px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.create-date-day {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  padding: 0;
+}
+
+.create-date-day:hover {
+  border-color: var(--border);
+  background: var(--surface-2);
+}
+
+.create-date-day.is-selected {
+  border-color: var(--vinho);
+  background: var(--vinho-pale);
+  color: var(--vinho);
+}
+
+.create-date-time {
+  display: grid;
+  gap: 8px;
+}
+
+.create-date-time-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-soft);
+}
+
+.create-date-time-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text);
+}
+
+.create-date-time-text {
+  width: 52px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1.5px solid var(--vinho);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 12px;
+  text-align: center;
+  padding: 0 6px;
+}
+
+.create-date-time-text::placeholder {
+  color: var(--text-soft);
+}
+
+.create-date-time-sep {
+  font-size: 12px;
+  color: var(--text-soft);
+}
+
+.create-date-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.create-date-actions .ghost-button {
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 12px;
 }
 
 .create-doc-section-icon {
@@ -2535,24 +2736,32 @@ td small {
 .class-chips {
   display: flex;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
 }
 
 .class-chip {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 1px;
+  gap: 2px;
   border-radius: 8px;
   border: 1.5px solid var(--border);
   background: #fff;
   color: var(--text-muted);
   padding: 7px 10px;
   cursor: pointer;
+  white-space: nowrap;
+}
+
+.class-chip-title-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .class-chip small {
-  font-size: 10.5px;
+  font-size: 11px;
   color: var(--text-soft);
 }
 
@@ -2560,6 +2769,41 @@ td small {
   border-color: var(--vinho);
   background: var(--vinho-pale);
   color: var(--vinho);
+}
+
+.class-chip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--border-strong);
+}
+
+.class-chip[data-classification="PUBLIC"] .class-chip-dot {
+  background: #2f9e44;
+}
+
+.class-chip[data-classification="INTERNAL"] .class-chip-dot {
+  background: #4c6ef5;
+}
+
+.class-chip[data-classification="CONFIDENTIAL"] .class-chip-dot {
+  background: #f59f00;
+}
+
+.class-chip[data-classification="RESTRICTED"] .class-chip-dot {
+  background: var(--vinho);
+}
+
+.create-doc-subsection {
+  display: grid;
+  gap: 12px;
+}
+
+.create-doc-subsection-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
 }
 
 .field {

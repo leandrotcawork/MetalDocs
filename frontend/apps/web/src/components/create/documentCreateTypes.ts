@@ -12,6 +12,7 @@ export type DocumentForm = {
   classification: string;
   audienceMode: string;
   audienceDepartment: string;
+  audienceDepartments: string[];
   audienceProcessArea: string;
   tags: string;
   effectiveAt: string;
@@ -20,7 +21,7 @@ export type DocumentForm = {
   initialContent: string;
 };
 
-export type WizardStep = "identification" | "context" | "metadata" | "content";
+export type WizardStep = "identification" | "context" | "metadata" | "content" | "body";
 export type StepStatus = "pending" | "active" | "done" | "error";
 
 export type DocumentCreateViewProps = {
@@ -40,7 +41,8 @@ export const wizardSteps: Array<{ key: WizardStep; label: string; description: s
   { key: "identification", label: "Identificacao", description: "Titulo e profile documental." },
   { key: "context", label: "Contexto operacional", description: "Responsavel, area e taxonomia." },
   { key: "metadata", label: "Campos dinamicos", description: "Campos do schema." },
-  { key: "content", label: "Conteudo e acesso", description: "Classificacao e vigencia." },
+  { key: "content", label: "Classificacao e acesso", description: "Classificacao, audiencia e vigencia." },
+  { key: "body", label: "Conteudo", description: "Texto inicial do documento." },
 ];
 
 export function parseMetadata(value: string): Record<string, string> {

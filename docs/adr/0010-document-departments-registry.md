@@ -1,7 +1,7 @@
 # ADR-0010: Document Departments Registry
 
 ## Status
-Proposed
+Accepted
 
 ## Context
 `department` e hoje um campo livre em documentos. Para garantir consistencia, padronizar UX e sustentar regras de acesso por departamento, precisamos de um registry canonico similar ao de `process_areas` e `subjects`.

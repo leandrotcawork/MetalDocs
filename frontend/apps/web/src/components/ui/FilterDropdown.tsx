@@ -6,6 +6,7 @@ type FilterDropdownProps = {
   options: SelectMenuOption[];
   onSelect: (value: string) => void;
   label?: string;
+  placeholder?: string;
   value?: string;
   values?: string[];
   selectionMode?: "one" | "duo";
@@ -22,6 +23,7 @@ export function FilterDropdown({
   options,
   onSelect,
   label,
+  placeholder,
   value = "",
   values = [],
   selectionMode = "one",
@@ -34,6 +36,7 @@ export function FilterDropdown({
     <SelectMenu
       id={id}
       label={label}
+      placeholder={placeholder}
       options={options}
       onSelect={onSelect}
       value={value}

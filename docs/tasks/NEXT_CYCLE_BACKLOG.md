@@ -995,7 +995,7 @@ Entrega:
 - runbook de dev atualizado com regra CSP/fonts
 
 ## Task 050 - Classification semantics + audience model (ADR + contract)
-Status: `todo`
+Status: `done`
 
 Objetivo:
 Congelar uma semantica profissional e escalavel para `classification` (sensibilidade) e `audience` (quem pode ver/editar), evitando acoplamento de regra no frontend e prevenindo drift de contrato.
@@ -1139,3 +1139,32 @@ Aceite:
 Entrega:
 - seletor de audiencia condicionado a CONFIDENTIAL/RESTRICTED.
 - payload `audience` enviado no create.
+
+## Task 054 - Enforce dept AND area access (compound policies)
+Status: `done`
+
+Objetivo:
+Permitir regra AND real entre departamento e area (`dept ∧ area`) para classificacao Restrito, evitando a permissao por OR do modelo atual.
+
+Contexto:
+Hoje as policies sao avaliadas por uniao (OR). Se gravarmos `dept:<d>` e `area:<a>`, qualquer usuario com um dos dois entra. Precisamos de um conceito composto para exigir a combinacao.
+
+Escopo:
+- ADR nova descrevendo abordagem:
+  - opcao A: role composta `dept:<d>:area:<a>`
+  - opcao B: "group" com membership explicitando dept+area
+  - opcao C: policy condition (ABAC) com atributos `department` e `process_area` (mais longo prazo)
+- Contrato:
+  - manter `audience.mode = AREAS` mas gerar `compoundRoleCodes` ou `groupIds` no backend.
+- Backend:
+  - gerar policies usando o conceito composto (nao gerar `dept:<d>` para Restrito).
+  - garantir compatibilidade com `decidePolicies` atual.
+- Admin/ops:
+  - fluxo para atribuir roles compostas ou membership de grupos para usuarios.
+- UI:
+  - manter "Areas do departamento" mas sinalizar que apenas quem esta no grupo/role composto tera acesso.
+
+Aceite:
+- Documento Restrito com dept+area permite acesso somente para usuarios que possuem a combinacao.
+- Usuario que tem apenas dept OU apenas area nao acessa.
+- Tests cobrindo a avaliacao AND no fluxo de `GetDocument`.

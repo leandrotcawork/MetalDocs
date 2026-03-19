@@ -1,7 +1,7 @@
 # ADR-0009: Document Audience vs Classification
 
 ## Status
-Proposed
+Accepted
 
 ## Context
 `classification` existe hoje no documento como nivel de sensibilidade, mas nao controla acesso diretamente. O acesso real e decidido por `access_policies` (capability-based). Precisamos de um modelo claro e escalavel para definir "quem pode ver" sem empurrar regra para o frontend, mantendo compatibilidade com o contrato atual.

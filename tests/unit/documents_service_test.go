@@ -195,13 +195,13 @@ func TestCreateDocumentRejectsUnknownType(t *testing.T) {
 	}
 }
 
-func TestCreateDocumentRejectsInvalidMetadataForType(t *testing.T) {
+func TestCreateDocumentAllowsArbitraryMetadata(t *testing.T) {
 	repo := memory.NewRepository()
 	svc := application.NewService(repo, nil, fixedClock{now: time.Now().UTC()})
 
 	_, err := svc.CreateDocument(context.Background(), domain.CreateDocumentCommand{
 		DocumentID:   "doc-metadata",
-		Title:        "Invalid Procedure",
+		Title:        "Procedure With Custom Metadata",
 		DocumentType: "po",
 		OwnerID:      "user-1",
 		BusinessUnit: "quality",
@@ -210,8 +210,8 @@ func TestCreateDocumentRejectsInvalidMetadataForType(t *testing.T) {
 			"wrong_field": "bad",
 		},
 	})
-	if err == nil {
-		t.Fatal("expected invalid metadata error")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 

@@ -414,10 +414,8 @@ export function RegistryExplorer(props: RegistryExplorerProps) {
                   <FilterDropdown
                     id="subject-process-area"
                     value={subjectForm.processAreaCode}
-                    options={[
-                      { value: "", label: "Selecione a area" },
-                      ...props.processAreas.map<SelectMenuOption>((item) => ({ value: item.code, label: item.name })),
-                    ]}
+                    placeholder="Selecione a area"
+                    options={props.processAreas.map<SelectMenuOption>((item) => ({ value: item.code, label: item.name }))}
                     onSelect={(value) => setSubjectForm((current) => ({ ...current, processAreaCode: value }))}
                   />
                   <input

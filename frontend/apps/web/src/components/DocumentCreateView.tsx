@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { DocumentCreateContentStep } from "./create/DocumentCreateContentStep";
+import { DocumentCreateBodyStep } from "./create/DocumentCreateBodyStep";
 import { DocumentCreateContextStep } from "./create/DocumentCreateContextStep";
 import { DocumentCreateMetadataStep } from "./create/DocumentCreateMetadataStep";
 import { DocumentCreateProfileStep } from "./create/DocumentCreateProfileStep";
@@ -25,19 +26,20 @@ export function DocumentCreateView(props: DocumentCreateViewProps) {
     context: "create-section-context",
     metadata: "create-section-metadata",
     content: "create-section-content",
+    body: "create-section-body",
   };
   const metadataRules = props.selectedProfileSchema?.metadataRules ?? [];
   const metadataMap = parseMetadata(props.documentForm.metadata);
   const metadataComplete = metadataRules.length === 0
     ? true
     : metadataRules.every((rule) => !rule.required || (metadataMap[rule.name]?.toString().trim() ?? "") !== "");
-  const requiresAudience = props.documentForm.classification === "CONFIDENTIAL" || props.documentForm.classification === "RESTRICTED";
+  const isConfidential = props.documentForm.classification === "CONFIDENTIAL";
+  const isRestricted = props.documentForm.classification === "RESTRICTED";
+  const requiresAudience = isConfidential || isRestricted;
   const audienceComplete = !requiresAudience || (
-    props.documentForm.audienceMode === "DEPARTMENT"
-      ? props.documentForm.audienceDepartment.trim().length > 0
-      : props.documentForm.audienceMode === "AREAS"
-        ? props.documentForm.audienceDepartment.trim().length > 0 && props.documentForm.audienceProcessArea.trim().length > 0
-        : true
+    isConfidential
+      ? props.documentForm.audienceDepartments.length > 0
+      : props.documentForm.audienceDepartment.trim().length > 0 && props.documentForm.audienceProcessArea.trim().length > 0
   );
   const stepCompletion: Record<WizardStep, boolean> = {
     identification: props.documentForm.title.trim().length > 0 && props.documentForm.documentProfile.trim().length > 0,
@@ -46,13 +48,8 @@ export function DocumentCreateView(props: DocumentCreateViewProps) {
       && props.documentForm.department.trim().length > 0,
     metadata: metadataComplete,
     content: props.documentForm.classification.trim().length > 0
-      && audienceComplete
-      && (
-        props.documentForm.tags.trim().length > 0
-        || props.documentForm.initialContent.trim().length > 0
-        || props.documentForm.effectiveAt.trim().length > 0
-        || props.documentForm.expiryAt.trim().length > 0
-      ),
+      && audienceComplete,
+    body: props.documentForm.initialContent.trim().length > 0,
   };
 
   function stepStateFor(step: WizardStep): StepStatus {
@@ -167,8 +164,8 @@ export function DocumentCreateView(props: DocumentCreateViewProps) {
 
           <CreateDocumentSection
             sectionId={sectionIdByStep.content}
-            title="Conteudo e acesso"
-            subtitle="Classificacao, vigencia, tags e texto inicial."
+            title="Classificacao e acesso"
+            subtitle="Classificacao, audiencia e vigencia."
             icon={
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
                 <path d="M3 2h6.5L12 4.5V12H3V2z" strokeLinejoin="round" />
@@ -180,6 +177,22 @@ export function DocumentCreateView(props: DocumentCreateViewProps) {
               form={props.documentForm}
               processAreas={props.processAreas}
               documentDepartments={props.documentDepartments}
+              onDocumentFormChange={props.onDocumentFormChange}
+            />
+          </CreateDocumentSection>
+
+          <CreateDocumentSection
+            sectionId={sectionIdByStep.body}
+            title="Conteudo"
+            subtitle="Texto inicial do documento."
+            icon={(
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+                <path d="M3 3.5h8M3 6.5h8M3 9.5h5" />
+              </svg>
+            )}
+          >
+            <DocumentCreateBodyStep
+              form={props.documentForm}
               onDocumentFormChange={props.onDocumentFormChange}
             />
           </CreateDocumentSection>

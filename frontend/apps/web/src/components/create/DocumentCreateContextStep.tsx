@@ -29,7 +29,6 @@ export function DocumentCreateContextStep(props: DocumentCreateContextStepProps)
     })),
   ];
   const departmentOptions: SelectMenuOption[] = [
-    { value: "", label: "Selecione o departamento" },
     ...props.documentDepartments.map((item) => ({
       value: item.code,
       label: item.name,
@@ -54,11 +53,17 @@ export function DocumentCreateContextStep(props: DocumentCreateContextStepProps)
           <FilterDropdown
             id="document-department"
             value={props.form.department}
+            placeholder="Selecione o departamento"
             options={departmentOptions}
             onSelect={(value) => props.onDocumentFormChange({
               ...props.form,
               department: value,
               audienceDepartment: value,
+              audienceDepartments: props.form.audienceDepartments.length
+                ? props.form.audienceDepartments
+                : value
+                  ? [value]
+                  : [],
             })}
           />
         </CreateField>

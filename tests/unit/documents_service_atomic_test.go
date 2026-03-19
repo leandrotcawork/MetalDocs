@@ -105,6 +105,18 @@ func (r *atomicRepoSpy) DeactivateProcessArea(context.Context, string) error {
 	return nil
 }
 
+func (r *atomicRepoSpy) ListDocumentDepartments(context.Context) ([]domain.DocumentDepartment, error) {
+	return domain.DefaultDocumentDepartments(), nil
+}
+
+func (r *atomicRepoSpy) UpsertDocumentDepartment(context.Context, domain.DocumentDepartment) error {
+	return nil
+}
+
+func (r *atomicRepoSpy) DeactivateDocumentDepartment(context.Context, string) error {
+	return nil
+}
+
 func (r *atomicRepoSpy) ListSubjects(context.Context) ([]domain.Subject, error) {
 	return domain.DefaultSubjects(), nil
 }

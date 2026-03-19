@@ -13,6 +13,7 @@ type SelectMenuProps = {
   options: SelectMenuOption[];
   onSelect: (value: string) => void;
   label?: string;
+  placeholder?: string;
   disabled?: boolean;
   chevronStrokeWidth?: number;
   searchThreshold?: number;
@@ -28,6 +29,7 @@ export function SelectMenu(props: SelectMenuProps) {
     options,
     onSelect,
     label,
+    placeholder,
     disabled = false,
     chevronStrokeWidth = 2,
     searchThreshold = 10,
@@ -49,9 +51,9 @@ export function SelectMenu(props: SelectMenuProps) {
   }, [options, searchQuery, showSearch]);
   const currentLabel = (() => {
     if (mode !== "multi") {
-      return options.find((option) => option.value === value)?.label ?? options[0]?.label ?? "";
+      return options.find((option) => option.value === value)?.label ?? placeholder ?? "";
     }
-    if (!selectedValues.length) return options.find((option) => option.value === "all")?.label ?? options[0]?.label ?? "";
+    if (!selectedValues.length) return placeholder ?? options.find((option) => option.value === "all")?.label ?? "";
     if (selectedValues.length === 1) return options.find((option) => option.value === selectedValues[0])?.label ?? selectedValues[0];
     return `${selectedValues.length} selecionadas`;
   })();

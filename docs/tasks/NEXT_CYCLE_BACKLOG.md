@@ -1168,3 +1168,120 @@ Aceite:
 - Documento Restrito com dept+area permite acesso somente para usuarios que possuem a combinacao.
 - Usuario que tem apenas dept OU apenas area nao acessa.
 - Tests cobrindo a avaliacao AND no fluxo de `GetDocument`.
+
+## Task 055 - Content authoring ADRs (modes + storage)
+Status: `todo`
+
+Objetivo:
+Congelar decisoes de produto e arquitetura para autoria de conteudo (native + docx) e persistencia em `document_versions`, antes de alterar schema/contratos.
+
+Entregaveis:
+- ADR: `docs/adr/0012-content-authoring-modes-and-carbone.md`
+- ADR: `docs/adr/0013-document-version-content-storage-and-search.md`
+
+Aceite:
+- ADRs revisadas e aceitas (Status: Accepted).
+- Fluxo nao viola versionamento imutavel e policy de migrations (ADR-0007).
+
+## Task 056 - Infra: Carbone service in compose + config
+Status: `todo`
+
+Escopo:
+- Adicionar servico `carbone` em `deploy/compose/docker-compose.yml` (porta interna 4000).
+- Criar pastas versionadas para templates (ex: `carbone/templates/`) e renders (gitignored).
+- Adicionar env `METALDOCS_CARBONE_API_URL=http://carbone:4000` no `api`.
+- Runbook dev: como subir e validar o health do Carbone.
+
+Aceite:
+- `docker compose up` sobe `carbone` junto do stack sem regressao.
+- API enxerga `METALDOCS_CARBONE_API_URL` (smoke log/healthcheck dedicado).
+
+## Task 057 - Schema: extend document_versions for content + pdf/docx + FTS
+Status: `todo`
+
+Escopo:
+- Migration additive em `migrations/` adicionando colunas:
+  - `content_source`, `native_content`, `docx_storage_key`, `pdf_storage_key`, `text_content`, `file_size_bytes`, `original_filename`, `page_count`.
+  - `search_vector` gerado + indice GIN.
+- Backfill seguro:
+  - versoes existentes: `content_source='native'`, `text_content=content` quando aplicavel.
+
+Aceite:
+- Migrations rodam em ambiente novo e existente.
+- Nenhuma coluna existente e removida.
+
+## Task 058 - Contract: OpenAPI content endpoints + schemas
+Status: `todo`
+
+Escopo:
+- Atualizar `api/openapi/v1/openapi.yaml` com endpoints:
+  - Native: `GET /documents/{id}/content/native`, `POST /documents/{id}/content/native` (cria nova versao).
+  - Render: `POST /documents/{id}/content/render-pdf`, `GET /documents/{id}/content/pdf`.
+  - DOCX: `GET /documents/{id}/template/docx`, `POST /documents/{id}/content/upload`, `GET /documents/{id}/content/docx`.
+  - Profile blank template: `GET /document-profiles/{profileCode}/template/docx` (opcional MVP).
+- Definir erros padrao: 400 invalid, 401/403 authz, 404 not found, 413 file too large, 415 unsupported media type.
+
+Aceite:
+- Contract tests passam.
+- Sem breaking change: novos campos como opcionais quando necessario.
+
+## Task 059 - Backend: Carbone client + template registry bootstrap
+Status: `todo`
+
+Escopo:
+- Criar client `CarboneService` (wrapper REST) com:
+  - register template (multipart)
+  - render template (data + convertTo)
+  - download render
+  - timeouts e logs com traceId
+- Bootstrap: no start do API, registrar templates do repo (idempotente) e manter map `profileCode -> templateId`.
+
+Aceite:
+- Unit tests do client com server fake.
+- Bootstrap nao falha o start se Carbone estiver indisponivel: falha controlada + health indicando degradacao.
+
+## Task 060 - Backend: content flows (native + docx upload) creating versions
+Status: `todo`
+
+Escopo:
+- Native authoring:
+  - Receber `native_content` (JSON) -> criar nova `document_version` (append-only).
+  - Extrair `text_content` (string) para busca.
+  - Renderizar PDF via Carbone e persistir `pdf_storage_key`.
+- DOCX upload:
+  - Validar magic bytes DOCX (ZIP `PK`), size limit.
+  - Persistir DOCX (`docx_storage_key`) e converter para PDF via Carbone (`pdf_storage_key`).
+  - Extrair texto do `word/document.xml` para `text_content`.
+- Enforcements:
+  - view endpoints exigem `document.view`
+  - write/upload exigem `document.edit` (ou capability dedicada, se existir)
+
+Aceite:
+- Criar versao via native/docx resulta em PDF acessivel por URL assinada.
+- `document_versions` permanece append-only.
+
+## Task 061 - Frontend: Content mode selector + DOCX upload + PDF viewer
+Status: `todo`
+
+Escopo MVP:
+- Novo bloco "Conteudo" (step 5) com:
+  - seletor de modo (native vs docx upload)
+  - upload DOCX (drag/drop) + status + erro
+  - viewer PDF (react-pdf) para PDF final gerado pelo backend
+- Native editor MVP:
+  - Comecar com um editor simples por profile (textarea/fields basicos) apenas para salvar JSON e gerar PDF.
+  - Campos tipados por secoes vira Task futura (nao bloquear MVP).
+
+Aceite:
+- Usuario consegue gerar e visualizar PDF final no app em ambos os modos.
+- UI nao hardcoda regra de negocio: apenas monta payload do contrato.
+
+## Task 062 - Search: use version text_content/search_vector
+Status: `todo`
+
+Escopo:
+- Ajustar search reader/query para usar `search_vector` quando presente.
+- Definir se busca usa "ultima versao" apenas (MVP) ou todas (v2).
+
+Aceite:
+- Busca retorna documentos por texto do conteudo (modo native/docx).

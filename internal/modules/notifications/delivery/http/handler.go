@@ -3,6 +3,7 @@ package httpdelivery
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -43,6 +44,7 @@ func NewHandler(service *notificationapp.Service) *Handler {
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/notifications", h.handleNotifications)
 	mux.HandleFunc("/api/v1/notifications/", h.handleNotificationRoute)
+	mux.HandleFunc("/api/v1/operations/stream", h.handleOperationsStream)
 }
 
 func (h *Handler) handleNotifications(w http.ResponseWriter, r *http.Request) {
@@ -142,6 +144,87 @@ func (h *Handler) handleNotificationRoute(w http.ResponseWriter, r *http.Request
 		Status: notificationdomain.StatusRead,
 		ReadAt: readAt.Format(time.RFC3339),
 	})
+}
+
+func (h *Handler) handleOperationsStream(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	userID := iamdomain.UserIDFromContext(r.Context())
+	if userID == "" {
+		writeAPIError(w, http.StatusUnauthorized, "AUTH_UNAUTHORIZED", "Authentication required", requestTraceID(r))
+		return
+	}
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		writeAPIError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Streaming not supported", requestTraceID(r))
+		return
+	}
+
+	interval := 15 * time.Second
+	if raw := strings.TrimSpace(r.URL.Query().Get("intervalSec")); raw != "" {
+		seconds, err := strconv.Atoi(raw)
+		if err != nil || seconds < 5 || seconds > 60 {
+			writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "intervalSec must be between 5 and 60", requestTraceID(r))
+			return
+		}
+		interval = time.Duration(seconds) * time.Second
+	}
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
+
+	send := func(eventName string) error {
+		snapshot, err := h.service.BuildOperationsSnapshot(r.Context(), userID)
+		if err != nil {
+			return err
+		}
+		payload := map[string]any{
+			"pendingNotifications": snapshot.PendingNotifications,
+			"documentsInReview":    snapshot.DocumentsInReview,
+			"totalDocuments":       snapshot.TotalDocuments,
+			"generatedAt":          snapshot.GeneratedAt.UTC().Format(time.RFC3339),
+		}
+		body, err := json.Marshal(payload)
+		if err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintf(w, "event: %s\ndata: %s\n\n", eventName, body); err != nil {
+			return err
+		}
+		flusher.Flush()
+		return nil
+	}
+
+	if err := send("snapshot"); err != nil {
+		return
+	}
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	heartbeat := time.NewTicker(25 * time.Second)
+	defer heartbeat.Stop()
+
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case <-ticker.C:
+			if err := send("snapshot"); err != nil {
+				return
+			}
+		case <-heartbeat.C:
+			if _, err := fmt.Fprint(w, ": heartbeat\n\n"); err != nil {
+				return
+			}
+			flusher.Flush()
+		}
+	}
 }
 
 func hasAdminRole(roles []iamdomain.Role) bool {

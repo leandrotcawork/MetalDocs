@@ -717,7 +717,7 @@ Progresso fase 4:
 - Task 036 encerrada com CRUD funcional de profiles, governance, schema versions, process areas e subjects
 
 ## Task 037 - Realtime event stream for operations center
-Status: `pending`
+Status: `in_progress`
 
 Objetivo:
 Adicionar atualizacao ao vivo para paineis operacionais sem acoplar isso prematuramente ao authoring base.
@@ -734,6 +734,11 @@ Direcao:
 
 Saida:
 - operations center com atualizacao ao vivo sem polling como mecanismo unico
+
+Progresso fase 1:
+- endpoint SSE inicial entregue em `GET /api/v1/operations/stream` com snapshot operacional periodico (notificacoes pendentes + documentos em revisao + total de documentos)
+- authz integrado ao middleware IAM (`PermDocumentRead`) sem bypass
+- frontend conectado ao stream com refresh resiliente e fallback preservado (sem acoplamento forte ao authoring)
 
 ## Task 038 - Collaborative editing and presence
 Status: `pending`

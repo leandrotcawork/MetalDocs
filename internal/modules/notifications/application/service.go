@@ -30,6 +30,13 @@ type Service struct {
 	clock   Clock
 }
 
+type OperationsSnapshot struct {
+	PendingNotifications int       `json:"pendingNotifications"`
+	DocumentsInReview    int       `json:"documentsInReview"`
+	TotalDocuments       int       `json:"totalDocuments"`
+	GeneratedAt          time.Time `json:"generatedAt"`
+}
+
 var ErrNotificationNotFound = errors.New("notification not found")
 
 func NewService(repo notificationdomain.Repository, docRepo docdomain.Repository, clock Clock) *Service {
@@ -44,6 +51,36 @@ func (s *Service) ListNotifications(ctx context.Context, query notificationdomai
 		query.Limit = 50
 	}
 	return s.repo.List(ctx, query)
+}
+
+func (s *Service) BuildOperationsSnapshot(ctx context.Context, recipientUserID string) (OperationsSnapshot, error) {
+	notifications, err := s.repo.List(ctx, notificationdomain.ListNotificationsQuery{
+		RecipientUserID: strings.TrimSpace(recipientUserID),
+		Status:          notificationdomain.StatusPending,
+		Limit:           200,
+	})
+	if err != nil {
+		return OperationsSnapshot{}, err
+	}
+
+	documents, err := s.docRepo.ListDocuments(ctx)
+	if err != nil {
+		return OperationsSnapshot{}, err
+	}
+
+	inReview := 0
+	for _, document := range documents {
+		if strings.EqualFold(document.Status, string(docdomain.StatusInReview)) {
+			inReview++
+		}
+	}
+
+	return OperationsSnapshot{
+		PendingNotifications: len(notifications),
+		DocumentsInReview:    inReview,
+		TotalDocuments:       len(documents),
+		GeneratedAt:          s.clock.Now(),
+	}, nil
 }
 
 func (s *Service) MarkNotificationRead(ctx context.Context, notificationID, recipientUserID string) error {

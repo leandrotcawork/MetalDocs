@@ -927,6 +927,42 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
+  /operations/stream:
+    get:
+      summary: Stream SSE com snapshot operacional para Operations Center
+      parameters:
+        - name: intervalSec
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 5
+            maximum: 60
+      responses:
+        '200':
+          description: Stream SSE ativo
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
   /access-policies:
     get:
       summary: Lista policies de acesso por recurso

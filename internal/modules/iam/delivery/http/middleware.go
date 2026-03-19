@@ -183,6 +183,9 @@ func requiredPermission(method, path string) (iamdomain.Permission, bool) {
 	if method == http.MethodGet && path == "/api/v1/notifications" {
 		return iamdomain.PermDocumentRead, true
 	}
+	if method == http.MethodGet && path == "/api/v1/operations/stream" {
+		return iamdomain.PermDocumentRead, true
+	}
 	if method == http.MethodPost && strings.HasPrefix(path, "/api/v1/notifications/") && strings.HasSuffix(path, "/read") {
 		return iamdomain.PermDocumentRead, true
 	}

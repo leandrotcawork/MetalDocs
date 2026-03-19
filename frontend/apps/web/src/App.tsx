@@ -1,4 +1,4 @@
-import { Component, useEffect, useState } from "react";
+import { Component, useEffect, useRef, useState } from "react";
 import { api } from "./lib.api";
 import { AuthShell } from "./components/AuthShell";
 import { DocumentCreateView } from "./components/DocumentCreateView";
@@ -179,6 +179,7 @@ function AppContent() {
   const [policyResourceId, setPolicyResourceId] = useState("");
   const [userForm, setUserForm] = useState(emptyUserForm);
   const [managedUserForm, setManagedUserForm] = useState(emptyManagedUserForm);
+  const streamRefreshInFlightRef = useRef(false);
 
   const currentUserRoles = Array.isArray(user?.roles) ? user.roles : [];
   const isAdmin = currentUserRoles.includes("admin");
@@ -212,6 +213,27 @@ function AppContent() {
       resetPassword: "",
     }));
   }, [managedUsers, managedUserForm.userId]);
+
+  useEffect(() => {
+    if (authState !== "ready" || !user || user.mustChangePassword) {
+      return;
+    }
+
+    const stream = new EventSource(`${api.currentApiBaseUrl}/operations/stream`, { withCredentials: true });
+    const onSnapshot = () => {
+      void refreshOperationalSignals();
+    };
+
+    stream.addEventListener("snapshot", onSnapshot);
+    stream.onerror = () => {
+      // EventSource already handles retries; keep fallback polling/manual refresh active.
+    };
+
+    return () => {
+      stream.removeEventListener("snapshot", onSnapshot);
+      stream.close();
+    };
+  }, [authState, user?.mustChangePassword, user?.userId]);
 
   async function bootstrap() {
     try {
@@ -262,6 +284,25 @@ function AppContent() {
     } catch (err) {
       handleError(err);
       setLoadState("error");
+    }
+  }
+
+  async function refreshOperationalSignals() {
+    if (streamRefreshInFlightRef.current) {
+      return;
+    }
+    streamRefreshInFlightRef.current = true;
+    try {
+      const [docsResponse, notificationsResponse] = await Promise.all([
+        api.searchDocuments(new URLSearchParams({ limit: "25" })),
+        api.listNotifications(new URLSearchParams({ limit: "10" })),
+      ]);
+      setDocuments(Array.isArray(docsResponse.items) ? docsResponse.items : []);
+      setNotifications(Array.isArray(notificationsResponse.items) ? notificationsResponse.items : []);
+    } catch {
+      // Keep stream resilient: realtime refresh failure should not break UI session.
+    } finally {
+      streamRefreshInFlightRef.current = false;
     }
   }
 

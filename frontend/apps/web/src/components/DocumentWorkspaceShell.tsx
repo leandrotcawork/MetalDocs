@@ -20,6 +20,8 @@ type WorkspaceShellProps = {
   onSearchChange: (value: string) => void;
   onNavigate: (view: WorkspaceView) => void;
   onPrimaryAction: () => void;
+  onRefreshWorkspace: () => void | Promise<void>;
+  isRefreshing: boolean;
   onLogout: () => void | Promise<void>;
   children: React.ReactNode;
 };
@@ -279,6 +281,21 @@ export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
         </div>
 
         <div className="workspace-topbar-actions">
+          <button
+            type="button"
+            className="workspace-icon-button"
+            title="Atualizar workspace"
+            onClick={() => void props.onRefreshWorkspace()}
+            disabled={props.isRefreshing}
+          >
+            <span aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4">
+                <path d="M11.5 3.5v3h-3" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M2.5 10.5v-3h3" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M11 6A4.5 4.5 0 0 0 3.7 3.1L2.5 4.3M3 8A4.5 4.5 0 0 0 10.3 10.9l1.2-1.2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
+          </button>
           <button type="button" className="workspace-icon-button" title="Notificacoes" onClick={() => props.onNavigate("notifications")}>
             <span aria-hidden="true">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4">

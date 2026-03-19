@@ -600,7 +600,7 @@ Saida:
 - base pronta para `Task 034` e `Task 035` sem reabrir o modelo de dominio
 
 ## Task 034 - Document workspace UX
-Status: `doing`
+Status: `done`
 
 Objetivo:
 Traduzir o modelo de authoring em experiencia visual e navegacao operacional de alto nivel.
@@ -637,6 +637,14 @@ Progresso fase 3:
 Progresso fase 4:
 - componente compartilhado `WorkspaceDataState` criado para padrao de `loading/error/empty`
 - `documents`, `notifications` e `admin` passaram a usar estado visual consistente com acao de retry
+
+Progresso fase 5:
+- `refreshWorkspace` centralizado em `App.tsx` (sem callbacks duplicados por view)
+- shell ganhou acao global de refresh com estado de loading consistente
+
+Progresso fase 6:
+- frame estrutural + estados operacionais compartilhados consolidados para as principais views do workspace
+- arquitetura de frontend pronta para avancar para customizacao Metal Nobre (`Task 035`) e evolucao de registry/admin (`Task 036`) sem refatoracao de base
 
 ## Task 035 - Metal Nobre applied experience
 Status: `pending`

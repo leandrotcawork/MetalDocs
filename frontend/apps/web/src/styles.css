@@ -638,6 +638,16 @@ td small {
   color: #fff;
 }
 
+.workspace-icon-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.workspace-icon-button:disabled:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.65);
+}
+
 .workspace-primary-button {
   white-space: nowrap;
   height: 32px;

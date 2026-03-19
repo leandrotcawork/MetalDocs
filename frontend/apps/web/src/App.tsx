@@ -576,6 +576,12 @@ function AppContent() {
     return <AuthShell identifier={loginForm.identifier} password={loginForm.password} message={message} error={error} onIdentifierChange={(identifier) => setLoginForm({ ...loginForm, identifier })} onPasswordChange={(password) => setLoginForm({ ...loginForm, password })} onSubmit={handleLogin} />;
   }
 
+  const currentUser = user;
+
+  function refreshWorkspace() {
+    return loadWorkspace(currentUser);
+  }
+
   function renderWorkspaceView() {
     if (activeView === "operations" || activeView === "approvals" || activeView === "audit") {
       return (
@@ -611,11 +617,7 @@ function AppContent() {
           policyResourceId={policyResourceId}
           searchQuery={searchQuery}
           formatDate={formatDate}
-          onRefreshWorkspace={() => {
-            if (user) {
-              return loadWorkspace(user);
-            }
-          }}
+          onRefreshWorkspace={refreshWorkspace}
           onOpenDocument={openDocument}
           onFileChange={setSelectedFile}
           onUploadAttachment={handleUploadAttachment}
@@ -659,11 +661,7 @@ function AppContent() {
           loadState={loadState}
           notifications={notifications}
           formatDate={formatDate}
-          onRefreshWorkspace={() => {
-            if (user) {
-              return loadWorkspace(user);
-            }
-          }}
+          onRefreshWorkspace={refreshWorkspace}
           onMarkRead={handleMarkNotificationRead}
         />
       );
@@ -678,11 +676,7 @@ function AppContent() {
           managedUsers={managedUsers}
           selectedManagedUser={selectedManagedUser}
           formatDate={formatDate}
-          onRefreshWorkspace={() => {
-            if (user) {
-              return loadWorkspace(user);
-            }
-          }}
+          onRefreshWorkspace={refreshWorkspace}
           onUserFormChange={setUserForm}
           onManagedUserFormChange={setManagedUserForm}
           onSubmitCreateUser={handleCreateUser}
@@ -736,6 +730,8 @@ function AppContent() {
           onSearchChange={setSearchQuery}
           onNavigate={setActiveView}
           onPrimaryAction={() => setActiveView("create")}
+          onRefreshWorkspace={refreshWorkspace}
+          isRefreshing={loadState === "loading"}
           onLogout={handleLogout}
         >
           {workspaceView}

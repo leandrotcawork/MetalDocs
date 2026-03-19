@@ -14,7 +14,9 @@ import type {
   AccessPolicyItem,
   AttachmentItem,
   AuditEventItem,
+  CollaborationPresenceItem,
   CurrentUser,
+  DocumentEditLockItem,
   DocumentProfileGovernanceItem,
   DocumentProfileItem,
   DocumentProfileSchemaItem,
@@ -170,6 +172,8 @@ function AppContent() {
   const [versionDiff, setVersionDiff] = useState<VersionDiffResponse | null>(null);
   const [approvals, setApprovals] = useState<WorkflowApprovalItem[]>([]);
   const [attachments, setAttachments] = useState<AttachmentItem[]>([]);
+  const [collaborationPresence, setCollaborationPresence] = useState<CollaborationPresenceItem[]>([]);
+  const [documentEditLock, setDocumentEditLock] = useState<DocumentEditLockItem | null>(null);
   const [policies, setPolicies] = useState<AccessPolicyItem[]>([]);
   const [auditEvents, setAuditEvents] = useState<AuditEventItem[]>([]);
   const [managedUsers, setManagedUsers] = useState<ManagedUserItem[]>([]);
@@ -227,6 +231,39 @@ function AppContent() {
       },
     );
   }, [authState, user?.mustChangePassword, user?.userId]);
+
+  useEffect(() => {
+    if (authState !== "ready" || !selectedDocument?.documentId) {
+      return;
+    }
+
+    const emitHeartbeat = async () => {
+      try {
+        await api.heartbeatDocumentPresence(selectedDocument.documentId, { displayName: user?.displayName ?? "" });
+        const [presenceResponse, lockResponse] = await Promise.all([
+          api.listDocumentPresence(selectedDocument.documentId),
+          api.getDocumentEditLock(selectedDocument.documentId).catch((err) => {
+            if (statusOf(err) === 404) {
+              return null;
+            }
+            throw err;
+          }),
+        ]);
+        setCollaborationPresence(presenceResponse.items);
+        setDocumentEditLock(lockResponse);
+      } catch {
+        // Collaboration refresh is best-effort and must not block normal workspace usage.
+      }
+    };
+
+    void emitHeartbeat();
+    const timer = window.setInterval(() => {
+      void emitHeartbeat();
+    }, 30000);
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [authState, selectedDocument?.documentId, user?.displayName]);
 
   async function bootstrap() {
     try {
@@ -343,6 +380,8 @@ function AppContent() {
       setVersionDiff(null);
       setApprovals([]);
       setAttachments([]);
+      setCollaborationPresence([]);
+      setDocumentEditLock(null);
       setPolicies([]);
       setAuditEvents([]);
       setManagedUsers([]);
@@ -365,6 +404,8 @@ function AppContent() {
     setVersionDiff(null);
     setApprovals([]);
     setAttachments([]);
+    setCollaborationPresence([]);
+    setDocumentEditLock(null);
     setPolicies([]);
     setAuditEvents([]);
     setManagedUsers([]);
@@ -427,12 +468,19 @@ function AppContent() {
 
   async function openDocument(documentId: string) {
     try {
-      const [document, versionsResponse, approvalsResponse, attachmentsResponse, auditResponse] = await Promise.all([
+      const [document, versionsResponse, approvalsResponse, attachmentsResponse, auditResponse, presenceResponse, editLockResponse] = await Promise.all([
         api.getDocument(documentId),
         api.listVersions(documentId),
         api.listApprovals(documentId),
         api.listAttachments(documentId),
         api.listAuditEvents(new URLSearchParams({ resourceType: "document", resourceId: documentId, limit: "10" })),
+        api.listDocumentPresence(documentId),
+        api.getDocumentEditLock(documentId).catch((err) => {
+          if (statusOf(err) === 404) {
+            return null;
+          }
+          throw err;
+        }),
       ]);
       const [schema, governance] = await Promise.all([
         api.listDocumentProfileSchemas(document.documentProfile),
@@ -447,6 +495,8 @@ function AppContent() {
       setVersions(orderedVersions);
       setApprovals(approvalsResponse.items);
       setAttachments(attachmentsResponse.items);
+      setCollaborationPresence(presenceResponse.items);
+      setDocumentEditLock(editLockResponse);
       setAuditEvents(auditResponse.items);
       setPolicyResourceId(documentId);
       setActiveView("library");
@@ -787,6 +837,8 @@ function AppContent() {
           versionDiff={versionDiff}
           approvals={approvals}
           attachments={attachments}
+          collaborationPresence={collaborationPresence}
+          documentEditLock={documentEditLock}
           policies={policies}
           auditEvents={auditEvents}
           selectedFile={selectedFile}

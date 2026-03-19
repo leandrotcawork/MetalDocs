@@ -717,7 +717,7 @@ Progresso fase 4:
 - Task 036 encerrada com CRUD funcional de profiles, governance, schema versions, process areas e subjects
 
 ## Task 037 - Realtime event stream for operations center
-Status: `in_progress`
+Status: `done`
 
 Objetivo:
 Adicionar atualizacao ao vivo para paineis operacionais sem acoplar isso prematuramente ao authoring base.
@@ -744,8 +744,12 @@ Progresso fase 2:
 - adapter de stream operacional centralizado em `frontend/apps/web/src/lib.api.ts` para evitar wiring SSE espalhado
 - `App` passou a consumir stream via API client (boundary mais limpo e evolutivo para retry/observabilidade futura)
 
+Progresso fase 3:
+- snapshot operacional do SSE passou a incluir sinal de `pendingApprovals` (derive de notificacoes `workflow.approval.requested`)
+- payload realtime ficou mais aderente ao Operations Center sem exigir polling para indicador de fila de aprovacoes
+
 ## Task 038 - Collaborative editing and presence
-Status: `pending`
+Status: `done`
 
 Objetivo:
 Evoluir a plataforma para colaboracao documental em tempo real quando isso realmente virar necessidade de produto.
@@ -758,6 +762,14 @@ Escopo:
 
 Saida:
 - base para experiencia colaborativa mais profunda sem improviso arquitetural
+
+Progresso fase 1:
+- dominio `documents` ganhou modelos canonicos de colaboracao (`CollaborationPresence`, `DocumentEditLock`) e invariantes de normalizacao
+- repositórios `memory` e `postgres` implementaram write/read path para presence e lock com regras de conflito
+- service application adicionou use-cases autorizados para heartbeat/list de presence e acquire/get/release de lock
+- delivery HTTP e OpenAPI v1 evoluiram com endpoints dedicados de colaboracao em `/documents/{id}/collaboration/*`
+- frontend passou a consumir presence/lock no detalhe de documento com heartbeat periodico best-effort
+- migrations `0038` e `0039` adicionaram schema e grants de runtime para colaboracao documental
 
 ## Task 039 - Fix OpenAPI v1 compatibility for DocumentProfile alias
 Status: `done`

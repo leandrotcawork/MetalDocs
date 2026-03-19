@@ -1008,6 +1008,170 @@ ORDER BY created_at ASC
 	return out, nil
 }
 
+func (r *Repository) UpsertCollaborationPresence(ctx context.Context, item domain.CollaborationPresence) error {
+	const q = `
+INSERT INTO metaldocs.document_collaboration_presence (
+  document_id, user_id, display_name, last_seen_at, created_at, updated_at
+)
+VALUES ($1, $2, $3, $4, NOW(), NOW())
+ON CONFLICT (document_id, user_id) DO UPDATE
+SET display_name = EXCLUDED.display_name,
+    last_seen_at = EXCLUDED.last_seen_at,
+    updated_at = NOW()
+`
+	if _, err := r.db.ExecContext(ctx, q, item.DocumentID, item.UserID, item.DisplayName, item.LastSeenAt.UTC()); err != nil {
+		return mapError(err)
+	}
+	return nil
+}
+
+func (r *Repository) ListCollaborationPresence(ctx context.Context, documentID string, activeSince time.Time) ([]domain.CollaborationPresence, error) {
+	const q = `
+SELECT document_id, user_id, display_name, last_seen_at
+FROM metaldocs.document_collaboration_presence
+WHERE document_id = $1
+  AND last_seen_at >= $2
+ORDER BY last_seen_at DESC
+`
+	rows, err := r.db.QueryContext(ctx, q, documentID, activeSince.UTC())
+	if err != nil {
+		return nil, fmt.Errorf("list collaboration presence: %w", err)
+	}
+	defer rows.Close()
+
+	items := make([]domain.CollaborationPresence, 0)
+	for rows.Next() {
+		var item domain.CollaborationPresence
+		if err := rows.Scan(&item.DocumentID, &item.UserID, &item.DisplayName, &item.LastSeenAt); err != nil {
+			return nil, fmt.Errorf("scan collaboration presence: %w", err)
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list collaboration presence rows: %w", err)
+	}
+	return items, nil
+}
+
+func (r *Repository) AcquireDocumentEditLock(ctx context.Context, item domain.DocumentEditLock, now time.Time) (domain.DocumentEditLock, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return domain.DocumentEditLock{}, fmt.Errorf("begin tx acquire edit lock: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	const lockQuery = `
+SELECT document_id, locked_by, display_name, lock_reason, acquired_at, expires_at
+FROM metaldocs.document_edit_locks
+WHERE document_id = $1
+FOR UPDATE
+`
+	var current domain.DocumentEditLock
+	lockErr := tx.QueryRowContext(ctx, lockQuery, item.DocumentID).Scan(
+		&current.DocumentID,
+		&current.LockedBy,
+		&current.DisplayName,
+		&current.LockReason,
+		&current.AcquiredAt,
+		&current.ExpiresAt,
+	)
+	if lockErr != nil && lockErr != sql.ErrNoRows {
+		return domain.DocumentEditLock{}, fmt.Errorf("query current edit lock: %w", lockErr)
+	}
+	if lockErr == nil && current.ExpiresAt.After(now.UTC()) && !strings.EqualFold(current.LockedBy, item.LockedBy) {
+		return domain.DocumentEditLock{}, domain.ErrEditLockActive
+	}
+
+	const upsert = `
+INSERT INTO metaldocs.document_edit_locks (
+  document_id, locked_by, display_name, lock_reason, acquired_at, expires_at, updated_at
+)
+VALUES ($1, $2, $3, $4, $5, $6, NOW())
+ON CONFLICT (document_id) DO UPDATE
+SET locked_by = EXCLUDED.locked_by,
+    display_name = EXCLUDED.display_name,
+    lock_reason = EXCLUDED.lock_reason,
+    acquired_at = EXCLUDED.acquired_at,
+    expires_at = EXCLUDED.expires_at,
+    updated_at = NOW()
+`
+	if _, err := tx.ExecContext(ctx, upsert,
+		item.DocumentID,
+		item.LockedBy,
+		item.DisplayName,
+		item.LockReason,
+		item.AcquiredAt.UTC(),
+		item.ExpiresAt.UTC(),
+	); err != nil {
+		return domain.DocumentEditLock{}, mapError(err)
+	}
+	if err := tx.Commit(); err != nil {
+		return domain.DocumentEditLock{}, fmt.Errorf("commit acquire edit lock: %w", err)
+	}
+	return item, nil
+}
+
+func (r *Repository) GetDocumentEditLock(ctx context.Context, documentID string, now time.Time) (domain.DocumentEditLock, error) {
+	const q = `
+SELECT document_id, locked_by, display_name, lock_reason, acquired_at, expires_at
+FROM metaldocs.document_edit_locks
+WHERE document_id = $1
+`
+	var item domain.DocumentEditLock
+	if err := r.db.QueryRowContext(ctx, q, documentID).Scan(
+		&item.DocumentID,
+		&item.LockedBy,
+		&item.DisplayName,
+		&item.LockReason,
+		&item.AcquiredAt,
+		&item.ExpiresAt,
+	); err != nil {
+		if err == sql.ErrNoRows {
+			return domain.DocumentEditLock{}, domain.ErrEditLockNotFound
+		}
+		return domain.DocumentEditLock{}, fmt.Errorf("get document edit lock: %w", err)
+	}
+	if !item.ExpiresAt.After(now.UTC()) {
+		return domain.DocumentEditLock{}, domain.ErrEditLockNotFound
+	}
+	return item, nil
+}
+
+func (r *Repository) ReleaseDocumentEditLock(ctx context.Context, documentID, lockedBy string) error {
+	const selectCurrent = `
+SELECT locked_by, expires_at
+FROM metaldocs.document_edit_locks
+WHERE document_id = $1
+`
+	var currentLockedBy string
+	var expiresAt time.Time
+	if err := r.db.QueryRowContext(ctx, selectCurrent, documentID).Scan(&currentLockedBy, &expiresAt); err != nil {
+		if err == sql.ErrNoRows {
+			return domain.ErrEditLockNotFound
+		}
+		return fmt.Errorf("release document edit lock lookup: %w", err)
+	}
+	if expiresAt.After(time.Now().UTC()) && !strings.EqualFold(currentLockedBy, lockedBy) {
+		return domain.ErrEditLockActive
+	}
+
+	const q = `
+DELETE FROM metaldocs.document_edit_locks
+WHERE document_id = $1
+`
+	result, err := r.db.ExecContext(ctx, q, documentID)
+	if err != nil {
+		return fmt.Errorf("release document edit lock: %w", err)
+	}
+	affected, _ := result.RowsAffected()
+	if affected == 0 {
+		return domain.ErrEditLockNotFound
+	}
+	return nil
+}
+
 func mapError(err error) error {
 	msg := err.Error()
 	if strings.Contains(msg, "duplicate key value") {

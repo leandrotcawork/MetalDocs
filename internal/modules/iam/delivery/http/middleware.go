@@ -123,6 +123,21 @@ func requiredPermission(method, path string) (iamdomain.Permission, bool) {
 	if method == http.MethodPost && strings.HasPrefix(path, "/api/v1/documents/") && strings.HasSuffix(path, "/attachments") {
 		return iamdomain.PermDocumentUploadAttachment, true
 	}
+	if method == http.MethodGet && strings.HasPrefix(path, "/api/v1/documents/") && strings.HasSuffix(path, "/collaboration/presence") {
+		return iamdomain.PermDocumentRead, true
+	}
+	if method == http.MethodPost && strings.HasPrefix(path, "/api/v1/documents/") && strings.HasSuffix(path, "/collaboration/presence") {
+		return iamdomain.PermDocumentRead, true
+	}
+	if method == http.MethodGet && strings.HasPrefix(path, "/api/v1/documents/") && strings.HasSuffix(path, "/collaboration/lock") {
+		return iamdomain.PermDocumentRead, true
+	}
+	if method == http.MethodPost && strings.HasPrefix(path, "/api/v1/documents/") && strings.HasSuffix(path, "/collaboration/lock") {
+		return iamdomain.PermDocumentEdit, true
+	}
+	if method == http.MethodDelete && strings.HasPrefix(path, "/api/v1/documents/") && strings.HasSuffix(path, "/collaboration/lock") {
+		return iamdomain.PermDocumentEdit, true
+	}
 	if method == http.MethodGet && path == "/api/v1/documents" {
 		return iamdomain.PermDocumentRead, true
 	}

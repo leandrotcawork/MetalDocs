@@ -228,6 +228,38 @@ type AttachmentDownloadURLResponse struct {
 	ExpiresAt    string `json:"expiresAt"`
 }
 
+type CollaborationPresenceResponse struct {
+	DocumentID  string `json:"documentId"`
+	UserID      string `json:"userId"`
+	DisplayName string `json:"displayName"`
+	LastSeenAt  string `json:"lastSeenAt"`
+}
+
+type ListCollaborationPresenceResponse struct {
+	Items []CollaborationPresenceResponse `json:"items"`
+}
+
+type HeartbeatCollaborationPresenceRequest struct {
+	UserID      string `json:"userId,omitempty"`
+	DisplayName string `json:"displayName,omitempty"`
+}
+
+type DocumentEditLockResponse struct {
+	DocumentID  string `json:"documentId"`
+	LockedBy    string `json:"lockedBy"`
+	DisplayName string `json:"displayName"`
+	LockReason  string `json:"lockReason"`
+	AcquiredAt  string `json:"acquiredAt"`
+	ExpiresAt   string `json:"expiresAt"`
+}
+
+type AcquireDocumentEditLockRequest struct {
+	UserID      string `json:"userId,omitempty"`
+	DisplayName string `json:"displayName,omitempty"`
+	Reason      string `json:"reason,omitempty"`
+	TTLSeconds  int    `json:"ttlSeconds,omitempty"`
+}
+
 type apiErrorEnvelope struct {
 	Error apiError `json:"error"`
 }
@@ -969,6 +1001,30 @@ func (h *Handler) handleListDocuments(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleDocumentSubRoutes(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/documents/")
 	parts := strings.Split(path, "/")
+	if len(parts) == 3 && strings.TrimSpace(parts[0]) != "" && parts[1] == "collaboration" && parts[2] == "presence" {
+		switch r.Method {
+		case http.MethodGet:
+			h.handleListCollaborationPresence(w, r, parts[0])
+		case http.MethodPost:
+			h.handleHeartbeatCollaborationPresence(w, r, parts[0])
+		default:
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
+		return
+	}
+	if len(parts) == 3 && strings.TrimSpace(parts[0]) != "" && parts[1] == "collaboration" && parts[2] == "lock" {
+		switch r.Method {
+		case http.MethodGet:
+			h.handleGetDocumentEditLock(w, r, parts[0])
+		case http.MethodPost:
+			h.handleAcquireDocumentEditLock(w, r, parts[0])
+		case http.MethodDelete:
+			h.handleReleaseDocumentEditLock(w, r, parts[0])
+		default:
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
+		return
+	}
 	if len(parts) == 3 && strings.TrimSpace(parts[0]) != "" && parts[1] == "versions" && parts[2] == "diff" && r.Method == http.MethodGet {
 		h.handleDiffVersions(w, r, parts[0])
 		return
@@ -1058,6 +1114,106 @@ func (h *Handler) handleListVersions(w http.ResponseWriter, r *http.Request, doc
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{"items": items})
+}
+
+func (h *Handler) handleHeartbeatCollaborationPresence(w http.ResponseWriter, r *http.Request, documentID string) {
+	traceID := requestTraceID(r)
+
+	var req HeartbeatCollaborationPresenceRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && !errors.Is(err, io.EOF) {
+		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid JSON payload", traceID)
+		return
+	}
+
+	if err := h.service.HeartbeatCollaborationPresenceAuthorized(r.Context(), documentID, req.UserID, req.DisplayName); err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+	writeJSON(w, http.StatusAccepted, map[string]any{"ok": true})
+}
+
+func (h *Handler) handleListCollaborationPresence(w http.ResponseWriter, r *http.Request, documentID string) {
+	traceID := requestTraceID(r)
+	items, err := h.service.ListCollaborationPresenceAuthorized(r.Context(), documentID)
+	if err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+
+	out := make([]CollaborationPresenceResponse, 0, len(items))
+	for _, item := range items {
+		out = append(out, CollaborationPresenceResponse{
+			DocumentID:  item.DocumentID,
+			UserID:      item.UserID,
+			DisplayName: item.DisplayName,
+			LastSeenAt:  item.LastSeenAt.UTC().Format(time.RFC3339),
+		})
+	}
+	writeJSON(w, http.StatusOK, ListCollaborationPresenceResponse{Items: out})
+}
+
+func (h *Handler) handleAcquireDocumentEditLock(w http.ResponseWriter, r *http.Request, documentID string) {
+	traceID := requestTraceID(r)
+
+	var req AcquireDocumentEditLockRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && !errors.Is(err, io.EOF) {
+		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid JSON payload", traceID)
+		return
+	}
+
+	lock, err := h.service.AcquireDocumentEditLockAuthorized(
+		r.Context(),
+		documentID,
+		req.UserID,
+		req.DisplayName,
+		req.Reason,
+		req.TTLSeconds,
+	)
+	if err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, DocumentEditLockResponse{
+		DocumentID:  lock.DocumentID,
+		LockedBy:    lock.LockedBy,
+		DisplayName: lock.DisplayName,
+		LockReason:  lock.LockReason,
+		AcquiredAt:  lock.AcquiredAt.UTC().Format(time.RFC3339),
+		ExpiresAt:   lock.ExpiresAt.UTC().Format(time.RFC3339),
+	})
+}
+
+func (h *Handler) handleGetDocumentEditLock(w http.ResponseWriter, r *http.Request, documentID string) {
+	traceID := requestTraceID(r)
+	lock, err := h.service.GetDocumentEditLockAuthorized(r.Context(), documentID)
+	if err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+	writeJSON(w, http.StatusOK, DocumentEditLockResponse{
+		DocumentID:  lock.DocumentID,
+		LockedBy:    lock.LockedBy,
+		DisplayName: lock.DisplayName,
+		LockReason:  lock.LockReason,
+		AcquiredAt:  lock.AcquiredAt.UTC().Format(time.RFC3339),
+		ExpiresAt:   lock.ExpiresAt.UTC().Format(time.RFC3339),
+	})
+}
+
+func (h *Handler) handleReleaseDocumentEditLock(w http.ResponseWriter, r *http.Request, documentID string) {
+	traceID := requestTraceID(r)
+	userID := strings.TrimSpace(iamdomain.UserIDFromContext(r.Context()))
+	if userID == "" {
+		writeAPIError(w, http.StatusUnauthorized, "AUTH_UNAUTHORIZED", "Authentication required", traceID)
+		return
+	}
+
+	if err := h.service.ReleaseDocumentEditLockAuthorized(r.Context(), documentID, userID); err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) handleAddVersion(w http.ResponseWriter, r *http.Request, documentID string) {
@@ -1270,6 +1426,10 @@ func (h *Handler) writeDomainError(w http.ResponseWriter, err error, traceID str
 		writeAPIError(w, http.StatusNotFound, "ATTACHMENT_NOT_FOUND", "Attachment not found", traceID)
 	case errors.Is(err, domain.ErrAttachmentStoreUnavailable):
 		writeAPIError(w, http.StatusInternalServerError, "ATTACHMENT_STORE_UNAVAILABLE", "Attachment storage is not configured", traceID)
+	case errors.Is(err, domain.ErrEditLockActive):
+		writeAPIError(w, http.StatusConflict, "EDIT_LOCK_ACTIVE", "Document is currently locked by another editor", traceID)
+	case errors.Is(err, domain.ErrEditLockNotFound):
+		writeAPIError(w, http.StatusNotFound, "EDIT_LOCK_NOT_FOUND", "No active lock found for document", traceID)
 	default:
 		writeAPIError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Internal server error", traceID)
 	}

@@ -38,6 +38,11 @@ type Repository interface {
 	CreateAttachment(ctx context.Context, attachment Attachment) error
 	GetAttachment(ctx context.Context, attachmentID string) (Attachment, error)
 	ListAttachments(ctx context.Context, documentID string) ([]Attachment, error)
+	UpsertCollaborationPresence(ctx context.Context, item CollaborationPresence) error
+	ListCollaborationPresence(ctx context.Context, documentID string, activeSince time.Time) ([]CollaborationPresence, error)
+	AcquireDocumentEditLock(ctx context.Context, item DocumentEditLock, now time.Time) (DocumentEditLock, error)
+	GetDocumentEditLock(ctx context.Context, documentID string, now time.Time) (DocumentEditLock, error)
+	ReleaseDocumentEditLock(ctx context.Context, documentID, lockedBy string) error
 }
 
 // AtomicCreateRepository is an optional capability for strong consistency on create flow.

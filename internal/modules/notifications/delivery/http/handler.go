@@ -186,6 +186,7 @@ func (h *Handler) handleOperationsStream(w http.ResponseWriter, r *http.Request)
 		}
 		payload := map[string]any{
 			"pendingNotifications": snapshot.PendingNotifications,
+			"pendingApprovals":     snapshot.PendingApprovals,
 			"documentsInReview":    snapshot.DocumentsInReview,
 			"totalDocuments":       snapshot.TotalDocuments,
 			"generatedAt":          snapshot.GeneratedAt.UTC().Format(time.RFC3339),

@@ -3,8 +3,10 @@ import type {
   AuditEventItem,
   ApiErrorEnvelope,
   AttachmentItem,
+  CollaborationPresenceItem,
   CurrentUser,
   DocumentFamilyItem,
+  DocumentEditLockItem,
   DocumentListItem,
   DocumentProfileGovernanceItem,
   DocumentProfileItem,
@@ -25,6 +27,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 
 export type OperationsStreamSnapshot = {
   pendingNotifications: number;
+  pendingApprovals: number;
   documentsInReview: number;
   totalDocuments: number;
   generatedAt: string;
@@ -202,6 +205,26 @@ function normalizeAttachmentItem(value: AttachmentItem): AttachmentItem {
   };
 }
 
+function normalizeCollaborationPresenceItem(value: CollaborationPresenceItem): CollaborationPresenceItem {
+  return {
+    documentId: value?.documentId ?? "",
+    userId: value?.userId ?? "",
+    displayName: value?.displayName ?? value?.userId ?? "",
+    lastSeenAt: value?.lastSeenAt ?? "",
+  };
+}
+
+function normalizeDocumentEditLockItem(value: DocumentEditLockItem): DocumentEditLockItem {
+  return {
+    documentId: value?.documentId ?? "",
+    lockedBy: value?.lockedBy ?? "",
+    displayName: value?.displayName ?? value?.lockedBy ?? "",
+    lockReason: value?.lockReason ?? "",
+    acquiredAt: value?.acquiredAt ?? "",
+    expiresAt: value?.expiresAt ?? "",
+  };
+}
+
 function normalizeAccessPolicyItem(value: AccessPolicyItem): AccessPolicyItem {
   return {
     subjectType: value?.subjectType ?? "user",
@@ -365,6 +388,16 @@ export const api = {
     const response = await request<{ items: AttachmentItem[] }>(`/documents/${documentId}/attachments`);
     return { items: Array.isArray(response.items) ? response.items.map(normalizeAttachmentItem) : [] };
   },
+  heartbeatDocumentPresence: (documentId: string, body?: Record<string, unknown>) => request<{ ok: boolean }>(`/documents/${documentId}/collaboration/presence`, { method: "POST", body: JSON.stringify(body ?? {}) }),
+  listDocumentPresence: async (documentId: string) => {
+    const response = await request<{ items: CollaborationPresenceItem[] }>(`/documents/${documentId}/collaboration/presence`);
+    return { items: Array.isArray(response.items) ? response.items.map(normalizeCollaborationPresenceItem) : [] };
+  },
+  acquireDocumentEditLock: async (documentId: string, body?: Record<string, unknown>) =>
+    normalizeDocumentEditLockItem(await request<DocumentEditLockItem>(`/documents/${documentId}/collaboration/lock`, { method: "POST", body: JSON.stringify(body ?? {}) })),
+  getDocumentEditLock: async (documentId: string) =>
+    normalizeDocumentEditLockItem(await request<DocumentEditLockItem>(`/documents/${documentId}/collaboration/lock`)),
+  releaseDocumentEditLock: (documentId: string) => request<void>(`/documents/${documentId}/collaboration/lock`, { method: "DELETE" }),
   uploadAttachment: (documentId: string, file: File) => {
     const formData = new FormData();
     formData.append("file", file);
@@ -397,6 +430,7 @@ export const api = {
         const payload = JSON.parse(event.data) as OperationsStreamSnapshot;
         onSnapshot({
           pendingNotifications: Number(payload?.pendingNotifications ?? 0),
+          pendingApprovals: Number(payload?.pendingApprovals ?? 0),
           documentsInReview: Number(payload?.documentsInReview ?? 0),
           totalDocuments: Number(payload?.totalDocuments ?? 0),
           generatedAt: payload?.generatedAt ?? "",

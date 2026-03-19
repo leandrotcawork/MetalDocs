@@ -32,6 +32,7 @@ type Service struct {
 
 type OperationsSnapshot struct {
 	PendingNotifications int       `json:"pendingNotifications"`
+	PendingApprovals     int       `json:"pendingApprovals"`
 	DocumentsInReview    int       `json:"documentsInReview"`
 	TotalDocuments       int       `json:"totalDocuments"`
 	GeneratedAt          time.Time `json:"generatedAt"`
@@ -74,9 +75,16 @@ func (s *Service) BuildOperationsSnapshot(ctx context.Context, recipientUserID s
 			inReview++
 		}
 	}
+	pendingApprovals := 0
+	for _, notification := range notifications {
+		if strings.EqualFold(notification.EventType, "workflow.approval.requested") {
+			pendingApprovals++
+		}
+	}
 
 	return OperationsSnapshot{
 		PendingNotifications: len(notifications),
+		PendingApprovals:     pendingApprovals,
 		DocumentsInReview:    inReview,
 		TotalDocuments:       len(documents),
 		GeneratedAt:          s.clock.Now(),

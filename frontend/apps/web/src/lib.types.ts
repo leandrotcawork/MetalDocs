@@ -154,6 +154,22 @@ export interface AttachmentItem {
   createdAt: string;
 }
 
+export interface CollaborationPresenceItem {
+  documentId: string;
+  userId: string;
+  displayName: string;
+  lastSeenAt: string;
+}
+
+export interface DocumentEditLockItem {
+  documentId: string;
+  lockedBy: string;
+  displayName: string;
+  lockReason: string;
+  acquiredAt: string;
+  expiresAt: string;
+}
+
 export interface AccessPolicyItem {
   subjectType: "user" | "role" | "group";
   subjectId: string;

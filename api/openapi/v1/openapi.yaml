@@ -1354,6 +1354,185 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
+  /documents/{documentId}/collaboration/presence:
+    get:
+      summary: Lista presencas colaborativas ativas no documento
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      responses:
+        '200':
+          description: Presencas colaborativas ativas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDocumentCollaborationPresenceResponse'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '404':
+          description: Documento nao encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+    post:
+      summary: Atualiza heartbeat de presenca colaborativa para o usuario atual
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HeartbeatDocumentCollaborationPresenceRequest'
+      responses:
+        '202':
+          description: Heartbeat recebido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationAcceptedResponse'
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '404':
+          description: Documento nao encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+  /documents/{documentId}/collaboration/lock:
+    get:
+      summary: Retorna lock de edicao ativo do documento
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      responses:
+        '200':
+          description: Lock ativo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentEditLock'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '404':
+          description: Documento ou lock nao encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+    post:
+      summary: Adquire lock de edicao para o usuario atual
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcquireDocumentEditLockRequest'
+      responses:
+        '201':
+          description: Lock adquirido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentEditLock'
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '404':
+          description: Documento nao encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '409':
+          description: Documento com lock ativo por outro editor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+    delete:
+      summary: Libera lock de edicao do usuario atual
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      responses:
+        '204':
+          description: Lock liberado
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '404':
+          description: Documento ou lock nao encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '409':
+          description: Lock ativo pertence a outro editor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
   /attachments/{attachmentId}/content:
     get:
       summary: Download de anexo via URL assinada temporaria
@@ -2386,6 +2565,71 @@ components:
         readAt:
           type: string
           format: date-time
+    MutationAcceptedResponse:
+      type: object
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+    CollaborationPresenceItem:
+      type: object
+      required: [documentId, userId, displayName, lastSeenAt]
+      properties:
+        documentId:
+          type: string
+        userId:
+          type: string
+        displayName:
+          type: string
+        lastSeenAt:
+          type: string
+          format: date-time
+    ListDocumentCollaborationPresenceResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CollaborationPresenceItem'
+    HeartbeatDocumentCollaborationPresenceRequest:
+      type: object
+      properties:
+        userId:
+          type: string
+        displayName:
+          type: string
+    DocumentEditLock:
+      type: object
+      required: [documentId, lockedBy, displayName, lockReason, acquiredAt, expiresAt]
+      properties:
+        documentId:
+          type: string
+        lockedBy:
+          type: string
+        displayName:
+          type: string
+        lockReason:
+          type: string
+        acquiredAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+    AcquireDocumentEditLockRequest:
+      type: object
+      properties:
+        userId:
+          type: string
+        displayName:
+          type: string
+        reason:
+          type: string
+        ttlSeconds:
+          type: integer
+          minimum: 1
+          maximum: 3600
     AccessPolicyItem:
       type: object
       required: [subjectType, subjectId, resourceScope, resourceId, capability, effect]

@@ -3,6 +3,7 @@ package memory
 import (
 	"context"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -23,6 +24,8 @@ type Repository struct {
 	subjects            []domain.Subject
 	types               []domain.DocumentType
 	policies            map[string][]domain.AccessPolicy
+	collabPresence      map[string]map[string]domain.CollaborationPresence
+	editLocks           map[string]domain.DocumentEditLock
 }
 
 func NewRepository() *Repository {
@@ -39,6 +42,8 @@ func NewRepository() *Repository {
 		subjects:            domain.DefaultSubjects(),
 		types:               domain.DefaultDocumentTypes(),
 		policies:            map[string][]domain.AccessPolicy{},
+		collabPresence:      map[string]map[string]domain.CollaborationPresence{},
+		editLocks:           map[string]domain.DocumentEditLock{},
 	}
 }
 
@@ -480,4 +485,83 @@ func (r *Repository) ListAttachments(_ context.Context, documentID string) ([]do
 		return items[i].CreatedAt.Before(items[j].CreatedAt)
 	})
 	return items, nil
+}
+
+func (r *Repository) UpsertCollaborationPresence(_ context.Context, item domain.CollaborationPresence) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, exists := r.documents[item.DocumentID]; !exists {
+		return domain.ErrDocumentNotFound
+	}
+	if _, ok := r.collabPresence[item.DocumentID]; !ok {
+		r.collabPresence[item.DocumentID] = map[string]domain.CollaborationPresence{}
+	}
+	r.collabPresence[item.DocumentID][item.UserID] = item
+	return nil
+}
+
+func (r *Repository) ListCollaborationPresence(_ context.Context, documentID string, activeSince time.Time) ([]domain.CollaborationPresence, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	if _, exists := r.documents[documentID]; !exists {
+		return nil, domain.ErrDocumentNotFound
+	}
+	items := make([]domain.CollaborationPresence, 0)
+	for _, presence := range r.collabPresence[documentID] {
+		if presence.LastSeenAt.Before(activeSince) {
+			continue
+		}
+		items = append(items, presence)
+	}
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].LastSeenAt.After(items[j].LastSeenAt)
+	})
+	return items, nil
+}
+
+func (r *Repository) AcquireDocumentEditLock(_ context.Context, item domain.DocumentEditLock, now time.Time) (domain.DocumentEditLock, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, exists := r.documents[item.DocumentID]; !exists {
+		return domain.DocumentEditLock{}, domain.ErrDocumentNotFound
+	}
+	if current, ok := r.editLocks[item.DocumentID]; ok {
+		if current.ExpiresAt.After(now) && !strings.EqualFold(current.LockedBy, item.LockedBy) {
+			return domain.DocumentEditLock{}, domain.ErrEditLockActive
+		}
+	}
+	r.editLocks[item.DocumentID] = item
+	return item, nil
+}
+
+func (r *Repository) GetDocumentEditLock(_ context.Context, documentID string, now time.Time) (domain.DocumentEditLock, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	if _, exists := r.documents[documentID]; !exists {
+		return domain.DocumentEditLock{}, domain.ErrDocumentNotFound
+	}
+	lock, ok := r.editLocks[documentID]
+	if !ok || !lock.ExpiresAt.After(now) {
+		return domain.DocumentEditLock{}, domain.ErrEditLockNotFound
+	}
+	return lock, nil
+}
+
+func (r *Repository) ReleaseDocumentEditLock(_ context.Context, documentID, lockedBy string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	lock, ok := r.editLocks[documentID]
+	if !ok {
+		return domain.ErrEditLockNotFound
+	}
+	if !strings.EqualFold(lock.LockedBy, lockedBy) {
+		return domain.ErrEditLockActive
+	}
+	delete(r.editLocks, documentID)
+	return nil
 }

@@ -158,6 +158,26 @@ func (r *atomicRepoSpy) ListAttachments(context.Context, string) ([]domain.Attac
 	return nil, nil
 }
 
+func (r *atomicRepoSpy) UpsertCollaborationPresence(context.Context, domain.CollaborationPresence) error {
+	return nil
+}
+
+func (r *atomicRepoSpy) ListCollaborationPresence(context.Context, string, time.Time) ([]domain.CollaborationPresence, error) {
+	return nil, nil
+}
+
+func (r *atomicRepoSpy) AcquireDocumentEditLock(context.Context, domain.DocumentEditLock, time.Time) (domain.DocumentEditLock, error) {
+	return domain.DocumentEditLock{}, domain.ErrEditLockNotFound
+}
+
+func (r *atomicRepoSpy) GetDocumentEditLock(context.Context, string, time.Time) (domain.DocumentEditLock, error) {
+	return domain.DocumentEditLock{}, domain.ErrEditLockNotFound
+}
+
+func (r *atomicRepoSpy) ReleaseDocumentEditLock(context.Context, string, string) error {
+	return domain.ErrEditLockNotFound
+}
+
 func TestCreateDocumentPrefersAtomicRepositoryWhenAvailable(t *testing.T) {
 	repo := &atomicRepoSpy{}
 	svc := application.NewService(repo, nil, fixedClock{now: time.Date(2026, 3, 16, 10, 0, 0, 0, time.UTC)})

@@ -7,7 +7,9 @@ import type {
   AccessPolicyItem,
   AttachmentItem,
   AuditEventItem,
+  CollaborationPresenceItem,
   DocumentListItem,
+  DocumentEditLockItem,
   DocumentProfileGovernanceItem,
   DocumentProfileItem,
   ProcessAreaItem,
@@ -32,6 +34,8 @@ type DocumentsWorkspaceProps = {
   versionDiff: VersionDiffResponse | null;
   approvals: WorkflowApprovalItem[];
   attachments: AttachmentItem[];
+  collaborationPresence: CollaborationPresenceItem[];
+  documentEditLock: DocumentEditLockItem | null;
   policies: AccessPolicyItem[];
   auditEvents: AuditEventItem[];
   selectedFile: File | null;
@@ -420,6 +424,29 @@ export function DocumentsWorkspace(props: DocumentsWorkspaceProps) {
                   <li><span>Revisao</span><small>{props.selectedProfileGovernance ? `${props.selectedProfileGovernance.reviewIntervalDays} dias` : "-"}</small></li>
                   <li><span>Aprovacao</span><small>{props.selectedProfileGovernance?.approvalRequired ? "Obrigatoria" : "Opcional"}</small></li>
                   <li><span>Validade</span><small>{props.selectedProfileGovernance?.validityDays ? `${props.selectedProfileGovernance.validityDays} dias` : "-"}</small></li>
+                </ul>
+              </div>
+
+              <div className="catalog-card">
+                <h3>Colaboracao</h3>
+                <ul className="catalog-mini-list">
+                  <li>
+                    <span>Lock de edicao</span>
+                    <small>
+                      {props.documentEditLock
+                        ? `${props.documentEditLock.displayName} ate ${props.formatDate(props.documentEditLock.expiresAt)}`
+                        : "Sem lock ativo"}
+                    </small>
+                  </li>
+                  {props.collaborationPresence.map((item) => (
+                    <li key={`${item.documentId}-${item.userId}`}>
+                      <span>{item.displayName}</span>
+                      <small>Ativo em {props.formatDate(item.lastSeenAt)}</small>
+                    </li>
+                  ))}
+                  {props.collaborationPresence.length === 0 && (
+                    <li><span>Nenhum colaborador ativo no momento.</span></li>
+                  )}
                 </ul>
               </div>
 

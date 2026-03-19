@@ -448,6 +448,7 @@ func (r *Repository) ListProcessAreas(ctx context.Context) ([]domain.ProcessArea
 	const q = `
 SELECT code, name, description
 FROM metaldocs.document_process_areas
+WHERE is_active = TRUE
 ORDER BY code ASC
 `
 	rows, err := r.db.QueryContext(ctx, q)
@@ -470,10 +471,43 @@ ORDER BY code ASC
 	return out, nil
 }
 
+func (r *Repository) UpsertProcessArea(ctx context.Context, item domain.ProcessArea) error {
+	const q = `
+INSERT INTO metaldocs.document_process_areas (code, name, description, is_active)
+VALUES ($1, $2, $3, TRUE)
+ON CONFLICT (code) DO UPDATE
+SET name = EXCLUDED.name,
+    description = EXCLUDED.description,
+    is_active = TRUE
+`
+	if _, err := r.db.ExecContext(ctx, q, item.Code, item.Name, item.Description); err != nil {
+		return mapError(err)
+	}
+	return nil
+}
+
+func (r *Repository) DeactivateProcessArea(ctx context.Context, code string) error {
+	const q = `
+UPDATE metaldocs.document_process_areas
+SET is_active = FALSE
+WHERE code = $1 AND is_active = TRUE
+`
+	result, err := r.db.ExecContext(ctx, q, code)
+	if err != nil {
+		return mapError(err)
+	}
+	affected, _ := result.RowsAffected()
+	if affected == 0 {
+		return domain.ErrInvalidCommand
+	}
+	return nil
+}
+
 func (r *Repository) ListSubjects(ctx context.Context) ([]domain.Subject, error) {
 	const q = `
 SELECT code, process_area_code, name, description
 FROM metaldocs.document_subjects
+WHERE is_active = TRUE
 ORDER BY process_area_code ASC, code ASC
 `
 	rows, err := r.db.QueryContext(ctx, q)
@@ -494,6 +528,39 @@ ORDER BY process_area_code ASC, code ASC
 		return nil, fmt.Errorf("list subjects rows: %w", err)
 	}
 	return out, nil
+}
+
+func (r *Repository) UpsertSubject(ctx context.Context, item domain.Subject) error {
+	const q = `
+INSERT INTO metaldocs.document_subjects (code, process_area_code, name, description, is_active)
+VALUES ($1, $2, $3, $4, TRUE)
+ON CONFLICT (code) DO UPDATE
+SET process_area_code = EXCLUDED.process_area_code,
+    name = EXCLUDED.name,
+    description = EXCLUDED.description,
+    is_active = TRUE
+`
+	if _, err := r.db.ExecContext(ctx, q, item.Code, item.ProcessAreaCode, item.Name, item.Description); err != nil {
+		return mapError(err)
+	}
+	return nil
+}
+
+func (r *Repository) DeactivateSubject(ctx context.Context, code string) error {
+	const q = `
+UPDATE metaldocs.document_subjects
+SET is_active = FALSE
+WHERE code = $1 AND is_active = TRUE
+`
+	result, err := r.db.ExecContext(ctx, q, code)
+	if err != nil {
+		return mapError(err)
+	}
+	affected, _ := result.RowsAffected()
+	if affected == 0 {
+		return domain.ErrInvalidCommand
+	}
+	return nil
 }
 
 func (r *Repository) ListAccessPolicies(ctx context.Context, resourceScope, resourceID string) ([]domain.AccessPolicy, error) {

@@ -200,6 +200,40 @@ func (r *Repository) ListProcessAreas(_ context.Context) ([]domain.ProcessArea, 
 	return out, nil
 }
 
+func (r *Repository) UpsertProcessArea(_ context.Context, item domain.ProcessArea) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for index := range r.processAreas {
+		if r.processAreas[index].Code == item.Code {
+			r.processAreas[index] = item
+			return nil
+		}
+	}
+	r.processAreas = append(r.processAreas, item)
+	return nil
+}
+
+func (r *Repository) DeactivateProcessArea(_ context.Context, code string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	filtered := make([]domain.ProcessArea, 0, len(r.processAreas))
+	found := false
+	for _, item := range r.processAreas {
+		if item.Code == code {
+			found = true
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+	if !found {
+		return domain.ErrInvalidCommand
+	}
+	r.processAreas = filtered
+	return nil
+}
+
 func (r *Repository) ListSubjects(_ context.Context) ([]domain.Subject, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -207,6 +241,40 @@ func (r *Repository) ListSubjects(_ context.Context) ([]domain.Subject, error) {
 	out := make([]domain.Subject, len(r.subjects))
 	copy(out, r.subjects)
 	return out, nil
+}
+
+func (r *Repository) UpsertSubject(_ context.Context, item domain.Subject) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for index := range r.subjects {
+		if r.subjects[index].Code == item.Code {
+			r.subjects[index] = item
+			return nil
+		}
+	}
+	r.subjects = append(r.subjects, item)
+	return nil
+}
+
+func (r *Repository) DeactivateSubject(_ context.Context, code string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	filtered := make([]domain.Subject, 0, len(r.subjects))
+	found := false
+	for _, item := range r.subjects {
+		if item.Code == code {
+			found = true
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+	if !found {
+		return domain.ErrInvalidCommand
+	}
+	r.subjects = filtered
+	return nil
 }
 
 func (r *Repository) ListAccessPolicies(_ context.Context, resourceScope, resourceID string) ([]domain.AccessPolicy, error) {

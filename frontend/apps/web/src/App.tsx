@@ -558,6 +558,72 @@ function AppContent() {
     }
   }
 
+  async function handleCreateProcessArea(payload: { code: string; name: string; description: string }) {
+    try {
+      setError("");
+      await api.createProcessArea(payload);
+      setMessage("Area de processo criada.");
+      await refreshWorkspace();
+    } catch (err) {
+      handleError(err);
+    }
+  }
+
+  async function handleUpdateProcessArea(payload: { code: string; name: string; description: string }) {
+    try {
+      setError("");
+      await api.updateProcessArea(payload.code, payload);
+      setMessage("Area de processo atualizada.");
+      await refreshWorkspace();
+    } catch (err) {
+      handleError(err);
+    }
+  }
+
+  async function handleDeleteProcessArea(code: string) {
+    try {
+      setError("");
+      await api.deleteProcessArea(code);
+      setMessage("Area de processo desativada.");
+      await refreshWorkspace();
+    } catch (err) {
+      handleError(err);
+    }
+  }
+
+  async function handleCreateSubject(payload: { code: string; processAreaCode: string; name: string; description: string }) {
+    try {
+      setError("");
+      await api.createSubject(payload);
+      setMessage("Subject criado.");
+      await refreshWorkspace();
+    } catch (err) {
+      handleError(err);
+    }
+  }
+
+  async function handleUpdateSubject(payload: { code: string; processAreaCode: string; name: string; description: string }) {
+    try {
+      setError("");
+      await api.updateSubject(payload.code, payload);
+      setMessage("Subject atualizado.");
+      await refreshWorkspace();
+    } catch (err) {
+      handleError(err);
+    }
+  }
+
+  async function handleDeleteSubject(code: string) {
+    try {
+      setError("");
+      await api.deleteSubject(code);
+      setMessage("Subject desativado.");
+      await refreshWorkspace();
+    } catch (err) {
+      handleError(err);
+    }
+  }
+
   function handleError(err: unknown) {
     if (statusOf(err) === 401) {
       setUser(null);
@@ -654,8 +720,15 @@ function AppContent() {
           selectedProfileCode={documentForm.documentProfile}
           selectedProfileSchema={selectedProfileSchema}
           selectedProfileGovernance={selectedProfileGovernance}
+          showAdmin={isAdmin}
           onRefreshWorkspace={refreshWorkspace}
           onSelectProfile={(profileCode) => applyDocumentProfile(profileCode, documentForm.processArea)}
+          onCreateProcessArea={handleCreateProcessArea}
+          onUpdateProcessArea={handleUpdateProcessArea}
+          onDeleteProcessArea={handleDeleteProcessArea}
+          onCreateSubject={handleCreateSubject}
+          onUpdateSubject={handleUpdateSubject}
+          onDeleteSubject={handleDeleteSubject}
         />
       );
     }

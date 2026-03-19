@@ -330,6 +330,27 @@ func NormalizeDocumentProfile(profile DocumentProfile) (DocumentProfile, error) 
 	return profile, nil
 }
 
+func NormalizeProcessArea(item ProcessArea) (ProcessArea, error) {
+	item.Code = strings.ToLower(strings.TrimSpace(item.Code))
+	item.Name = strings.TrimSpace(item.Name)
+	item.Description = strings.TrimSpace(item.Description)
+	if item.Code == "" || item.Name == "" {
+		return ProcessArea{}, ErrInvalidCommand
+	}
+	return item, nil
+}
+
+func NormalizeSubject(item Subject) (Subject, error) {
+	item.Code = strings.ToLower(strings.TrimSpace(item.Code))
+	item.ProcessAreaCode = strings.ToLower(strings.TrimSpace(item.ProcessAreaCode))
+	item.Name = strings.TrimSpace(item.Name)
+	item.Description = strings.TrimSpace(item.Description)
+	if item.Code == "" || item.ProcessAreaCode == "" || item.Name == "" {
+		return Subject{}, ErrInvalidCommand
+	}
+	return item, nil
+}
+
 type MetadataFieldRule struct {
 	Name     string
 	Type     string

@@ -309,11 +309,17 @@ export const api = {
     const response = await request<{ items: ProcessAreaItem[] }>("/process-areas");
     return { items: Array.isArray(response.items) ? response.items.map(normalizeProcessArea) : [] };
   },
+  createProcessArea: (body: Record<string, unknown>) => request<{ code: string }>("/process-areas", { method: "POST", body: JSON.stringify(body) }),
+  updateProcessArea: (code: string, body: Record<string, unknown>) => request<{ code: string }>(`/process-areas/${encodeURIComponent(code)}`, { method: "PUT", body: JSON.stringify(body) }),
+  deleteProcessArea: (code: string) => request<void>(`/process-areas/${encodeURIComponent(code)}`, { method: "DELETE" }),
   listSubjects: async (params?: URLSearchParams) => {
     const query = params?.toString();
     const response = await request<{ items: SubjectItem[] }>(`/document-subjects${query ? `?${query}` : ""}`);
     return { items: Array.isArray(response.items) ? response.items.map(normalizeSubject) : [] };
   },
+  createSubject: (body: Record<string, unknown>) => request<{ code: string }>("/document-subjects", { method: "POST", body: JSON.stringify(body) }),
+  updateSubject: (code: string, body: Record<string, unknown>) => request<{ code: string }>(`/document-subjects/${encodeURIComponent(code)}`, { method: "PUT", body: JSON.stringify(body) }),
+  deleteSubject: (code: string) => request<void>(`/document-subjects/${encodeURIComponent(code)}`, { method: "DELETE" }),
   listDocuments: async () => {
     const response = await request<{ items: DocumentListItem[] }>("/documents");
     return { items: Array.isArray(response.items) ? response.items.map(normalizeDocumentListItem) : [] };

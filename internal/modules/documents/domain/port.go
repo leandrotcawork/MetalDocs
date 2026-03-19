@@ -17,7 +17,11 @@ type Repository interface {
 	ListDocumentProfileSchemas(ctx context.Context, profileCode string) ([]DocumentProfileSchemaVersion, error)
 	GetDocumentProfileGovernance(ctx context.Context, profileCode string) (DocumentProfileGovernance, error)
 	ListProcessAreas(ctx context.Context) ([]ProcessArea, error)
+	UpsertProcessArea(ctx context.Context, item ProcessArea) error
+	DeactivateProcessArea(ctx context.Context, code string) error
 	ListSubjects(ctx context.Context) ([]Subject, error)
+	UpsertSubject(ctx context.Context, item Subject) error
+	DeactivateSubject(ctx context.Context, code string) error
 	ListDocumentTypes(ctx context.Context) ([]DocumentType, error)
 	ListAccessPolicies(ctx context.Context, resourceScope, resourceID string) ([]AccessPolicy, error)
 	ReplaceAccessPolicies(ctx context.Context, resourceScope, resourceID string, policies []AccessPolicy) error

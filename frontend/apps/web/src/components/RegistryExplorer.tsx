@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { metalNobreProcessAreaHint, metalNobreProfileContext } from "../features/documents/adapters/metalNobreExperience";
 import type { DocumentProfileGovernanceItem, DocumentProfileItem, DocumentProfileSchemaItem, ProcessAreaItem, SubjectItem } from "../lib.types";
 import { WorkspaceDataState } from "./WorkspaceDataState";
@@ -13,13 +14,22 @@ type RegistryExplorerProps = {
   selectedProfileCode: string;
   selectedProfileSchema: DocumentProfileSchemaItem | null;
   selectedProfileGovernance: DocumentProfileGovernanceItem | null;
+  showAdmin: boolean;
   onRefreshWorkspace: () => void | Promise<void>;
   onSelectProfile: (profileCode: string) => void | Promise<void>;
+  onCreateProcessArea: (payload: { code: string; name: string; description: string }) => void | Promise<void>;
+  onUpdateProcessArea: (payload: { code: string; name: string; description: string }) => void | Promise<void>;
+  onDeleteProcessArea: (code: string) => void | Promise<void>;
+  onCreateSubject: (payload: { code: string; processAreaCode: string; name: string; description: string }) => void | Promise<void>;
+  onUpdateSubject: (payload: { code: string; processAreaCode: string; name: string; description: string }) => void | Promise<void>;
+  onDeleteSubject: (code: string) => void | Promise<void>;
 };
 
 export function RegistryExplorer(props: RegistryExplorerProps) {
   const selectedProfile = props.documentProfiles.find((item) => item.code === props.selectedProfileCode) ?? props.documentProfiles[0] ?? null;
   const hasRegistryData = props.documentProfiles.length > 0;
+  const [processAreaForm, setProcessAreaForm] = useState({ code: "", name: "", description: "" });
+  const [subjectForm, setSubjectForm] = useState({ code: "", processAreaCode: "", name: "", description: "" });
 
   return (
     <WorkspaceViewFrame
@@ -108,6 +118,30 @@ export function RegistryExplorer(props: RegistryExplorerProps) {
               <ul className="catalog-mini-list">
                 {props.processAreas.map((item) => <li key={item.code}><span>{item.name}</span><small>{metalNobreProcessAreaHint(item.code)}</small></li>)}
               </ul>
+              {props.showAdmin && (
+                <div className="stack">
+                  <input
+                    placeholder="Codigo da area"
+                    value={processAreaForm.code}
+                    onChange={(event) => setProcessAreaForm((current) => ({ ...current, code: event.target.value }))}
+                  />
+                  <input
+                    placeholder="Nome da area"
+                    value={processAreaForm.name}
+                    onChange={(event) => setProcessAreaForm((current) => ({ ...current, name: event.target.value }))}
+                  />
+                  <input
+                    placeholder="Descricao da area"
+                    value={processAreaForm.description}
+                    onChange={(event) => setProcessAreaForm((current) => ({ ...current, description: event.target.value }))}
+                  />
+                  <div className="stack-inline">
+                    <button type="button" onClick={() => void props.onCreateProcessArea(processAreaForm)}>Criar area</button>
+                    <button type="button" className="ghost-button" onClick={() => void props.onUpdateProcessArea(processAreaForm)}>Atualizar area</button>
+                    <button type="button" className="ghost-button" onClick={() => void props.onDeleteProcessArea(processAreaForm.code)}>Desativar area</button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="catalog-card">
@@ -116,6 +150,37 @@ export function RegistryExplorer(props: RegistryExplorerProps) {
                 {props.subjects.map((item) => <li key={item.code}><span>{item.name}</span><small>{item.processAreaCode}</small></li>)}
                 {props.subjects.length === 0 && <li><span>Sem subjects retornados.</span></li>}
               </ul>
+              {props.showAdmin && (
+                <div className="stack">
+                  <input
+                    placeholder="Codigo do subject"
+                    value={subjectForm.code}
+                    onChange={(event) => setSubjectForm((current) => ({ ...current, code: event.target.value }))}
+                  />
+                  <select
+                    value={subjectForm.processAreaCode}
+                    onChange={(event) => setSubjectForm((current) => ({ ...current, processAreaCode: event.target.value }))}
+                  >
+                    <option value="">Selecione a area</option>
+                    {props.processAreas.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}
+                  </select>
+                  <input
+                    placeholder="Nome do subject"
+                    value={subjectForm.name}
+                    onChange={(event) => setSubjectForm((current) => ({ ...current, name: event.target.value }))}
+                  />
+                  <input
+                    placeholder="Descricao do subject"
+                    value={subjectForm.description}
+                    onChange={(event) => setSubjectForm((current) => ({ ...current, description: event.target.value }))}
+                  />
+                  <div className="stack-inline">
+                    <button type="button" onClick={() => void props.onCreateSubject(subjectForm)}>Criar subject</button>
+                    <button type="button" className="ghost-button" onClick={() => void props.onUpdateSubject(subjectForm)}>Atualizar subject</button>
+                    <button type="button" className="ghost-button" onClick={() => void props.onDeleteSubject(subjectForm.code)}>Desativar subject</button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </aside>

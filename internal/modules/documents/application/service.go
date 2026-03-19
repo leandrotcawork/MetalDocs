@@ -392,6 +392,22 @@ func (s *Service) ListProcessAreas(ctx context.Context) ([]domain.ProcessArea, e
 	return items, nil
 }
 
+func (s *Service) UpsertProcessArea(ctx context.Context, item domain.ProcessArea) error {
+	normalized, err := domain.NormalizeProcessArea(item)
+	if err != nil {
+		return err
+	}
+	return s.repo.UpsertProcessArea(ctx, normalized)
+}
+
+func (s *Service) DeactivateProcessArea(ctx context.Context, code string) error {
+	normalizedCode := strings.ToLower(strings.TrimSpace(code))
+	if normalizedCode == "" {
+		return domain.ErrInvalidCommand
+	}
+	return s.repo.DeactivateProcessArea(ctx, normalizedCode)
+}
+
 func (s *Service) ListSubjects(ctx context.Context) ([]domain.Subject, error) {
 	items, err := s.repo.ListSubjects(ctx)
 	if err != nil {
@@ -401,6 +417,36 @@ func (s *Service) ListSubjects(ctx context.Context) ([]domain.Subject, error) {
 		return domain.DefaultSubjects(), nil
 	}
 	return items, nil
+}
+
+func (s *Service) UpsertSubject(ctx context.Context, item domain.Subject) error {
+	normalized, err := domain.NormalizeSubject(item)
+	if err != nil {
+		return err
+	}
+	areas, err := s.ListProcessAreas(ctx)
+	if err != nil {
+		return err
+	}
+	hasArea := false
+	for _, area := range areas {
+		if strings.EqualFold(area.Code, normalized.ProcessAreaCode) {
+			hasArea = true
+			break
+		}
+	}
+	if !hasArea {
+		return domain.ErrInvalidCommand
+	}
+	return s.repo.UpsertSubject(ctx, normalized)
+}
+
+func (s *Service) DeactivateSubject(ctx context.Context, code string) error {
+	normalizedCode := strings.ToLower(strings.TrimSpace(code))
+	if normalizedCode == "" {
+		return domain.ErrInvalidCommand
+	}
+	return s.repo.DeactivateSubject(ctx, normalizedCode)
 }
 
 func (s *Service) ListVersions(ctx context.Context, documentID string) ([]domain.Version, error) {

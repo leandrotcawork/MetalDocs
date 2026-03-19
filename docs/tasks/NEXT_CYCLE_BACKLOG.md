@@ -647,7 +647,7 @@ Progresso fase 6:
 - arquitetura de frontend pronta para avancar para customizacao Metal Nobre (`Task 035`) e evolucao de registry/admin (`Task 036`) sem refatoracao de base
 
 ## Task 035 - Metal Nobre applied experience
-Status: `in_progress`
+Status: `done`
 
 Objetivo:
 Aplicar a experiencia documental ao caso real da Metal Nobre.
@@ -675,8 +675,13 @@ Progresso fase 3:
 - renderizacao operacional agora evita telas "meio prontas" quando o estado nao esta `ready`
 - linguagem operacional foi alinhada (ex.: `Aprovacoes`) mantendo consistencia entre shell e paineis
 
+Progresso fase 4:
+- consolidacao de experiencia aplicada com acabamento de estados operacionais e leitura consistente em `operations`, `catalog` e `registry`
+- base frontend pronta para abrir trilha de administracao do registry (`Task 036`) sem refatorar shell/workspace
+- Task 035 encerrada com foco em UX aplicada ao dominio Metal Nobre mantendo contratos e boundaries
+
 ## Task 036 - Registry administration CRUD
-Status: `pending`
+Status: `in_progress`
 
 Objetivo:
 Permitir administrar o registry documental pelo produto, e nao apenas consulta-lo.
@@ -690,6 +695,11 @@ Escopo:
 
 Saida:
 - painel administrativo que torna o modelo profile-first realmente configuravel por UI
+
+Progresso fase 1:
+- backend ganhou write-path admin para `process areas` e `subjects` (create/update/deactivate) com authz administrativa
+- OpenAPI v1 atualizado para novos endpoints de administracao do taxonomy registry
+- `RegistryExplorer` recebeu controles admin para operar CRUD de `process areas` e `subjects` consumindo os novos endpoints
 
 ## Task 037 - Realtime event stream for operations center
 Status: `pending`

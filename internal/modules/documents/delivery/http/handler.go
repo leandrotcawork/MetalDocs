@@ -1,6 +1,7 @@
 package httpdelivery
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -128,8 +129,19 @@ type ProcessAreaResponse struct {
 	Description string `json:"description"`
 }
 
+type UpsertProcessAreaRequest struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
 type SubjectResponse struct {
 	Code            string `json:"code"`
+	ProcessAreaCode string `json:"processAreaCode"`
+	Name            string `json:"name"`
+	Description     string `json:"description"`
+}
+
+type UpsertSubjectRequest struct {
 	ProcessAreaCode string `json:"processAreaCode"`
 	Name            string `json:"name"`
 	Description     string `json:"description"`
@@ -222,7 +234,9 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/document-profiles", h.handleDocumentProfiles)
 	mux.HandleFunc("/api/v1/document-profiles/", h.handleDocumentProfileSubRoutes)
 	mux.HandleFunc("/api/v1/process-areas", h.handleProcessAreas)
+	mux.HandleFunc("/api/v1/process-areas/", h.handleProcessAreaSubRoutes)
 	mux.HandleFunc("/api/v1/document-subjects", h.handleDocumentSubjects)
+	mux.HandleFunc("/api/v1/document-subjects/", h.handleDocumentSubjectSubRoutes)
 	mux.HandleFunc("/api/v1/document-types", h.handleDocumentTypes)
 	mux.HandleFunc("/api/v1/access-policies", h.handleAccessPolicies)
 	mux.HandleFunc("/api/v1/documents", h.handleDocuments)
@@ -381,11 +395,17 @@ func (h *Handler) handleDocumentProfileGovernance(w http.ResponseWriter, r *http
 }
 
 func (h *Handler) handleProcessAreas(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
+	switch r.Method {
+	case http.MethodGet:
+		h.handleListProcessAreas(w, r)
+	case http.MethodPost:
+		h.handleCreateProcessArea(w, r)
+	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
 	}
+}
 
+func (h *Handler) handleListProcessAreas(w http.ResponseWriter, r *http.Request) {
 	traceID := requestTraceID(r)
 	items, err := h.service.ListProcessAreas(r.Context())
 	if err != nil {
@@ -405,11 +425,17 @@ func (h *Handler) handleProcessAreas(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleDocumentSubjects(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
+	switch r.Method {
+	case http.MethodGet:
+		h.handleListDocumentSubjects(w, r)
+	case http.MethodPost:
+		h.handleCreateDocumentSubject(w, r)
+	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
 	}
+}
 
+func (h *Handler) handleListDocumentSubjects(w http.ResponseWriter, r *http.Request) {
 	traceID := requestTraceID(r)
 	processArea := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("processArea")))
 	items, err := h.service.ListSubjects(r.Context())
@@ -431,6 +457,164 @@ func (h *Handler) handleDocumentSubjects(w http.ResponseWriter, r *http.Request)
 		})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": out})
+}
+
+func (h *Handler) handleProcessAreaSubRoutes(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/process-areas/")
+	code := strings.ToLower(strings.TrimSpace(path))
+	if code == "" || strings.Contains(code, "/") {
+		writeAPIError(w, http.StatusNotFound, "PROCESS_AREA_NOT_FOUND", "Route not found", requestTraceID(r))
+		return
+	}
+
+	switch r.Method {
+	case http.MethodPut:
+		h.handleUpdateProcessArea(w, r, code)
+	case http.MethodDelete:
+		h.handleDeleteProcessArea(w, r, code)
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
+func (h *Handler) handleDocumentSubjectSubRoutes(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/document-subjects/")
+	code := strings.ToLower(strings.TrimSpace(path))
+	if code == "" || strings.Contains(code, "/") {
+		writeAPIError(w, http.StatusNotFound, "SUBJECT_NOT_FOUND", "Route not found", requestTraceID(r))
+		return
+	}
+
+	switch r.Method {
+	case http.MethodPut:
+		h.handleUpdateDocumentSubject(w, r, code)
+	case http.MethodDelete:
+		h.handleDeleteDocumentSubject(w, r, code)
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
+func (h *Handler) handleCreateProcessArea(w http.ResponseWriter, r *http.Request) {
+	traceID := requestTraceID(r)
+	if !isRegistryAdmin(r.Context()) {
+		writeAPIError(w, http.StatusForbidden, "AUTH_FORBIDDEN", "Insufficient permissions", traceID)
+		return
+	}
+	var req struct {
+		Code string `json:"code"`
+		UpsertProcessAreaRequest
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid JSON payload", traceID)
+		return
+	}
+	if err := h.service.UpsertProcessArea(r.Context(), domain.ProcessArea{
+		Code:        req.Code,
+		Name:        req.Name,
+		Description: req.Description,
+	}); err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]any{"code": strings.ToLower(strings.TrimSpace(req.Code))})
+}
+
+func (h *Handler) handleUpdateProcessArea(w http.ResponseWriter, r *http.Request, code string) {
+	traceID := requestTraceID(r)
+	if !isRegistryAdmin(r.Context()) {
+		writeAPIError(w, http.StatusForbidden, "AUTH_FORBIDDEN", "Insufficient permissions", traceID)
+		return
+	}
+	var req UpsertProcessAreaRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid JSON payload", traceID)
+		return
+	}
+	if err := h.service.UpsertProcessArea(r.Context(), domain.ProcessArea{
+		Code:        code,
+		Name:        req.Name,
+		Description: req.Description,
+	}); err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"code": code})
+}
+
+func (h *Handler) handleDeleteProcessArea(w http.ResponseWriter, r *http.Request, code string) {
+	traceID := requestTraceID(r)
+	if !isRegistryAdmin(r.Context()) {
+		writeAPIError(w, http.StatusForbidden, "AUTH_FORBIDDEN", "Insufficient permissions", traceID)
+		return
+	}
+	if err := h.service.DeactivateProcessArea(r.Context(), code); err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) handleCreateDocumentSubject(w http.ResponseWriter, r *http.Request) {
+	traceID := requestTraceID(r)
+	if !isRegistryAdmin(r.Context()) {
+		writeAPIError(w, http.StatusForbidden, "AUTH_FORBIDDEN", "Insufficient permissions", traceID)
+		return
+	}
+	var req struct {
+		Code string `json:"code"`
+		UpsertSubjectRequest
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid JSON payload", traceID)
+		return
+	}
+	if err := h.service.UpsertSubject(r.Context(), domain.Subject{
+		Code:            req.Code,
+		ProcessAreaCode: req.ProcessAreaCode,
+		Name:            req.Name,
+		Description:     req.Description,
+	}); err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]any{"code": strings.ToLower(strings.TrimSpace(req.Code))})
+}
+
+func (h *Handler) handleUpdateDocumentSubject(w http.ResponseWriter, r *http.Request, code string) {
+	traceID := requestTraceID(r)
+	if !isRegistryAdmin(r.Context()) {
+		writeAPIError(w, http.StatusForbidden, "AUTH_FORBIDDEN", "Insufficient permissions", traceID)
+		return
+	}
+	var req UpsertSubjectRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid JSON payload", traceID)
+		return
+	}
+	if err := h.service.UpsertSubject(r.Context(), domain.Subject{
+		Code:            code,
+		ProcessAreaCode: req.ProcessAreaCode,
+		Name:            req.Name,
+		Description:     req.Description,
+	}); err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"code": code})
+}
+
+func (h *Handler) handleDeleteDocumentSubject(w http.ResponseWriter, r *http.Request, code string) {
+	traceID := requestTraceID(r)
+	if !isRegistryAdmin(r.Context()) {
+		writeAPIError(w, http.StatusForbidden, "AUTH_FORBIDDEN", "Insufficient permissions", traceID)
+		return
+	}
+	if err := h.service.DeactivateSubject(r.Context(), code); err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) handleAccessPolicies(w http.ResponseWriter, r *http.Request) {
@@ -863,6 +1047,16 @@ func (h *Handler) handleAttachmentDownloads(w http.ResponseWriter, r *http.Reque
 	w.Header().Set("Content-Disposition", `attachment; filename="`+attachment.FileName+`"`)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(content)
+}
+
+func isRegistryAdmin(ctx context.Context) bool {
+	roles := iamdomain.RolesFromContext(ctx)
+	for _, role := range roles {
+		if role == iamdomain.RoleAdmin {
+			return true
+		}
+	}
+	return false
 }
 
 func (h *Handler) writeDomainError(w http.ResponseWriter, err error, traceID string) {

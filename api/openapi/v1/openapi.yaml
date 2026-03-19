@@ -360,6 +360,108 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
+    post:
+      summary: Cria uma area de processo documental
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessAreaCreateRequest'
+      responses:
+        '201':
+          description: Area criada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistryMutationResponse'
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+  /process-areas/{code}:
+    put:
+      summary: Atualiza uma area de processo documental
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessAreaUpdateRequest'
+      responses:
+        '200':
+          description: Area atualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistryMutationResponse'
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+    delete:
+      summary: Desativa uma area de processo documental
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Area desativada
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
   /document-subjects:
     get:
       summary: Lista os assuntos documentais
@@ -376,6 +478,108 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ListSubjectsResponse'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+    post:
+      summary: Cria um assunto documental
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubjectCreateRequest'
+      responses:
+        '201':
+          description: Assunto criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistryMutationResponse'
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+  /document-subjects/{code}:
+    put:
+      summary: Atualiza um assunto documental
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubjectUpdateRequest'
+      responses:
+        '200':
+          description: Assunto atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistryMutationResponse'
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+    delete:
+      summary: Desativa um assunto documental
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Assunto desativado
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
         '401':
           description: Nao autenticado
           content:
@@ -1709,6 +1913,24 @@ components:
           type: string
         description:
           type: string
+    ProcessAreaCreateRequest:
+      type: object
+      required: [code, name]
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+    ProcessAreaUpdateRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
     ListProcessAreasResponse:
       type: object
       required: [items]
@@ -1729,6 +1951,28 @@ components:
           type: string
         description:
           type: string
+    SubjectCreateRequest:
+      type: object
+      required: [code, processAreaCode, name]
+      properties:
+        code:
+          type: string
+        processAreaCode:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+    SubjectUpdateRequest:
+      type: object
+      required: [processAreaCode, name]
+      properties:
+        processAreaCode:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
     ListSubjectsResponse:
       type: object
       required: [items]
@@ -1737,6 +1981,12 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SubjectItem'
+    RegistryMutationResponse:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
     AuditEventItem:
       type: object
       required: [id, occurredAt, actorId, action, resourceType, resourceId, payload, traceId]

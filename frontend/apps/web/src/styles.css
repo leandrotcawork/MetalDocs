@@ -206,6 +206,12 @@ label span,
   gap: 0.9rem;
 }
 
+.stack-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .two-columns,
 .filter-grid,
 .subgrid {

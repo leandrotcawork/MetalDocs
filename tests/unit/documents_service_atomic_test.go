@@ -77,8 +77,24 @@ func (r *atomicRepoSpy) ListProcessAreas(context.Context) ([]domain.ProcessArea,
 	return domain.DefaultProcessAreas(), nil
 }
 
+func (r *atomicRepoSpy) UpsertProcessArea(context.Context, domain.ProcessArea) error {
+	return nil
+}
+
+func (r *atomicRepoSpy) DeactivateProcessArea(context.Context, string) error {
+	return nil
+}
+
 func (r *atomicRepoSpy) ListSubjects(context.Context) ([]domain.Subject, error) {
 	return domain.DefaultSubjects(), nil
+}
+
+func (r *atomicRepoSpy) UpsertSubject(context.Context, domain.Subject) error {
+	return nil
+}
+
+func (r *atomicRepoSpy) DeactivateSubject(context.Context, string) error {
+	return nil
 }
 
 func (r *atomicRepoSpy) ListAccessPolicies(context.Context, string, string) ([]domain.AccessPolicy, error) {

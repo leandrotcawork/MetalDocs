@@ -1,16 +1,20 @@
-import type { DocumentProfileItem, NotificationItem, SearchDocumentItem } from "../lib.types";
+import { metalNobreProcessAreaHint } from "../features/documents/adapters/metalNobreExperience";
+import type { DocumentProfileItem, NotificationItem, ProcessAreaItem, SearchDocumentItem } from "../lib.types";
 import { WorkspaceViewFrame } from "./WorkspaceViewFrame";
 
 type OperationsCenterProps = {
   documents: SearchDocumentItem[];
   notifications: NotificationItem[];
   documentProfiles: DocumentProfileItem[];
+  processAreas: ProcessAreaItem[];
   formatDate: (value?: string) => string;
   onCreateDocument: () => void;
   onOpenDocument: (documentId: string) => void | Promise<void>;
 };
 
 export function OperationsCenter(props: OperationsCenterProps) {
+  const profileNameByCode = new Map(props.documentProfiles.map((item) => [item.code, item.name]));
+  const areaNameByCode = new Map(props.processAreas.map((item) => [item.code, item.name]));
   const pendingReviews = props.documents.filter((item) => item.status === "IN_REVIEW");
   const recentDocuments = [...props.documents]
     .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
@@ -23,10 +27,22 @@ export function OperationsCenter(props: OperationsCenterProps) {
       return diff > 0 && diff <= 1000 * 60 * 60 * 24 * 30;
     })
     .slice(0, 5);
+  const areaCountByCode = new Map<string, number>();
+  for (const document of props.documents) {
+    const areaCode = (document.processArea ?? "").trim().toLowerCase();
+    if (areaCode === "") {
+      continue;
+    }
+    areaCountByCode.set(areaCode, (areaCountByCode.get(areaCode) ?? 0) + 1);
+  }
+  const processAreaSnapshot = Array.from(areaCountByCode.entries())
+    .map(([code, count]) => ({ code, label: areaNameByCode.get(code) ?? code, count, hint: metalNobreProcessAreaHint(code) }))
+    .sort((left, right) => right.count - left.count)
+    .slice(0, 5);
 
   return (
     <WorkspaceViewFrame
-      kicker="Operations center"
+      kicker="Centro operacional"
       title="Painel documental"
       description="Visao executiva do que pede atencao agora, sem depender de realtime obrigatorio para ser util no dia a dia."
       actions={<button type="button" onClick={props.onCreateDocument}>Criar novo documento</button>}
@@ -51,7 +67,7 @@ export function OperationsCenter(props: OperationsCenterProps) {
             {recentDocuments.map((item) => (
               <li key={item.documentId}>
                 <button type="button" className="inline-link-button" onClick={() => void props.onOpenDocument(item.documentId)}>{item.title}</button>
-                <small>{item.documentProfile} / {props.formatDate(item.createdAt)}</small>
+                <small>{profileNameByCode.get(item.documentProfile) ?? item.documentProfile} / {props.formatDate(item.createdAt)}</small>
               </li>
             ))}
             {recentDocuments.length === 0 && <li><span>Nenhum documento carregado.</span></li>}
@@ -109,6 +125,24 @@ export function OperationsCenter(props: OperationsCenterProps) {
               </li>
             ))}
             {expiringSoon.length === 0 && <li><span>Nenhuma expiracao nos proximos 30 dias.</span></li>}
+          </ul>
+        </section>
+
+        <section className="catalog-panel">
+          <div className="catalog-panel-head">
+            <div>
+              <p className="catalog-kicker">Processos</p>
+              <h2>Foco Metal Nobre</h2>
+            </div>
+          </div>
+          <ul className="catalog-mini-list">
+            {processAreaSnapshot.map((item) => (
+              <li key={item.code}>
+                <span>{item.label} ({item.count})</span>
+                <small>{item.hint}</small>
+              </li>
+            ))}
+            {processAreaSnapshot.length === 0 && <li><span>Sem processos com documentos no recorte atual.</span></li>}
           </ul>
         </section>
       </div>

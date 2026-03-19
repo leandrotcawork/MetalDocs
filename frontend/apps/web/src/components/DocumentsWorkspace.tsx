@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { buildDocumentProfileCountMap } from "../features/documents/adapters/catalogSummary";
+import { metalNobreProcessAreaHint } from "../features/documents/adapters/metalNobreExperience";
 import { TopbarDropdown } from "./ui/TopbarDropdown";
 import { WorkspaceDataState } from "./WorkspaceDataState";
 import type {
@@ -48,6 +49,13 @@ type GroupedArea = {
   code: string;
   label: string;
   documents: SearchDocumentItem[];
+};
+
+type AreaSnapshot = {
+  code: string;
+  label: string;
+  count: number;
+  hint: string;
 };
 
 function statusClass(status: string): string {
@@ -129,6 +137,26 @@ export function DocumentsWorkspace(props: DocumentsWorkspaceProps) {
     () => buildDocumentProfileCountMap(props.documents),
     [props.documents],
   );
+  const areaSnapshots = useMemo<AreaSnapshot[]>(() => {
+    const countByCode: Record<string, number> = {};
+    for (const document of filteredDocuments) {
+      const key = (document.processArea ?? "").trim().toLowerCase();
+      if (key === "") {
+        continue;
+      }
+      countByCode[key] = (countByCode[key] ?? 0) + 1;
+    }
+    return props.processAreas
+      .map((area) => ({
+        code: area.code,
+        label: area.name,
+        count: countByCode[area.code] ?? 0,
+        hint: metalNobreProcessAreaHint(area.code),
+      }))
+      .filter((area) => area.count > 0)
+      .sort((left, right) => right.count - left.count)
+      .slice(0, 4);
+  }, [filteredDocuments, props.processAreas]);
 
   const inReviewCount = props.documents.filter((item) => item.status === "IN_REVIEW").length;
   const approvedCount = props.documents.filter((item) => item.status === "APPROVED" || item.status === "PUBLISHED").length;
@@ -271,6 +299,20 @@ export function DocumentsWorkspace(props: DocumentsWorkspaceProps) {
             </article>
           </div>
 
+          {areaSnapshots.length > 0 && (
+            <div className="catalog-card">
+              <h3>Prioridades por processo</h3>
+              <ul className="catalog-mini-list">
+                {areaSnapshots.map((item) => (
+                  <li key={`snapshot-${item.code}`}>
+                    <span>{item.label} ({item.count})</span>
+                    <small>{item.hint}</small>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <div className="catalog-group-list">
             {groupedByArea.map((group, index) => {
               const isOpen = openGroups[group.code] ?? index === 0;
@@ -360,12 +402,12 @@ export function DocumentsWorkspace(props: DocumentsWorkspaceProps) {
           <div className="catalog-detail-stack">
               <div className="catalog-info-grid">
                 <div><span>Status</span><strong>{props.selectedDocument.status}</strong></div>
-                <div><span>Profile</span><strong>{props.selectedDocument.documentProfile}</strong></div>
+                <div><span>Profile</span><strong>{profileLabel(props.selectedDocument.documentProfile, props.documentProfiles)}</strong></div>
                 <div><span>Family</span><strong>{props.selectedDocument.documentFamily}</strong></div>
                 <div><span>Schema</span><strong>v{props.selectedDocument.profileSchemaVersion ?? 1}</strong></div>
               </div>
               <div className="catalog-info-grid">
-                <div><span>Processo</span><strong>{props.selectedDocument.processArea || "-"}</strong></div>
+                <div><span>Processo</span><strong>{props.selectedDocument.processArea ? areaLabel(props.selectedDocument.processArea, props.processAreas) : "-"}</strong></div>
                 <div><span>Subject</span><strong>{props.selectedDocument.subject || "-"}</strong></div>
                 <div><span>Area</span><strong>{props.selectedDocument.businessUnit}</strong></div>
                 <div><span>Departamento</span><strong>{props.selectedDocument.department}</strong></div>

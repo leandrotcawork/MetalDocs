@@ -665,6 +665,11 @@ Progresso fase 1:
 - adapter de experiencia (`metalNobreExperience`) centralizado no frontend para evitar texto hardcoded espalhado em componentes
 - sidebar `Por tipo` corrigida na raiz para usar nomes canonicos de `processAreas` no agrupamento (em vez de codigos crus)
 
+Progresso fase 2:
+- `Todos Documentos` passou a exibir prioridades por processo com hints operacionais da Metal Nobre
+- `Centro Operacional` ganhou snapshot de processos com nomes canonicos de area (registry) em vez de codigos crus
+- labels de perfil/processo no acervo e painel operacional foram alinhados para leitura executiva consistente
+
 ## Task 036 - Registry administration CRUD
 Status: `pending`
 

@@ -589,6 +589,7 @@ function AppContent() {
           documents={activeView === "approvals" ? documents.filter((item) => item.status === "IN_REVIEW") : documents}
           notifications={notifications}
           documentProfiles={documentProfiles}
+          processAreas={processAreas}
           formatDate={formatDate}
           onCreateDocument={() => setActiveView("create")}
           onOpenDocument={openDocument}

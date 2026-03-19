@@ -670,6 +670,11 @@ Progresso fase 2:
 - `Centro Operacional` ganhou snapshot de processos com nomes canonicos de area (registry) em vez de codigos crus
 - labels de perfil/processo no acervo e painel operacional foram alinhados para leitura executiva consistente
 
+Progresso fase 3:
+- `Centro Operacional` e `Registry` passaram a usar `WorkspaceDataState` com mensagens contextuais de loading/error/empty
+- renderizacao operacional agora evita telas "meio prontas" quando o estado nao esta `ready`
+- linguagem operacional foi alinhada (ex.: `Aprovacoes`) mantendo consistencia entre shell e paineis
+
 ## Task 036 - Registry administration CRUD
 Status: `pending`
 

@@ -1,18 +1,24 @@
 import { metalNobreProcessAreaHint } from "../features/documents/adapters/metalNobreExperience";
 import type { DocumentProfileItem, NotificationItem, ProcessAreaItem, SearchDocumentItem } from "../lib.types";
+import { WorkspaceDataState } from "./WorkspaceDataState";
 import { WorkspaceViewFrame } from "./WorkspaceViewFrame";
 
+type LoadState = "idle" | "loading" | "ready" | "error";
+
 type OperationsCenterProps = {
+  loadState: LoadState;
   documents: SearchDocumentItem[];
   notifications: NotificationItem[];
   documentProfiles: DocumentProfileItem[];
   processAreas: ProcessAreaItem[];
   formatDate: (value?: string) => string;
   onCreateDocument: () => void;
+  onRefreshWorkspace: () => void | Promise<void>;
   onOpenDocument: (documentId: string) => void | Promise<void>;
 };
 
 export function OperationsCenter(props: OperationsCenterProps) {
+  const hasOperationalData = props.documents.length > 0 || props.notifications.length > 0;
   const profileNameByCode = new Map(props.documentProfiles.map((item) => [item.code, item.name]));
   const areaNameByCode = new Map(props.processAreas.map((item) => [item.code, item.name]));
   const pendingReviews = props.documents.filter((item) => item.status === "IN_REVIEW");
@@ -55,6 +61,17 @@ export function OperationsCenter(props: OperationsCenterProps) {
         </div>
       )}
     >
+      <WorkspaceDataState
+        loadState={props.loadState}
+        isEmpty={!hasOperationalData}
+        emptyTitle="Sem sinais operacionais no momento"
+        emptyDescription="Ainda nao ha documentos ou notificacoes para compor o centro operacional."
+        loadingLabel="Atualizando centro operacional"
+        errorDescription="Nao foi possivel sincronizar os indicadores operacionais agora."
+        onRetry={props.onRefreshWorkspace}
+      />
+
+      {props.loadState === "ready" && hasOperationalData && (
       <div className="operations-grid">
         <section className="catalog-panel">
           <div className="catalog-panel-head">
@@ -77,7 +94,7 @@ export function OperationsCenter(props: OperationsCenterProps) {
         <section className="catalog-panel">
           <div className="catalog-panel-head">
             <div>
-              <p className="catalog-kicker">Approvals</p>
+              <p className="catalog-kicker">Aprovacoes</p>
               <h2>Pendencias de revisao</h2>
             </div>
           </div>
@@ -146,6 +163,7 @@ export function OperationsCenter(props: OperationsCenterProps) {
           </ul>
         </section>
       </div>
+      )}
     </WorkspaceViewFrame>
   );
 }

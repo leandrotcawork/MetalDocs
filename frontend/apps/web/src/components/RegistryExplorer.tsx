@@ -1,19 +1,25 @@
 import { metalNobreProcessAreaHint, metalNobreProfileContext } from "../features/documents/adapters/metalNobreExperience";
 import type { DocumentProfileGovernanceItem, DocumentProfileItem, DocumentProfileSchemaItem, ProcessAreaItem, SubjectItem } from "../lib.types";
+import { WorkspaceDataState } from "./WorkspaceDataState";
 import { WorkspaceViewFrame } from "./WorkspaceViewFrame";
 
+type LoadState = "idle" | "loading" | "ready" | "error";
+
 type RegistryExplorerProps = {
+  loadState: LoadState;
   documentProfiles: DocumentProfileItem[];
   processAreas: ProcessAreaItem[];
   subjects: SubjectItem[];
   selectedProfileCode: string;
   selectedProfileSchema: DocumentProfileSchemaItem | null;
   selectedProfileGovernance: DocumentProfileGovernanceItem | null;
+  onRefreshWorkspace: () => void | Promise<void>;
   onSelectProfile: (profileCode: string) => void | Promise<void>;
 };
 
 export function RegistryExplorer(props: RegistryExplorerProps) {
   const selectedProfile = props.documentProfiles.find((item) => item.code === props.selectedProfileCode) ?? props.documentProfiles[0] ?? null;
+  const hasRegistryData = props.documentProfiles.length > 0;
 
   return (
     <WorkspaceViewFrame
@@ -21,6 +27,17 @@ export function RegistryExplorer(props: RegistryExplorerProps) {
       title="Registry documental"
       description="Leitura operacional do motor profile-first aplicado ao contexto Metal Nobre, com foco em governanca e rastreabilidade."
     >
+      <WorkspaceDataState
+        loadState={props.loadState}
+        isEmpty={!hasRegistryData}
+        emptyTitle="Registry sem perfis configurados"
+        emptyDescription="Nao existem perfis documentais ativos para consulta neste ambiente."
+        loadingLabel="Atualizando registry documental"
+        errorDescription="Nao foi possivel carregar perfis, schema e governanca agora."
+        onRetry={props.onRefreshWorkspace}
+      />
+
+      {props.loadState === "ready" && hasRegistryData && (
       <div className="catalog-grid">
         <section className="catalog-panel catalog-list-panel">
           <div className="catalog-panel-head">
@@ -103,6 +120,7 @@ export function RegistryExplorer(props: RegistryExplorerProps) {
           </div>
         </aside>
       </div>
+      )}
     </WorkspaceViewFrame>
   );
 }

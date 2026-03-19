@@ -586,12 +586,14 @@ function AppContent() {
     if (activeView === "operations" || activeView === "approvals" || activeView === "audit") {
       return (
         <OperationsCenter
+          loadState={loadState}
           documents={activeView === "approvals" ? documents.filter((item) => item.status === "IN_REVIEW") : documents}
           notifications={notifications}
           documentProfiles={documentProfiles}
           processAreas={processAreas}
           formatDate={formatDate}
           onCreateDocument={() => setActiveView("create")}
+          onRefreshWorkspace={refreshWorkspace}
           onOpenDocument={openDocument}
         />
       );
@@ -645,12 +647,14 @@ function AppContent() {
     if (activeView === "registry") {
       return (
         <RegistryExplorer
+          loadState={loadState}
           documentProfiles={documentProfiles}
           processAreas={processAreas}
           subjects={subjects}
           selectedProfileCode={documentForm.documentProfile}
           selectedProfileSchema={selectedProfileSchema}
           selectedProfileGovernance={selectedProfileGovernance}
+          onRefreshWorkspace={refreshWorkspace}
           onSelectProfile={(profileCode) => applyDocumentProfile(profileCode, documentForm.processArea)}
         />
       );

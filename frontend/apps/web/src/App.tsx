@@ -80,8 +80,11 @@ const emptyDocumentForm = {
   subject: "",
   ownerId: "",
   businessUnit: "Quality",
-  department: "Operations",
+  department: "operacoes",
   classification: "INTERNAL",
+  audienceMode: "DEPARTMENT",
+  audienceDepartment: "operacoes",
+  audienceProcessArea: "",
   tags: "",
   effectiveAt: "",
   expiryAt: "",
@@ -452,6 +455,15 @@ function AppContent() {
     setError("");
     setMessage("");
     try {
+      const needsAudience = ["CONFIDENTIAL", "RESTRICTED"].includes(documentForm.classification);
+      const audienceMode = documentForm.audienceMode || "DEPARTMENT";
+      const audience = needsAudience ? {
+        mode: audienceMode,
+        departmentCodes: [documentForm.audienceDepartment || documentForm.department].filter(Boolean),
+        processAreaCodes: audienceMode === "AREAS"
+          ? [documentForm.audienceProcessArea || documentForm.processArea].filter(Boolean)
+          : undefined,
+      } : undefined;
       await api.createDocument({
         ...documentForm,
         documentType: documentForm.documentProfile,
@@ -460,6 +472,7 @@ function AppContent() {
         effectiveAt: documentForm.effectiveAt ? new Date(documentForm.effectiveAt).toISOString() : undefined,
         expiryAt: documentForm.expiryAt ? new Date(documentForm.expiryAt).toISOString() : undefined,
         metadata: documentForm.metadata.trim() ? JSON.parse(documentForm.metadata) : {},
+        audience,
       });
       setDocumentForm({
         ...emptyDocumentForm,

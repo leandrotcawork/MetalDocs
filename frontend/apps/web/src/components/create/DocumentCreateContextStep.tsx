@@ -55,7 +55,11 @@ export function DocumentCreateContextStep(props: DocumentCreateContextStepProps)
             id="document-department"
             value={props.form.department}
             options={departmentOptions}
-            onSelect={(value) => props.onDocumentFormChange({ ...props.form, department: value })}
+            onSelect={(value) => props.onDocumentFormChange({
+              ...props.form,
+              department: value,
+              audienceDepartment: value,
+            })}
           />
         </CreateField>
         <CreateField
@@ -75,6 +79,7 @@ export function DocumentCreateContextStep(props: DocumentCreateContextStepProps)
                 processArea: value,
                 subject: "",
                 businessUnit: areaLabel,
+                audienceProcessArea: value,
               });
             }}
           />

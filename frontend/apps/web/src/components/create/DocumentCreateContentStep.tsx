@@ -1,19 +1,43 @@
+import type { DocumentDepartmentItem, ProcessAreaItem } from "../../lib.types";
 import type { DocumentForm } from "./documentCreateTypes";
 import { CreateField } from "./widgets/CreateField";
+import { FilterDropdown, type SelectMenuOption } from "../ui/FilterDropdown";
 
 type DocumentCreateContentStepProps = {
   form: DocumentForm;
+  processAreas: ProcessAreaItem[];
+  documentDepartments: DocumentDepartmentItem[];
   onDocumentFormChange: (next: DocumentForm) => void;
 };
 
 const classificationOptions = [
-  { value: "PUBLIC", label: "Publico", desc: "Visivel externamente" },
-  { value: "INTERNAL", label: "Interno", desc: "Apenas colaboradores" },
-  { value: "CONFIDENTIAL", label: "Confidencial", desc: "Acesso restrito" },
-  { value: "RESTRICTED", label: "Restrito", desc: "Somente autorizados" },
+  { value: "PUBLIC", label: "Publico", desc: "Visivel externamente quando publicado" },
+  { value: "INTERNAL", label: "Interno", desc: "Todos os usuarios da empresa" },
+  { value: "CONFIDENTIAL", label: "Confidencial", desc: "Acesso controlado por equipes" },
+  { value: "RESTRICTED", label: "Restrito", desc: "Acesso minimo e validado" },
 ];
 
 export function DocumentCreateContentStep(props: DocumentCreateContentStepProps) {
+  const showAudience = props.form.classification === "CONFIDENTIAL" || props.form.classification === "RESTRICTED";
+  const audienceModeOptions: SelectMenuOption[] = [
+    { value: "DEPARTMENT", label: "Departamento" },
+    { value: "AREAS", label: "Areas do departamento" },
+  ];
+  const departmentOptions: SelectMenuOption[] = [
+    { value: "", label: "Selecione o departamento" },
+    ...props.documentDepartments.map((item) => ({
+      value: item.code,
+      label: item.name,
+    })),
+  ];
+  const processAreaOptions: SelectMenuOption[] = [
+    { value: "", label: "Selecione a area" },
+    ...props.processAreas.map((item) => ({
+      value: item.code,
+      label: item.name,
+    })),
+  ];
+
   return (
     <div className="stack">
       <div className="field">
@@ -24,7 +48,20 @@ export function DocumentCreateContentStep(props: DocumentCreateContentStepProps)
               key={item.value}
               type="button"
               className={`class-chip ${props.form.classification === item.value ? "active" : ""}`}
-              onClick={() => props.onDocumentFormChange({ ...props.form, classification: item.value })}
+              onClick={() => {
+                const nextForm = { ...props.form, classification: item.value };
+                if (item.value === "CONFIDENTIAL" || item.value === "RESTRICTED") {
+                  if (!nextForm.audienceMode || nextForm.audienceMode === "INTERNAL") {
+                    nextForm.audienceMode = "DEPARTMENT";
+                  }
+                  if (!nextForm.audienceDepartment) {
+                    nextForm.audienceDepartment = nextForm.department;
+                  }
+                } else {
+                  nextForm.audienceMode = "INTERNAL";
+                }
+                props.onDocumentFormChange(nextForm);
+              }}
             >
               <span>{item.label}</span>
               <small>{item.desc}</small>
@@ -32,6 +69,47 @@ export function DocumentCreateContentStep(props: DocumentCreateContentStepProps)
           ))}
         </div>
       </div>
+
+      {showAudience && (
+        <div className="catalog-form-grid">
+          <CreateField label="Quem pode ver">
+            <FilterDropdown
+              id="document-audience-mode"
+              value={props.form.audienceMode}
+              options={audienceModeOptions}
+              onSelect={(value) => {
+                const nextMode = value || "DEPARTMENT";
+                const nextForm = { ...props.form, audienceMode: nextMode };
+                if (!nextForm.audienceDepartment) {
+                  nextForm.audienceDepartment = nextForm.department;
+                }
+                if (nextMode === "AREAS" && !nextForm.audienceProcessArea) {
+                  nextForm.audienceProcessArea = nextForm.processArea;
+                }
+                props.onDocumentFormChange(nextForm);
+              }}
+            />
+          </CreateField>
+          <CreateField label="Departamento">
+            <FilterDropdown
+              id="document-audience-department"
+              value={props.form.audienceDepartment}
+              options={departmentOptions}
+              onSelect={(value) => props.onDocumentFormChange({ ...props.form, audienceDepartment: value })}
+            />
+          </CreateField>
+          {props.form.audienceMode === "AREAS" && (
+            <CreateField label="Area de processo">
+              <FilterDropdown
+                id="document-audience-process-area"
+                value={props.form.audienceProcessArea}
+                options={processAreaOptions}
+                onSelect={(value) => props.onDocumentFormChange({ ...props.form, audienceProcessArea: value })}
+              />
+            </CreateField>
+          )}
+        </div>
+      )}
 
       <div className="catalog-form-grid">
         <CreateField label="Inicio de vigencia">

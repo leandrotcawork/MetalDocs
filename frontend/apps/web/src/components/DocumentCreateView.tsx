@@ -31,6 +31,14 @@ export function DocumentCreateView(props: DocumentCreateViewProps) {
   const metadataComplete = metadataRules.length === 0
     ? true
     : metadataRules.every((rule) => !rule.required || (metadataMap[rule.name]?.toString().trim() ?? "") !== "");
+  const requiresAudience = props.documentForm.classification === "CONFIDENTIAL" || props.documentForm.classification === "RESTRICTED";
+  const audienceComplete = !requiresAudience || (
+    props.documentForm.audienceMode === "DEPARTMENT"
+      ? props.documentForm.audienceDepartment.trim().length > 0
+      : props.documentForm.audienceMode === "AREAS"
+        ? props.documentForm.audienceDepartment.trim().length > 0 && props.documentForm.audienceProcessArea.trim().length > 0
+        : true
+  );
   const stepCompletion: Record<WizardStep, boolean> = {
     identification: props.documentForm.title.trim().length > 0 && props.documentForm.documentProfile.trim().length > 0,
     context: props.documentForm.ownerId.trim().length > 0
@@ -38,6 +46,7 @@ export function DocumentCreateView(props: DocumentCreateViewProps) {
       && props.documentForm.department.trim().length > 0,
     metadata: metadataComplete,
     content: props.documentForm.classification.trim().length > 0
+      && audienceComplete
       && (
         props.documentForm.tags.trim().length > 0
         || props.documentForm.initialContent.trim().length > 0
@@ -167,7 +176,12 @@ export function DocumentCreateView(props: DocumentCreateViewProps) {
               </svg>
             }
           >
-            <DocumentCreateContentStep form={props.documentForm} onDocumentFormChange={props.onDocumentFormChange} />
+            <DocumentCreateContentStep
+              form={props.documentForm}
+              processAreas={props.processAreas}
+              documentDepartments={props.documentDepartments}
+              onDocumentFormChange={props.onDocumentFormChange}
+            />
           </CreateDocumentSection>
 
           <footer className="create-doc-footer">

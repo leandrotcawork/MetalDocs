@@ -10,6 +10,9 @@ export type DocumentForm = {
   businessUnit: string;
   department: string;
   classification: string;
+  audienceMode: string;
+  audienceDepartment: string;
+  audienceProcessArea: string;
   tags: string;
   effectiveAt: string;
   expiryAt: string;

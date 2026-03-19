@@ -1111,7 +1111,7 @@ Entrega:
 - dropdown de departamentos na criacao de documentos.
 
 ## Task 053 - UI: Access selector tied to classification (Create Document)
-Status: `todo`
+Status: `done`
 
 Objetivo:
 Evoluir a UX de classificacao para um padrao profissional:
@@ -1135,3 +1135,7 @@ Aceite:
 - Criar doc CONFIDENTIAL sem mexer em nada gera audience default seguro (departamento).
 - UI deixa explicito que permissao e aplicada pelo backend (sem promessa falsa).
 - Nenhum hardcode de "departamentos/areas" fora da API.
+
+Entrega:
+- seletor de audiencia condicionado a CONFIDENTIAL/RESTRICTED.
+- payload `audience` enviado no create.

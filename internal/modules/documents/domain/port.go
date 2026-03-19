@@ -17,6 +17,8 @@ type Repository interface {
 	UpsertDocumentProfile(ctx context.Context, item DocumentProfile) error
 	DeactivateDocumentProfile(ctx context.Context, code string) error
 	ListDocumentProfileSchemas(ctx context.Context, profileCode string) ([]DocumentProfileSchemaVersion, error)
+	UpsertDocumentProfileSchemaVersion(ctx context.Context, item DocumentProfileSchemaVersion) error
+	ActivateDocumentProfileSchemaVersion(ctx context.Context, profileCode string, version int) error
 	GetDocumentProfileGovernance(ctx context.Context, profileCode string) (DocumentProfileGovernance, error)
 	UpsertDocumentProfileGovernance(ctx context.Context, item DocumentProfileGovernance) error
 	ListProcessAreas(ctx context.Context) ([]ProcessArea, error)

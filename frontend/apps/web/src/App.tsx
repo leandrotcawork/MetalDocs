@@ -20,6 +20,7 @@ import type {
   DocumentProfileSchemaItem,
   DocumentListItem,
   ManagedUserItem,
+  MetadataFieldRuleItem,
   NotificationItem,
   ProcessAreaItem,
   SearchDocumentItem,
@@ -161,6 +162,7 @@ function AppContent() {
   const [processAreas, setProcessAreas] = useState<ProcessAreaItem[]>([]);
   const [subjects, setSubjects] = useState<SubjectItem[]>([]);
   const [selectedProfileSchema, setSelectedProfileSchema] = useState<DocumentProfileSchemaItem | null>(null);
+  const [selectedProfileSchemas, setSelectedProfileSchemas] = useState<DocumentProfileSchemaItem[]>([]);
   const [selectedProfileGovernance, setSelectedProfileGovernance] = useState<DocumentProfileGovernanceItem | null>(null);
   const [documents, setDocuments] = useState<SearchDocumentItem[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<DocumentListItem | null>(null);
@@ -264,10 +266,13 @@ function AppContent() {
   }
 
   async function applyDocumentProfile(profileCode: string, preferredProcessArea = "") {
-    const [schema, governance] = await Promise.all([
-      api.getDocumentProfileSchema(profileCode),
+    const [schemaResponse, governance] = await Promise.all([
+      api.listDocumentProfileSchemas(profileCode),
       api.getDocumentProfileGovernance(profileCode),
     ]);
+    const schemas = Array.isArray(schemaResponse.items) ? schemaResponse.items : [];
+    const schema = schemas.find((item) => item.isActive) ?? schemas[0] ?? null;
+    setSelectedProfileSchemas(schemas);
     setSelectedProfileSchema(schema);
     setSelectedProfileGovernance(governance);
     setDocumentForm((current) => ({
@@ -318,6 +323,7 @@ function AppContent() {
     await api.logout().catch(() => undefined);
     setUser(null);
     setSelectedProfileSchema(null);
+    setSelectedProfileSchemas([]);
     setSelectedProfileGovernance(null);
     setSubjects([]);
     setDocuments([]);
@@ -395,11 +401,13 @@ function AppContent() {
         api.listAuditEvents(new URLSearchParams({ resourceType: "document", resourceId: documentId, limit: "10" })),
       ]);
       const [schema, governance] = await Promise.all([
-        api.getDocumentProfileSchema(document.documentProfile),
+        api.listDocumentProfileSchemas(document.documentProfile),
         api.getDocumentProfileGovernance(document.documentProfile),
       ]);
       const orderedVersions = [...versionsResponse.items].sort((left, right) => right.version - left.version);
-      setSelectedProfileSchema(schema);
+      const schemas = Array.isArray(schema.items) ? schema.items : [];
+      setSelectedProfileSchemas(schemas);
+      setSelectedProfileSchema(schemas.find((item) => item.isActive) ?? schemas[0] ?? null);
       setSelectedProfileGovernance(governance);
       setSelectedDocument(document);
       setVersions(orderedVersions);
@@ -613,6 +621,28 @@ function AppContent() {
     }
   }
 
+  async function handleUpsertDocumentProfileSchema(payload: { profileCode: string; version: number; isActive: boolean; metadataRules: MetadataFieldRuleItem[] }) {
+    try {
+      setError("");
+      await api.upsertDocumentProfileSchema(payload.profileCode, payload);
+      setMessage("Schema versionado atualizado.");
+      await applyDocumentProfile(payload.profileCode, documentForm.processArea);
+    } catch (err) {
+      handleError(err);
+    }
+  }
+
+  async function handleActivateDocumentProfileSchema(payload: { profileCode: string; version: number }) {
+    try {
+      setError("");
+      await api.activateDocumentProfileSchema(payload.profileCode, payload.version);
+      setMessage("Schema ativo atualizado.");
+      await applyDocumentProfile(payload.profileCode, documentForm.processArea);
+    } catch (err) {
+      handleError(err);
+    }
+  }
+
   async function handleUpdateProcessArea(payload: { code: string; name: string; description: string }) {
     try {
       setError("");
@@ -763,6 +793,7 @@ function AppContent() {
           subjects={subjects}
           selectedProfileCode={documentForm.documentProfile}
           selectedProfileSchema={selectedProfileSchema}
+          selectedProfileSchemas={selectedProfileSchemas}
           selectedProfileGovernance={selectedProfileGovernance}
           showAdmin={isAdmin}
           onRefreshWorkspace={refreshWorkspace}
@@ -777,6 +808,8 @@ function AppContent() {
           onUpdateDocumentProfile={handleUpdateDocumentProfile}
           onDeleteDocumentProfile={handleDeleteDocumentProfile}
           onUpdateDocumentProfileGovernance={handleUpdateDocumentProfileGovernance}
+          onUpsertDocumentProfileSchema={handleUpsertDocumentProfileSchema}
+          onActivateDocumentProfileSchema={handleActivateDocumentProfileSchema}
         />
       );
     }

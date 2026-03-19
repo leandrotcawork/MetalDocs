@@ -72,6 +72,14 @@ func (r *atomicRepoSpy) ListDocumentProfileSchemas(_ context.Context, profileCod
 	return filtered, nil
 }
 
+func (r *atomicRepoSpy) UpsertDocumentProfileSchemaVersion(context.Context, domain.DocumentProfileSchemaVersion) error {
+	return nil
+}
+
+func (r *atomicRepoSpy) ActivateDocumentProfileSchemaVersion(context.Context, string, int) error {
+	return nil
+}
+
 func (r *atomicRepoSpy) GetDocumentProfileGovernance(_ context.Context, profileCode string) (domain.DocumentProfileGovernance, error) {
 	for _, item := range domain.DefaultDocumentProfileGovernance() {
 		if item.ProfileCode == profileCode {

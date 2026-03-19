@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { metalNobreProcessAreaHint, metalNobreProfileContext } from "../features/documents/adapters/metalNobreExperience";
-import type { DocumentProfileGovernanceItem, DocumentProfileItem, DocumentProfileSchemaItem, ProcessAreaItem, SubjectItem } from "../lib.types";
+import type { DocumentProfileGovernanceItem, DocumentProfileItem, DocumentProfileSchemaItem, MetadataFieldRuleItem, ProcessAreaItem, SubjectItem } from "../lib.types";
 import { WorkspaceDataState } from "./WorkspaceDataState";
 import { WorkspaceViewFrame } from "./WorkspaceViewFrame";
 
@@ -13,6 +13,7 @@ type RegistryExplorerProps = {
   subjects: SubjectItem[];
   selectedProfileCode: string;
   selectedProfileSchema: DocumentProfileSchemaItem | null;
+  selectedProfileSchemas: DocumentProfileSchemaItem[];
   selectedProfileGovernance: DocumentProfileGovernanceItem | null;
   showAdmin: boolean;
   onRefreshWorkspace: () => void | Promise<void>;
@@ -27,12 +28,20 @@ type RegistryExplorerProps = {
   onUpdateDocumentProfile: (payload: { code: string; familyCode: string; name: string; alias: string; description: string; reviewIntervalDays: number }) => void | Promise<void>;
   onDeleteDocumentProfile: (code: string) => void | Promise<void>;
   onUpdateDocumentProfileGovernance: (payload: { profileCode: string; workflowProfile: string; reviewIntervalDays: number; approvalRequired: boolean; retentionDays: number; validityDays: number }) => void | Promise<void>;
+  onUpsertDocumentProfileSchema: (payload: { profileCode: string; version: number; isActive: boolean; metadataRules: MetadataFieldRuleItem[] }) => void | Promise<void>;
+  onActivateDocumentProfileSchema: (payload: { profileCode: string; version: number }) => void | Promise<void>;
 };
 
 export function RegistryExplorer(props: RegistryExplorerProps) {
+  const metadataTypeOptions = ["text", "number", "date", "boolean", "select"] as const;
   const selectedProfile = props.documentProfiles.find((item) => item.code === props.selectedProfileCode) ?? props.documentProfiles[0] ?? null;
   const hasRegistryData = props.documentProfiles.length > 0;
   const [profileForm, setProfileForm] = useState({ code: "", familyCode: "", name: "", alias: "", description: "", reviewIntervalDays: 365 });
+  const [schemaForm, setSchemaForm] = useState<{ version: number; isActive: boolean; metadataRules: MetadataFieldRuleItem[] }>({
+    version: 1,
+    isActive: false,
+    metadataRules: [],
+  });
   const [governanceForm, setGovernanceForm] = useState({ workflowProfile: "standard_approval", reviewIntervalDays: 365, approvalRequired: true, retentionDays: 3650, validityDays: 0 });
   const [processAreaForm, setProcessAreaForm] = useState({ code: "", name: "", description: "" });
   const [subjectForm, setSubjectForm] = useState({ code: "", processAreaCode: "", name: "", description: "" });
@@ -56,7 +65,53 @@ export function RegistryExplorer(props: RegistryExplorerProps) {
       retentionDays: props.selectedProfileGovernance?.retentionDays ?? 0,
       validityDays: props.selectedProfileGovernance?.validityDays ?? 0,
     });
-  }, [props.selectedProfileGovernance, selectedProfile]);
+    setSchemaForm({
+      version: Math.max(1, (props.selectedProfileSchema?.version ?? 0) + 1),
+      isActive: false,
+      metadataRules: (props.selectedProfileSchema?.metadataRules ?? []).map((rule) => ({
+        name: rule.name,
+        type: rule.type,
+        required: Boolean(rule.required),
+      })),
+    });
+  }, [props.selectedProfileGovernance, props.selectedProfileSchema, selectedProfile]);
+
+  function addSchemaRule() {
+    setSchemaForm((current) => ({
+      ...current,
+      metadataRules: [...current.metadataRules, { name: "", type: "text", required: false }],
+    }));
+  }
+
+  function updateSchemaRule(index: number, next: MetadataFieldRuleItem) {
+    setSchemaForm((current) => ({
+      ...current,
+      metadataRules: current.metadataRules.map((rule, currentIndex) => (currentIndex === index ? next : rule)),
+    }));
+  }
+
+  function removeSchemaRule(index: number) {
+    setSchemaForm((current) => ({
+      ...current,
+      metadataRules: current.metadataRules.filter((_, currentIndex) => currentIndex !== index),
+    }));
+  }
+
+  function saveSchemaVersion(profileCode: string) {
+    const normalizedRules = schemaForm.metadataRules
+      .map((rule) => ({
+        name: rule.name.trim(),
+        type: rule.type.trim().toLowerCase(),
+        required: Boolean(rule.required),
+      }))
+      .filter((rule) => rule.name !== "" && rule.type !== "");
+    void props.onUpsertDocumentProfileSchema({
+      profileCode,
+      version: schemaForm.version,
+      isActive: schemaForm.isActive,
+      metadataRules: normalizedRules,
+    });
+  }
 
   return (
     <WorkspaceViewFrame
@@ -123,6 +178,81 @@ export function RegistryExplorer(props: RegistryExplorerProps) {
                 ))}
                 {(props.selectedProfileSchema?.metadataRules ?? []).length === 0 && <li><span>Sem regras de metadata carregadas.</span></li>}
               </ul>
+              {props.showAdmin && selectedProfile && (
+                <div className="stack">
+                  <input
+                    type="number"
+                    min={1}
+                    placeholder="Versao"
+                    value={schemaForm.version}
+                    onChange={(event) => setSchemaForm((current) => ({ ...current, version: Number(event.target.value || 0) }))}
+                  />
+                  <div className="registry-schema-rules">
+                    {schemaForm.metadataRules.map((rule, index) => (
+                      <div key={`${rule.name}-${index}`} className="registry-schema-rule-row">
+                        <input
+                          placeholder="nome_da_regra"
+                          value={rule.name}
+                          onChange={(event) => updateSchemaRule(index, { ...rule, name: event.target.value })}
+                        />
+                        <select
+                          value={rule.type}
+                          onChange={(event) => updateSchemaRule(index, { ...rule, type: event.target.value })}
+                        >
+                          {metadataTypeOptions.map((type) => (
+                            <option key={type} value={type}>{type}</option>
+                          ))}
+                        </select>
+                        <label>
+                          <input
+                            type="checkbox"
+                            checked={rule.required}
+                            onChange={(event) => updateSchemaRule(index, { ...rule, required: event.target.checked })}
+                          />
+                          obrigatorio
+                        </label>
+                        <button type="button" className="ghost-button" onClick={() => removeSchemaRule(index)}>
+                          Remover
+                        </button>
+                      </div>
+                    ))}
+                    {schemaForm.metadataRules.length === 0 && <p className="catalog-muted">Nenhuma regra adicionada nesta versao.</p>}
+                  </div>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={schemaForm.isActive}
+                      onChange={(event) => setSchemaForm((current) => ({ ...current, isActive: event.target.checked }))}
+                    />
+                    Ativar esta versao no upsert
+                  </label>
+                  <div className="stack-inline">
+                    <button type="button" className="ghost-button" onClick={addSchemaRule}>Adicionar regra</button>
+                    <button
+                      type="button"
+                      onClick={() => saveSchemaVersion(selectedProfile.code)}
+                    >
+                      Salvar schema
+                    </button>
+                  </div>
+                </div>
+              )}
+              {props.selectedProfileSchemas.length > 0 && (
+                <ul className="catalog-mini-list">
+                  {props.selectedProfileSchemas.map((item) => (
+                    <li key={`${item.profileCode}-${item.version}`}>
+                      <span>{`v${item.version}${item.isActive ? " (ativo)" : ""}`}</span>
+                      {props.showAdmin && selectedProfile && !item.isActive ? (
+                        <button type="button" className="ghost-button" onClick={() => void props.onActivateDocumentProfileSchema({ profileCode: selectedProfile.code, version: item.version })}>
+                          Ativar
+                        </button>
+                      ) : (
+                        <small>{item.metadataRules.length} regras</small>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             <div className="catalog-card">

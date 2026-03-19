@@ -397,6 +397,50 @@ func (s *Service) ListDocumentProfileSchemas(ctx context.Context, profileCode st
 	return items, nil
 }
 
+func (s *Service) UpsertDocumentProfileSchemaVersion(ctx context.Context, item domain.DocumentProfileSchemaVersion) error {
+	normalized, err := domain.NormalizeDocumentProfileSchemaVersion(item)
+	if err != nil {
+		return err
+	}
+	profiles, err := s.ListDocumentProfiles(ctx)
+	if err != nil {
+		return err
+	}
+	hasProfile := false
+	for _, profile := range profiles {
+		if strings.EqualFold(profile.Code, normalized.ProfileCode) {
+			hasProfile = true
+			break
+		}
+	}
+	if !hasProfile {
+		return domain.ErrInvalidCommand
+	}
+	return s.repo.UpsertDocumentProfileSchemaVersion(ctx, normalized)
+}
+
+func (s *Service) ActivateDocumentProfileSchemaVersion(ctx context.Context, profileCode string, version int) error {
+	normalizedCode := strings.ToLower(strings.TrimSpace(profileCode))
+	if normalizedCode == "" || version <= 0 {
+		return domain.ErrInvalidCommand
+	}
+	items, err := s.ListDocumentProfileSchemas(ctx, normalizedCode)
+	if err != nil {
+		return err
+	}
+	found := false
+	for _, item := range items {
+		if item.Version == version {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return domain.ErrInvalidCommand
+	}
+	return s.repo.ActivateDocumentProfileSchemaVersion(ctx, normalizedCode, version)
+}
+
 func (s *Service) GetDocumentProfileGovernance(ctx context.Context, profileCode string) (domain.DocumentProfileGovernance, error) {
 	profileCode = strings.ToLower(strings.TrimSpace(profileCode))
 	item, err := s.repo.GetDocumentProfileGovernance(ctx, profileCode)

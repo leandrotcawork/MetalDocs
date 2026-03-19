@@ -307,6 +307,12 @@ export const api = {
     const items = Array.isArray(response.items) ? response.items.map(normalizeDocumentProfileSchema) : [];
     return items.find((item) => item.isActive) ?? items[0] ?? null;
   },
+  listDocumentProfileSchemas: async (profileCode: string) => {
+    const response = await request<{ items: DocumentProfileSchemaItem[] }>(`/document-profiles/${encodeURIComponent(profileCode)}/schema`);
+    return { items: Array.isArray(response.items) ? response.items.map(normalizeDocumentProfileSchema) : [] };
+  },
+  upsertDocumentProfileSchema: (profileCode: string, body: Record<string, unknown>) => request<{ code: string }>(`/document-profiles/${encodeURIComponent(profileCode)}/schema`, { method: "POST", body: JSON.stringify(body) }),
+  activateDocumentProfileSchema: (profileCode: string, version: number) => request<{ code: string }>(`/document-profiles/${encodeURIComponent(profileCode)}/schema/${encodeURIComponent(String(version))}/activate`, { method: "PUT" }),
   getDocumentProfileGovernance: async (profileCode: string) => normalizeDocumentProfileGovernance(await request<DocumentProfileGovernanceItem>(`/document-profiles/${encodeURIComponent(profileCode)}/governance`)),
   updateDocumentProfileGovernance: (profileCode: string, body: Record<string, unknown>) => request<{ code: string }>(`/document-profiles/${encodeURIComponent(profileCode)}/governance`, { method: "PUT", body: JSON.stringify(body) }),
   listProcessAreas: async () => {

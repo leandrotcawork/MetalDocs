@@ -463,6 +463,91 @@ ORDER BY profile_code ASC, version ASC
 	return out, nil
 }
 
+func (r *Repository) UpsertDocumentProfileSchemaVersion(ctx context.Context, item domain.DocumentProfileSchemaVersion) error {
+	rawRules, err := json.Marshal(item.MetadataRules)
+	if err != nil {
+		return fmt.Errorf("marshal document profile schema rules: %w", err)
+	}
+
+	if item.IsActive {
+		tx, err := r.db.BeginTx(ctx, nil)
+		if err != nil {
+			return fmt.Errorf("begin tx upsert document profile schema version: %w", err)
+		}
+		defer func() {
+			_ = tx.Rollback()
+		}()
+
+		if _, err := tx.ExecContext(ctx,
+			`UPDATE metaldocs.document_profile_schema_versions SET is_active = FALSE WHERE profile_code = $1`,
+			item.ProfileCode,
+		); err != nil {
+			return fmt.Errorf("deactivate schema versions: %w", err)
+		}
+
+		const q = `
+INSERT INTO metaldocs.document_profile_schema_versions (profile_code, version, metadata_rules_json, is_active)
+VALUES ($1, $2, $3::jsonb, TRUE)
+ON CONFLICT (profile_code, version) DO UPDATE
+SET metadata_rules_json = EXCLUDED.metadata_rules_json,
+    is_active = TRUE
+`
+		if _, err := tx.ExecContext(ctx, q, item.ProfileCode, item.Version, rawRules); err != nil {
+			return mapError(err)
+		}
+		if err := tx.Commit(); err != nil {
+			return fmt.Errorf("commit tx upsert document profile schema version: %w", err)
+		}
+		return nil
+	}
+
+	const q = `
+INSERT INTO metaldocs.document_profile_schema_versions (profile_code, version, metadata_rules_json, is_active)
+VALUES ($1, $2, $3::jsonb, FALSE)
+ON CONFLICT (profile_code, version) DO UPDATE
+SET metadata_rules_json = EXCLUDED.metadata_rules_json
+`
+	if _, err := r.db.ExecContext(ctx, q, item.ProfileCode, item.Version, rawRules); err != nil {
+		return mapError(err)
+	}
+	return nil
+}
+
+func (r *Repository) ActivateDocumentProfileSchemaVersion(ctx context.Context, profileCode string, version int) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx activate schema version: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE metaldocs.document_profile_schema_versions SET is_active = FALSE WHERE profile_code = $1`,
+		profileCode,
+	); err != nil {
+		return fmt.Errorf("deactivate schema versions: %w", err)
+	}
+
+	result, err := tx.ExecContext(ctx,
+		`UPDATE metaldocs.document_profile_schema_versions SET is_active = TRUE WHERE profile_code = $1 AND version = $2`,
+		profileCode,
+		version,
+	)
+	if err != nil {
+		return mapError(err)
+	}
+	affected, _ := result.RowsAffected()
+	if affected == 0 {
+		return domain.ErrInvalidCommand
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit tx activate schema version: %w", err)
+	}
+	return nil
+}
+
 func (r *Repository) GetDocumentProfileGovernance(ctx context.Context, profileCode string) (domain.DocumentProfileGovernance, error) {
 	const q = `
 SELECT profile_code, workflow_profile, review_interval_days, approval_required, retention_days, validity_days

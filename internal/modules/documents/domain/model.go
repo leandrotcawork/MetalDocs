@@ -351,6 +351,28 @@ func NormalizeDocumentProfileGovernance(item DocumentProfileGovernance) (Documen
 	return item, nil
 }
 
+func NormalizeDocumentProfileSchemaVersion(item DocumentProfileSchemaVersion) (DocumentProfileSchemaVersion, error) {
+	item.ProfileCode = strings.ToLower(strings.TrimSpace(item.ProfileCode))
+	if item.ProfileCode == "" || item.Version <= 0 {
+		return DocumentProfileSchemaVersion{}, ErrInvalidCommand
+	}
+	normalizedRules := make([]MetadataFieldRule, 0, len(item.MetadataRules))
+	for _, rule := range item.MetadataRules {
+		name := strings.TrimSpace(rule.Name)
+		ruleType := strings.TrimSpace(rule.Type)
+		if name == "" || ruleType == "" {
+			return DocumentProfileSchemaVersion{}, ErrInvalidCommand
+		}
+		normalizedRules = append(normalizedRules, MetadataFieldRule{
+			Name:     name,
+			Type:     ruleType,
+			Required: rule.Required,
+		})
+	}
+	item.MetadataRules = normalizedRules
+	return item, nil
+}
+
 func NormalizeProcessArea(item ProcessArea) (ProcessArea, error) {
 	item.Code = strings.ToLower(strings.TrimSpace(item.Code))
 	item.Name = strings.TrimSpace(item.Name)

@@ -127,6 +127,12 @@ type DocumentProfileSchemaResponse struct {
 	MetadataRules []domain.MetadataFieldRule `json:"metadataRules"`
 }
 
+type UpsertDocumentProfileSchemaRequest struct {
+	Version       int                        `json:"version"`
+	IsActive      bool                       `json:"isActive"`
+	MetadataRules []domain.MetadataFieldRule `json:"metadataRules"`
+}
+
 type DocumentProfileGovernanceResponse struct {
 	ProfileCode        string `json:"profileCode"`
 	WorkflowProfile    string `json:"workflowProfile"`
@@ -381,6 +387,10 @@ func (h *Handler) handleDocumentProfileSubRoutes(w http.ResponseWriter, r *http.
 		h.handleDeleteDocumentProfile(w, r, parts[0])
 	case len(parts) == 2 && parts[1] == "schema" && r.Method == http.MethodGet:
 		h.handleDocumentProfileSchemas(w, r, parts[0])
+	case len(parts) == 2 && parts[1] == "schema" && r.Method == http.MethodPost:
+		h.handleUpsertDocumentProfileSchema(w, r, parts[0])
+	case len(parts) == 4 && parts[1] == "schema" && parts[3] == "activate" && r.Method == http.MethodPut:
+		h.handleActivateDocumentProfileSchema(w, r, parts[0], parts[2])
 	case len(parts) == 2 && parts[1] == "governance" && r.Method == http.MethodGet:
 		h.handleDocumentProfileGovernance(w, r, parts[0])
 	case len(parts) == 2 && parts[1] == "governance" && r.Method == http.MethodPut:
@@ -408,6 +418,47 @@ func (h *Handler) handleDocumentProfileSchemas(w http.ResponseWriter, r *http.Re
 		})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": out})
+}
+
+func (h *Handler) handleUpsertDocumentProfileSchema(w http.ResponseWriter, r *http.Request, profileCode string) {
+	traceID := requestTraceID(r)
+	if !isRegistryAdmin(r.Context()) {
+		writeAPIError(w, http.StatusForbidden, "AUTH_FORBIDDEN", "Insufficient permissions", traceID)
+		return
+	}
+	var req UpsertDocumentProfileSchemaRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid JSON payload", traceID)
+		return
+	}
+	if err := h.service.UpsertDocumentProfileSchemaVersion(r.Context(), domain.DocumentProfileSchemaVersion{
+		ProfileCode:   profileCode,
+		Version:       req.Version,
+		IsActive:      req.IsActive,
+		MetadataRules: req.MetadataRules,
+	}); err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"code": profileCode})
+}
+
+func (h *Handler) handleActivateDocumentProfileSchema(w http.ResponseWriter, r *http.Request, profileCode, versionParam string) {
+	traceID := requestTraceID(r)
+	if !isRegistryAdmin(r.Context()) {
+		writeAPIError(w, http.StatusForbidden, "AUTH_FORBIDDEN", "Insufficient permissions", traceID)
+		return
+	}
+	version, err := strconv.Atoi(strings.TrimSpace(versionParam))
+	if err != nil || version <= 0 {
+		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid schema version", traceID)
+		return
+	}
+	if err := h.service.ActivateDocumentProfileSchemaVersion(r.Context(), profileCode, version); err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"code": profileCode})
 }
 
 func (h *Handler) handleDocumentProfileGovernance(w http.ResponseWriter, r *http.Request, profileCode string) {

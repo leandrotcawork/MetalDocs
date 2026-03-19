@@ -2009,6 +2009,18 @@ td small {
   background: transparent;
 }
 
+.registry-schema-rules {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.registry-schema-rule-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 130px auto auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
 @media (max-width: 1240px) {
   .grid-layout,
   .hero,
@@ -2054,6 +2066,10 @@ td small {
   .diff-grid,
   .catalog-form-grid,
   .metadata-rule-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .registry-schema-rule-row {
     grid-template-columns: 1fr;
   }
 

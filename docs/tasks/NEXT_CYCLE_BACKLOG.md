@@ -681,7 +681,7 @@ Progresso fase 4:
 - Task 035 encerrada com foco em UX aplicada ao dominio Metal Nobre mantendo contratos e boundaries
 
 ## Task 036 - Registry administration CRUD
-Status: `in_progress`
+Status: `completed`
 
 Objetivo:
 Permitir administrar o registry documental pelo produto, e nao apenas consulta-lo.
@@ -705,6 +705,16 @@ Progresso fase 2:
 - backend passou a suportar write-path admin para `document profiles` (create/update/deactivate) e update de `governance`
 - OpenAPI v1 evoluiu para cobrir os novos contratos de profile/governance write mantendo compatibilidade additive
 - `RegistryExplorer` ganhou controles admin para perfil e governanca, mantendo `registry` como superficie unica de administracao
+
+Progresso fase 3:
+- backend passou a suportar write-path admin para versionamento de `schema` por profile (upsert de versao + ativacao explicita)
+- persistencia `memory` e `postgres` alinhada para garantir apenas uma versao ativa por profile durante ativacao
+- OpenAPI v1 e frontend (`api client` + `RegistryExplorer`) atualizados para administrar versoes de schema sem hardcode local
+
+Progresso fase 4:
+- editor admin de schema no `RegistryExplorer` evoluiu de JSON livre para formulario estruturado de regras (`name`, `type`, `required`)
+- UX de administracao de schema ficou mais segura para operacao diaria sem depender de edicao manual de payload
+- Task 036 encerrada com CRUD funcional de profiles, governance, schema versions, process areas e subjects
 
 ## Task 037 - Realtime event stream for operations center
 Status: `pending`

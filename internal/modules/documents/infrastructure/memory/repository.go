@@ -215,6 +215,42 @@ func (r *Repository) ListDocumentProfileSchemas(_ context.Context, profileCode s
 	return filtered, nil
 }
 
+func (r *Repository) UpsertDocumentProfileSchemaVersion(_ context.Context, item domain.DocumentProfileSchemaVersion) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for index := range r.profileSchemas {
+		if r.profileSchemas[index].ProfileCode == item.ProfileCode && r.profileSchemas[index].Version == item.Version {
+			r.profileSchemas[index] = item
+			return nil
+		}
+	}
+	r.profileSchemas = append(r.profileSchemas, item)
+	return nil
+}
+
+func (r *Repository) ActivateDocumentProfileSchemaVersion(_ context.Context, profileCode string, version int) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	found := false
+	for index := range r.profileSchemas {
+		if r.profileSchemas[index].ProfileCode != profileCode {
+			continue
+		}
+		if r.profileSchemas[index].Version == version {
+			found = true
+			r.profileSchemas[index].IsActive = true
+		} else {
+			r.profileSchemas[index].IsActive = false
+		}
+	}
+	if !found {
+		return domain.ErrInvalidCommand
+	}
+	return nil
+}
+
 func (r *Repository) GetDocumentProfileGovernance(_ context.Context, profileCode string) (domain.DocumentProfileGovernance, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

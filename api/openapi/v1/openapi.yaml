@@ -411,6 +411,85 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
+    post:
+      summary: Cria ou atualiza uma versao de schema de metadata de um profile
+      parameters:
+        - name: profileCode
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentProfileSchemaUpsertRequest'
+      responses:
+        '200':
+          description: Schema versionado atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistryMutationResponse'
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+  /document-profiles/{profileCode}/schema/{version}/activate:
+    put:
+      summary: Ativa uma versao de schema de metadata para o profile
+      parameters:
+        - name: profileCode
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Versao de schema ativada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistryMutationResponse'
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
   /document-profiles/{profileCode}/governance:
     get:
       summary: Busca a governanca ativa de um profile
@@ -2044,6 +2123,19 @@ components:
       properties:
         profileCode:
           type: string
+        version:
+          type: integer
+          minimum: 1
+        isActive:
+          type: boolean
+        metadataRules:
+          type: array
+          items:
+            $ref: '#/components/schemas/MetadataFieldRule'
+    DocumentProfileSchemaUpsertRequest:
+      type: object
+      required: [version, metadataRules]
+      properties:
         version:
           type: integer
           minimum: 1

@@ -1,9 +1,12 @@
 import type { NotificationItem } from "../lib.types";
 import { WorkspaceViewFrame } from "./WorkspaceViewFrame";
+import { WorkspaceDataState } from "./WorkspaceDataState";
 
 type NotificationsPanelProps = {
+  loadState: "idle" | "loading" | "ready" | "error";
   notifications: NotificationItem[];
   formatDate: (value?: string) => string;
+  onRefreshWorkspace: () => void | Promise<void>;
   onMarkRead: (notificationId: string) => void | Promise<void>;
 };
 
@@ -30,6 +33,15 @@ export function NotificationsPanel(props: NotificationsPanelProps) {
         </div>
       )}
     >
+      <WorkspaceDataState
+        loadState={props.loadState}
+        isEmpty={props.notifications.length === 0}
+        emptyTitle="Sem notificacoes no momento"
+        emptyDescription="Quando houver eventos operacionais, eles aparecerao nesta inbox."
+        loadingLabel="Atualizando notificacoes"
+        onRetry={props.onRefreshWorkspace}
+      />
+
       <div className="catalog-grid single">
         <section className="catalog-panel">
           <div className="catalog-panel-head">

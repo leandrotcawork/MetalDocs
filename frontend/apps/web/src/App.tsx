@@ -654,17 +654,35 @@ function AppContent() {
     }
 
     if (activeView === "notifications") {
-      return <NotificationsPanel notifications={notifications} formatDate={formatDate} onMarkRead={handleMarkNotificationRead} />;
+      return (
+        <NotificationsPanel
+          loadState={loadState}
+          notifications={notifications}
+          formatDate={formatDate}
+          onRefreshWorkspace={() => {
+            if (user) {
+              return loadWorkspace(user);
+            }
+          }}
+          onMarkRead={handleMarkNotificationRead}
+        />
+      );
     }
 
     if (activeView === "admin" && isAdmin) {
       return (
         <ManagedUsersPanel
+          loadState={loadState}
           userForm={userForm}
           managedUserForm={managedUserForm}
           managedUsers={managedUsers}
           selectedManagedUser={selectedManagedUser}
           formatDate={formatDate}
+          onRefreshWorkspace={() => {
+            if (user) {
+              return loadWorkspace(user);
+            }
+          }}
           onUserFormChange={setUserForm}
           onManagedUserFormChange={setManagedUserForm}
           onSubmitCreateUser={handleCreateUser}

@@ -634,6 +634,10 @@ Progresso fase 3:
 - componente compartilhado `WorkspaceViewFrame` criado para padronizar estrutura base (`kicker`, `title`, `description`, `actions`, `stats`)
 - `operations`, `create`, `registry`, `notifications` e `admin` migrados para o frame comum
 
+Progresso fase 4:
+- componente compartilhado `WorkspaceDataState` criado para padrao de `loading/error/empty`
+- `documents`, `notifications` e `admin` passaram a usar estado visual consistente com acao de retry
+
 ## Task 035 - Metal Nobre applied experience
 Status: `pending`
 

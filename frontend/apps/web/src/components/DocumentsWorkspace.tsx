@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { buildDocumentProfileCountMap } from "../features/documents/adapters/catalogSummary";
 import { TopbarDropdown } from "./ui/TopbarDropdown";
+import { WorkspaceDataState } from "./WorkspaceDataState";
 import type {
   AccessPolicyItem,
   AttachmentItem,
@@ -222,6 +223,15 @@ export function DocumentsWorkspace(props: DocumentsWorkspaceProps) {
 
       <div className={`catalog-content-grid ${props.selectedDocument ? "" : "is-detail-hidden"}`}>
         <section className="catalog-primary-column">
+          <WorkspaceDataState
+            loadState={props.loadState}
+            isEmpty={props.documents.length === 0}
+            emptyTitle="Nenhum documento no recorte"
+            emptyDescription="Nao ha documentos disponiveis para os filtros e visao selecionados."
+            loadingLabel="Atualizando acervo documental"
+            onRetry={props.onRefreshWorkspace}
+          />
+
           {expiringSoonDocuments.length > 0 && (
             <div className="catalog-alert">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#C89020" strokeWidth="1.4">

@@ -1,5 +1,6 @@
 import type { ManagedUserItem, UserRole } from "../lib.types";
 import { WorkspaceViewFrame } from "./WorkspaceViewFrame";
+import { WorkspaceDataState } from "./WorkspaceDataState";
 
 type CreateUserForm = {
   userId: string;
@@ -21,11 +22,13 @@ type ManagedUserForm = {
 };
 
 type ManagedUsersPanelProps = {
+  loadState: "idle" | "loading" | "ready" | "error";
   userForm: CreateUserForm;
   managedUserForm: ManagedUserForm;
   managedUsers: ManagedUserItem[];
   selectedManagedUser: ManagedUserItem | null;
   formatDate: (value?: string) => string;
+  onRefreshWorkspace: () => void | Promise<void>;
   onUserFormChange: (next: CreateUserForm) => void;
   onManagedUserFormChange: (next: ManagedUserForm) => void;
   onSubmitCreateUser: (event: React.FormEvent<HTMLFormElement>) => void | Promise<void>;
@@ -44,6 +47,15 @@ export function ManagedUsersPanel(props: ManagedUsersPanelProps) {
       title="Usuarios internos"
       description="Administracao operacional de identidades internas, roles, estado de acesso e recuperacao de senha."
     >
+      <WorkspaceDataState
+        loadState={props.loadState}
+        isEmpty={props.managedUsers.length === 0}
+        emptyTitle="Nenhum usuario interno cadastrado"
+        emptyDescription="Crie o primeiro usuario para iniciar a administracao de acesso."
+        loadingLabel="Atualizando base de usuarios"
+        onRetry={props.onRefreshWorkspace}
+      />
+
       <div className="catalog-grid">
         <form data-testid="user-create-form" className="catalog-panel stack" onSubmit={props.onSubmitCreateUser}>
           <div className="catalog-panel-head">

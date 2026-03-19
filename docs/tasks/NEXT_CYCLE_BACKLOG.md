@@ -1080,7 +1080,7 @@ Entrega:
 - Repositorio Postgres/Memoria suportam create atomico com policies.
 
 ## Task 052 - Departments registry + role conventions for access
-Status: `todo`
+Status: `done`
 
 Objetivo:
 Parar de tratar `department` como string livre e criar uma registry canonica para:
@@ -1105,6 +1105,10 @@ Escopo:
 Aceite:
 - Create document usa dropdown de departamentos.
 - Roles `dept:<code>` reconhecidas pelo enforcement de `Task 051`.
+
+Entrega:
+- registry `document_departments` com endpoints admin.
+- dropdown de departamentos na criacao de documentos.
 
 ## Task 053 - UI: Access selector tied to classification (Create Document)
 Status: `todo`

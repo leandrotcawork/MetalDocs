@@ -133,6 +133,7 @@ export function DocumentCreateView(props: DocumentCreateViewProps) {
             <DocumentCreateContextStep
               form={props.documentForm}
               processAreas={props.processAreas}
+              documentDepartments={props.documentDepartments}
               subjects={props.subjects}
               onDocumentFormChange={props.onDocumentFormChange}
             />

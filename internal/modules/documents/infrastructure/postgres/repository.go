@@ -707,6 +707,33 @@ ORDER BY code ASC
 	return out, nil
 }
 
+func (r *Repository) ListDocumentDepartments(ctx context.Context) ([]domain.DocumentDepartment, error) {
+	const q = `
+SELECT code, name, description
+FROM metaldocs.document_departments
+WHERE is_active = TRUE
+ORDER BY code ASC
+`
+	rows, err := r.db.QueryContext(ctx, q)
+	if err != nil {
+		return nil, fmt.Errorf("list document departments: %w", err)
+	}
+	defer rows.Close()
+
+	var out []domain.DocumentDepartment
+	for rows.Next() {
+		var item domain.DocumentDepartment
+		if err := rows.Scan(&item.Code, &item.Name, &item.Description); err != nil {
+			return nil, fmt.Errorf("scan document department: %w", err)
+		}
+		out = append(out, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list document departments rows: %w", err)
+	}
+	return out, nil
+}
+
 func (r *Repository) UpsertProcessArea(ctx context.Context, item domain.ProcessArea) error {
 	const q = `
 INSERT INTO metaldocs.document_process_areas (code, name, description, is_active)
@@ -722,9 +749,41 @@ SET name = EXCLUDED.name,
 	return nil
 }
 
+func (r *Repository) UpsertDocumentDepartment(ctx context.Context, item domain.DocumentDepartment) error {
+	const q = `
+INSERT INTO metaldocs.document_departments (code, name, description, is_active)
+VALUES ($1, $2, $3, TRUE)
+ON CONFLICT (code) DO UPDATE
+SET name = EXCLUDED.name,
+    description = EXCLUDED.description,
+    is_active = TRUE
+`
+	if _, err := r.db.ExecContext(ctx, q, item.Code, item.Name, item.Description); err != nil {
+		return mapError(err)
+	}
+	return nil
+}
+
 func (r *Repository) DeactivateProcessArea(ctx context.Context, code string) error {
 	const q = `
 UPDATE metaldocs.document_process_areas
+SET is_active = FALSE
+WHERE code = $1 AND is_active = TRUE
+`
+	result, err := r.db.ExecContext(ctx, q, code)
+	if err != nil {
+		return mapError(err)
+	}
+	affected, _ := result.RowsAffected()
+	if affected == 0 {
+		return domain.ErrInvalidCommand
+	}
+	return nil
+}
+
+func (r *Repository) DeactivateDocumentDepartment(ctx context.Context, code string) error {
+	const q = `
+UPDATE metaldocs.document_departments
 SET is_active = FALSE
 WHERE code = $1 AND is_active = TRUE
 `

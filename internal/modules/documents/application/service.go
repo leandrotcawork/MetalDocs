@@ -511,6 +511,17 @@ func (s *Service) ListProcessAreas(ctx context.Context) ([]domain.ProcessArea, e
 	return items, nil
 }
 
+func (s *Service) ListDocumentDepartments(ctx context.Context) ([]domain.DocumentDepartment, error) {
+	items, err := s.repo.ListDocumentDepartments(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(items) == 0 {
+		return domain.DefaultDocumentDepartments(), nil
+	}
+	return items, nil
+}
+
 func (s *Service) UpsertProcessArea(ctx context.Context, item domain.ProcessArea) error {
 	normalized, err := domain.NormalizeProcessArea(item)
 	if err != nil {
@@ -519,12 +530,28 @@ func (s *Service) UpsertProcessArea(ctx context.Context, item domain.ProcessArea
 	return s.repo.UpsertProcessArea(ctx, normalized)
 }
 
+func (s *Service) UpsertDocumentDepartment(ctx context.Context, item domain.DocumentDepartment) error {
+	normalized, err := domain.NormalizeDocumentDepartment(item)
+	if err != nil {
+		return err
+	}
+	return s.repo.UpsertDocumentDepartment(ctx, normalized)
+}
+
 func (s *Service) DeactivateProcessArea(ctx context.Context, code string) error {
 	normalizedCode := strings.ToLower(strings.TrimSpace(code))
 	if normalizedCode == "" {
 		return domain.ErrInvalidCommand
 	}
 	return s.repo.DeactivateProcessArea(ctx, normalizedCode)
+}
+
+func (s *Service) DeactivateDocumentDepartment(ctx context.Context, code string) error {
+	normalizedCode := strings.ToLower(strings.TrimSpace(code))
+	if normalizedCode == "" {
+		return domain.ErrInvalidCommand
+	}
+	return s.repo.DeactivateDocumentDepartment(ctx, normalizedCode)
 }
 
 func (s *Service) ListSubjects(ctx context.Context) ([]domain.Subject, error) {

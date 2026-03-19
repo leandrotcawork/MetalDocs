@@ -24,6 +24,9 @@ type Repository interface {
 	ListProcessAreas(ctx context.Context) ([]ProcessArea, error)
 	UpsertProcessArea(ctx context.Context, item ProcessArea) error
 	DeactivateProcessArea(ctx context.Context, code string) error
+	ListDocumentDepartments(ctx context.Context) ([]DocumentDepartment, error)
+	UpsertDocumentDepartment(ctx context.Context, item DocumentDepartment) error
+	DeactivateDocumentDepartment(ctx context.Context, code string) error
 	ListSubjects(ctx context.Context) ([]Subject, error)
 	UpsertSubject(ctx context.Context, item Subject) error
 	DeactivateSubject(ctx context.Context, code string) error

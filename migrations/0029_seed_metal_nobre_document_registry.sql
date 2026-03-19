@@ -30,6 +30,19 @@ VALUES
   ('rg', 'standard_approval', 365, TRUE, 3650, 0)
 ON CONFLICT (profile_code) DO NOTHING;
 
+INSERT INTO metaldocs.document_departments (code, name, description)
+VALUES
+  ('sgq', 'SGQ', 'Sistema de Gestao da Qualidade'),
+  ('operacoes', 'Operacoes', 'Operacao e execucao do processo'),
+  ('manutencao', 'Manutencao', 'Manutencao de equipamentos e infraestrutura'),
+  ('compras', 'Compras', 'Compras e suprimentos'),
+  ('logistica', 'Logistica', 'Logistica e expedicao'),
+  ('financeiro', 'Financeiro', 'Financeiro e controladoria'),
+  ('comercial', 'Comercial', 'Relacionamento com clientes e vendas'),
+  ('rh', 'RH', 'Recursos humanos'),
+  ('ti', 'TI', 'Tecnologia da informacao')
+ON CONFLICT (code) DO NOTHING;
+
 INSERT INTO metaldocs.document_process_areas (code, name, description)
 VALUES
   ('quality', 'Quality', 'Quality management and ISO-aligned operations'),

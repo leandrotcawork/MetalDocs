@@ -1,5 +1,5 @@
 import { metalNobreProcessAreaHint, metalNobreProcessAreaOptionLabel } from "../../features/documents/adapters/metalNobreExperience";
-import type { ProcessAreaItem, SubjectItem } from "../../lib.types";
+import type { DocumentDepartmentItem, ProcessAreaItem, SubjectItem } from "../../lib.types";
 import type { DocumentForm } from "./documentCreateTypes";
 import { CreateField } from "./widgets/CreateField";
 import { FilterDropdown, type SelectMenuOption } from "../ui/FilterDropdown";
@@ -7,6 +7,7 @@ import { FilterDropdown, type SelectMenuOption } from "../ui/FilterDropdown";
 type DocumentCreateContextStepProps = {
   form: DocumentForm;
   processAreas: ProcessAreaItem[];
+  documentDepartments: DocumentDepartmentItem[];
   subjects: SubjectItem[];
   onDocumentFormChange: (next: DocumentForm) => void;
 };
@@ -29,15 +30,10 @@ export function DocumentCreateContextStep(props: DocumentCreateContextStepProps)
   ];
   const departmentOptions: SelectMenuOption[] = [
     { value: "", label: "Selecione o departamento" },
-    { value: "sgq", label: "SGQ" },
-    { value: "operacoes", label: "Operacoes" },
-    { value: "manutencao", label: "Manutencao" },
-    { value: "compras", label: "Compras" },
-    { value: "logistica", label: "Logistica" },
-    { value: "financeiro", label: "Financeiro" },
-    { value: "comercial", label: "Comercial" },
-    { value: "rh", label: "RH" },
-    { value: "ti", label: "TI" },
+    ...props.documentDepartments.map((item) => ({
+      value: item.code,
+      label: item.name,
+    })),
   ];
 
   return (

@@ -157,6 +157,12 @@ type ProcessArea struct {
 	Description string
 }
 
+type DocumentDepartment struct {
+	Code        string
+	Name        string
+	Description string
+}
+
 type Subject struct {
 	Code            string
 	ProcessAreaCode string
@@ -265,6 +271,20 @@ func DefaultProcessAreas() []ProcessArea {
 		{Code: "purchasing", Name: "Purchasing", Description: "Procurement and supplier acquisition processes"},
 		{Code: "logistics", Name: "Logistics", Description: "Logistics, shipping and fulfillment processes"},
 		{Code: "finance", Name: "Finance", Description: "Financial and fiscal control processes"},
+	}
+}
+
+func DefaultDocumentDepartments() []DocumentDepartment {
+	return []DocumentDepartment{
+		{Code: "sgq", Name: "SGQ", Description: "Sistema de Gestao da Qualidade"},
+		{Code: "operacoes", Name: "Operacoes", Description: "Operacao e execucao do processo"},
+		{Code: "manutencao", Name: "Manutencao", Description: "Manutencao de equipamentos e infraestrutura"},
+		{Code: "compras", Name: "Compras", Description: "Compras e suprimentos"},
+		{Code: "logistica", Name: "Logistica", Description: "Logistica e expedicao"},
+		{Code: "financeiro", Name: "Financeiro", Description: "Financeiro e controladoria"},
+		{Code: "comercial", Name: "Comercial", Description: "Relacionamento com clientes e vendas"},
+		{Code: "rh", Name: "RH", Description: "Recursos humanos"},
+		{Code: "ti", Name: "TI", Description: "Tecnologia da informacao"},
 	}
 }
 
@@ -389,6 +409,16 @@ func NormalizeProcessArea(item ProcessArea) (ProcessArea, error) {
 	item.Description = strings.TrimSpace(item.Description)
 	if item.Code == "" || item.Name == "" {
 		return ProcessArea{}, ErrInvalidCommand
+	}
+	return item, nil
+}
+
+func NormalizeDocumentDepartment(item DocumentDepartment) (DocumentDepartment, error) {
+	item.Code = strings.ToLower(strings.TrimSpace(item.Code))
+	item.Name = strings.TrimSpace(item.Name)
+	item.Description = strings.TrimSpace(item.Description)
+	if item.Code == "" || item.Name == "" {
+		return DocumentDepartment{}, ErrInvalidCommand
 	}
 	return item, nil
 }

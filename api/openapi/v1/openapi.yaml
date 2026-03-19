@@ -653,6 +653,125 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
+  /document-departments:
+    get:
+      summary: Lista os departamentos documentais
+      parameters:
+      responses:
+        '200':
+          description: Lista de departamentos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDocumentDepartmentsResponse'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+    post:
+      summary: Cria um departamento documental
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentDepartmentCreateRequest'
+      responses:
+        '201':
+          description: Departamento criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistryMutationResponse'
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+  /document-departments/{code}:
+    put:
+      summary: Atualiza um departamento documental
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentDepartmentUpdateRequest'
+      responses:
+        '200':
+          description: Departamento atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistryMutationResponse'
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+    delete:
+      summary: Desativa um departamento documental
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Departamento desativado
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
     delete:
       summary: Desativa uma area de processo documental
       parameters:
@@ -2465,6 +2584,42 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ProcessAreaItem'
+    DocumentDepartmentItem:
+      type: object
+      required: [code, name, description]
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+    DocumentDepartmentCreateRequest:
+      type: object
+      required: [code, name]
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+    DocumentDepartmentUpdateRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+    ListDocumentDepartmentsResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentDepartmentItem'
     SubjectItem:
       type: object
       required: [code, processAreaCode, name, description]

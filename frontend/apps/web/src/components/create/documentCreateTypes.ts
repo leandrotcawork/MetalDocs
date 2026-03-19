@@ -1,4 +1,4 @@
-import type { DocumentProfileGovernanceItem, DocumentProfileItem, DocumentProfileSchemaItem, ProcessAreaItem, SubjectItem } from "../../lib.types";
+import type { DocumentDepartmentItem, DocumentProfileGovernanceItem, DocumentProfileItem, DocumentProfileSchemaItem, ProcessAreaItem, SubjectItem } from "../../lib.types";
 
 export type DocumentForm = {
   title: string;
@@ -24,6 +24,7 @@ export type DocumentCreateViewProps = {
   documentForm: DocumentForm;
   documentProfiles: DocumentProfileItem[];
   processAreas: ProcessAreaItem[];
+  documentDepartments: DocumentDepartmentItem[];
   subjects: SubjectItem[];
   selectedProfileSchema: DocumentProfileSchemaItem | null;
   selectedProfileGovernance: DocumentProfileGovernanceItem | null;

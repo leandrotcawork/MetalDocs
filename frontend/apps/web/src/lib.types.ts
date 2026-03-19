@@ -60,6 +60,12 @@ export interface ProcessAreaItem {
   description: string;
 }
 
+export interface DocumentDepartmentItem {
+  code: string;
+  name: string;
+  description: string;
+}
+
 export interface SubjectItem {
   code: string;
   processAreaCode: string;

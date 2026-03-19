@@ -21,6 +21,7 @@ type Repository struct {
 	profileSchemas      []domain.DocumentProfileSchemaVersion
 	profileGovernance   map[string]domain.DocumentProfileGovernance
 	processAreas        []domain.ProcessArea
+	departments         []domain.DocumentDepartment
 	subjects            []domain.Subject
 	types               []domain.DocumentType
 	policies            map[string][]domain.AccessPolicy
@@ -39,6 +40,7 @@ func NewRepository() *Repository {
 		profileSchemas:      domain.DefaultDocumentProfileSchemas(),
 		profileGovernance:   domain.DefaultDocumentProfileGovernanceByCode(),
 		processAreas:        domain.DefaultProcessAreas(),
+		departments:         domain.DefaultDocumentDepartments(),
 		subjects:            domain.DefaultSubjects(),
 		types:               domain.DefaultDocumentTypes(),
 		policies:            map[string][]domain.AccessPolicy{},
@@ -305,6 +307,15 @@ func (r *Repository) ListProcessAreas(_ context.Context) ([]domain.ProcessArea, 
 	return out, nil
 }
 
+func (r *Repository) ListDocumentDepartments(_ context.Context) ([]domain.DocumentDepartment, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	out := make([]domain.DocumentDepartment, len(r.departments))
+	copy(out, r.departments)
+	return out, nil
+}
+
 func (r *Repository) UpsertProcessArea(_ context.Context, item domain.ProcessArea) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -316,6 +327,20 @@ func (r *Repository) UpsertProcessArea(_ context.Context, item domain.ProcessAre
 		}
 	}
 	r.processAreas = append(r.processAreas, item)
+	return nil
+}
+
+func (r *Repository) UpsertDocumentDepartment(_ context.Context, item domain.DocumentDepartment) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for index := range r.departments {
+		if r.departments[index].Code == item.Code {
+			r.departments[index] = item
+			return nil
+		}
+	}
+	r.departments = append(r.departments, item)
 	return nil
 }
 
@@ -336,6 +361,26 @@ func (r *Repository) DeactivateProcessArea(_ context.Context, code string) error
 		return domain.ErrInvalidCommand
 	}
 	r.processAreas = filtered
+	return nil
+}
+
+func (r *Repository) DeactivateDocumentDepartment(_ context.Context, code string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	filtered := make([]domain.DocumentDepartment, 0, len(r.departments))
+	found := false
+	for _, item := range r.departments {
+		if item.Code == code {
+			found = true
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+	if !found {
+		return domain.ErrInvalidCommand
+	}
+	r.departments = filtered
 	return nil
 }
 

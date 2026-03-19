@@ -12,6 +12,7 @@ import type {
   DocumentProfileItem,
   DocumentProfileSchemaItem,
   DocumentTypeItem,
+  DocumentDepartmentItem,
   ManagedUserItem,
   NotificationItem,
   ProcessAreaItem,
@@ -95,6 +96,14 @@ function normalizeDocumentProfile(value: DocumentProfileItem): DocumentProfileIt
 }
 
 function normalizeProcessArea(value: ProcessAreaItem): ProcessAreaItem {
+  return {
+    code: value?.code ?? "",
+    name: value?.name ?? value?.code ?? "",
+    description: value?.description ?? "",
+  };
+}
+
+function normalizeDocumentDepartment(value: DocumentDepartmentItem): DocumentDepartmentItem {
   return {
     code: value?.code ?? "",
     name: value?.name ?? value?.code ?? "",
@@ -348,6 +357,10 @@ export const api = {
   listProcessAreas: async () => {
     const response = await request<{ items: ProcessAreaItem[] }>("/process-areas");
     return { items: Array.isArray(response.items) ? response.items.map(normalizeProcessArea) : [] };
+  },
+  listDocumentDepartments: async () => {
+    const response = await request<{ items: DocumentDepartmentItem[] }>("/document-departments");
+    return { items: Array.isArray(response.items) ? response.items.map(normalizeDocumentDepartment) : [] };
   },
   createProcessArea: (body: Record<string, unknown>) => request<{ code: string }>("/process-areas", { method: "POST", body: JSON.stringify(body) }),
   updateProcessArea: (code: string, body: Record<string, unknown>) => request<{ code: string }>(`/process-areas/${encodeURIComponent(code)}`, { method: "PUT", body: JSON.stringify(body) }),

@@ -21,6 +21,7 @@ import type {
   DocumentProfileItem,
   DocumentProfileSchemaItem,
   DocumentListItem,
+  DocumentDepartmentItem,
   ManagedUserItem,
   MetadataFieldRuleItem,
   NotificationItem,
@@ -166,6 +167,7 @@ function AppContent() {
   const [documentForm, setDocumentForm] = useState(emptyDocumentForm);
   const [documentProfiles, setDocumentProfiles] = useState<DocumentProfileItem[]>([]);
   const [processAreas, setProcessAreas] = useState<ProcessAreaItem[]>([]);
+  const [documentDepartments, setDocumentDepartments] = useState<DocumentDepartmentItem[]>([]);
   const [subjects, setSubjects] = useState<SubjectItem[]>([]);
   const [selectedProfileSchema, setSelectedProfileSchema] = useState<DocumentProfileSchemaItem | null>(null);
   const [selectedProfileSchemas, setSelectedProfileSchemas] = useState<DocumentProfileSchemaItem[]>([]);
@@ -291,9 +293,10 @@ function AppContent() {
   async function loadWorkspace(currentUser: CurrentUser) {
     setLoadState("loading");
     try {
-      const [profilesResponse, processAreasResponse, subjectsResponse, docsResponse, usersResponse, notificationsResponse] = await Promise.all([
+      const [profilesResponse, processAreasResponse, departmentsResponse, subjectsResponse, docsResponse, usersResponse, notificationsResponse] = await Promise.all([
         api.listDocumentProfiles(),
         api.listProcessAreas(),
+        api.listDocumentDepartments(),
         api.listSubjects(),
         api.searchDocuments(new URLSearchParams({ limit: "25" })),
         (Array.isArray(currentUser.roles) ? currentUser.roles : []).includes("admin") ? api.listUsers() : Promise.resolve({ items: [] as ManagedUserItem[] }),
@@ -301,11 +304,13 @@ function AppContent() {
       ]);
       const profiles = Array.isArray(profilesResponse.items) ? profilesResponse.items : [];
       const areas = Array.isArray(processAreasResponse.items) ? processAreasResponse.items : [];
+      const departments = Array.isArray(departmentsResponse.items) ? departmentsResponse.items : [];
       const nextSubjects = Array.isArray(subjectsResponse.items) ? subjectsResponse.items : [];
       const docs = Array.isArray(docsResponse.items) ? docsResponse.items : [];
       const users = Array.isArray(usersResponse.items) ? usersResponse.items : [];
       setDocumentProfiles(profiles);
       setProcessAreas(areas);
+      setDocumentDepartments(departments);
       setSubjects(nextSubjects);
       setDocuments(docs);
       setManagedUsers(users);
@@ -866,6 +871,7 @@ function AppContent() {
           documentForm={documentForm}
           documentProfiles={documentProfiles}
           processAreas={processAreas}
+          documentDepartments={documentDepartments}
           subjects={subjects}
           selectedProfileSchema={selectedProfileSchema}
           selectedProfileGovernance={selectedProfileGovernance}

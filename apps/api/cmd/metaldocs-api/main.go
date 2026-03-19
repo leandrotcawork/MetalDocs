@@ -83,7 +83,8 @@ func main() {
 	runtimeAuthCfg := authCfg
 	runtimeAuthCfg.LegacyHeaderEnabled = false
 	authMiddleware := authdelivery.NewMiddleware(authService, runtimeAuthCfg, authn.Enabled())
-	iamMiddleware := iamdelivery.NewMiddleware(authorizer, cachedProvider, authn.Enabled(), false)
+	iamMiddleware := iamdelivery.NewMiddleware(authorizer, cachedProvider, authn.Enabled(), false).
+		WithPermissionResolver(newPermissionResolver())
 	originProtection := security.NewOriginProtection(security.OriginProtectionConfig{
 		Enabled:           authCfg.OriginProtection,
 		SessionCookieName: authCfg.SessionCookieName,

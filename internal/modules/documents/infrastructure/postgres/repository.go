@@ -221,6 +221,67 @@ ORDER BY created_at ASC
 	return out, nil
 }
 
+func (r *Repository) ListDocumentsForReviewReminder(ctx context.Context, fromInclusive, toInclusive time.Time) ([]domain.Document, error) {
+	const q = `
+SELECT id, title, document_type_code, document_profile_code, document_family_code, process_area_code, subject_code, profile_schema_version,
+       owner_id, business_unit, department, classification, status, tags, effective_at, expiry_at, metadata_json, created_at, updated_at
+FROM metaldocs.documents
+WHERE expiry_at IS NOT NULL
+  AND expiry_at >= $1
+  AND expiry_at <= $2
+  AND status IN ('APPROVED', 'PUBLISHED')
+ORDER BY expiry_at ASC, created_at ASC
+`
+	rows, err := r.db.QueryContext(ctx, q, fromInclusive.UTC(), toInclusive.UTC())
+	if err != nil {
+		return nil, fmt.Errorf("list documents for review reminder: %w", err)
+	}
+	defer rows.Close()
+
+	var out []domain.Document
+	for rows.Next() {
+		var doc domain.Document
+		var tagsJSON []byte
+		var metadataJSON []byte
+		var effectiveAt sql.NullTime
+		var expiryAt sql.NullTime
+		var processArea sql.NullString
+		var subject sql.NullString
+		if err := rows.Scan(
+			&doc.ID,
+			&doc.Title,
+			&doc.DocumentType,
+			&doc.DocumentProfile,
+			&doc.DocumentFamily,
+			&processArea,
+			&subject,
+			&doc.ProfileSchemaVersion,
+			&doc.OwnerID,
+			&doc.BusinessUnit,
+			&doc.Department,
+			&doc.Classification,
+			&doc.Status,
+			&tagsJSON,
+			&effectiveAt,
+			&expiryAt,
+			&metadataJSON,
+			&doc.CreatedAt,
+			&doc.UpdatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan document for review reminder: %w", err)
+		}
+		doc.ProcessArea = strings.TrimSpace(processArea.String)
+		doc.Subject = strings.TrimSpace(subject.String)
+		applyOptionalFields(&doc, tagsJSON, metadataJSON, effectiveAt, expiryAt)
+		out = append(out, doc)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list documents for review reminder rows: %w", err)
+	}
+
+	return out, nil
+}
+
 func (r *Repository) ListDocumentTypes(ctx context.Context) ([]domain.DocumentType, error) {
 	const q = `
 SELECT p.code, p.name, p.description, COALESCE(g.review_interval_days, p.review_interval_days)

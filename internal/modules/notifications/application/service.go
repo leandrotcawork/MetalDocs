@@ -65,23 +65,14 @@ func (s *Service) HandleEvent(ctx context.Context, event messaging.Event) error 
 }
 
 func (s *Service) EmitReviewReminders(ctx context.Context, withinDays int) error {
-	docs, err := s.docRepo.ListDocuments(ctx)
+	now := s.clock.Now()
+	deadline := now.Add(time.Duration(withinDays) * 24 * time.Hour)
+	docs, err := s.docRepo.ListDocumentsForReviewReminder(ctx, now, deadline)
 	if err != nil {
 		return err
 	}
-	now := s.clock.Now()
-	deadline := now.Add(time.Duration(withinDays) * 24 * time.Hour)
 	for _, doc := range docs {
-		if doc.ExpiryAt == nil {
-			continue
-		}
-		if doc.Status != docdomain.StatusPublished && doc.Status != docdomain.StatusApproved {
-			continue
-		}
 		expiryUTC := doc.ExpiryAt.UTC()
-		if expiryUTC.Before(now) || expiryUTC.After(deadline) {
-			continue
-		}
 
 		notification := notificationdomain.Notification{
 			ID:              newNotificationID(),

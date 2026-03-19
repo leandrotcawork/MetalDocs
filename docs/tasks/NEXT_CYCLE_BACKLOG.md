@@ -869,7 +869,7 @@ Aceite:
 - `go test ./...` verde
 
 ## Task 048 - Scale review reminder emission
-Status: `todo`
+Status: `done`
 
 Objetivo:
 Evitar varredura de todos documentos em reminder; suportar query incremental.
@@ -881,6 +881,12 @@ Escopo:
 
 Aceite:
 - reminders nao fazem O(N) sobre todo acervo por tick
+
+Entrega:
+- `documents.Repository` ganhou `ListDocumentsForReviewReminder(from,to)`
+- `notifications.EmitReviewReminders` usa query incremental por janela
+- migration `0037_add_documents_review_reminder_index.sql` adiciona indice parcial para `status + expiry_at`
+- evidencia registrada em `docs/runbooks/performance-baseline.md`
 
 ## Task 049 - Frontend: remove external font dependency and prepare CSP-ready assets
 Status: `todo`

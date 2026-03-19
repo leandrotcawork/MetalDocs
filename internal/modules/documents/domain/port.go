@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"io"
+	"time"
 )
 
 // Repository defines persistence operations for the documents module.
@@ -10,6 +11,7 @@ type Repository interface {
 	CreateDocument(ctx context.Context, document Document) error
 	GetDocument(ctx context.Context, documentID string) (Document, error)
 	ListDocuments(ctx context.Context) ([]Document, error)
+	ListDocumentsForReviewReminder(ctx context.Context, fromInclusive, toInclusive time.Time) ([]Document, error)
 	ListDocumentFamilies(ctx context.Context) ([]DocumentFamily, error)
 	ListDocumentProfiles(ctx context.Context) ([]DocumentProfile, error)
 	ListDocumentProfileSchemas(ctx context.Context, profileCode string) ([]DocumentProfileSchemaVersion, error)

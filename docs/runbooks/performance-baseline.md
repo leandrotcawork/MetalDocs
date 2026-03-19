@@ -48,6 +48,24 @@ Execucao oficial: `2026-03-16 22:09:02` ate `22:09:06` (America/Sao_Paulo), com 
 - Identificar rotas com `errors` e maior `avgDurationMs`.
 - Corrigir gargalo e repetir baseline.
 
+## Evidencia oficial registrada (review reminder incremental query)
+Execucao oficial: `2026-03-18` (America/Sao_Paulo).
+
+- Migration aplicada:
+  - `migrations/0037_add_documents_review_reminder_index.sql`
+- Indice validado:
+  - `idx_documents_review_reminder_window` em `metaldocs.documents`
+- Query alvo do worker reminder:
+  - filtro por janela `expiry_at >= now` e `<= now + N dias`
+  - filtro por `status IN ('APPROVED','PUBLISHED')`
+  - ordenacao `expiry_at, created_at`
+- Plano observado no ambiente local:
+  - `Seq Scan` com custo baixo devido cardinalidade pequena do dataset local
+  - comportamento esperado; em volume maior o indice parcial reduz varredura global
+- Resultado de arquitetura:
+  - worker/reminder nao depende mais de `ListDocuments` O(N) por tick
+  - backend usa leitura incremental com predicados de janela temporal
+
 ## Evidencia oficial registrada (write concurrency)
 Execucao oficial: `2026-03-16 22:19` ate `22:23` (America/Sao_Paulo), com duracao total de ~4 minutos.
 

@@ -34,6 +34,10 @@ func (r *atomicRepoSpy) ListDocuments(context.Context) ([]domain.Document, error
 	return nil, nil
 }
 
+func (r *atomicRepoSpy) ListDocumentsForReviewReminder(context.Context, time.Time, time.Time) ([]domain.Document, error) {
+	return nil, nil
+}
+
 func (r *atomicRepoSpy) ListDocumentTypes(context.Context) ([]domain.DocumentType, error) {
 	return domain.DefaultDocumentTypes(), nil
 }

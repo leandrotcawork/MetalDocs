@@ -4,6 +4,7 @@ import (
 	"context"
 	"sort"
 	"sync"
+	"time"
 
 	"metaldocs/internal/modules/documents/domain"
 )
@@ -93,6 +94,39 @@ func (r *Repository) ListDocuments(_ context.Context) ([]domain.Document, error)
 
 	sort.Slice(docs, func(i, j int) bool {
 		return docs[i].CreatedAt.Before(docs[j].CreatedAt)
+	})
+
+	return docs, nil
+}
+
+func (r *Repository) ListDocumentsForReviewReminder(_ context.Context, fromInclusive, toInclusive time.Time) ([]domain.Document, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	from := fromInclusive.UTC()
+	to := toInclusive.UTC()
+	docs := make([]domain.Document, 0, len(r.documents))
+	for _, doc := range r.documents {
+		if doc.ExpiryAt == nil {
+			continue
+		}
+		if doc.Status != domain.StatusPublished && doc.Status != domain.StatusApproved {
+			continue
+		}
+		expiryUTC := doc.ExpiryAt.UTC()
+		if expiryUTC.Before(from) || expiryUTC.After(to) {
+			continue
+		}
+		docs = append(docs, doc)
+	}
+
+	sort.Slice(docs, func(i, j int) bool {
+		left := docs[i].ExpiryAt.UTC()
+		right := docs[j].ExpiryAt.UTC()
+		if left.Equal(right) {
+			return docs[i].CreatedAt.Before(docs[j].CreatedAt)
+		}
+		return left.Before(right)
 	})
 
 	return docs, nil

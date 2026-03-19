@@ -1197,7 +1197,7 @@ Aceite:
 - API enxerga `METALDOCS_CARBONE_API_URL` (smoke log/healthcheck dedicado).
 
 ## Task 057 - Schema: extend document_versions for content + pdf/docx + FTS
-Status: `todo`
+Status: `done`
 
 Escopo:
 - Migration additive em `migrations/` adicionando colunas:

@@ -186,6 +186,7 @@ function AppContent() {
   const [selectedProfileGovernance, setSelectedProfileGovernance] = useState<DocumentProfileGovernanceItem | null>(null);
   const profileSchemaCacheRef = useRef(new Map<string, DocumentProfileSchemaItem[]>());
   const profileGovernanceCacheRef = useRef(new Map<string, DocumentProfileGovernanceItem>());
+  const profilePrefetchRef = useRef(new Set<string>());
   const [documents, setDocuments] = useState<SearchDocumentItem[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<DocumentListItem | null>(null);
   const [versions, setVersions] = useState<VersionListItem[]>([]);
@@ -356,6 +357,26 @@ function AppContent() {
       const nextProfileCode = profiles.find((item) => item.code === documentForm.documentProfile)?.code ?? profiles[0]?.code ?? "";
       if (nextProfileCode) {
         await applyDocumentProfile(nextProfileCode, documentForm.processArea);
+        if (!profilePrefetchRef.current.has(nextProfileCode)) {
+          profilePrefetchRef.current.add(nextProfileCode);
+          void (async () => {
+            try {
+              const [schemaResponse, governance] = await Promise.all([
+                api.listDocumentProfileSchemas(nextProfileCode),
+                api.getDocumentProfileGovernance(nextProfileCode),
+              ]);
+              const schemas = Array.isArray(schemaResponse.items) ? schemaResponse.items : [];
+              if (schemas.length > 0) {
+                profileSchemaCacheRef.current.set(nextProfileCode, schemas);
+              }
+              if (governance) {
+                profileGovernanceCacheRef.current.set(nextProfileCode, governance);
+              }
+            } catch {
+              // Prefetch is best-effort; ignore failures here.
+            }
+          })();
+        }
       }
       setLoadState("ready");
     } catch (err) {

@@ -1014,6 +1014,27 @@ VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12, $13, $14)
 	return nil
 }
 
+func (r *Repository) UpdateVersionPDF(ctx context.Context, documentID string, versionNumber int, pdfStorageKey string, pageCount int) error {
+	const q = `
+UPDATE metaldocs.document_versions
+SET pdf_storage_key = $3,
+    page_count = CASE WHEN $4 > 0 THEN $4 ELSE page_count END
+WHERE document_id = $1 AND version_number = $2
+`
+	res, err := r.db.ExecContext(ctx, q, documentID, versionNumber, nullIfEmpty(pdfStorageKey), nullIfZeroInt(pageCount))
+	if err != nil {
+		return mapError(err)
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected update version pdf: %w", err)
+	}
+	if affected == 0 {
+		return domain.ErrVersionNotFound
+	}
+	return nil
+}
+
 func (r *Repository) ListVersions(ctx context.Context, documentID string) ([]domain.Version, error) {
 	_, err := r.GetDocument(ctx, documentID)
 	if err != nil {

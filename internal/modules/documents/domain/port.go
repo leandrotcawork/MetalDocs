@@ -35,6 +35,7 @@ type Repository interface {
 	ReplaceAccessPolicies(ctx context.Context, resourceScope, resourceID string, policies []AccessPolicy) error
 	UpdateDocumentStatus(ctx context.Context, documentID, status string) error
 	SaveVersion(ctx context.Context, version Version) error
+	UpdateVersionPDF(ctx context.Context, documentID string, versionNumber int, pdfStorageKey string, pageCount int) error
 	ListVersions(ctx context.Context, documentID string) ([]Version, error)
 	GetVersion(ctx context.Context, documentID string, versionNumber int) (Version, error)
 	NextVersionNumber(ctx context.Context, documentID string) (int, error)

@@ -1236,6 +1236,10 @@ func (h *Handler) handleDocumentSubRoutes(w http.ResponseWriter, r *http.Request
 		}
 		return
 	}
+	if len(parts) == 3 && strings.TrimSpace(parts[0]) != "" && parts[1] == "content" && parts[2] == "render-pdf" && r.Method == http.MethodPost {
+		h.handleDocumentContentRenderPDF(w, r, parts[0])
+		return
+	}
 	if len(parts) == 3 && strings.TrimSpace(parts[0]) != "" && parts[1] == "content" && parts[2] == "pdf" && r.Method == http.MethodGet {
 		h.handleDocumentContentPDF(w, r, parts[0])
 		return
@@ -1522,6 +1526,28 @@ func (h *Handler) handleDocumentContentNativePost(w http.ResponseWriter, r *http
 		ContentSource: normalizeContentSource(version.ContentSource),
 		PdfURL:        pdfURL,
 		ExpiresAt:     expiresAt.Format(time.RFC3339),
+	})
+}
+
+func (h *Handler) handleDocumentContentRenderPDF(w http.ResponseWriter, r *http.Request, documentID string) {
+	traceID := requestTraceID(r)
+
+	version, err := h.service.RenderContentPDFAuthorized(r.Context(), documentID, traceID)
+	if err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+	if h.signer == nil {
+		writeAPIError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Attachment signer is not configured", traceID)
+		return
+	}
+
+	expiresAt := time.Now().UTC().Add(h.downloadTTL)
+	pdfURL := h.signer.BuildDownloadURL("/api/v1/documents/"+documentID+"/content/pdf", documentID+":pdf", expiresAt)
+	writeJSON(w, http.StatusOK, DocumentContentPdfResponse{
+		PdfURL:    pdfURL,
+		ExpiresAt: expiresAt.Format(time.RFC3339),
+		PageCount: version.PageCount,
 	})
 }
 

@@ -445,6 +445,8 @@ export const api = {
   saveDocumentContentNative: (documentId: string, body: Record<string, unknown>) =>
     request<DocumentContentSaveResponse>(`/documents/${documentId}/content/native`, { method: "POST", body: JSON.stringify(body) }),
   getDocumentContentPdf: (documentId: string) => request<DocumentContentPdfResponse>(`/documents/${documentId}/content/pdf`),
+  renderDocumentContentPdf: (documentId: string) =>
+    request<DocumentContentPdfResponse>(`/documents/${documentId}/content/render-pdf`, { method: "POST" }),
   getDocumentContentDocx: (documentId: string) => request<DocumentContentDocxResponse>(`/documents/${documentId}/content/docx`),
   uploadDocumentContentDocx: (documentId: string, file: File) => {
     const formData = new FormData();

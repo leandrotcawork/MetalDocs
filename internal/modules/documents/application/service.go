@@ -394,6 +394,78 @@ func (s *Service) SaveNativeContentAuthorized(ctx context.Context, cmd domain.Sa
 	return version, nil
 }
 
+func (s *Service) RenderContentPDFAuthorized(ctx context.Context, documentID, traceID string) (domain.Version, error) {
+	if s.attachmentStore == nil {
+		return domain.Version{}, domain.ErrAttachmentStoreUnavailable
+	}
+	if strings.TrimSpace(documentID) == "" {
+		return domain.Version{}, domain.ErrInvalidCommand
+	}
+	doc, err := s.repo.GetDocument(ctx, strings.TrimSpace(documentID))
+	if err != nil {
+		return domain.Version{}, err
+	}
+	allowed, err := s.isAllowed(ctx, doc, domain.CapabilityDocumentEdit)
+	if err != nil {
+		return domain.Version{}, err
+	}
+	if !allowed {
+		return domain.Version{}, domain.ErrDocumentNotFound
+	}
+
+	version, err := s.latestVersion(ctx, doc.ID)
+	if err != nil {
+		return domain.Version{}, err
+	}
+
+	contentSource := strings.TrimSpace(version.ContentSource)
+	if contentSource == "" {
+		contentSource = domain.ContentSourceNative
+	}
+	var pdfBytes []byte
+	switch contentSource {
+	case domain.ContentSourceDocxUpload:
+		if strings.TrimSpace(version.DocxStorageKey) == "" {
+			return domain.Version{}, domain.ErrVersionNotFound
+		}
+		docxPayload, err := s.OpenContentStorage(ctx, version.DocxStorageKey)
+		if err != nil {
+			return domain.Version{}, err
+		}
+		pdfBytes, err = s.convertDocxToPDF(ctx, docxPayload, traceID)
+		if err != nil {
+			return domain.Version{}, err
+		}
+	default:
+		content := version.NativeContent
+		if len(content) == 0 && strings.TrimSpace(version.Content) != "" {
+			var parsed map[string]any
+			if err := json.Unmarshal([]byte(version.Content), &parsed); err == nil {
+				content = parsed
+			}
+		}
+		pdfBytes, err = s.renderDocumentPDF(ctx, doc, version, content, traceID)
+		if err != nil {
+			return domain.Version{}, err
+		}
+	}
+
+	pdfKey := strings.TrimSpace(version.PdfStorageKey)
+	if pdfKey == "" {
+		pdfKey = documentContentStorageKey(doc.ID, version.Number, "pdf")
+	}
+	if err := s.attachmentStore.Save(ctx, pdfKey, pdfBytes); err != nil {
+		return domain.Version{}, err
+	}
+	if pdfKey != version.PdfStorageKey || version.PageCount == 0 {
+		if err := s.repo.UpdateVersionPDF(ctx, doc.ID, version.Number, pdfKey, version.PageCount); err != nil {
+			return domain.Version{}, err
+		}
+	}
+	version.PdfStorageKey = pdfKey
+	return version, nil
+}
+
 func (s *Service) UploadDocxContentAuthorized(ctx context.Context, cmd domain.UploadDocxContentCommand) (domain.Version, error) {
 	if s.attachmentStore == nil {
 		return domain.Version{}, domain.ErrAttachmentStoreUnavailable

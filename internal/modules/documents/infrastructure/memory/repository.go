@@ -466,6 +466,27 @@ func (r *Repository) SaveVersion(ctx context.Context, version domain.Version) er
 	return r.saveVersionLocked(ctx, version)
 }
 
+func (r *Repository) UpdateVersionPDF(_ context.Context, documentID string, versionNumber int, pdfStorageKey string, pageCount int) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, exists := r.documents[documentID]; !exists {
+		return domain.ErrDocumentNotFound
+	}
+	versions := r.versions[documentID]
+	for i := range versions {
+		if versions[i].Number == versionNumber {
+			versions[i].PdfStorageKey = pdfStorageKey
+			if pageCount > 0 {
+				versions[i].PageCount = pageCount
+			}
+			r.versions[documentID] = versions
+			return nil
+		}
+	}
+	return domain.ErrVersionNotFound
+}
+
 func (r *Repository) saveVersionLocked(_ context.Context, version domain.Version) error {
 	if _, exists := r.documents[version.DocumentID]; !exists {
 		return domain.ErrDocumentNotFound

@@ -91,7 +91,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
     setError("");
     setStatus("saving");
     try {
-      const response = await api.getDocumentContentPdf(documentId);
+      const response = await api.renderDocumentContentPdf(documentId);
       setPdfUrl(response.pdfUrl);
       setStatus("idle");
     } catch {

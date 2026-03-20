@@ -135,3 +135,13 @@ Execucao: `2026-03-20 12:15` ate `12:19` (America/Sao_Paulo).
   - `http_req_duration p99`: `939.73µs`
 - Observacao:
   - Todas as checks falharam (status != 200). Precisa investigar auth/permissions ou endpoint base antes de validar a metrica oficial.
+
+## Evidencia registrada (light concurrency - execucao oficial)
+Execucao: `2026-03-20 13:14` ate `13:18` (America/Sao_Paulo).
+
+- Comando:
+  - `k6 run -e BASE_URL=http://127.0.0.1:8081/api/v1 -e USER_ID=admin-local -e PROFILE_CODE=po -e DOCUMENT_ID=<id> -e PDF_AVAILABLE=false scripts/perf/k6-light-concurrency.js`
+- Resultado:
+  - `http_req_failed`: `0.00%` (threshold `< 1%`) - aprovado
+  - `http_req_duration p95`: `20.18ms`
+  - `http_req_duration p99`: `74.37ms`

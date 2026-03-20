@@ -172,12 +172,14 @@ type DocumentProfileSchemaResponse struct {
 	Version       int                         `json:"version"`
 	IsActive      bool                        `json:"isActive"`
 	MetadataRules []MetadataFieldRuleResponse `json:"metadataRules"`
+	ContentSchema map[string]any              `json:"contentSchema"`
 }
 
 type UpsertDocumentProfileSchemaRequest struct {
 	Version       int                        `json:"version"`
 	IsActive      bool                       `json:"isActive"`
 	MetadataRules []domain.MetadataFieldRule `json:"metadataRules"`
+	ContentSchema map[string]any             `json:"contentSchema"`
 }
 
 type MetadataFieldRuleResponse struct {
@@ -523,6 +525,7 @@ func (h *Handler) handleDocumentProfileSchemas(w http.ResponseWriter, r *http.Re
 			Version:       item.Version,
 			IsActive:      item.IsActive,
 			MetadataRules: rules,
+			ContentSchema: item.ContentSchema,
 		})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": out})
@@ -544,6 +547,7 @@ func (h *Handler) handleUpsertDocumentProfileSchema(w http.ResponseWriter, r *ht
 		Version:       req.Version,
 		IsActive:      req.IsActive,
 		MetadataRules: req.MetadataRules,
+		ContentSchema: req.ContentSchema,
 	}); err != nil {
 		h.writeDomainError(w, err, traceID)
 		return

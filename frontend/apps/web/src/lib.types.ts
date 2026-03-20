@@ -85,6 +85,7 @@ export interface DocumentProfileSchemaItem {
   version: number;
   isActive: boolean;
   metadataRules: MetadataFieldRuleItem[];
+  contentSchema?: Record<string, unknown>;
 }
 
 export interface DocumentProfileGovernanceItem {

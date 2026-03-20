@@ -541,7 +541,7 @@ WHERE code = $1 AND is_active = TRUE
 
 func (r *Repository) ListDocumentProfileSchemas(ctx context.Context, profileCode string) ([]domain.DocumentProfileSchemaVersion, error) {
 	const q = `
-SELECT profile_code, version, is_active, metadata_rules_json
+SELECT profile_code, version, is_active, metadata_rules_json, content_schema_json
 FROM metaldocs.document_profile_schema_versions
 WHERE ($1 = '' OR profile_code = $1)
 ORDER BY profile_code ASC, version ASC
@@ -556,12 +556,18 @@ ORDER BY profile_code ASC, version ASC
 	for rows.Next() {
 		var item domain.DocumentProfileSchemaVersion
 		var rawRules []byte
-		if err := rows.Scan(&item.ProfileCode, &item.Version, &item.IsActive, &rawRules); err != nil {
+		var rawSchema []byte
+		if err := rows.Scan(&item.ProfileCode, &item.Version, &item.IsActive, &rawRules, &rawSchema); err != nil {
 			return nil, fmt.Errorf("scan document profile schema: %w", err)
 		}
 		if len(rawRules) > 0 {
 			if err := json.Unmarshal(rawRules, &item.MetadataRules); err != nil {
 				return nil, fmt.Errorf("unmarshal document profile schema rules: %w", err)
+			}
+		}
+		if len(rawSchema) > 0 {
+			if err := json.Unmarshal(rawSchema, &item.ContentSchema); err != nil {
+				return nil, fmt.Errorf("unmarshal document profile content schema: %w", err)
 			}
 		}
 		out = append(out, item)
@@ -576,6 +582,10 @@ func (r *Repository) UpsertDocumentProfileSchemaVersion(ctx context.Context, ite
 	rawRules, err := json.Marshal(item.MetadataRules)
 	if err != nil {
 		return fmt.Errorf("marshal document profile schema rules: %w", err)
+	}
+	rawSchema, err := json.Marshal(item.ContentSchema)
+	if err != nil {
+		return fmt.Errorf("marshal document profile content schema: %w", err)
 	}
 
 	if item.IsActive {
@@ -595,13 +605,14 @@ func (r *Repository) UpsertDocumentProfileSchemaVersion(ctx context.Context, ite
 		}
 
 		const q = `
-INSERT INTO metaldocs.document_profile_schema_versions (profile_code, version, metadata_rules_json, is_active)
-VALUES ($1, $2, $3::jsonb, TRUE)
+INSERT INTO metaldocs.document_profile_schema_versions (profile_code, version, metadata_rules_json, content_schema_json, is_active)
+VALUES ($1, $2, $3::jsonb, $4::jsonb, TRUE)
 ON CONFLICT (profile_code, version) DO UPDATE
 SET metadata_rules_json = EXCLUDED.metadata_rules_json,
+    content_schema_json = EXCLUDED.content_schema_json,
     is_active = TRUE
 `
-		if _, err := tx.ExecContext(ctx, q, item.ProfileCode, item.Version, rawRules); err != nil {
+		if _, err := tx.ExecContext(ctx, q, item.ProfileCode, item.Version, rawRules, rawSchema); err != nil {
 			return mapError(err)
 		}
 		if err := tx.Commit(); err != nil {
@@ -611,12 +622,13 @@ SET metadata_rules_json = EXCLUDED.metadata_rules_json,
 	}
 
 	const q = `
-INSERT INTO metaldocs.document_profile_schema_versions (profile_code, version, metadata_rules_json, is_active)
-VALUES ($1, $2, $3::jsonb, FALSE)
+INSERT INTO metaldocs.document_profile_schema_versions (profile_code, version, metadata_rules_json, content_schema_json, is_active)
+VALUES ($1, $2, $3::jsonb, $4::jsonb, FALSE)
 ON CONFLICT (profile_code, version) DO UPDATE
-SET metadata_rules_json = EXCLUDED.metadata_rules_json
+SET metadata_rules_json = EXCLUDED.metadata_rules_json,
+    content_schema_json = EXCLUDED.content_schema_json
 `
-	if _, err := r.db.ExecContext(ctx, q, item.ProfileCode, item.Version, rawRules); err != nil {
+	if _, err := r.db.ExecContext(ctx, q, item.ProfileCode, item.Version, rawRules, rawSchema); err != nil {
 		return mapError(err)
 	}
 	return nil

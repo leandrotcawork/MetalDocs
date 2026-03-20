@@ -238,6 +238,7 @@ func (r *Repository) ListDocumentProfileSchemas(_ context.Context, profileCode s
 			Version:       item.Version,
 			IsActive:      item.IsActive,
 			MetadataRules: copiedRules,
+			ContentSchema: cloneContentSchema(item.ContentSchema),
 		})
 	}
 	return filtered, nil
@@ -255,6 +256,17 @@ func (r *Repository) UpsertDocumentProfileSchemaVersion(_ context.Context, item 
 	}
 	r.profileSchemas = append(r.profileSchemas, item)
 	return nil
+}
+
+func cloneContentSchema(value map[string]any) map[string]any {
+	if value == nil {
+		return map[string]any{}
+	}
+	out := make(map[string]any, len(value))
+	for key, item := range value {
+		out[key] = item
+	}
+	return out
 }
 
 func (r *Repository) ActivateDocumentProfileSchemaVersion(_ context.Context, profileCode string, version int) error {

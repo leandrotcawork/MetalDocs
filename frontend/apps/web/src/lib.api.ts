@@ -139,6 +139,7 @@ function normalizeDocumentProfileSchema(value: DocumentProfileSchemaItem): Docum
     version: Number(value?.version ?? 0),
     isActive: Boolean(value?.isActive),
     metadataRules: Array.isArray(value?.metadataRules) ? value.metadataRules.map(normalizeMetadataRule) : [],
+    contentSchema: value?.contentSchema && typeof value.contentSchema === "object" ? value.contentSchema : {},
   };
 }
 

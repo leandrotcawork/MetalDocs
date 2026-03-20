@@ -2869,6 +2869,9 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/MetadataFieldRule'
+        contentSchema:
+          type: object
+          additionalProperties: true
     DocumentProfileSchemaUpsertRequest:
       type: object
       required: [version, metadataRules]
@@ -2882,6 +2885,9 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/MetadataFieldRule'
+        contentSchema:
+          type: object
+          additionalProperties: true
     ListDocumentProfileSchemasResponse:
       type: object
       required: [items]

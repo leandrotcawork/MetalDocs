@@ -79,6 +79,8 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
   const { status, error, pdfUrl, version, contentDraft, schema, previewCollapsed } = state;
   const editorRef = useRef<HTMLDivElement | null>(null);
   const [activeSectionKey, setActiveSectionKey] = useState<string | null>(null);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [autosaveLabel, setAutosaveLabel] = useState("Nao salvo");
 
   const documentCode = useMemo(() => {
     if (!props.document?.documentId) return "--";
@@ -210,6 +212,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
       const response = await api.saveDocumentContentNative(documentId, { content: parsedContent });
       dispatch({ type: "set_pdf", payload: { pdfUrl: response.pdfUrl } });
       dispatch({ type: "load_success", payload: { contentDraft: parsedContent, schema, version: response.version ?? null, pdfUrl: response.pdfUrl } });
+      setLastSavedAt(new Date());
     } catch {
       dispatch({ type: "load_error", payload: { message: "Falha ao salvar o conteudo." } });
     }
@@ -231,6 +234,27 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
       dispatch({ type: "load_error", payload: { message: "Nao foi possivel gerar o PDF." } });
     }
   }
+
+  useEffect(() => {
+    if (status === "saving") {
+      setAutosaveLabel("Salvando...");
+      return;
+    }
+    if (status === "rendering") {
+      setAutosaveLabel("Gerando PDF...");
+      return;
+    }
+    if (status === "dirty") {
+      setAutosaveLabel("Nao salvo");
+      return;
+    }
+    if (status === "idle" && lastSavedAt) {
+      setAutosaveLabel("Salvo agora");
+      const timer = window.setTimeout(() => setAutosaveLabel("Salvo ha pouco"), 3000);
+      return () => window.clearTimeout(timer);
+    }
+    setAutosaveLabel("Salvo");
+  }, [status, lastSavedAt]);
 
   const statusLabel = status === "dirty"
     ? "Nao salvo"
@@ -362,6 +386,11 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
                     <span>Salve o conteudo e clique em "Gerar PDF" para visualizar.</span>
                   </div>
                 )}
+                {status === "dirty" && pdfUrl && (
+                  <div className="content-builder-preview-warning">
+                    Preview pode estar desatualizado. Gere novamente para ver as ultimas edicoes.
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -374,7 +403,13 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
       </div>
 
       <footer className="content-builder-footer">
-        <span className="content-builder-footer-info">Versao ativa: {version ?? "-"}</span>
+        <div className="content-builder-footer-left">
+          <span className="content-builder-version-pill">v{version ?? "-"}</span>
+          <div className="content-builder-autosave">
+            <span className={`content-builder-autosave-dot ${status === "dirty" ? "is-warn" : status === "saving" || status === "rendering" ? "is-info" : "is-ok"}`} />
+            <span>{autosaveLabel}</span>
+          </div>
+        </div>
         <div className="content-builder-footer-actions">
           <button type="button" className="ghost-button" onClick={handleSave} disabled={status === "saving" || status === "loading" || status === "rendering"}>
             Salvar rascunho

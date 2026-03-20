@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../../lib.api";
-import type { DocumentListItem } from "../../lib.types";
+import type { DocumentListItem, DocumentProfileSchemaItem } from "../../lib.types";
 import { PdfPreview } from "../create/widgets/PdfPreview";
 
 type ContentBuilderViewProps = {
@@ -12,12 +12,13 @@ type BuilderStatus = "loading" | "idle" | "dirty" | "saving" | "error";
 
 export function ContentBuilderView(props: ContentBuilderViewProps) {
   const documentId = props.document?.documentId ?? "";
-  const [contentDraft, setContentDraft] = useState("{\n\n}");
+  const [contentDraft, setContentDraft] = useState<Record<string, unknown>>({});
   const [status, setStatus] = useState<BuilderStatus>("loading");
   const [error, setError] = useState("");
   const [pdfUrl, setPdfUrl] = useState("");
   const [version, setVersion] = useState<number | null>(null);
   const [previewCollapsed, setPreviewCollapsed] = useState(false);
+  const [schema, setSchema] = useState<DocumentProfileSchemaItem | null>(null);
 
   const documentCode = useMemo(() => {
     if (!props.document?.documentId) return "--";
@@ -27,7 +28,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
   useEffect(() => {
     if (!documentId) {
       setStatus("idle");
-      setContentDraft("{\n\n}");
+      setContentDraft({});
       return;
     }
     let isActive = true;
@@ -35,15 +36,23 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
       setStatus("loading");
       setError("");
       try {
-        const response = await api.getDocumentContentNative(documentId);
+        const [contentResponse, schemasResponse] = await Promise.all([
+          api.getDocumentContentNative(documentId),
+          props.document?.documentProfile
+            ? api.listDocumentProfileSchemas(props.document.documentProfile)
+            : Promise.resolve({ items: [] as DocumentProfileSchemaItem[] }),
+        ]);
         if (!isActive) return;
-        setVersion(response.version);
-        setContentDraft(JSON.stringify(response.content ?? {}, null, 2));
+        const items = Array.isArray(schemasResponse.items) ? schemasResponse.items : [];
+        const activeSchema = items.find((item) => item.isActive) ?? items[0] ?? null;
+        setSchema(activeSchema);
+        setVersion(contentResponse.version);
+        setContentDraft((contentResponse.content ?? {}) as Record<string, unknown>);
         setStatus("idle");
       } catch (err) {
         if (!isActive) return;
         if (statusOf(err) === 404) {
-          setContentDraft("{\n\n}");
+          setContentDraft({});
           setStatus("idle");
           return;
         }
@@ -60,16 +69,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
   async function handleSave() {
     if (!documentId) return;
     setError("");
-    let parsedContent: Record<string, unknown> = {};
-    if (contentDraft.trim()) {
-      try {
-        parsedContent = JSON.parse(contentDraft) as Record<string, unknown>;
-      } catch {
-        setError("JSON invalido. Corrija o conteudo antes de salvar.");
-        setStatus("error");
-        return;
-      }
-    }
+    const parsedContent: Record<string, unknown> = contentDraft ?? {};
     setStatus("saving");
     try {
       const response = await api.saveDocumentContentNative(documentId, { content: parsedContent });
@@ -139,22 +139,14 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
 
       <div className="content-builder-body">
         <div className="content-builder-editor">
-          <div className="content-builder-section">
-            <div className="content-builder-section-head">
-              <strong>Conteudo estruturado (JSON)</strong>
-              <small>Substituido por editor orientado a schema na Task 066.</small>
-            </div>
-            <textarea
-              className="content-builder-textarea"
-              value={contentDraft}
-              rows={18}
-              onChange={(event) => {
-                setContentDraft(event.target.value);
-                setStatus((current) => (current === "dirty" ? current : "dirty"));
-              }}
-              placeholder={`{\n  "section": "preencher"\n}`}
-            />
-          </div>
+          <ContentSchemaForm
+            schema={schema}
+            value={contentDraft}
+            onChange={(next) => {
+              setContentDraft(next);
+              setStatus((current) => (current === "dirty" ? current : "dirty"));
+            }}
+          />
           {error && <div className="content-builder-error">{error}</div>}
         </div>
 
@@ -205,4 +197,232 @@ function statusOf(error: unknown): number | undefined {
     return (error as { status: number }).status;
   }
   return undefined;
+}
+
+type ContentSchemaFormProps = {
+  schema: DocumentProfileSchemaItem | null;
+  value: Record<string, unknown>;
+  onChange: (next: Record<string, unknown>) => void;
+};
+
+type SchemaSection = {
+  key: string;
+  title?: string;
+  description?: string;
+  fields?: SchemaField[];
+};
+
+type SchemaField = {
+  key: string;
+  label?: string;
+  type?: string;
+  required?: boolean;
+  options?: string[];
+  itemType?: string;
+  columns?: SchemaField[];
+};
+
+function ContentSchemaForm(props: ContentSchemaFormProps) {
+  const schema = props.schema?.contentSchema as { sections?: SchemaSection[] } | undefined;
+  const sections = Array.isArray(schema?.sections) ? schema?.sections : [];
+
+  if (!props.schema) {
+    return (
+      <div className="content-builder-section">
+        <div className="content-builder-section-head">
+          <strong>Conteudo estruturado</strong>
+          <small>Schema nao disponivel para este profile.</small>
+        </div>
+        <div className="content-builder-empty">Sem schema ativo.</div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {sections.map((section) => (
+        <ContentSection
+          key={section.key}
+          section={section}
+          value={props.value}
+          onChange={props.onChange}
+        />
+      ))}
+    </>
+  );
+}
+
+type ContentSectionProps = {
+  section: SchemaSection;
+  value: Record<string, unknown>;
+  onChange: (next: Record<string, unknown>) => void;
+};
+
+function ContentSection(props: ContentSectionProps) {
+  const { section } = props;
+  const sectionKey = section.key;
+  const sectionValue = (props.value[sectionKey] as Record<string, unknown>) ?? {};
+
+  function updateSectionField(fieldKey: string, nextValue: unknown) {
+    const nextSection = { ...sectionValue, [fieldKey]: nextValue };
+    props.onChange({ ...props.value, [sectionKey]: nextSection });
+  }
+
+  return (
+    <div className="content-builder-section">
+      <div className="content-builder-section-head">
+        <strong>{section.title ?? section.key}</strong>
+        {section.description && <small>{section.description}</small>}
+      </div>
+      <div className="content-builder-section-body">
+        {(section.fields ?? []).map((field) => (
+          <SchemaFieldRenderer
+            key={`${sectionKey}-${field.key}`}
+            field={field}
+            value={sectionValue[field.key]}
+            onChange={(next) => updateSectionField(field.key, next)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+type SchemaFieldRendererProps = {
+  field: SchemaField;
+  value: unknown;
+  onChange: (next: unknown) => void;
+};
+
+function SchemaFieldRenderer(props: SchemaFieldRendererProps) {
+  const fieldType = props.field.type ?? "text";
+  if (fieldType === "textarea") {
+    return (
+      <label className="content-builder-field">
+        <span>{props.field.label ?? props.field.key}</span>
+        <textarea
+          value={(props.value as string) ?? ""}
+          onChange={(event) => props.onChange(event.target.value)}
+          rows={4}
+        />
+      </label>
+    );
+  }
+  if (fieldType === "select") {
+    return (
+      <label className="content-builder-field">
+        <span>{props.field.label ?? props.field.key}</span>
+        <select value={(props.value as string) ?? ""} onChange={(event) => props.onChange(event.target.value)}>
+          <option value="">Selecione</option>
+          {(props.field.options ?? []).map((option) => (
+            <option key={option} value={option}>{option}</option>
+          ))}
+        </select>
+      </label>
+    );
+  }
+  if (fieldType === "number") {
+    return (
+      <label className="content-builder-field">
+        <span>{props.field.label ?? props.field.key}</span>
+        <input
+          type="number"
+          value={props.value as number | string | undefined || ""}
+          onChange={(event) => props.onChange(event.target.value === "" ? "" : Number(event.target.value))}
+        />
+      </label>
+    );
+  }
+  if (fieldType === "array") {
+    const items = Array.isArray(props.value) ? props.value : [];
+    return (
+      <div className="content-builder-field">
+        <span>{props.field.label ?? props.field.key}</span>
+        <div className="content-builder-array">
+          {items.map((item, index) => (
+            <div key={`${props.field.key}-${index}`} className="content-builder-array-row">
+              <input
+                value={item as string}
+                onChange={(event) => {
+                  const next = [...items];
+                  next[index] = event.target.value;
+                  props.onChange(next);
+                }}
+              />
+              <button
+                type="button"
+                className="ghost-button"
+                onClick={() => props.onChange(items.filter((_, itemIndex) => itemIndex !== index))}
+              >
+                Remover
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            className="ghost-button"
+            onClick={() => props.onChange([...items, ""])}
+          >
+            Adicionar item
+          </button>
+        </div>
+      </div>
+    );
+  }
+  if (fieldType === "table") {
+    const rows = Array.isArray(props.value) ? props.value : [];
+    const columns = props.field.columns ?? [];
+    return (
+      <div className="content-builder-field">
+        <span>{props.field.label ?? props.field.key}</span>
+        <div className="content-builder-table">
+          <div className="content-builder-table-head">
+            {columns.map((column) => (
+              <span key={column.key}>{column.label ?? column.key}</span>
+            ))}
+            <span />
+          </div>
+          {rows.map((row, rowIndex) => (
+            <div key={`${props.field.key}-${rowIndex}`} className="content-builder-table-row">
+              {columns.map((column) => (
+                <input
+                  key={`${props.field.key}-${rowIndex}-${column.key}`}
+                  value={(row as Record<string, unknown>)?.[column.key] as string ?? ""}
+                  onChange={(event) => {
+                    const nextRows = [...rows];
+                    const nextRow = { ...(rows[rowIndex] as Record<string, unknown>), [column.key]: event.target.value };
+                    nextRows[rowIndex] = nextRow;
+                    props.onChange(nextRows);
+                  }}
+                />
+              ))}
+              <button
+                type="button"
+                className="ghost-button"
+                onClick={() => props.onChange(rows.filter((_, idx) => idx !== rowIndex))}
+              >
+                Remover
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            className="ghost-button"
+            onClick={() => props.onChange([...rows, {}])}
+          >
+            Adicionar linha
+          </button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <label className="content-builder-field">
+      <span>{props.field.label ?? props.field.key}</span>
+      <input
+        value={(props.value as string) ?? ""}
+        onChange={(event) => props.onChange(event.target.value)}
+      />
+    </label>
+  );
 }

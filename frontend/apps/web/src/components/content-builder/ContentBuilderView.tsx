@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useReducer } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { api } from "../../lib.api";
 import type { DocumentListItem, DocumentProfileSchemaItem } from "../../lib.types";
 import { PdfPreview } from "../create/widgets/PdfPreview";
 import { ContentSchemaForm } from "./ContentSchemaForm";
+import type { SchemaField, SchemaSection } from "./contentSchemaTypes";
 
 type ContentBuilderViewProps = {
   document: DocumentListItem | null;
@@ -76,11 +77,32 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
   const documentId = props.document?.documentId ?? "";
   const [state, dispatch] = useReducer(reducer, initialState);
   const { status, error, pdfUrl, version, contentDraft, schema, previewCollapsed } = state;
+  const editorRef = useRef<HTMLDivElement | null>(null);
+  const [activeSectionKey, setActiveSectionKey] = useState<string | null>(null);
 
   const documentCode = useMemo(() => {
     if (!props.document?.documentId) return "--";
     return props.document.documentId.slice(0, 8).toUpperCase();
   }, [props.document?.documentId]);
+
+  const sections = useMemo(() => {
+    const raw = schema?.contentSchema as { sections?: SchemaSection[] } | undefined;
+    return Array.isArray(raw?.sections) ? raw?.sections : [];
+  }, [schema]);
+
+  const sectionCompletion = useMemo(() => {
+    const completion: Record<string, boolean> = {};
+    sections.forEach((section) => {
+      const sectionValue = (contentDraft?.[section.key] as Record<string, unknown>) ?? {};
+      const fields = section.fields ?? [];
+      const requiredFields = fields.filter((field) => field.required);
+      const hasRequired = requiredFields.length > 0;
+      const requiredOk = requiredFields.every((field) => isFieldCompleted(field, sectionValue[field.key]));
+      const anyValue = fields.some((field) => hasAnyValue(field, sectionValue[field.key]));
+      completion[section.key] = hasRequired ? requiredOk : anyValue;
+    });
+    return completion;
+  }, [sections, contentDraft]);
 
   useEffect(() => {
     if (!documentId) {
@@ -133,6 +155,51 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
       isActive = false;
     };
   }, [documentId, props.document?.documentProfile]);
+
+  useEffect(() => {
+    if (sections.length === 0) {
+      setActiveSectionKey(null);
+      return;
+    }
+    setActiveSectionKey((current) => current ?? sections[0].key);
+  }, [sections]);
+
+  useEffect(() => {
+    const root = editorRef.current;
+    if (!root) return;
+    const nodes = Array.from(root.querySelectorAll<HTMLElement>("[data-section-key]"));
+    if (nodes.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+        if (visible.length === 0) {
+          return;
+        }
+        const key = (visible[0].target as HTMLElement).dataset.sectionKey;
+        if (key) {
+          setActiveSectionKey(key);
+        }
+      },
+      { root, threshold: [0.35, 0.6, 0.85] },
+    );
+
+    nodes.forEach((node) => observer.observe(node));
+    return () => {
+      observer.disconnect();
+    };
+  }, [sections]);
+
+  function handleSectionNav(sectionKey: string) {
+    const anchorId = sectionAnchorId(sectionKey);
+    const target = editorRef.current?.querySelector<HTMLElement>(`#${anchorId}`);
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+      setActiveSectionKey(sectionKey);
+    }
+  }
 
   async function handleSave() {
     if (!documentId) return;
@@ -234,30 +301,30 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
         <aside className="content-builder-sections-nav">
           <div className="content-builder-sections-title">Secoes</div>
           <div className="content-builder-sections-list">
-            <div className="content-builder-section-link is-active">
-              <span className="content-builder-section-num">1</span>
-              <span>Identificacao</span>
-            </div>
-            <div className="content-builder-section-link">
-              <span className="content-builder-section-num">2</span>
-              <span>Entradas e saidas</span>
-            </div>
-            <div className="content-builder-section-link">
-              <span className="content-builder-section-num">3</span>
-              <span>Processo</span>
-            </div>
-            <div className="content-builder-section-link">
-              <span className="content-builder-section-num">4</span>
-              <span>Indicadores</span>
-            </div>
+            {sections.map((section, index) => {
+              const isActive = activeSectionKey === section.key;
+              const isComplete = sectionCompletion[section.key] ?? false;
+              return (
+                <button
+                  key={section.key}
+                  type="button"
+                  className={`content-builder-section-link ${isActive ? "is-active" : ""} ${isComplete ? "is-complete" : ""}`}
+                  onClick={() => handleSectionNav(section.key)}
+                >
+                  <span className="content-builder-section-num">{index + 1}</span>
+                  <span>{section.title ?? section.key}</span>
+                </button>
+              );
+            })}
           </div>
         </aside>
 
-        <main className="content-builder-editor">
+        <main className="content-builder-editor" ref={editorRef}>
           <div className="content-builder-editor-inner">
             <ContentSchemaForm
               schema={schema}
               value={contentDraft}
+              activeSectionKey={activeSectionKey}
               onChange={(next) => {
                 dispatch({ type: "set_draft", payload: { contentDraft: next } });
                 dispatch({ type: "set_status", payload: { status: "dirty" } });
@@ -317,4 +384,44 @@ function statusOf(error: unknown): number | undefined {
     return (error as { status: number }).status;
   }
   return undefined;
+}
+
+function sectionAnchorId(sectionKey: string) {
+  return `content-section-${sectionKey}`;
+}
+
+function hasAnyValue(field: SchemaField, value: unknown): boolean {
+  if (field.type === "table") {
+    return Array.isArray(value) && value.length > 0;
+  }
+  if (field.type === "array") {
+    return Array.isArray(value) && value.some((item) => String(item ?? "").trim() !== "");
+  }
+  if (field.type === "checklist") {
+    return Array.isArray(value) && value.some((item) => typeof item === "string" ? item.trim() !== "" : Boolean((item as { label?: string }).label));
+  }
+  if (field.type === "number") {
+    return value !== null && value !== undefined && value !== "";
+  }
+  return String(value ?? "").trim() !== "";
+}
+
+function isFieldCompleted(field: SchemaField, value: unknown): boolean {
+  if (field.type === "table") {
+    if (!Array.isArray(value) || value.length === 0) return false;
+    return value.some((row) => {
+      if (!row || typeof row !== "object") return false;
+      return Object.values(row as Record<string, unknown>).some((cell) => String(cell ?? "").trim() !== "");
+    });
+  }
+  if (field.type === "array") {
+    return Array.isArray(value) && value.length > 0 && value.every((item) => String(item ?? "").trim() !== "");
+  }
+  if (field.type === "checklist") {
+    return Array.isArray(value) && value.length > 0 && value.every((item) => typeof item === "string" ? item.trim() !== "" : String((item as { label?: string }).label ?? "").trim() !== "");
+  }
+  if (field.type === "number") {
+    return value !== null && value !== undefined && value !== "";
+  }
+  return String(value ?? "").trim() !== "";
 }

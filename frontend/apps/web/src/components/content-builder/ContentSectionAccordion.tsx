@@ -7,6 +7,8 @@ type ContentSectionAccordionProps = {
   onChange: (next: Record<string, unknown>) => void;
   expanded: boolean;
   onToggle: () => void;
+  anchorId: string;
+  isActive?: boolean;
 };
 
 export function ContentSectionAccordion(props: ContentSectionAccordionProps) {
@@ -20,7 +22,11 @@ export function ContentSectionAccordion(props: ContentSectionAccordionProps) {
   }
 
   return (
-    <div className={`content-builder-section ${props.expanded ? "is-expanded" : "is-collapsed"}`}>
+    <div
+      id={props.anchorId}
+      data-section-key={sectionKey}
+      className={`content-builder-section ${props.expanded ? "is-expanded" : "is-collapsed"} ${props.isActive ? "is-focused" : ""}`}
+    >
       <div className="content-builder-section-head">
         <button type="button" className="content-builder-section-toggle" onClick={props.onToggle}>
           <div className="content-builder-section-title">

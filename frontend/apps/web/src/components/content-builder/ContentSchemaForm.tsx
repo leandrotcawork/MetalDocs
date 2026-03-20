@@ -6,6 +6,7 @@ import { ContentSectionAccordion } from "./ContentSectionAccordion";
 type ContentSchemaFormProps = {
   schema: DocumentProfileSchemaItem | null;
   value: Record<string, unknown>;
+  activeSectionKey?: string | null;
   onChange: (next: Record<string, unknown>) => void;
 };
 
@@ -49,6 +50,8 @@ export function ContentSchemaForm(props: ContentSchemaFormProps) {
           section={section}
           value={props.value}
           onChange={props.onChange}
+          isActive={props.activeSectionKey === section.key}
+          anchorId={`content-section-${section.key}`}
           expanded={expandedSections[section.key] ?? true}
           onToggle={() =>
             setExpandedSections((prev) => ({

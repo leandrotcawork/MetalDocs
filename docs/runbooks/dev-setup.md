@@ -66,6 +66,10 @@ cd frontend/apps/web
 npm run dev
 ```
 
+## 5.1) Templates Carbone (DOCX)
+Os templates master estao versionados em `carbone/templates/` e sao registrados no start da API.
+Runbook completo: `docs/runbooks/carbone-templates.md`
+
 Observacao de CSP/fonts:
 - o frontend usa `DM Sans` e `DM Mono` via `@fontsource` local (bundle), sem dependencia runtime em `fonts.googleapis.com`
 - evitar reintroduzir `@import url(https://fonts.googleapis.com/...)` em `src/styles.css`

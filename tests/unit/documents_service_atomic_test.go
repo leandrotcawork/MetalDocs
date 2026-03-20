@@ -146,6 +146,10 @@ func (r *atomicRepoSpy) SaveVersion(context.Context, domain.Version) error {
 	return nil
 }
 
+func (r *atomicRepoSpy) UpdateVersionPDF(context.Context, string, int, string, int) error {
+	return nil
+}
+
 func (r *atomicRepoSpy) ListVersions(context.Context, string) ([]domain.Version, error) {
 	return nil, nil
 }

@@ -321,6 +321,7 @@ type RequestTrace = {
 
 let traceId = 0;
 let activeTrace: { name: string; startedAt: number; items: RequestTrace[] } | null = null;
+const uxMarks = new Map<string, number>();
 
 function isTraceEnabled() {
   if (typeof window === "undefined") return false;
@@ -376,7 +377,22 @@ export function stopApiTrace() {
 
 export function markUx(label: string) {
   if (!isTraceEnabled()) return;
-  console.log(`[md-ux] ${label} @ ${performance.now().toFixed(0)}ms`);
+  const now = performance.now();
+  uxMarks.set(label, now);
+  console.log(`[md-ux] ${label} @ ${now.toFixed(0)}ms`);
+}
+
+export function reportUxSequence(title: string, labels: string[]) {
+  if (!isTraceEnabled()) return;
+  const base = uxMarks.get(labels[0] ?? "");
+  if (base === undefined) return;
+  console.groupCollapsed(`[md-ux] ${title}`);
+  labels.forEach((label) => {
+    const stamp = uxMarks.get(label);
+    if (stamp === undefined) return;
+    console.log(`${label}`, `+${(stamp - base).toFixed(0)}ms`);
+  });
+  console.groupEnd();
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {

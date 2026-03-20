@@ -1,5 +1,5 @@
 import { Component, useEffect, useRef, useState } from "react";
-import { api, markUx, startApiTrace, stopApiTrace } from "./lib.api";
+import { api, markUx, reportUxSequence, startApiTrace, stopApiTrace } from "./lib.api";
 import { AuthShell } from "./components/AuthShell";
 import { DocumentCreateView } from "./components/DocumentCreateView";
 import { DocumentWorkspaceShell, type WorkspaceView } from "./components/DocumentWorkspaceShell";
@@ -479,11 +479,25 @@ function AppContent() {
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           markUx(`profile-render-ready:${profileCode}`);
+          reportUxSequence(`profile-change:${profileCode}`, [
+            `profile-change-start:${profileCode}`,
+            `profile-schema-loaded:${profileCode}`,
+            `profile-governance-loaded:${profileCode}`,
+            `profile-form-updated:${profileCode}`,
+            `profile-render-ready:${profileCode}`,
+          ]);
         });
       });
     } else {
       setTimeout(() => {
         markUx(`profile-render-ready:${profileCode}`);
+        reportUxSequence(`profile-change:${profileCode}`, [
+          `profile-change-start:${profileCode}`,
+          `profile-schema-loaded:${profileCode}`,
+          `profile-governance-loaded:${profileCode}`,
+          `profile-form-updated:${profileCode}`,
+          `profile-render-ready:${profileCode}`,
+        ]);
       }, 0);
     }
     stopApiTrace();

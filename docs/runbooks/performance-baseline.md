@@ -145,3 +145,28 @@ Execucao: `2026-03-20 13:14` ate `13:18` (America/Sao_Paulo).
   - `http_req_failed`: `0.00%` (threshold `< 1%`) - aprovado
   - `http_req_duration p95`: `20.18ms`
   - `http_req_duration p99`: `74.37ms`
+
+## Runbook: UX profile change timings (Task 094)
+Objetivo:
+- Medir tempo percebido ao trocar o tipo documental no create (start -> render pronto).
+
+Pre-requisitos:
+- Frontend em modo dev.
+- Ativar tracing local (`?trace=1` na URL ou `localStorage.setItem("md_trace","1")`).
+
+Passos:
+1. Abrir a tela de criar documento.
+2. Alternar o tipo documental (PO -> IT -> RG).
+3. No console, observar o grupo `[md-ux] profile-change:<code>` com os deltas.
+
+Evidencia a registrar:
+- Data/hora local.
+- Sequencia de tempos (ms):
+  - `profile-change-start`
+  - `profile-schema-loaded`
+  - `profile-governance-loaded`
+  - `profile-form-updated`
+  - `profile-render-ready`
+
+Resultado esperado:
+- Latencia percebida < 300ms em ambiente local (apenas referencia).

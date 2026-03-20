@@ -1,7 +1,7 @@
 -- Performance DB analysis for profiles/schemas/metadata.
--- Update the variables below before running.
-\set profile_code 'po'
-\set document_id 'CHANGE_ME_DOCUMENT_ID'
+-- Required variables (pass via -v):
+--   profile_code (example: po)
+--   document_id (example: 518ED305)
 
 -- 1) ListDocumentProfiles query (from repository.go)
 EXPLAIN (ANALYZE, BUFFERS, VERBOSE)

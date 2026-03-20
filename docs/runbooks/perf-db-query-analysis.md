@@ -16,13 +16,12 @@ Identify slow queries related to document profiles, schemas, and document metada
 
 ## How to run
 1. Open a PowerShell in the repo root.
-2. Update the variables inside the SQL file if needed:
-   - `profile_code` (default: `po`)
-   - `document_id` (set any existing document ID)
-
-3. Execute:
+2. Execute (pass the variables explicitly):
 ```powershell
-psql -h 127.0.0.1 -p 5433 -U metaldocs_app -d metaldocs -f scripts/sql/perf_db_query_analysis.sql
+psql -h 127.0.0.1 -p 5433 -U metaldocs_app -d metaldocs `
+  -v profile_code=po `
+  -v document_id=CHANGE_ME_DOCUMENT_ID `
+  -f scripts/sql/perf_db_query_analysis.sql
 ```
 
 ## How to interpret results

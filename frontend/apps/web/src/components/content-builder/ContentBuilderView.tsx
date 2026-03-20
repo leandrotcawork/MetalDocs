@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer } from "react";
+import { useEffect, useMemo, useReducer, useState } from "react";
 import { api } from "../../lib.api";
 import type { DocumentListItem, DocumentProfileSchemaItem } from "../../lib.types";
 import { PdfPreview } from "../create/widgets/PdfPreview";
@@ -299,6 +299,22 @@ type SchemaField = {
 function ContentSchemaForm(props: ContentSchemaFormProps) {
   const schema = props.schema?.contentSchema as { sections?: SchemaSection[] } | undefined;
   const sections = Array.isArray(schema?.sections) ? schema?.sections : [];
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (sections.length === 0) return;
+    setExpandedSections((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      sections.forEach((section) => {
+        if (!(section.key in next)) {
+          next[section.key] = true;
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [sections]);
 
   if (!props.schema) {
     return (
@@ -320,6 +336,13 @@ function ContentSchemaForm(props: ContentSchemaFormProps) {
           section={section}
           value={props.value}
           onChange={props.onChange}
+          expanded={expandedSections[section.key] ?? true}
+          onToggle={() =>
+            setExpandedSections((prev) => ({
+              ...prev,
+              [section.key]: !(prev[section.key] ?? true),
+            }))
+          }
         />
       ))}
     </>
@@ -330,6 +353,8 @@ type ContentSectionProps = {
   section: SchemaSection;
   value: Record<string, unknown>;
   onChange: (next: Record<string, unknown>) => void;
+  expanded: boolean;
+  onToggle: () => void;
 };
 
 function ContentSection(props: ContentSectionProps) {
@@ -343,12 +368,19 @@ function ContentSection(props: ContentSectionProps) {
   }
 
   return (
-    <div className="content-builder-section">
+    <div className={`content-builder-section ${props.expanded ? "is-expanded" : "is-collapsed"}`}>
       <div className="content-builder-section-head">
-        <strong>{section.title ?? section.key}</strong>
-        {section.description && <small>{section.description}</small>}
+        <button type="button" className="content-builder-section-toggle" onClick={props.onToggle}>
+          <div className="content-builder-section-title">
+            <strong>{section.title ?? section.key}</strong>
+            {section.description && <small>{section.description}</small>}
+          </div>
+          <span className="content-builder-section-chevron" aria-hidden="true">
+            {props.expanded ? "-" : "+"}
+          </span>
+        </button>
       </div>
-      <div className="content-builder-section-body">
+      <div className="content-builder-section-body" aria-hidden={!props.expanded}>
         {(section.fields ?? []).map((field) => (
           <SchemaFieldRenderer
             key={`${sectionKey}-${field.key}`}
@@ -370,10 +402,15 @@ type SchemaFieldRendererProps = {
 
 function SchemaFieldRenderer(props: SchemaFieldRendererProps) {
   const fieldType = props.field.type ?? "text";
+  const label = props.field.label ?? props.field.key;
+  const required = Boolean(props.field.required);
   if (fieldType === "textarea") {
     return (
       <label className="content-builder-field">
-        <span>{props.field.label ?? props.field.key}</span>
+        <span>
+          {label}
+          {required && <em className="content-builder-required">*</em>}
+        </span>
         <textarea
           value={(props.value as string) ?? ""}
           onChange={(event) => props.onChange(event.target.value)}
@@ -385,7 +422,10 @@ function SchemaFieldRenderer(props: SchemaFieldRendererProps) {
   if (fieldType === "select") {
     return (
       <label className="content-builder-field">
-        <span>{props.field.label ?? props.field.key}</span>
+        <span>
+          {label}
+          {required && <em className="content-builder-required">*</em>}
+        </span>
         <select value={(props.value as string) ?? ""} onChange={(event) => props.onChange(event.target.value)}>
           <option value="">Selecione</option>
           {(props.field.options ?? []).map((option) => (
@@ -398,7 +438,10 @@ function SchemaFieldRenderer(props: SchemaFieldRendererProps) {
   if (fieldType === "number") {
     return (
       <label className="content-builder-field">
-        <span>{props.field.label ?? props.field.key}</span>
+        <span>
+          {label}
+          {required && <em className="content-builder-required">*</em>}
+        </span>
         <input
           type="number"
           value={props.value as number | string | undefined || ""}
@@ -411,7 +454,10 @@ function SchemaFieldRenderer(props: SchemaFieldRendererProps) {
     const items = Array.isArray(props.value) ? props.value : [];
     return (
       <div className="content-builder-field">
-        <span>{props.field.label ?? props.field.key}</span>
+        <span>
+          {label}
+          {required && <em className="content-builder-required">*</em>}
+        </span>
         <div className="content-builder-array">
           {items.map((item, index) => (
             <div key={`${props.field.key}-${index}`} className="content-builder-array-row">
@@ -443,12 +489,63 @@ function SchemaFieldRenderer(props: SchemaFieldRendererProps) {
       </div>
     );
   }
+  if (fieldType === "checklist") {
+    const items = normalizeChecklistItems(props.value);
+    return (
+      <div className="content-builder-field">
+        <span>
+          {label}
+          {required && <em className="content-builder-required">*</em>}
+        </span>
+        <div className="content-builder-checklist">
+          {items.map((item, index) => (
+            <div key={`${props.field.key}-${index}`} className="content-builder-checklist-row">
+              <input
+                type="checkbox"
+                checked={item.checked}
+                onChange={(event) => {
+                  const next = [...items];
+                  next[index] = { ...item, checked: event.target.checked };
+                  props.onChange(next);
+                }}
+              />
+              <input
+                value={item.label}
+                onChange={(event) => {
+                  const next = [...items];
+                  next[index] = { ...item, label: event.target.value };
+                  props.onChange(next);
+                }}
+              />
+              <button
+                type="button"
+                className="ghost-button"
+                onClick={() => props.onChange(items.filter((_, itemIndex) => itemIndex !== index))}
+              >
+                Remover
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            className="ghost-button"
+            onClick={() => props.onChange([...items, { label: "", checked: false }])}
+          >
+            Adicionar item
+          </button>
+        </div>
+      </div>
+    );
+  }
   if (fieldType === "table") {
     const rows = Array.isArray(props.value) ? props.value : [];
     const columns = props.field.columns ?? [];
     return (
       <div className="content-builder-field">
-        <span>{props.field.label ?? props.field.key}</span>
+        <span>
+          {label}
+          {required && <em className="content-builder-required">*</em>}
+        </span>
         <div className="content-builder-table">
           <div className="content-builder-table-head">
             {columns.map((column) => (
@@ -458,18 +555,47 @@ function SchemaFieldRenderer(props: SchemaFieldRendererProps) {
           </div>
           {rows.map((row, rowIndex) => (
             <div key={`${props.field.key}-${rowIndex}`} className="content-builder-table-row">
-              {columns.map((column) => (
-                <input
-                  key={`${props.field.key}-${rowIndex}-${column.key}`}
-                  value={(row as Record<string, unknown>)?.[column.key] as string ?? ""}
-                  onChange={(event) => {
-                    const nextRows = [...rows];
-                    const nextRow = { ...(rows[rowIndex] as Record<string, unknown>), [column.key]: event.target.value };
-                    nextRows[rowIndex] = nextRow;
-                    props.onChange(nextRows);
-                  }}
-                />
-              ))}
+              {columns.map((column) => {
+                const columnType = column.type ?? "text";
+                const cellValue = (row as Record<string, unknown>)?.[column.key] as string ?? "";
+                const handleCellChange = (nextValue: string | number) => {
+                  const nextRows = [...rows];
+                  const nextRow = { ...(rows[rowIndex] as Record<string, unknown>), [column.key]: nextValue };
+                  nextRows[rowIndex] = nextRow;
+                  props.onChange(nextRows);
+                };
+                if (columnType === "select") {
+                  return (
+                    <select
+                      key={`${props.field.key}-${rowIndex}-${column.key}`}
+                      value={cellValue}
+                      onChange={(event) => handleCellChange(event.target.value)}
+                    >
+                      <option value="">Selecione</option>
+                      {(column.options ?? []).map((option) => (
+                        <option key={option} value={option}>{option}</option>
+                      ))}
+                    </select>
+                  );
+                }
+                if (columnType === "number") {
+                  return (
+                    <input
+                      key={`${props.field.key}-${rowIndex}-${column.key}`}
+                      type="number"
+                      value={cellValue}
+                      onChange={(event) => handleCellChange(event.target.value === "" ? "" : Number(event.target.value))}
+                    />
+                  );
+                }
+                return (
+                  <input
+                    key={`${props.field.key}-${rowIndex}-${column.key}`}
+                    value={cellValue}
+                    onChange={(event) => handleCellChange(event.target.value)}
+                  />
+                );
+              })}
               <button
                 type="button"
                 className="ghost-button"
@@ -492,11 +618,32 @@ function SchemaFieldRenderer(props: SchemaFieldRendererProps) {
   }
   return (
     <label className="content-builder-field">
-      <span>{props.field.label ?? props.field.key}</span>
+      <span>
+        {label}
+        {required && <em className="content-builder-required">*</em>}
+      </span>
       <input
         value={(props.value as string) ?? ""}
         onChange={(event) => props.onChange(event.target.value)}
       />
     </label>
   );
+}
+
+type ChecklistItem = { label: string; checked: boolean };
+
+function normalizeChecklistItems(value: unknown): ChecklistItem[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.map((item) => {
+    if (typeof item === "string") {
+      return { label: item, checked: false };
+    }
+    if (item && typeof item === "object") {
+      const typed = item as { label?: string; checked?: boolean };
+      return { label: typed.label ?? "", checked: Boolean(typed.checked) };
+    }
+    return { label: "", checked: false };
+  });
 }

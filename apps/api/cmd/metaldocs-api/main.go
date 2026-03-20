@@ -48,12 +48,13 @@ func main() {
 	if err != nil {
 		log.Fatalf("invalid attachments config: %v", err)
 	}
+	carboneCfg := config.LoadCarboneConfig()
 	authCfg, err := authn.LoadRuntimeConfig()
 	if err != nil {
 		log.Fatalf("invalid auth config: %v", err)
 	}
 
-	deps, err := bootstrap.BuildAPIDependencies(context.Background(), repoMode, attachmentsCfg)
+	deps, err := bootstrap.BuildAPIDependencies(context.Background(), repoMode, attachmentsCfg, carboneCfg)
 	if err != nil {
 		log.Fatalf("build api dependencies: %v", err)
 	}
@@ -65,7 +66,9 @@ func main() {
 	}
 
 	auditService := auditapp.NewService(deps.AuditReader)
-	docService := docapp.NewService(deps.DocumentsRepo, deps.Publisher, nil).WithAttachmentStore(deps.AttachmentStore)
+	docService := docapp.NewService(deps.DocumentsRepo, deps.Publisher, nil).
+		WithAttachmentStore(deps.AttachmentStore).
+		WithCarbone(deps.CarboneClient, deps.CarboneTemplates)
 	auditHandler := auditdelivery.NewHandler(auditService)
 	docHandler := docdelivery.NewHandler(docService).
 		WithAttachmentDownloads(security.NewAttachmentSigner(attachmentsCfg.DownloadSecret), time.Duration(attachmentsCfg.DownloadTTLSeconds)*time.Second)

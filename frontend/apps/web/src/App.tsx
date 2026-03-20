@@ -33,6 +33,7 @@ import type {
   VersionListItem,
   WorkflowApprovalItem,
 } from "./lib.types";
+import type { ContentMode } from "./components/create/documentCreateTypes";
 
 type LoadState = "idle" | "loading" | "ready" | "error";
 type PolicyScope = "document" | "document_type" | "area";
@@ -169,6 +170,12 @@ function AppContent() {
   const [loginForm, setLoginForm] = useState({ identifier: "admin", password: "" });
   const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
   const [documentForm, setDocumentForm] = useState(emptyDocumentForm);
+  const [contentMode, setContentMode] = useState<ContentMode>("native");
+  const [contentFile, setContentFile] = useState<File | null>(null);
+  const [contentPdfUrl, setContentPdfUrl] = useState("");
+  const [contentDocxUrl, setContentDocxUrl] = useState("");
+  const [contentStatus, setContentStatus] = useState<"idle" | "saving" | "ready" | "error">("idle");
+  const [contentError, setContentError] = useState("");
   const [documentProfiles, setDocumentProfiles] = useState<DocumentProfileItem[]>([]);
   const [processAreas, setProcessAreas] = useState<ProcessAreaItem[]>([]);
   const [documentDepartments, setDocumentDepartments] = useState<DocumentDepartmentItem[]>([]);
@@ -424,6 +431,12 @@ function AppContent() {
     setManagedUsers([]);
     setNotifications([]);
     setSelectedDocument(null);
+    setContentMode("native");
+    setContentFile(null);
+    setContentPdfUrl("");
+    setContentDocxUrl("");
+    setContentStatus("idle");
+    setContentError("");
     setMessage("");
     setError("");
     setAuthState("idle");
@@ -468,7 +481,7 @@ function AppContent() {
           ? [documentForm.audienceProcessArea || documentForm.processArea].filter(Boolean)
           : undefined,
       } : undefined;
-      await api.createDocument({
+      const created = await api.createDocument({
         ...documentForm,
         documentType: documentForm.documentProfile,
         documentProfile: documentForm.documentProfile,
@@ -478,6 +491,17 @@ function AppContent() {
         metadata: documentForm.metadata.trim() ? JSON.parse(documentForm.metadata) : {},
         audience,
       });
+      let handledContent = false;
+      setContentError("");
+
+      if (contentMode === "docx_upload" && contentFile) {
+        handledContent = true;
+        setContentStatus("saving");
+        const response = await api.uploadDocumentContentDocx(created.documentId, contentFile);
+        setContentPdfUrl(response.pdfUrl);
+        setContentDocxUrl(response.docxUrl);
+        setContentStatus("ready");
+      }
       setDocumentForm({
         ...emptyDocumentForm,
         ownerId: user?.userId ?? "",
@@ -486,12 +510,58 @@ function AppContent() {
         processArea: documentForm.processArea,
         metadata: metadataTextForProfileSchema(documentForm.documentProfile, selectedProfileSchema),
       });
-      setMessage("Documento criado com sucesso.");
-      setActiveView("library");
+      if (!handledContent) {
+        setContentMode("native");
+        setContentFile(null);
+        setContentPdfUrl("");
+        setContentDocxUrl("");
+        setContentStatus("idle");
+        setContentError("");
+      }
+      setMessage(handledContent ? "Documento criado e conteudo processado." : "Documento criado com sucesso.");
+      if (!handledContent) {
+        setActiveView("library");
+      }
       if (user) await loadWorkspace(user);
+    } catch (err) {
+      setContentStatus("error");
+      setContentError("Falha ao gerar o conteudo. O documento foi criado.");
+      handleError(err);
+    }
+  }
+
+  async function handleDownloadTemplate(profileCode: string) {
+    try {
+      if (!profileCode.trim()) return;
+      const blob = await api.downloadProfileTemplateDocx(profileCode);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `template-${profileCode.toLowerCase()}.docx`;
+      link.click();
+      window.URL.revokeObjectURL(url);
     } catch (err) {
       handleError(err);
     }
+  }
+
+  function handleContentModeChange(mode: ContentMode) {
+    setContentMode(mode);
+    setContentError("");
+    setContentStatus("idle");
+    setContentPdfUrl("");
+    setContentDocxUrl("");
+    if (mode === "native") {
+      setContentFile(null);
+    }
+  }
+
+  function handleContentFileChange(file: File | null) {
+    setContentFile(file);
+    setContentError("");
+    setContentStatus("idle");
+    setContentPdfUrl("");
+    setContentDocxUrl("");
   }
 
   async function openDocument(documentId: string) {
@@ -892,9 +962,18 @@ function AppContent() {
           subjects={subjects}
           selectedProfileSchema={selectedProfileSchema}
           selectedProfileGovernance={selectedProfileGovernance}
+          contentMode={contentMode}
+          contentFile={contentFile}
+          contentPdfUrl={contentPdfUrl}
+          contentDocxUrl={contentDocxUrl}
+          contentStatus={contentStatus}
+          contentError={contentError}
           onDocumentFormChange={setDocumentForm}
           onApplyProfile={applyDocumentProfile}
           onSubmitCreateDocument={handleCreateDocument}
+          onContentModeChange={handleContentModeChange}
+          onContentFileChange={handleContentFileChange}
+          onDownloadTemplate={handleDownloadTemplate}
         />
       );
     }

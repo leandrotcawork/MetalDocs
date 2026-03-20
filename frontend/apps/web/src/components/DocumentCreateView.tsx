@@ -41,6 +41,9 @@ export function DocumentCreateView(props: DocumentCreateViewProps) {
       ? props.documentForm.audienceDepartments.length > 0
       : props.documentForm.audienceDepartment.trim().length > 0 && props.documentForm.audienceProcessArea.trim().length > 0
   );
+  const contentCompleted = props.contentMode === "native"
+    ? true
+    : Boolean(props.contentFile || props.contentPdfUrl);
   const stepCompletion: Record<WizardStep, boolean> = {
     identification: props.documentForm.title.trim().length > 0 && props.documentForm.documentProfile.trim().length > 0,
     context: props.documentForm.ownerId.trim().length > 0
@@ -49,7 +52,7 @@ export function DocumentCreateView(props: DocumentCreateViewProps) {
     metadata: metadataComplete,
     content: props.documentForm.classification.trim().length > 0
       && audienceComplete,
-    body: props.documentForm.initialContent.trim().length > 0,
+    body: contentCompleted,
   };
 
   function stepStateFor(step: WizardStep): StepStatus {
@@ -183,18 +186,26 @@ export function DocumentCreateView(props: DocumentCreateViewProps) {
 
           <CreateDocumentSection
             sectionId={sectionIdByStep.body}
-            title="Conteudo"
-            subtitle="Texto inicial do documento."
+            title="Conteudo do documento"
+            subtitle="Escolha como voce vai produzir o conteudo."
             icon={(
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
                 <path d="M3 3.5h8M3 6.5h8M3 9.5h5" />
               </svg>
             )}
           >
-            <DocumentCreateBodyStep
-              form={props.documentForm}
-              onDocumentFormChange={props.onDocumentFormChange}
-            />
+          <DocumentCreateBodyStep
+            contentMode={props.contentMode}
+            contentFile={props.contentFile}
+            contentPdfUrl={props.contentPdfUrl}
+            contentDocxUrl={props.contentDocxUrl}
+            contentStatus={props.contentStatus}
+            contentError={props.contentError}
+            profileCode={selectedProfile?.code ?? ""}
+            onContentModeChange={props.onContentModeChange}
+            onContentFileChange={props.onContentFileChange}
+            onDownloadTemplate={props.onDownloadTemplate}
+          />
           </CreateDocumentSection>
 
           <footer className="create-doc-footer">

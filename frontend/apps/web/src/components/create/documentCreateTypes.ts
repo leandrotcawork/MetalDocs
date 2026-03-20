@@ -21,6 +21,7 @@ export type DocumentForm = {
   initialContent: string;
 };
 
+export type ContentMode = "native" | "docx_upload";
 export type WizardStep = "identification" | "context" | "metadata" | "content" | "body";
 export type StepStatus = "pending" | "active" | "done" | "error";
 
@@ -32,9 +33,18 @@ export type DocumentCreateViewProps = {
   subjects: SubjectItem[];
   selectedProfileSchema: DocumentProfileSchemaItem | null;
   selectedProfileGovernance: DocumentProfileGovernanceItem | null;
+  contentMode: ContentMode;
+  contentFile: File | null;
+  contentPdfUrl: string;
+  contentDocxUrl: string;
+  contentStatus: "idle" | "saving" | "ready" | "error";
+  contentError: string;
   onDocumentFormChange: (next: DocumentForm) => void;
   onApplyProfile: (profileCode: string, preferredProcessArea?: string) => void | Promise<void>;
   onSubmitCreateDocument: (event: React.FormEvent<HTMLFormElement>) => void | Promise<void>;
+  onContentModeChange: (mode: ContentMode) => void;
+  onContentFileChange: (file: File | null) => void;
+  onDownloadTemplate: (profileCode: string) => void | Promise<void>;
 };
 
 export const wizardSteps: Array<{ key: WizardStep; label: string; description: string }> = [
@@ -42,7 +52,7 @@ export const wizardSteps: Array<{ key: WizardStep; label: string; description: s
   { key: "context", label: "Contexto operacional", description: "Responsavel, area e taxonomia." },
   { key: "metadata", label: "Campos dinamicos", description: "Campos do schema." },
   { key: "content", label: "Classificacao e acesso", description: "Classificacao, audiencia e vigencia." },
-  { key: "body", label: "Conteudo", description: "Texto inicial do documento." },
+  { key: "body", label: "Conteudo", description: "Modo de autoria." },
 ];
 
 export function parseMetadata(value: string): Record<string, string> {

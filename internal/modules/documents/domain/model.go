@@ -21,6 +21,11 @@ const (
 )
 
 const (
+	ContentSourceNative     = "native"
+	ContentSourceDocxUpload = "docx_upload"
+)
+
+const (
 	AudienceModeInternal   = "INTERNAL"
 	AudienceModeDepartment = "DEPARTMENT"
 	AudienceModeAreas      = "AREAS"
@@ -50,12 +55,20 @@ type Document struct {
 }
 
 type Version struct {
-	DocumentID    string
-	Number        int
-	Content       string
-	ContentHash   string
-	ChangeSummary string
-	CreatedAt     time.Time
+	DocumentID       string
+	Number           int
+	Content          string
+	ContentHash      string
+	ChangeSummary    string
+	ContentSource    string
+	NativeContent    map[string]any
+	DocxStorageKey   string
+	PdfStorageKey    string
+	TextContent      string
+	FileSizeBytes    int64
+	OriginalFilename string
+	PageCount        int
+	CreatedAt        time.Time
 }
 
 type Attachment struct {
@@ -102,6 +115,19 @@ type AddVersionCommand struct {
 	Content       string
 	ChangeSummary string
 	TraceID       string
+}
+
+type SaveNativeContentCommand struct {
+	DocumentID string
+	Content    map[string]any
+	TraceID    string
+}
+
+type UploadDocxContentCommand struct {
+	DocumentID string
+	FileName   string
+	Content    []byte
+	TraceID    string
 }
 
 type UploadAttachmentCommand struct {
@@ -295,21 +321,21 @@ func DefaultSubjects() []Subject {
 func DefaultDocumentProfileSchemas() []DocumentProfileSchemaVersion {
 	return []DocumentProfileSchemaVersion{
 		DocumentProfileSchemaVersion{
-			ProfileCode: "po",
-			Version:     1,
-			IsActive:    true,
+			ProfileCode:   "po",
+			Version:       1,
+			IsActive:      true,
 			MetadataRules: []MetadataFieldRule{},
 		},
 		DocumentProfileSchemaVersion{
-			ProfileCode: "it",
-			Version:     1,
-			IsActive:    true,
+			ProfileCode:   "it",
+			Version:       1,
+			IsActive:      true,
 			MetadataRules: []MetadataFieldRule{},
 		},
 		DocumentProfileSchemaVersion{
-			ProfileCode: "rg",
-			Version:     1,
-			IsActive:    true,
+			ProfileCode:   "rg",
+			Version:       1,
+			IsActive:      true,
 			MetadataRules: []MetadataFieldRule{},
 		},
 	}

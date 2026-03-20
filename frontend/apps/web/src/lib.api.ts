@@ -13,6 +13,11 @@ import type {
   DocumentProfileSchemaItem,
   DocumentTypeItem,
   DocumentDepartmentItem,
+  DocumentContentDocxResponse,
+  DocumentContentNativeResponse,
+  DocumentContentPdfResponse,
+  DocumentContentSaveResponse,
+  DocumentContentUploadResponse,
   ManagedUserItem,
   NotificationItem,
   ProcessAreaItem,
@@ -310,6 +315,25 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
+async function requestBlob(path: string, init?: RequestInit): Promise<Blob> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    credentials: "include",
+    ...init,
+    headers: {
+      ...(init?.headers ?? {}),
+    },
+  });
+
+  if (!response.ok) {
+    const errorPayload = (await response.json().catch(() => null)) as ApiErrorEnvelope | null;
+    const error = new Error(errorPayload?.error.message ?? `HTTP ${response.status}`);
+    (error as Error & { status?: number }).status = response.status;
+    throw error;
+  }
+
+  return response.blob();
+}
+
 export const api = {
   currentApiBaseUrl: API_BASE_URL,
   login: async (body: { identifier: string; password: string }) => {
@@ -417,6 +441,20 @@ export const api = {
     return request<AttachmentItem>(`/documents/${documentId}/attachments`, { method: "POST", body: formData });
   },
   getAttachmentDownloadURL: (documentId: string, attachmentId: string) => request<{ attachmentId: string; downloadUrl: string; expiresAt: string }>(`/documents/${documentId}/attachments/${attachmentId}/download-url`),
+  getDocumentContentNative: (documentId: string) => request<DocumentContentNativeResponse>(`/documents/${documentId}/content/native`),
+  saveDocumentContentNative: (documentId: string, body: Record<string, unknown>) =>
+    request<DocumentContentSaveResponse>(`/documents/${documentId}/content/native`, { method: "POST", body: JSON.stringify(body) }),
+  getDocumentContentPdf: (documentId: string) => request<DocumentContentPdfResponse>(`/documents/${documentId}/content/pdf`),
+  getDocumentContentDocx: (documentId: string) => request<DocumentContentDocxResponse>(`/documents/${documentId}/content/docx`),
+  uploadDocumentContentDocx: (documentId: string, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return request<DocumentContentUploadResponse>(`/documents/${documentId}/content/upload`, { method: "POST", body: formData });
+  },
+  downloadProfileTemplateDocx: (profileCode: string) =>
+    requestBlob(`/document-profiles/${encodeURIComponent(profileCode)}/template/docx`),
+  downloadDocumentTemplateDocx: (documentId: string) =>
+    requestBlob(`/documents/${encodeURIComponent(documentId)}/template/docx`),
   listAccessPolicies: async (resourceScope: string, resourceId: string) => {
     const response = await request<{ items: AccessPolicyItem[] }>(`/access-policies?resourceScope=${encodeURIComponent(resourceScope)}&resourceId=${encodeURIComponent(resourceId)}`);
     return { items: Array.isArray(response.items) ? response.items.map(normalizeAccessPolicyItem) : [] };

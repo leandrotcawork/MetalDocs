@@ -25,21 +25,21 @@ type Handler struct {
 }
 
 type CreateDocumentRequest struct {
-	Title           string         `json:"title"`
-	DocumentType    string         `json:"documentType"`
-	DocumentProfile string         `json:"documentProfile,omitempty"`
-	ProcessArea     string         `json:"processArea,omitempty"`
-	Subject         string         `json:"subject,omitempty"`
-	OwnerID         string         `json:"ownerId"`
-	BusinessUnit    string         `json:"businessUnit"`
-	Department      string         `json:"department"`
-	Classification  string         `json:"classification"`
+	Title           string                   `json:"title"`
+	DocumentType    string                   `json:"documentType"`
+	DocumentProfile string                   `json:"documentProfile,omitempty"`
+	ProcessArea     string                   `json:"processArea,omitempty"`
+	Subject         string                   `json:"subject,omitempty"`
+	OwnerID         string                   `json:"ownerId"`
+	BusinessUnit    string                   `json:"businessUnit"`
+	Department      string                   `json:"department"`
+	Classification  string                   `json:"classification"`
 	Audience        *DocumentAudienceRequest `json:"audience,omitempty"`
-	Tags            []string       `json:"tags,omitempty"`
-	EffectiveAt     string         `json:"effectiveAt,omitempty"`
-	ExpiryAt        string         `json:"expiryAt,omitempty"`
-	Metadata        map[string]any `json:"metadata,omitempty"`
-	InitialContent  string         `json:"initialContent,omitempty"`
+	Tags            []string                 `json:"tags,omitempty"`
+	EffectiveAt     string                   `json:"effectiveAt,omitempty"`
+	ExpiryAt        string                   `json:"expiryAt,omitempty"`
+	Metadata        map[string]any           `json:"metadata,omitempty"`
+	InitialContent  string                   `json:"initialContent,omitempty"`
 }
 
 type DocumentAudienceRequest struct {
@@ -89,6 +89,44 @@ type VersionResponse struct {
 	CreatedAt     string `json:"createdAt"`
 }
 
+type DocumentContentNativeRequest struct {
+	Content map[string]any `json:"content"`
+}
+
+type DocumentContentNativeResponse struct {
+	DocumentID    string         `json:"documentId"`
+	Version       int            `json:"version"`
+	ContentSource string         `json:"contentSource"`
+	Content       map[string]any `json:"content"`
+}
+
+type DocumentContentSaveResponse struct {
+	DocumentID    string `json:"documentId"`
+	Version       int    `json:"version"`
+	ContentSource string `json:"contentSource"`
+	PdfURL        string `json:"pdfUrl"`
+	ExpiresAt     string `json:"expiresAt"`
+}
+
+type DocumentContentPdfResponse struct {
+	PdfURL    string `json:"pdfUrl"`
+	ExpiresAt string `json:"expiresAt"`
+	PageCount int    `json:"pageCount,omitempty"`
+}
+
+type DocumentContentDocxResponse struct {
+	DocxURL   string `json:"docxUrl"`
+	ExpiresAt string `json:"expiresAt"`
+}
+
+type DocumentContentUploadResponse struct {
+	ContentSource string `json:"contentSource"`
+	DocxURL       string `json:"docxUrl"`
+	PdfURL        string `json:"pdfUrl"`
+	ExpiresAt     string `json:"expiresAt"`
+	PageCount     int    `json:"pageCount,omitempty"`
+}
+
 type DocumentTypeResponse struct {
 	Code               string `json:"code"`
 	Name               string `json:"name"`
@@ -130,9 +168,9 @@ type UpsertDocumentProfileRequest struct {
 }
 
 type DocumentProfileSchemaResponse struct {
-	ProfileCode   string                     `json:"profileCode"`
-	Version       int                        `json:"version"`
-	IsActive      bool                       `json:"isActive"`
+	ProfileCode   string                      `json:"profileCode"`
+	Version       int                         `json:"version"`
+	IsActive      bool                        `json:"isActive"`
 	MetadataRules []MetadataFieldRuleResponse `json:"metadataRules"`
 }
 
@@ -445,6 +483,8 @@ func (h *Handler) handleDocumentProfileSubRoutes(w http.ResponseWriter, r *http.
 		h.handleUpdateDocumentProfile(w, r, parts[0])
 	case len(parts) == 1 && r.Method == http.MethodDelete:
 		h.handleDeleteDocumentProfile(w, r, parts[0])
+	case len(parts) == 3 && parts[1] == "template" && parts[2] == "docx" && r.Method == http.MethodGet:
+		h.handleDocumentProfileTemplateDocx(w, r, parts[0])
 	case len(parts) == 2 && parts[1] == "schema" && r.Method == http.MethodGet:
 		h.handleDocumentProfileSchemas(w, r, parts[0])
 	case len(parts) == 2 && parts[1] == "schema" && r.Method == http.MethodPost:
@@ -1185,6 +1225,33 @@ func (h *Handler) handleDocumentSubRoutes(w http.ResponseWriter, r *http.Request
 		h.handleDiffVersions(w, r, parts[0])
 		return
 	}
+	if len(parts) == 3 && strings.TrimSpace(parts[0]) != "" && parts[1] == "content" && parts[2] == "native" {
+		switch r.Method {
+		case http.MethodGet:
+			h.handleDocumentContentNativeGet(w, r, parts[0])
+		case http.MethodPost:
+			h.handleDocumentContentNativePost(w, r, parts[0])
+		default:
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
+		return
+	}
+	if len(parts) == 3 && strings.TrimSpace(parts[0]) != "" && parts[1] == "content" && parts[2] == "pdf" && r.Method == http.MethodGet {
+		h.handleDocumentContentPDF(w, r, parts[0])
+		return
+	}
+	if len(parts) == 3 && strings.TrimSpace(parts[0]) != "" && parts[1] == "content" && parts[2] == "docx" && r.Method == http.MethodGet {
+		h.handleDocumentContentDocx(w, r, parts[0])
+		return
+	}
+	if len(parts) == 3 && strings.TrimSpace(parts[0]) != "" && parts[1] == "content" && parts[2] == "upload" && r.Method == http.MethodPost {
+		h.handleDocumentContentUpload(w, r, parts[0])
+		return
+	}
+	if len(parts) == 3 && strings.TrimSpace(parts[0]) != "" && parts[1] == "template" && parts[2] == "docx" && r.Method == http.MethodGet {
+		h.handleDocumentTemplateDocx(w, r, parts[0])
+		return
+	}
 	if len(parts) == 4 && strings.TrimSpace(parts[0]) != "" && parts[1] == "attachments" && parts[3] == "download-url" && r.Method == http.MethodGet {
 		h.handleCreateAttachmentDownloadURL(w, r, parts[0], parts[2])
 		return
@@ -1398,6 +1465,240 @@ func (h *Handler) handleAddVersion(w http.ResponseWriter, r *http.Request, docum
 		ContentHash:   version.ContentHash,
 		ChangeSummary: version.ChangeSummary,
 		CreatedAt:     version.CreatedAt.Format(time.RFC3339),
+	})
+}
+
+func (h *Handler) handleDocumentContentNativeGet(w http.ResponseWriter, r *http.Request, documentID string) {
+	traceID := requestTraceID(r)
+	version, err := h.service.GetNativeContentAuthorized(r.Context(), documentID)
+	if err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+	if strings.TrimSpace(version.ContentSource) == "" {
+		version.ContentSource = domain.ContentSourceNative
+	}
+	content := version.NativeContent
+	if content == nil {
+		content = map[string]any{}
+	}
+
+	writeJSON(w, http.StatusOK, DocumentContentNativeResponse{
+		DocumentID:    version.DocumentID,
+		Version:       version.Number,
+		ContentSource: version.ContentSource,
+		Content:       content,
+	})
+}
+
+func (h *Handler) handleDocumentContentNativePost(w http.ResponseWriter, r *http.Request, documentID string) {
+	traceID := requestTraceID(r)
+
+	var req DocumentContentNativeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid JSON payload", traceID)
+		return
+	}
+
+	version, err := h.service.SaveNativeContentAuthorized(r.Context(), domain.SaveNativeContentCommand{
+		DocumentID: documentID,
+		Content:    req.Content,
+		TraceID:    traceID,
+	})
+	if err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+	if h.signer == nil {
+		writeAPIError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Attachment signer is not configured", traceID)
+		return
+	}
+
+	expiresAt := time.Now().UTC().Add(h.downloadTTL)
+	pdfURL := h.signer.BuildDownloadURL("/api/v1/documents/"+documentID+"/content/pdf", documentID+":pdf", expiresAt)
+	writeJSON(w, http.StatusCreated, DocumentContentSaveResponse{
+		DocumentID:    documentID,
+		Version:       version.Number,
+		ContentSource: normalizeContentSource(version.ContentSource),
+		PdfURL:        pdfURL,
+		ExpiresAt:     expiresAt.Format(time.RFC3339),
+	})
+}
+
+func (h *Handler) handleDocumentContentPDF(w http.ResponseWriter, r *http.Request, documentID string) {
+	traceID := requestTraceID(r)
+	if h.signer == nil {
+		writeAPIError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Attachment signer is not configured", traceID)
+		return
+	}
+	expiresAt := strings.TrimSpace(r.URL.Query().Get("expiresAt"))
+	signature := strings.TrimSpace(r.URL.Query().Get("signature"))
+	if signature != "" || expiresAt != "" {
+		if !h.signer.Verify(documentID+":pdf", expiresAt, signature) {
+			writeAPIError(w, http.StatusForbidden, "CONTENT_URL_INVALID", "Content URL is invalid or expired", traceID)
+			return
+		}
+		version, err := h.service.GetNativeContentAuthorized(r.Context(), documentID)
+		if err != nil {
+			h.writeDomainError(w, err, traceID)
+			return
+		}
+		if strings.TrimSpace(version.PdfStorageKey) == "" {
+			writeAPIError(w, http.StatusNotFound, "VERSION_NOT_FOUND", "PDF content not found", traceID)
+			return
+		}
+		content, err := h.service.OpenContentStorage(r.Context(), version.PdfStorageKey)
+		if err != nil {
+			h.writeDomainError(w, err, traceID)
+			return
+		}
+		w.Header().Set("Content-Type", "application/pdf")
+		w.Header().Set("Content-Disposition", `attachment; filename="document-`+documentID+`-v`+strconv.Itoa(version.Number)+`.pdf"`)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(content)
+		return
+	}
+
+	version, err := h.service.GetNativeContentAuthorized(r.Context(), documentID)
+	if err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+	if strings.TrimSpace(version.PdfStorageKey) == "" {
+		writeAPIError(w, http.StatusNotFound, "VERSION_NOT_FOUND", "PDF content not found", traceID)
+		return
+	}
+
+	exp := time.Now().UTC().Add(h.downloadTTL)
+	pdfURL := h.signer.BuildDownloadURL("/api/v1/documents/"+documentID+"/content/pdf", documentID+":pdf", exp)
+	writeJSON(w, http.StatusOK, DocumentContentPdfResponse{
+		PdfURL:    pdfURL,
+		ExpiresAt: exp.Format(time.RFC3339),
+		PageCount: version.PageCount,
+	})
+}
+
+func (h *Handler) handleDocumentContentDocx(w http.ResponseWriter, r *http.Request, documentID string) {
+	traceID := requestTraceID(r)
+	if h.signer == nil {
+		writeAPIError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Attachment signer is not configured", traceID)
+		return
+	}
+	expiresAt := strings.TrimSpace(r.URL.Query().Get("expiresAt"))
+	signature := strings.TrimSpace(r.URL.Query().Get("signature"))
+	if signature != "" || expiresAt != "" {
+		if !h.signer.Verify(documentID+":docx", expiresAt, signature) {
+			writeAPIError(w, http.StatusForbidden, "CONTENT_URL_INVALID", "Content URL is invalid or expired", traceID)
+			return
+		}
+		version, err := h.service.GetNativeContentAuthorized(r.Context(), documentID)
+		if err != nil {
+			h.writeDomainError(w, err, traceID)
+			return
+		}
+		if strings.TrimSpace(version.DocxStorageKey) == "" {
+			writeAPIError(w, http.StatusNotFound, "VERSION_NOT_FOUND", "DOCX content not found", traceID)
+			return
+		}
+		content, err := h.service.OpenContentStorage(r.Context(), version.DocxStorageKey)
+		if err != nil {
+			h.writeDomainError(w, err, traceID)
+			return
+		}
+		w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+		w.Header().Set("Content-Disposition", `attachment; filename="document-`+documentID+`-v`+strconv.Itoa(version.Number)+`.docx"`)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(content)
+		return
+	}
+
+	version, err := h.service.GetNativeContentAuthorized(r.Context(), documentID)
+	if err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+	if strings.TrimSpace(version.DocxStorageKey) == "" {
+		writeAPIError(w, http.StatusNotFound, "VERSION_NOT_FOUND", "DOCX content not found", traceID)
+		return
+	}
+
+	exp := time.Now().UTC().Add(h.downloadTTL)
+	docxURL := h.signer.BuildDownloadURL("/api/v1/documents/"+documentID+"/content/docx", documentID+":docx", exp)
+	writeJSON(w, http.StatusOK, DocumentContentDocxResponse{
+		DocxURL:   docxURL,
+		ExpiresAt: exp.Format(time.RFC3339),
+	})
+}
+
+func (h *Handler) handleDocumentTemplateDocx(w http.ResponseWriter, r *http.Request, documentID string) {
+	traceID := requestTraceID(r)
+	payload, err := h.service.RenderDocumentTemplateDocxAuthorized(r.Context(), documentID)
+	if err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+	w.Header().Set("Content-Disposition", `attachment; filename="document-`+documentID+`-template.docx"`)
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(payload)
+}
+
+func (h *Handler) handleDocumentProfileTemplateDocx(w http.ResponseWriter, r *http.Request, profileCode string) {
+	traceID := requestTraceID(r)
+	payload, err := h.service.RenderProfileTemplateDocx(r.Context(), profileCode)
+	if err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+	w.Header().Set("Content-Disposition", `attachment; filename="profile-`+strings.ToLower(strings.TrimSpace(profileCode))+`-template.docx"`)
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(payload)
+}
+
+func (h *Handler) handleDocumentContentUpload(w http.ResponseWriter, r *http.Request, documentID string) {
+	traceID := requestTraceID(r)
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid multipart payload", traceID)
+		return
+	}
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Missing file field", traceID)
+		return
+	}
+	defer file.Close()
+
+	content, err := io.ReadAll(io.LimitReader(file, 10<<20+1))
+	if err != nil {
+		writeAPIError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to read attachment payload", traceID)
+		return
+	}
+
+	version, err := h.service.UploadDocxContentAuthorized(r.Context(), domain.UploadDocxContentCommand{
+		DocumentID: documentID,
+		FileName:   header.Filename,
+		Content:    content,
+		TraceID:    traceID,
+	})
+	if err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+	if h.signer == nil {
+		writeAPIError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Attachment signer is not configured", traceID)
+		return
+	}
+
+	expiresAt := time.Now().UTC().Add(h.downloadTTL)
+	docxURL := h.signer.BuildDownloadURL("/api/v1/documents/"+documentID+"/content/docx", documentID+":docx", expiresAt)
+	pdfURL := h.signer.BuildDownloadURL("/api/v1/documents/"+documentID+"/content/pdf", documentID+":pdf", expiresAt)
+	writeJSON(w, http.StatusCreated, DocumentContentUploadResponse{
+		ContentSource: normalizeContentSource(version.ContentSource),
+		DocxURL:       docxURL,
+		PdfURL:        pdfURL,
+		ExpiresAt:     expiresAt.Format(time.RFC3339),
+		PageCount:     version.PageCount,
 	})
 }
 
@@ -1621,6 +1922,14 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
+}
+
+func normalizeContentSource(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return domain.ContentSourceNative
+	}
+	return trimmed
 }
 
 func parseOptionalRFC3339(raw string) (*time.Time, error) {

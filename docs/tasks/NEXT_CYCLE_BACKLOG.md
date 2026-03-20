@@ -1226,7 +1226,7 @@ Aceite:
 - Sem breaking change: novos campos como opcionais quando necessario.
 
 ## Task 059 - Backend: Carbone client + template registry bootstrap
-Status: `todo`
+Status: `done`
 
 Escopo:
 - Criar client `CarboneService` (wrapper REST) com:
@@ -1241,7 +1241,7 @@ Aceite:
 - Bootstrap nao falha o start se Carbone estiver indisponivel: falha controlada + health indicando degradacao.
 
 ## Task 060 - Backend: content flows (native + docx upload) creating versions
-Status: `todo`
+Status: `done`
 
 Escopo:
 - Native authoring:
@@ -1261,7 +1261,7 @@ Aceite:
 - `document_versions` permanece append-only.
 
 ## Task 061 - Frontend: Content mode selector + DOCX upload + PDF viewer
-Status: `todo`
+Status: `done`
 
 Escopo MVP:
 - Novo bloco "Conteudo" (step 5) com:
@@ -1285,3 +1285,133 @@ Escopo:
 
 Aceite:
 - Busca retorna documentos por texto do conteudo (modo native/docx).
+
+## Task 063 - Frontend: Align Step 5 "Conteudo" UX to reference (mode cards + DOCX stepper)
+Status: `todo`
+
+Objetivo:
+Alinhar a experiencia do Step 5 ("Conteudo do documento") ao mockup de referencia, mantendo o shell atual e sem mover regra de negocio para o frontend.
+
+Escopo:
+- Ajustar Step 5 para ter:
+  - "Conteudo do documento" com seletor de modo em 2 cards (Native vs Word/.docx).
+  - Fluxo DOCX com stepper vertical (3 passos) e estados: idle, downloading, ready, uploading, processing, preview.
+  - Preview do PDF dentro do Step 5 para o modo DOCX (quando existir `pdfUrl`).
+- Para modo Native:
+  - Remover textarea "Conteudo (MVP)" do create flow.
+  - Mostrar CTA claro: "Abrir editor de conteudo" (habilitado somente depois de criar o documento) e explicar que o editor e uma tela dedicada.
+- Refatorar o Step 5 em componentes menores e reaproveitaveis (widget local de feature, sem promover para lib global antes de 3 usos).
+- Garantir layout e microcopy consistentes com a linguagem MetalDocs (sem dependencias externas de fonte/CDN).
+
+Aceite:
+- Step 5 visualmente proximo do HTML de referencia: cards, stepper, dropzone, preview.
+- Fluxo DOCX funciona end-to-end usando o contrato existente (download template, upload, preview PDF).
+- Modo Native nao "parece um campo solto": direciona para o editor dedicado.
+
+## Task 064 - Frontend: ContentBuilderView (Native) with split editor/preview layout
+Status: `todo`
+
+Objetivo:
+Criar uma tela dedicada de autoria nativa (Modo A) no padrao do mockup: header com contexto do documento + editor por secoes + rodape fixo + preview de PDF em painel lateral recolhivel.
+
+Escopo:
+- Nova rota/view (ex: `DocumentContentBuilderView`) acessivel a partir do documento criado.
+- Layout:
+  - Header: breadcrumb, codigo/titulo/status, badges de versao/ultima geracao.
+  - Corpo split: Editor (esquerda) | Preview PDF (direita) com recolher/expandir.
+  - Footer fixo com acoes: "Salvar" (cria nova versao) e "Gerar PDF" (re-render do ultimo conteudo salvo).
+- Estado:
+  - state machine via `useReducer` para loading/dirty/saving/rendering/error.
+  - UI lida com expiracao de URL assinada (recarrega ao abrir preview quando expirado).
+- Integracao:
+  - Carregar conteudo atual via `GET /documents/{id}/content/native`.
+  - Salvar via `POST /documents/{id}/content/native` (append-only).
+  - Preview server-side via `GET /documents/{id}/content/pdf`.
+  - Rerender via `POST /documents/{id}/content/render-pdf` quando usuario solicitar.
+
+Aceite:
+- Editor nativo abre como "pagina oficial" (nao como card dentro do create view).
+- Salvar cria versao nova e o preview mostra o PDF correspondente.
+- Painel de preview pode ser recolhido sem quebrar layout.
+
+## Task 065 - Backend: Freeze render semantics for "Salvar" vs "Gerar PDF" (contracts + invariants)
+Status: `todo`
+
+Objetivo:
+Congelar o comportamento exato de renderizacao para suportar a UX do builder sem violar versionamento imutavel.
+
+Escopo:
+- Definir e implementar (conforme ADRs 0012/0013):
+  - Quando `POST /content/native` deve (ou nao) renderizar automaticamente PDF.
+  - O que `POST /content/render-pdf` faz: re-render da ultima versao (sem alterar o JSON) e como isso e persistido sem reescrever historico indevido.
+- Garantir que o PDF mostrado por `GET /content/pdf` tenha vinculacao clara com uma versao (mesmo que seja artefato derivado).
+- Ajustar OpenAPI (se necessario) para refletir a semantica final (ex: incluir `versionId`/`versionNumber` no response).
+- Tests de invariantes:
+  - Append-only: conteudo e versoes nao sao sobrescritos.
+  - Render nao cria versao silenciosamente.
+
+Aceite:
+- Comportamento do builder (Salvar x Gerar PDF) e consistente, testado e documentado.
+- Nenhuma operacao permite update de uma versao existente.
+
+## Task 066 - Domain/Registry: Content schema per profile (server as source of truth)
+Status: `todo`
+
+Objetivo:
+Tornar o editor nativo orientado a schema por profile sem hardcode de estrutura no frontend, mantendo o dominio (backend) como fonte de verdade.
+
+Escopo:
+- Introduzir um contrato de `content_schema` versionado por profile (PO/IT/RG/FM):
+  - estrutura de secoes
+  - campos tipados (text, textarea, enum, array, table, checklist)
+  - labels/descriptions humanizadas (pt-BR)
+  - defaults e obrigatoriedade quando aplicavel
+- Persistencia: armazenar schema junto do registry (ex: tabela de schemas por profile) com seeds para Metal Nobre.
+- API: expor schema no endpoint de profiles (ou endpoint dedicado) sem breaking change.
+- Validacao backend: validar payload `native_content` contra o `content_schema` do profile ativo.
+
+Aceite:
+- Frontend consegue montar o editor sem mapa `profile -> fields` hardcoded.
+- Payload invalido falha com erro de dominio consistente.
+
+## Task 067 - Frontend: Schema-driven native editor widgets (sections, arrays, tables)
+Status: `todo`
+
+Objetivo:
+Implementar um renderer de formulario baseado em schema (Task 066) com qualidade de UX semelhante ao mockup e sem duplicacao de componentes.
+
+Escopo:
+- Widgets de campo:
+  - text/textarea/select
+  - array de strings (add/remove)
+  - tabela editavel (add/remove row)
+  - checklist (boolean + label)
+- Seções expansiveis (accordion) por `sectionKey`.
+- Controles de erro/required baseado no schema e no retorno do backend.
+- Output: produzir `native_content` estruturado exatamente no formato esperado pelo backend.
+
+Aceite:
+- PO/IT/RG/FM renderizam secoes e campos principais de forma editavel.
+- Add/remove de itens funciona sem quebrar o JSON.
+- Sem regra de negocio no frontend: apenas interpretacao de schema.
+
+## Task 068 - Templates: DOCX master assets + runbook (Carbone)
+Status: `todo`
+
+Objetivo:
+Padronizar e operacionalizar os templates master `.docx` (design assets) usados pelo Carbone para render e export, com governanca e reproducibilidade.
+
+Escopo:
+- Pastas canonicas no repo:
+  - `carbone/templates/` (versionado) com templates master por profile.
+  - `carbone/renders/` (gitignored) para saida local.
+- Runbook:
+  - como editar templates no Word/LibreOffice
+  - como testar render localmente
+  - convencoes de placeholders Carbone
+- Bootstrap:
+  - registrar templates na inicializacao do API (idempotente) e mapear `profileCode -> templateId`.
+
+Aceite:
+- Equipe consegue atualizar um template e validar render sem alterar codigo.
+- Templates ficam versionados como ativos de design, nao como dados runtime.

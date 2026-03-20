@@ -12,17 +12,30 @@ type RuntimeStatusProvider interface {
 	RuntimeMetrics(ctx context.Context) map[string]any
 }
 
+type DependencyCheckResult struct {
+	Status string
+	Detail string
+	Meta   map[string]any
+}
+
+type DependencyCheck struct {
+	Name  string
+	Check func(context.Context) (DependencyCheckResult, error)
+}
+
 type StaticRuntimeStatusProvider struct {
 	repositoryMode  string
 	storageProvider string
 	authEnabled     bool
+	checks          []DependencyCheck
 }
 
-func NewStaticRuntimeStatusProvider(repositoryMode, storageProvider string, authEnabled bool) *StaticRuntimeStatusProvider {
+func NewStaticRuntimeStatusProvider(repositoryMode, storageProvider string, authEnabled bool, checks ...DependencyCheck) *StaticRuntimeStatusProvider {
 	return &StaticRuntimeStatusProvider{
 		repositoryMode:  repositoryMode,
 		storageProvider: storageProvider,
 		authEnabled:     authEnabled,
+		checks:          checks,
 	}
 }
 
@@ -35,14 +48,14 @@ func (p *StaticRuntimeStatusProvider) Live(_ context.Context) (int, map[string]a
 	}
 }
 
-func (p *StaticRuntimeStatusProvider) Ready(_ context.Context) (int, map[string]any) {
+func (p *StaticRuntimeStatusProvider) Ready(ctx context.Context) (int, map[string]any) {
 	return 200, map[string]any{
 		"status": "ready",
-		"checks": []map[string]any{
+		"checks": p.applyDependencyChecks(ctx, []map[string]any{
 			{"name": "repository", "status": "up", "mode": p.repositoryMode},
 			{"name": "storage", "status": "up", "provider": p.storageProvider},
 			{"name": "auth", "status": "up", "enabled": p.authEnabled},
-		},
+		}, nil, nil),
 	}
 }
 
@@ -79,9 +92,9 @@ type PostgresRuntimeStatusProvider struct {
 	db *sql.DB
 }
 
-func NewPostgresRuntimeStatusProvider(db *sql.DB, repositoryMode, storageProvider string, authEnabled bool) *PostgresRuntimeStatusProvider {
+func NewPostgresRuntimeStatusProvider(db *sql.DB, repositoryMode, storageProvider string, authEnabled bool, checks ...DependencyCheck) *PostgresRuntimeStatusProvider {
 	return &PostgresRuntimeStatusProvider{
-		StaticRuntimeStatusProvider: NewStaticRuntimeStatusProvider(repositoryMode, storageProvider, authEnabled),
+		StaticRuntimeStatusProvider: NewStaticRuntimeStatusProvider(repositoryMode, storageProvider, authEnabled, checks...),
 		db:                          db,
 	}
 }
@@ -109,6 +122,12 @@ func (p *PostgresRuntimeStatusProvider) Ready(ctx context.Context) (int, map[str
 		checks[0]["status"] = "down"
 		checks[0]["detail"] = truncateReadinessError(err)
 	}
+
+	statusPtr := &status
+	codePtr := &code
+	checks = p.applyDependencyChecks(ctx, checks, statusPtr, codePtr)
+	status = *statusPtr
+	code = *codePtr
 
 	return code, map[string]any{
 		"status": status,
@@ -219,4 +238,48 @@ func truncateReadinessError(err error) string {
 		return msg[:160]
 	}
 	return msg
+}
+
+func (p *StaticRuntimeStatusProvider) applyDependencyChecks(ctx context.Context, checks []map[string]any, status *string, code *int) []map[string]any {
+	if len(p.checks) == 0 {
+		return checks
+	}
+	for _, check := range p.checks {
+		if check.Check == nil {
+			continue
+		}
+		readyCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		result, err := check.Check(readyCtx)
+		cancel()
+
+		entry := map[string]any{
+			"name":   check.Name,
+			"status": "up",
+		}
+		if result.Status != "" {
+			entry["status"] = result.Status
+		}
+		if result.Detail != "" {
+			entry["detail"] = result.Detail
+		}
+		for key, value := range result.Meta {
+			entry[key] = value
+		}
+		if err != nil {
+			entry["status"] = "down"
+			entry["detail"] = truncateReadinessError(err)
+		}
+		checks = append(checks, entry)
+
+		state := entry["status"]
+		if state != "up" && state != "skipped" {
+			if status != nil {
+				*status = "degraded"
+			}
+			if code != nil {
+				*code = 503
+			}
+		}
+	}
+	return checks
 }

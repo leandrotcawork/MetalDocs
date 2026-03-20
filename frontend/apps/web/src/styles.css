@@ -2408,6 +2408,277 @@ td small {
   overflow: visible;
 }
 
+.create-doc-content-module {
+  display: grid;
+  gap: 16px;
+}
+
+.create-doc-content-mode {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.create-doc-content-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.create-doc-content-card-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--vinho);
+  flex-shrink: 0;
+}
+
+.create-doc-content-card-body {
+  display: grid;
+  gap: 6px;
+}
+
+.create-doc-content-card strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.create-doc-content-card small {
+  font-size: 11.5px;
+  color: var(--text-soft);
+}
+
+.create-doc-content-card.active {
+  border-color: var(--vinho);
+  box-shadow: 0 0 0 2px rgba(139, 21, 56, 0.16);
+}
+
+.create-doc-content-card.active .create-doc-content-card-icon {
+  background: rgba(139, 21, 56, 0.12);
+}
+
+.create-doc-content-badge {
+  justify-self: start;
+  background: rgba(26, 107, 53, 0.12);
+  color: #1a6b35;
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.create-doc-content-block {
+  display: grid;
+  gap: 12px;
+}
+
+.create-doc-content-hint {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--text-soft);
+}
+
+.create-doc-content-status {
+  font-size: 12px;
+  color: var(--text-soft);
+}
+
+.create-doc-content-error {
+  font-size: 12px;
+  color: var(--vinho);
+}
+
+.create-doc-native-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #fff;
+}
+
+.create-doc-native-card strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.create-doc-native-card p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-soft);
+  line-height: 1.5;
+}
+
+.create-doc-docx-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.create-doc-docx-step {
+  display: flex;
+  gap: 14px;
+  padding: 14px 0;
+  position: relative;
+}
+
+.create-doc-docx-step:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 15px;
+  top: 46px;
+  bottom: -14px;
+  width: 1.5px;
+  background: var(--border);
+}
+
+.create-doc-docx-step.done::after {
+  background: #1a6b35;
+}
+
+.create-doc-docx-step-num {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1.5px solid var(--border-2);
+  color: var(--text-soft);
+  background: #fff;
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.create-doc-docx-step.done .create-doc-docx-step-num {
+  background: rgba(26, 107, 53, 0.12);
+  border-color: #1a6b35;
+  color: #1a6b35;
+}
+
+.create-doc-docx-step.active .create-doc-docx-step-num {
+  background: var(--vinho);
+  border-color: var(--vinho);
+  color: #fff;
+}
+
+.create-doc-docx-step-body {
+  display: grid;
+  gap: 6px;
+  flex: 1;
+}
+
+.create-doc-docx-step-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.create-doc-docx-step-desc {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-soft);
+  line-height: 1.5;
+}
+
+.create-doc-docx-dropzone {
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  padding: 18px;
+  background: #fff;
+  cursor: pointer;
+  display: grid;
+  gap: 6px;
+  text-align: center;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.create-doc-docx-dropzone:hover {
+  border-color: var(--vinho);
+  background: rgba(139, 21, 56, 0.05);
+}
+
+.create-doc-docx-dropzone input {
+  display: none;
+}
+
+.create-doc-docx-dropzone-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.create-doc-docx-dropzone-hint {
+  font-size: 11.5px;
+  color: var(--text-soft);
+}
+
+.create-doc-docx-file {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #fff;
+  font-size: 12px;
+}
+
+.create-doc-docx-file strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.create-doc-docx-file span {
+  font-size: 11px;
+  color: var(--text-soft);
+}
+
+.create-doc-docx-preview {
+  display: grid;
+  gap: 8px;
+}
+
+.create-doc-docx-preview-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.create-doc-pdf-preview {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  background: #fff;
+}
+
+.create-doc-pdf-loading,
+.create-doc-pdf-error {
+  font-size: 12px;
+  color: var(--text-soft);
+}
+
 .create-doc-identification-stack {
   display: grid;
   gap: 16px;

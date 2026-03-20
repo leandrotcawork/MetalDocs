@@ -97,15 +97,28 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15,
 	}
 
 	const insertVersion = `
-INSERT INTO metaldocs.document_versions (document_id, version_number, content, content_hash, change_summary, created_at)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO metaldocs.document_versions (
+  document_id, version_number, content, content_hash, change_summary,
+  content_source, native_content, docx_storage_key, pdf_storage_key, text_content,
+  file_size_bytes, original_filename, page_count, created_at
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12, $13, $14)
 `
+	contentSource, nativeContentJSON, textContent := serializeVersion(version)
 	if _, err := tx.ExecContext(ctx, insertVersion,
 		version.DocumentID,
 		version.Number,
 		version.Content,
 		version.ContentHash,
 		version.ChangeSummary,
+		contentSource,
+		nativeContentJSON,
+		nullIfEmpty(version.DocxStorageKey),
+		nullIfEmpty(version.PdfStorageKey),
+		textContent,
+		nullIfZeroInt64(version.FileSizeBytes),
+		nullIfEmpty(version.OriginalFilename),
+		nullIfZeroInt(version.PageCount),
 		version.CreatedAt,
 	); err != nil {
 		return mapError(err)
@@ -159,15 +172,28 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15,
 	}
 
 	const insertVersion = `
-INSERT INTO metaldocs.document_versions (document_id, version_number, content, content_hash, change_summary, created_at)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO metaldocs.document_versions (
+  document_id, version_number, content, content_hash, change_summary,
+  content_source, native_content, docx_storage_key, pdf_storage_key, text_content,
+  file_size_bytes, original_filename, page_count, created_at
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12, $13, $14)
 `
+	contentSource, nativeContentJSON, textContent := serializeVersion(version)
 	if _, err := tx.ExecContext(ctx, insertVersion,
 		version.DocumentID,
 		version.Number,
 		version.Content,
 		version.ContentHash,
 		version.ChangeSummary,
+		contentSource,
+		nativeContentJSON,
+		nullIfEmpty(version.DocxStorageKey),
+		nullIfEmpty(version.PdfStorageKey),
+		textContent,
+		nullIfZeroInt64(version.FileSizeBytes),
+		nullIfEmpty(version.OriginalFilename),
+		nullIfZeroInt(version.PageCount),
 		version.CreatedAt,
 	); err != nil {
 		return mapError(err)
@@ -958,15 +984,28 @@ WHERE id = $1
 
 func (r *Repository) SaveVersion(ctx context.Context, version domain.Version) error {
 	const q = `
-INSERT INTO metaldocs.document_versions (document_id, version_number, content, content_hash, change_summary, created_at)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO metaldocs.document_versions (
+  document_id, version_number, content, content_hash, change_summary,
+  content_source, native_content, docx_storage_key, pdf_storage_key, text_content,
+  file_size_bytes, original_filename, page_count, created_at
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12, $13, $14)
 `
+	contentSource, nativeContentJSON, textContent := serializeVersion(version)
 	_, err := r.db.ExecContext(ctx, q,
 		version.DocumentID,
 		version.Number,
 		version.Content,
 		version.ContentHash,
 		version.ChangeSummary,
+		contentSource,
+		nativeContentJSON,
+		nullIfEmpty(version.DocxStorageKey),
+		nullIfEmpty(version.PdfStorageKey),
+		textContent,
+		nullIfZeroInt64(version.FileSizeBytes),
+		nullIfEmpty(version.OriginalFilename),
+		nullIfZeroInt(version.PageCount),
 		version.CreatedAt,
 	)
 	if err != nil {
@@ -982,7 +1021,9 @@ func (r *Repository) ListVersions(ctx context.Context, documentID string) ([]dom
 	}
 
 	const q = `
-SELECT document_id, version_number, content, content_hash, change_summary, created_at
+SELECT document_id, version_number, content, content_hash, change_summary,
+       content_source, native_content, docx_storage_key, pdf_storage_key, text_content,
+       file_size_bytes, original_filename, page_count, created_at
 FROM metaldocs.document_versions
 WHERE document_id = $1
 ORDER BY version_number ASC
@@ -996,16 +1037,32 @@ ORDER BY version_number ASC
 	var out []domain.Version
 	for rows.Next() {
 		var version domain.Version
+		var nativeContentJSON []byte
+		var docxStorageKey sql.NullString
+		var pdfStorageKey sql.NullString
+		var textContent sql.NullString
+		var fileSizeBytes sql.NullInt64
+		var originalFilename sql.NullString
+		var pageCount sql.NullInt64
 		if err := rows.Scan(
 			&version.DocumentID,
 			&version.Number,
 			&version.Content,
 			&version.ContentHash,
 			&version.ChangeSummary,
+			&version.ContentSource,
+			&nativeContentJSON,
+			&docxStorageKey,
+			&pdfStorageKey,
+			&textContent,
+			&fileSizeBytes,
+			&originalFilename,
+			&pageCount,
 			&version.CreatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("scan version: %w", err)
 		}
+		applyVersionOptionalFields(&version, nativeContentJSON, docxStorageKey, pdfStorageKey, textContent, fileSizeBytes, originalFilename, pageCount)
 		out = append(out, version)
 	}
 	if err := rows.Err(); err != nil {
@@ -1022,17 +1079,34 @@ func (r *Repository) GetVersion(ctx context.Context, documentID string, versionN
 	}
 
 	const q = `
-SELECT document_id, version_number, content, content_hash, change_summary, created_at
+SELECT document_id, version_number, content, content_hash, change_summary,
+       content_source, native_content, docx_storage_key, pdf_storage_key, text_content,
+       file_size_bytes, original_filename, page_count, created_at
 FROM metaldocs.document_versions
 WHERE document_id = $1 AND version_number = $2
 `
 	var version domain.Version
+	var nativeContentJSON []byte
+	var docxStorageKey sql.NullString
+	var pdfStorageKey sql.NullString
+	var textContent sql.NullString
+	var fileSizeBytes sql.NullInt64
+	var originalFilename sql.NullString
+	var pageCount sql.NullInt64
 	if err := r.db.QueryRowContext(ctx, q, documentID, versionNumber).Scan(
 		&version.DocumentID,
 		&version.Number,
 		&version.Content,
 		&version.ContentHash,
 		&version.ChangeSummary,
+		&version.ContentSource,
+		&nativeContentJSON,
+		&docxStorageKey,
+		&pdfStorageKey,
+		&textContent,
+		&fileSizeBytes,
+		&originalFilename,
+		&pageCount,
 		&version.CreatedAt,
 	); err != nil {
 		if err == sql.ErrNoRows {
@@ -1040,6 +1114,7 @@ WHERE document_id = $1 AND version_number = $2
 		}
 		return domain.Version{}, fmt.Errorf("get version: %w", err)
 	}
+	applyVersionOptionalFields(&version, nativeContentJSON, docxStorageKey, pdfStorageKey, textContent, fileSizeBytes, originalFilename, pageCount)
 	return version, nil
 }
 
@@ -1368,6 +1443,20 @@ func nullIfEmpty(value string) any {
 	return trimmed
 }
 
+func nullIfZeroInt(value int) any {
+	if value == 0 {
+		return nil
+	}
+	return value
+}
+
+func nullIfZeroInt64(value int64) any {
+	if value == 0 {
+		return nil
+	}
+	return value
+}
+
 func applyOptionalFields(doc *domain.Document, tagsJSON []byte, metadataJSON []byte, effectiveAt sql.NullTime, expiryAt sql.NullTime) {
 	if len(tagsJSON) > 0 {
 		var tags []string
@@ -1397,5 +1486,55 @@ func applyOptionalFields(doc *domain.Document, tagsJSON []byte, metadataJSON []b
 	}
 	if doc.UpdatedAt.IsZero() {
 		doc.UpdatedAt = time.Now().UTC()
+	}
+}
+
+func serializeVersion(version domain.Version) (string, string, any) {
+	contentSource := strings.TrimSpace(version.ContentSource)
+	if contentSource == "" {
+		contentSource = domain.ContentSourceNative
+	}
+
+	nativeContentJSON := "{}"
+	if len(version.NativeContent) > 0 {
+		if raw, err := json.Marshal(version.NativeContent); err == nil {
+			nativeContentJSON = string(raw)
+		}
+	}
+
+	var textContent any
+	if strings.TrimSpace(version.TextContent) != "" {
+		textContent = version.TextContent
+	}
+	return contentSource, nativeContentJSON, textContent
+}
+
+func applyVersionOptionalFields(version *domain.Version, nativeContentJSON []byte, docxStorageKey sql.NullString, pdfStorageKey sql.NullString, textContent sql.NullString, fileSizeBytes sql.NullInt64, originalFilename sql.NullString, pageCount sql.NullInt64) {
+	if len(nativeContentJSON) > 0 {
+		var nativeContent map[string]any
+		if err := json.Unmarshal(nativeContentJSON, &nativeContent); err == nil {
+			version.NativeContent = nativeContent
+		}
+	}
+	if version.NativeContent == nil {
+		version.NativeContent = map[string]any{}
+	}
+	if docxStorageKey.Valid {
+		version.DocxStorageKey = docxStorageKey.String
+	}
+	if pdfStorageKey.Valid {
+		version.PdfStorageKey = pdfStorageKey.String
+	}
+	if textContent.Valid {
+		version.TextContent = textContent.String
+	}
+	if fileSizeBytes.Valid {
+		version.FileSizeBytes = fileSizeBytes.Int64
+	}
+	if originalFilename.Valid {
+		version.OriginalFilename = originalFilename.String
+	}
+	if pageCount.Valid {
+		version.PageCount = int(pageCount.Int64)
 	}
 }

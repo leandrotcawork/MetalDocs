@@ -38,12 +38,13 @@ func main() {
 	if err != nil {
 		log.Fatalf("invalid attachments config: %v", err)
 	}
+	carboneCfg := config.LoadCarboneConfig()
 	authCfg, err := authn.LoadRuntimeConfig()
 	if err != nil {
 		log.Fatalf("invalid auth config: %v", err)
 	}
 
-	deps, err := bootstrap.BuildAPIDependencies(ctx, repoMode, attachmentsCfg)
+	deps, err := bootstrap.BuildAPIDependencies(ctx, repoMode, attachmentsCfg, carboneCfg)
 	if err != nil {
 		log.Fatalf("build api dependencies: %v", err)
 	}

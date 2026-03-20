@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 
 	auditdomain "metaldocs/internal/modules/audit/domain"
 	auditmemory "metaldocs/internal/modules/audit/infrastructure/memory"
@@ -29,6 +30,7 @@ import (
 	nooppub "metaldocs/internal/platform/messaging/noop"
 	outboxpg "metaldocs/internal/platform/messaging/outbox/postgres"
 	"metaldocs/internal/platform/observability"
+	"metaldocs/internal/platform/render/carbone"
 	localstorage "metaldocs/internal/platform/storage/local"
 	miniostorage "metaldocs/internal/platform/storage/minio"
 )
@@ -37,6 +39,8 @@ type APIDependencies struct {
 	DocumentsRepo     docdomain.Repository
 	WorkflowApprovals workflowdomain.ApprovalRepository
 	AttachmentStore   docdomain.AttachmentStore
+	CarboneClient     *carbone.Client
+	CarboneTemplates  *carbone.TemplateRegistry
 	RoleProvider      iamdomain.RoleProvider
 	RoleAdminRepo     iamdomain.RoleAdminRepository
 	AuthRepo          authdomain.Repository
@@ -52,7 +56,35 @@ type bucketEnsurer interface {
 	EnsureBucket(ctx context.Context) error
 }
 
-func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg config.AttachmentsConfig) (APIDependencies, error) {
+func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg config.AttachmentsConfig, carboneCfg config.CarboneConfig) (APIDependencies, error) {
+	carboneClient := carbone.NewClient(carboneCfg)
+	carboneRegistry, err := carbone.BootstrapTemplates(ctx, carboneClient, carboneCfg, nil)
+	if err != nil {
+		log.Printf("carbone bootstrap degraded: %v", err)
+	}
+	carboneCheck := observability.DependencyCheck{
+		Name: "carbone",
+		Check: func(ctx context.Context) (observability.DependencyCheckResult, error) {
+			if !carboneCfg.Enabled {
+				return observability.DependencyCheckResult{
+					Status: "skipped",
+					Detail: "carbone disabled",
+				}, nil
+			}
+			if carboneClient == nil {
+				return observability.DependencyCheckResult{}, fmt.Errorf("carbone client not configured")
+			}
+			if err := carboneClient.Ping(ctx, "health"); err != nil {
+				return observability.DependencyCheckResult{}, err
+			}
+			meta := map[string]any{}
+			if carboneRegistry != nil {
+				meta["templates"] = carboneRegistry.Count()
+			}
+			return observability.DependencyCheckResult{Status: "up", Meta: meta}, nil
+		},
+	}
+
 	switch repoMode {
 	case config.RepositoryPostgres:
 		pgCfg, err := config.LoadPostgresConfig()
@@ -75,6 +107,8 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 			DocumentsRepo:     pgrepo.NewRepository(db),
 			WorkflowApprovals: workflowpg.NewApprovalRepository(db),
 			AttachmentStore:   store,
+			CarboneClient:     carboneClient,
+			CarboneTemplates:  carboneRegistry,
 			RoleProvider:      iampg.NewRoleProvider(db),
 			RoleAdminRepo:     iampg.NewRoleAdminRepository(db),
 			AuthRepo:          authRepo,
@@ -82,7 +116,7 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 			AuditWriter:       auditpg.NewWriter(db),
 			AuditReader:       auditpg.NewWriter(db),
 			Publisher:         outboxpg.NewPublisher(db),
-			StatusProvider:    observability.NewPostgresRuntimeStatusProvider(db, repoMode, attachmentsCfg.Provider, authn.Enabled()),
+			StatusProvider:    observability.NewPostgresRuntimeStatusProvider(db, repoMode, attachmentsCfg.Provider, authn.Enabled(), carboneCheck),
 			Cleanup:           func() { _ = closeDB(db) },
 		}, nil
 	default:
@@ -107,6 +141,8 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 			DocumentsRepo:     memoryrepo.NewRepository(),
 			WorkflowApprovals: workflowmemory.NewApprovalRepository(),
 			AttachmentStore:   store,
+			CarboneClient:     carboneClient,
+			CarboneTemplates:  carboneRegistry,
 			RoleProvider:      authRepo,
 			RoleAdminRepo:     authRepo,
 			AuthRepo:          authRepo,
@@ -114,7 +150,7 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 			AuditWriter:       auditStore,
 			AuditReader:       auditStore,
 			Publisher:         nooppub.NewPublisher(),
-			StatusProvider:    observability.NewStaticRuntimeStatusProvider(repoMode, attachmentsCfg.Provider, authn.Enabled()),
+			StatusProvider:    observability.NewStaticRuntimeStatusProvider(repoMode, attachmentsCfg.Provider, authn.Enabled(), carboneCheck),
 			Cleanup:           func() {},
 		}, nil
 	}

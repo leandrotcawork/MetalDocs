@@ -1,13 +1,17 @@
 package application
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"crypto/md5"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -16,6 +20,7 @@ import (
 	"metaldocs/internal/modules/documents/domain"
 	"metaldocs/internal/platform/authn"
 	"metaldocs/internal/platform/messaging"
+	"metaldocs/internal/platform/render/carbone"
 )
 
 type Clock interface {
@@ -29,10 +34,12 @@ func (realClock) Now() time.Time {
 }
 
 type Service struct {
-	repo            domain.Repository
-	attachmentStore domain.AttachmentStore
-	publisher       messaging.Publisher
-	clock           Clock
+	repo             domain.Repository
+	attachmentStore  domain.AttachmentStore
+	publisher        messaging.Publisher
+	clock            Clock
+	carboneClient    *carbone.Client
+	carboneTemplates *carbone.TemplateRegistry
 }
 
 func NewService(repo domain.Repository, publisher messaging.Publisher, clock Clock) *Service {
@@ -44,6 +51,12 @@ func NewService(repo domain.Repository, publisher messaging.Publisher, clock Clo
 
 func (s *Service) WithAttachmentStore(store domain.AttachmentStore) *Service {
 	s.attachmentStore = store
+	return s
+}
+
+func (s *Service) WithCarbone(client *carbone.Client, registry *carbone.TemplateRegistry) *Service {
+	s.carboneClient = client
+	s.carboneTemplates = registry
 	return s
 }
 
@@ -116,6 +129,7 @@ func (s *Service) CreateDocument(ctx context.Context, cmd domain.CreateDocumentC
 		Content:       cmd.InitialContent,
 		ContentHash:   contentHash(cmd.InitialContent),
 		ChangeSummary: "Initial version",
+		ContentSource: domain.ContentSourceNative,
 		CreatedAt:     now,
 	}
 
@@ -225,6 +239,7 @@ func (s *Service) AddVersion(ctx context.Context, cmd domain.AddVersionCommand) 
 		Content:       cmd.Content,
 		ContentHash:   contentHash(cmd.Content),
 		ChangeSummary: strings.TrimSpace(cmd.ChangeSummary),
+		ContentSource: domain.ContentSourceNative,
 		CreatedAt:     s.clock.Now(),
 	}
 	if version.ChangeSummary == "" {
@@ -272,6 +287,251 @@ func (s *Service) AddVersionAuthorized(ctx context.Context, cmd domain.AddVersio
 		return domain.Version{}, domain.ErrDocumentNotFound
 	}
 	return s.AddVersion(ctx, cmd)
+}
+
+func (s *Service) GetNativeContentAuthorized(ctx context.Context, documentID string) (domain.Version, error) {
+	if strings.TrimSpace(documentID) == "" {
+		return domain.Version{}, domain.ErrInvalidCommand
+	}
+	doc, err := s.repo.GetDocument(ctx, strings.TrimSpace(documentID))
+	if err != nil {
+		return domain.Version{}, err
+	}
+	allowed, err := s.isAllowed(ctx, doc, domain.CapabilityDocumentView)
+	if err != nil {
+		return domain.Version{}, err
+	}
+	if !allowed {
+		return domain.Version{}, domain.ErrDocumentNotFound
+	}
+	return s.latestVersion(ctx, doc.ID)
+}
+
+func (s *Service) SaveNativeContentAuthorized(ctx context.Context, cmd domain.SaveNativeContentCommand) (domain.Version, error) {
+	if s.attachmentStore == nil {
+		return domain.Version{}, domain.ErrAttachmentStoreUnavailable
+	}
+	if strings.TrimSpace(cmd.DocumentID) == "" {
+		return domain.Version{}, domain.ErrInvalidCommand
+	}
+	doc, err := s.repo.GetDocument(ctx, strings.TrimSpace(cmd.DocumentID))
+	if err != nil {
+		return domain.Version{}, err
+	}
+	allowed, err := s.isAllowed(ctx, doc, domain.CapabilityDocumentEdit)
+	if err != nil {
+		return domain.Version{}, err
+	}
+	if !allowed {
+		return domain.Version{}, domain.ErrDocumentNotFound
+	}
+	if !isVersioningAllowed(doc) {
+		return domain.Version{}, domain.ErrVersioningNotAllowed
+	}
+
+	contentPayload := cmd.Content
+	if contentPayload == nil {
+		contentPayload = map[string]any{}
+	}
+	rawContent, err := json.Marshal(contentPayload)
+	if err != nil {
+		return domain.Version{}, domain.ErrInvalidCommand
+	}
+	contentText := string(rawContent)
+
+	next, err := s.repo.NextVersionNumber(ctx, doc.ID)
+	if err != nil {
+		return domain.Version{}, err
+	}
+	now := s.clock.Now()
+
+	version := domain.Version{
+		DocumentID:    doc.ID,
+		Number:        next,
+		Content:       contentText,
+		ContentHash:   contentHash(contentText),
+		ChangeSummary: fmt.Sprintf("Content version %d", next),
+		ContentSource: domain.ContentSourceNative,
+		NativeContent: contentPayload,
+		TextContent:   contentText,
+		CreatedAt:     now,
+	}
+
+	pdfBytes, err := s.renderDocumentPDF(ctx, doc, version, cmd.Content, cmd.TraceID)
+	if err != nil {
+		return domain.Version{}, err
+	}
+	pdfKey := documentContentStorageKey(doc.ID, next, "pdf")
+	if err := s.attachmentStore.Save(ctx, pdfKey, pdfBytes); err != nil {
+		return domain.Version{}, err
+	}
+	version.PdfStorageKey = pdfKey
+
+	if err := s.repo.SaveVersion(ctx, version); err != nil {
+		_ = s.attachmentStore.Delete(ctx, pdfKey)
+		return domain.Version{}, err
+	}
+
+	if s.publisher != nil {
+		_ = s.publisher.Publish(ctx, messaging.Event{
+			EventID:           fmt.Sprintf("evt-doc-version-create-%s-%d", doc.ID, next),
+			EventType:         "document.version.created",
+			AggregateType:     "document",
+			AggregateID:       doc.ID,
+			OccurredAtRFC3339: now.Format(time.RFC3339),
+			Version:           next,
+			IdempotencyKey:    fmt.Sprintf("doc-version-create-%s-%d", doc.ID, next),
+			Producer:          "documents",
+			TraceID:           cmd.TraceID,
+			Payload: map[string]any{
+				"document_id": doc.ID,
+				"version":     next,
+				"source":      version.ContentSource,
+			},
+		})
+	}
+
+	return version, nil
+}
+
+func (s *Service) UploadDocxContentAuthorized(ctx context.Context, cmd domain.UploadDocxContentCommand) (domain.Version, error) {
+	if s.attachmentStore == nil {
+		return domain.Version{}, domain.ErrAttachmentStoreUnavailable
+	}
+	if strings.TrimSpace(cmd.DocumentID) == "" || strings.TrimSpace(cmd.FileName) == "" || len(cmd.Content) == 0 {
+		return domain.Version{}, domain.ErrInvalidAttachment
+	}
+	if len(cmd.Content) > 10*1024*1024 {
+		return domain.Version{}, domain.ErrInvalidAttachment
+	}
+	if !isDocxPayload(cmd.Content) {
+		return domain.Version{}, domain.ErrInvalidAttachment
+	}
+
+	doc, err := s.repo.GetDocument(ctx, strings.TrimSpace(cmd.DocumentID))
+	if err != nil {
+		return domain.Version{}, err
+	}
+	allowed, err := s.isAllowed(ctx, doc, domain.CapabilityDocumentEdit)
+	if err != nil {
+		return domain.Version{}, err
+	}
+	if !allowed {
+		return domain.Version{}, domain.ErrDocumentNotFound
+	}
+	if !isVersioningAllowed(doc) {
+		return domain.Version{}, domain.ErrVersioningNotAllowed
+	}
+
+	next, err := s.repo.NextVersionNumber(ctx, doc.ID)
+	if err != nil {
+		return domain.Version{}, err
+	}
+	now := s.clock.Now()
+
+	docxKey := documentContentStorageKey(doc.ID, next, "docx")
+	if err := s.attachmentStore.Save(ctx, docxKey, cmd.Content); err != nil {
+		return domain.Version{}, err
+	}
+
+	pdfBytes, err := s.convertDocxToPDF(ctx, cmd.Content, cmd.TraceID)
+	if err != nil {
+		_ = s.attachmentStore.Delete(ctx, docxKey)
+		return domain.Version{}, err
+	}
+	pdfKey := documentContentStorageKey(doc.ID, next, "pdf")
+	if err := s.attachmentStore.Save(ctx, pdfKey, pdfBytes); err != nil {
+		_ = s.attachmentStore.Delete(ctx, docxKey)
+		return domain.Version{}, err
+	}
+
+	textContent := extractDocxText(cmd.Content)
+
+	version := domain.Version{
+		DocumentID:       doc.ID,
+		Number:           next,
+		Content:          textContent,
+		ContentHash:      contentHash(textContent),
+		ChangeSummary:    fmt.Sprintf("Content version %d", next),
+		ContentSource:    domain.ContentSourceDocxUpload,
+		DocxStorageKey:   docxKey,
+		PdfStorageKey:    pdfKey,
+		TextContent:      textContent,
+		FileSizeBytes:    int64(len(cmd.Content)),
+		OriginalFilename: strings.TrimSpace(cmd.FileName),
+		CreatedAt:        now,
+	}
+
+	if err := s.repo.SaveVersion(ctx, version); err != nil {
+		_ = s.attachmentStore.Delete(ctx, pdfKey)
+		_ = s.attachmentStore.Delete(ctx, docxKey)
+		return domain.Version{}, err
+	}
+
+	if s.publisher != nil {
+		_ = s.publisher.Publish(ctx, messaging.Event{
+			EventID:           fmt.Sprintf("evt-doc-version-create-%s-%d", doc.ID, next),
+			EventType:         "document.version.created",
+			AggregateType:     "document",
+			AggregateID:       doc.ID,
+			OccurredAtRFC3339: now.Format(time.RFC3339),
+			Version:           next,
+			IdempotencyKey:    fmt.Sprintf("doc-version-create-%s-%d", doc.ID, next),
+			Producer:          "documents",
+			TraceID:           cmd.TraceID,
+			Payload: map[string]any{
+				"document_id": doc.ID,
+				"version":     next,
+				"source":      version.ContentSource,
+			},
+		})
+	}
+
+	return version, nil
+}
+
+func (s *Service) RenderProfileTemplateDocx(ctx context.Context, profileCode string) ([]byte, error) {
+	return s.renderProfileTemplate(ctx, profileCode, map[string]any{}, "docx", "profile-template")
+}
+
+func (s *Service) RenderDocumentTemplateDocxAuthorized(ctx context.Context, documentID string) ([]byte, error) {
+	if strings.TrimSpace(documentID) == "" {
+		return nil, domain.ErrInvalidCommand
+	}
+	doc, err := s.repo.GetDocument(ctx, strings.TrimSpace(documentID))
+	if err != nil {
+		return nil, err
+	}
+	allowed, err := s.isAllowed(ctx, doc, domain.CapabilityDocumentView)
+	if err != nil {
+		return nil, err
+	}
+	if !allowed {
+		return nil, domain.ErrDocumentNotFound
+	}
+	data := buildDocumentTemplateData(doc, nil)
+	return s.renderProfileTemplate(ctx, doc.DocumentProfile, data, "docx", "document-template")
+}
+
+func (s *Service) OpenContentStorage(ctx context.Context, storageKey string) ([]byte, error) {
+	if s.attachmentStore == nil {
+		return nil, domain.ErrAttachmentStoreUnavailable
+	}
+	if strings.TrimSpace(storageKey) == "" {
+		return nil, domain.ErrInvalidCommand
+	}
+	reader, err := s.attachmentStore.Open(ctx, storageKey)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = reader.Close()
+	}()
+	payload, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
+	return payload, nil
 }
 
 func (s *Service) DiffVersions(ctx context.Context, documentID string, fromVersion, toVersion int) (domain.VersionDiff, error) {
@@ -1417,6 +1677,140 @@ func matchesPolicySubject(item domain.AccessPolicy, userID string, rolesSet map[
 	default:
 		return false
 	}
+}
+
+func (s *Service) latestVersion(ctx context.Context, documentID string) (domain.Version, error) {
+	versions, err := s.repo.ListVersions(ctx, documentID)
+	if err != nil {
+		return domain.Version{}, err
+	}
+	if len(versions) == 0 {
+		return domain.Version{}, domain.ErrVersionNotFound
+	}
+	return versions[len(versions)-1], nil
+}
+
+func isVersioningAllowed(doc domain.Document) bool {
+	return doc.Status == domain.StatusDraft || doc.Status == domain.StatusInReview
+}
+
+func documentContentStorageKey(documentID string, version int, extension string) string {
+	return fmt.Sprintf("documents/%s/versions/%d/content.%s", documentID, version, strings.TrimPrefix(extension, "."))
+}
+
+func isDocxPayload(content []byte) bool {
+	return len(content) >= 4 && bytes.Equal(content[:4], []byte("PK\x03\x04"))
+}
+
+func extractDocxText(content []byte) string {
+	reader, err := zip.NewReader(bytes.NewReader(content), int64(len(content)))
+	if err != nil {
+		return ""
+	}
+	for _, file := range reader.File {
+		if file.Name != "word/document.xml" {
+			continue
+		}
+		rc, err := file.Open()
+		if err != nil {
+			return ""
+		}
+		data, _ := io.ReadAll(rc)
+		_ = rc.Close()
+
+		decoder := xml.NewDecoder(bytes.NewReader(data))
+		var builder strings.Builder
+		for {
+			token, err := decoder.Token()
+			if err != nil {
+				break
+			}
+			switch value := token.(type) {
+			case xml.CharData:
+				text := strings.TrimSpace(string(value))
+				if text != "" {
+					if builder.Len() > 0 {
+						builder.WriteString(" ")
+					}
+					builder.WriteString(text)
+				}
+			}
+		}
+		return builder.String()
+	}
+	return ""
+}
+
+func (s *Service) renderProfileTemplate(ctx context.Context, profileCode string, data map[string]any, convertTo, traceID string) ([]byte, error) {
+	if s.carboneClient == nil || s.carboneTemplates == nil {
+		return nil, fmt.Errorf("carbone client not configured")
+	}
+	normalized := strings.ToLower(strings.TrimSpace(profileCode))
+	templateID, ok := s.carboneTemplates.TemplateID(normalized)
+	if !ok {
+		return nil, fmt.Errorf("template not registered for profile %s", normalized)
+	}
+	renderID, err := s.carboneClient.RenderTemplate(ctx, traceID, templateID, data, convertTo)
+	if err != nil {
+		return nil, err
+	}
+	return s.carboneClient.DownloadRender(ctx, traceID, renderID)
+}
+
+func (s *Service) renderDocumentPDF(ctx context.Context, doc domain.Document, version domain.Version, content map[string]any, traceID string) ([]byte, error) {
+	data := buildDocumentTemplateData(doc, content)
+	data["version"] = version.Number
+	data["createdAt"] = version.CreatedAt.Format(time.RFC3339)
+	return s.renderProfileTemplate(ctx, doc.DocumentProfile, data, "pdf", traceID)
+}
+
+func (s *Service) convertDocxToPDF(ctx context.Context, content []byte, traceID string) ([]byte, error) {
+	if s.carboneClient == nil {
+		return nil, fmt.Errorf("carbone client not configured")
+	}
+	tmpFile, err := os.CreateTemp("", "metaldocs-docx-*.docx")
+	if err != nil {
+		return nil, fmt.Errorf("create temp docx: %w", err)
+	}
+	tempPath := tmpFile.Name()
+	if _, err := tmpFile.Write(content); err != nil {
+		_ = tmpFile.Close()
+		_ = os.Remove(tempPath)
+		return nil, fmt.Errorf("write temp docx: %w", err)
+	}
+	_ = tmpFile.Close()
+	defer func() {
+		_ = os.Remove(tempPath)
+	}()
+
+	templateID, err := s.carboneClient.RegisterTemplate(ctx, traceID, tempPath)
+	if err != nil {
+		return nil, err
+	}
+	renderID, err := s.carboneClient.RenderTemplate(ctx, traceID, templateID, map[string]any{}, "pdf")
+	if err != nil {
+		return nil, err
+	}
+	return s.carboneClient.DownloadRender(ctx, traceID, renderID)
+}
+
+func buildDocumentTemplateData(doc domain.Document, content map[string]any) map[string]any {
+	data := map[string]any{
+		"documentId":     doc.ID,
+		"title":          doc.Title,
+		"profile":        doc.DocumentProfile,
+		"family":         doc.DocumentFamily,
+		"processArea":    doc.ProcessArea,
+		"subject":        doc.Subject,
+		"owner":          doc.OwnerID,
+		"businessUnit":   doc.BusinessUnit,
+		"department":     doc.Department,
+		"classification": doc.Classification,
+	}
+	if content != nil {
+		data["content"] = content
+	}
+	return data
 }
 
 func areaResourceID(businessUnit, department string) string {

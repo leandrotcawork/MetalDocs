@@ -2,6 +2,7 @@ export type DocumentStatus = "DRAFT" | "IN_REVIEW" | "APPROVED" | "PUBLISHED" | 
 export type Classification = "PUBLIC" | "INTERNAL" | "CONFIDENTIAL" | "RESTRICTED";
 export type ResourceScope = "document" | "document_type" | "area";
 export type UserRole = "admin" | "editor" | "reviewer" | "viewer";
+export type DocumentContentSource = "native" | "docx_upload";
 
 export interface CurrentUser {
   userId: string;
@@ -135,6 +136,40 @@ export interface VersionDiffResponse {
   classificationChanged: boolean;
   effectiveAtChanged: boolean;
   expiryAtChanged: boolean;
+}
+
+export interface DocumentContentNativeResponse {
+  documentId: string;
+  version: number;
+  contentSource: DocumentContentSource;
+  content: Record<string, unknown>;
+}
+
+export interface DocumentContentSaveResponse {
+  documentId: string;
+  version: number;
+  contentSource: DocumentContentSource;
+  pdfUrl: string;
+  expiresAt: string;
+}
+
+export interface DocumentContentPdfResponse {
+  pdfUrl: string;
+  expiresAt: string;
+  pageCount?: number;
+}
+
+export interface DocumentContentDocxResponse {
+  docxUrl: string;
+  expiresAt: string;
+}
+
+export interface DocumentContentUploadResponse {
+  contentSource: DocumentContentSource;
+  docxUrl: string;
+  pdfUrl: string;
+  expiresAt: string;
+  pageCount?: number;
 }
 
 export interface WorkflowApprovalItem {

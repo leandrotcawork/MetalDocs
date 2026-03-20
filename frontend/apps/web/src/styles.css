@@ -3015,6 +3015,56 @@ td small {
 }
 
 .content-builder-section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.content-builder-section-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--vinho-pale);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  color: var(--vinho);
+}
+
+.content-builder-section-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.content-builder-section-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  margin-right: 6px;
+  color: var(--text-soft);
+  font-size: 10.5px;
+}
+
+.content-builder-progress-dots {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.content-builder-progress-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--border);
+}
+
+.content-builder-progress-dot.is-filled {
+  background: var(--vinho);
+}
+
+.content-builder-section-title {
   display: grid;
   gap: 2px;
 }

@@ -1,5 +1,5 @@
 import { Component, useEffect, useRef, useState } from "react";
-import { api, startApiTrace, stopApiTrace } from "./lib.api";
+import { api, markUx, startApiTrace, stopApiTrace } from "./lib.api";
 import { AuthShell } from "./components/AuthShell";
 import { DocumentCreateView } from "./components/DocumentCreateView";
 import { DocumentWorkspaceShell, type WorkspaceView } from "./components/DocumentWorkspaceShell";
@@ -383,6 +383,7 @@ function AppContent() {
 
   async function applyDocumentProfile(profileCode: string, preferredProcessArea = "") {
     startApiTrace(`apply-profile:${profileCode}`);
+    markUx(`profile-change-start:${profileCode}`);
     const [schemaResponse, governance] = await Promise.all([
       api.listDocumentProfileSchemas(profileCode),
       api.getDocumentProfileGovernance(profileCode),
@@ -392,6 +393,7 @@ function AppContent() {
     setSelectedProfileSchemas(schemas);
     setSelectedProfileSchema(schema);
     setSelectedProfileGovernance(governance);
+    markUx(`profile-schema-loaded:${profileCode}`);
     setDocumentForm((current) => ({
       ...current,
       documentType: profileCode,
@@ -399,6 +401,7 @@ function AppContent() {
       processArea: preferredProcessArea,
       metadata: metadataTextForProfileSchema(profileCode, schema),
     }));
+    markUx(`profile-form-updated:${profileCode}`);
     stopApiTrace();
   }
 
@@ -587,6 +590,7 @@ function AppContent() {
     if (mode === "native") {
       setContentFile(null);
     }
+    markUx(`content-mode-changed:${mode}`);
     stopApiTrace();
   }
 
@@ -601,6 +605,7 @@ function AppContent() {
   async function openDocument(documentId: string, nextView: WorkspaceView = "library") {
     try {
       startApiTrace(`open-document:${documentId}`);
+      markUx(`open-document-start:${documentId}`);
       const canManagePolicies = currentUserRoles.includes("admin");
       const [document, versionsResponse, approvalsResponse, attachmentsResponse, auditResponse, presenceResponse, editLockResponse] = await Promise.all([
         api.getDocument(documentId),
@@ -647,6 +652,7 @@ function AppContent() {
         : null;
         setPolicies(policyResponse.items);
         setVersionDiff(nextDiff);
+        markUx(`open-document-ready:${documentId}`);
         stopApiTrace();
       } catch (err) {
         handleError(err);

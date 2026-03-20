@@ -354,6 +354,11 @@ export function stopApiTrace() {
   traceStop();
 }
 
+export function markUx(label: string) {
+  if (!isTraceEnabled()) return;
+  console.log(`[md-ux] ${label} @ ${performance.now().toFixed(0)}ms`);
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const method = (init?.method ?? "GET").toUpperCase();
   const traceItemId = traceRequestStart(method, path);

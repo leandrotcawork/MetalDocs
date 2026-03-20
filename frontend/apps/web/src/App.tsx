@@ -166,6 +166,7 @@ function AppContent() {
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [isCreateSubmitting, setIsCreateSubmitting] = useState(false);
   const [activeView, setActiveView] = useState<WorkspaceView>("operations");
   const [searchQuery, setSearchQuery] = useState("");
   const [loginForm, setLoginForm] = useState({ identifier: "admin", password: "" });
@@ -596,6 +597,10 @@ function AppContent() {
     event.preventDefault();
     setError("");
     setMessage("");
+    const shouldOpenEditor = contentMode === "native";
+    if (shouldOpenEditor) {
+      setIsCreateSubmitting(true);
+    }
     try {
       startApiTrace("create-document");
       const needsAudience = ["CONFIDENTIAL", "RESTRICTED"].includes(documentForm.classification);
@@ -650,8 +655,10 @@ function AppContent() {
       setMessage(handledContent ? "Documento criado e conteudo processado." : "Documento criado com sucesso.");
       if (contentMode === "native") {
         await openDocument(created.documentId, "content-builder");
+        setIsCreateSubmitting(false);
       } else if (!handledContent) {
         setActiveView("library");
+        setIsCreateSubmitting(false);
       }
       if (user) await loadWorkspace(user);
       stopApiTrace();
@@ -659,6 +666,7 @@ function AppContent() {
       setContentStatus("error");
       setContentError("Falha ao gerar o conteudo. O documento foi criado.");
       handleError(err);
+      setIsCreateSubmitting(false);
       stopApiTrace();
     }
   }
@@ -1104,6 +1112,7 @@ function AppContent() {
           contentDocxUrl={contentDocxUrl}
           contentStatus={contentStatus}
           contentError={contentError}
+          isSubmitting={isCreateSubmitting}
           onDocumentFormChange={setDocumentForm}
           onApplyProfile={applyDocumentProfile}
           onSubmitCreateDocument={handleCreateDocument}

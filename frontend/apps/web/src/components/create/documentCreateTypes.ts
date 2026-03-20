@@ -39,6 +39,7 @@ export type DocumentCreateViewProps = {
   contentDocxUrl: string;
   contentStatus: "idle" | "saving" | "ready" | "error";
   contentError: string;
+  isSubmitting: boolean;
   onDocumentFormChange: (next: DocumentForm) => void;
   onApplyProfile: (profileCode: string, preferredProcessArea?: string) => void | Promise<void>;
   onSubmitCreateDocument: (event: React.FormEvent<HTMLFormElement>) => void | Promise<void>;

@@ -54,11 +54,6 @@ export function DocumentCreateView(props: DocumentCreateViewProps) {
       && audienceComplete,
     body: contentCompleted,
   };
-  const canOpenEditor = stepCompletion.identification
-    && stepCompletion.context
-    && stepCompletion.metadata
-    && stepCompletion.content;
-
   function stepStateFor(step: WizardStep): StepStatus {
     if (step === currentStep) {
       return "active";
@@ -206,7 +201,6 @@ export function DocumentCreateView(props: DocumentCreateViewProps) {
             contentStatus={props.contentStatus}
             contentError={props.contentError}
             profileCode={selectedProfile?.code ?? ""}
-            canOpenEditor={canOpenEditor}
             onContentModeChange={props.onContentModeChange}
             onContentFileChange={props.onContentFileChange}
             onDownloadTemplate={props.onDownloadTemplate}
@@ -214,16 +208,31 @@ export function DocumentCreateView(props: DocumentCreateViewProps) {
           </CreateDocumentSection>
 
           <footer className="create-doc-footer">
-            <span className="create-doc-footer-info">
-              Profile ativo: <strong>{selectedProfile?.name ?? "-"}</strong>
-            </span>
+            <button type="button" className="ghost-button">← Voltar</button>
             <div className="create-doc-footer-actions">
-              <button type="button" className="ghost-button">Cancelar</button>
-              <button data-testid="document-submit" type="submit">Criar documento</button>
+              <button data-testid="document-submit" type="submit" className="create-doc-footer-primary" disabled={props.isSubmitting}>
+                <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                  <path d="M2 7l3.5 3.5L11 4" />
+                </svg>
+                {props.isSubmitting ? "Abrindo editor..." : "Salvar e ir para o editor"}
+              </button>
             </div>
           </footer>
         </div>
       </form>
+      {props.isSubmitting && (
+        <div className="create-doc-transition" role="status" aria-live="polite">
+          <div className="create-doc-transition-card">
+            <div className="create-doc-transition-title">Abrindo editor</div>
+            <p className="create-doc-transition-copy">Preparando schema, versoes e preview do documento.</p>
+            <div className="create-doc-transition-skeleton">
+              <div className="create-doc-transition-line is-wide" />
+              <div className="create-doc-transition-line" />
+              <div className="create-doc-transition-line is-short" />
+            </div>
+          </div>
+        </div>
+      )}
     </CreateDocumentShell>
   );
 }

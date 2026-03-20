@@ -29,6 +29,18 @@
   font-family: "DM Sans", sans-serif;
 }
 
+@keyframes createDocPulse {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -2541,6 +2553,61 @@ td small {
   gap: 4px;
 }
 
+.create-doc-transition {
+  position: fixed;
+  inset: 0;
+  background: rgba(34, 12, 18, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 45;
+}
+
+.create-doc-transition-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 20px 22px;
+  width: min(420px, 90vw);
+  box-shadow: 0 24px 50px rgba(34, 12, 18, 0.25);
+  display: grid;
+  gap: 8px;
+}
+
+.create-doc-transition-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.create-doc-transition-copy {
+  font-size: 13px;
+  color: var(--text-soft);
+  margin: 0;
+}
+
+.create-doc-transition-skeleton {
+  display: grid;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.create-doc-transition-line {
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(139, 21, 56, 0.08), rgba(139, 21, 56, 0.2), rgba(139, 21, 56, 0.08));
+  background-size: 200% 100%;
+  animation: createDocPulse 1.4s ease infinite;
+}
+
+.create-doc-transition-line.is-wide {
+  width: 100%;
+}
+
+.create-doc-transition-line.is-short {
+  width: 60%;
+}
+
 .create-doc-content-card strong {
   font-size: 13px;
   font-weight: 600;
@@ -3763,6 +3830,11 @@ td small {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+
+.create-doc-footer-primary:disabled {
+  opacity: 0.7;
+  cursor: progress;
 }
 
 .profile-preview {

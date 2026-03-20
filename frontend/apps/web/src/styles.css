@@ -2561,6 +2561,8 @@ td small {
 .create-doc-content-card-body {
   display: grid;
   gap: 6px;
+  width: 100%;
+  align-items: flex-start;
 }
 
 .create-doc-transition {
@@ -2622,6 +2624,7 @@ td small {
   font-size: 13.5px;
   font-weight: 600;
   color: var(--text);
+  letter-spacing: 0.1px;
 }
 
 .create-doc-content-card-desc {
@@ -2649,6 +2652,7 @@ td small {
   padding: 2px 8px;
   border-radius: 999px;
   margin-top: 6px;
+  letter-spacing: 0.2px;
 }
 
 .create-doc-content-block {
@@ -3826,7 +3830,7 @@ td small {
   justify-content: space-between;
   gap: 12px;
   align-items: center;
-  padding: 12px 32px;
+  padding: 12px 28px;
   background: var(--surface);
   border-top: 1px solid var(--border);
   border-radius: 0;
@@ -3867,6 +3871,11 @@ td small {
   background: var(--vinho);
   color: #fff;
   border: 1px solid var(--vinho);
+}
+
+.create-doc-footer-primary:hover:not(:disabled) {
+  background: var(--vinho-d);
+  border-color: var(--vinho-d);
 }
 
 .create-doc-footer-primary svg {

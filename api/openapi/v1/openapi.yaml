@@ -518,6 +518,40 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
+  /document-profiles/{profileCode}/bundle:
+    get:
+      summary: Carrega profile, schema ativo, governanca e taxonomia em um unico payload
+      parameters:
+        - name: profileCode
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Bundle de profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentProfileBundleResponse'
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
   /document-profiles/{profileCode}/template/docx:
     get:
       summary: Gera template DOCX em branco para o profile
@@ -2939,6 +2973,34 @@ components:
         validityDays:
           type: integer
           minimum: 0
+    DocumentProfileBundleTaxonomy:
+      type: object
+      required: [processAreas, documentDepartments, subjects]
+      properties:
+        processAreas:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProcessAreaItem'
+        documentDepartments:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentDepartmentItem'
+        subjects:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubjectItem'
+    DocumentProfileBundleResponse:
+      type: object
+      required: [profile, schema, governance, taxonomy]
+      properties:
+        profile:
+          $ref: '#/components/schemas/DocumentProfileItem'
+        schema:
+          $ref: '#/components/schemas/DocumentProfileSchemaVersionItem'
+        governance:
+          $ref: '#/components/schemas/DocumentProfileGovernance'
+        taxonomy:
+          $ref: '#/components/schemas/DocumentProfileBundleTaxonomy'
     ProcessAreaItem:
       type: object
       required: [code, name, description]

@@ -361,16 +361,13 @@ function AppContent() {
           profilePrefetchRef.current.add(nextProfileCode);
           void (async () => {
             try {
-              const [schemaResponse, governance] = await Promise.all([
-                api.listDocumentProfileSchemas(nextProfileCode),
-                api.getDocumentProfileGovernance(nextProfileCode),
-              ]);
-              const schemas = Array.isArray(schemaResponse.items) ? schemaResponse.items : [];
+              const bundle = await api.getDocumentProfileBundle(nextProfileCode);
+              const schemas = bundle.schema ? [bundle.schema] : [];
               if (schemas.length > 0) {
                 profileSchemaCacheRef.current.set(nextProfileCode, schemas);
               }
-              if (governance) {
-                profileGovernanceCacheRef.current.set(nextProfileCode, governance);
+              if (bundle.governance) {
+                profileGovernanceCacheRef.current.set(nextProfileCode, bundle.governance);
               }
             } catch {
               // Prefetch is best-effort; ignore failures here.
@@ -420,10 +417,43 @@ function AppContent() {
       processArea: preferredProcessArea,
       metadata: cachedSchema ? metadataTextForProfileSchema(profileCode, cachedSchema) : "{}",
     }));
-    const [schemaResponse, governance] = await Promise.all([
-      cachedSchemas ? Promise.resolve({ items: cachedSchemas }) : api.listDocumentProfileSchemas(profileCode),
-      cachedGovernance ? Promise.resolve(cachedGovernance) : api.getDocumentProfileGovernance(profileCode),
-    ]);
+    let schemaResponse: { items: DocumentProfileSchemaItem[] };
+    let governance: DocumentProfileGovernanceItem | null = null;
+    if (!cachedSchemas || !cachedGovernance) {
+      try {
+        const bundle = await api.getDocumentProfileBundle(profileCode);
+        schemaResponse = { items: bundle.schema ? [bundle.schema] : [] };
+        governance = bundle.governance ?? null;
+        if (bundle.schema) {
+          profileSchemaCacheRef.current.set(profileCode, schemaResponse.items);
+        }
+        if (bundle.governance) {
+          profileGovernanceCacheRef.current.set(profileCode, bundle.governance);
+        }
+        if (bundle.profile) {
+          setDocumentProfiles((current) => current.map((item) => (item.code === bundle.profile.code ? bundle.profile : item)));
+        }
+        if (bundle.taxonomy.processAreas.length > 0 && processAreas.length === 0) {
+          setProcessAreas(bundle.taxonomy.processAreas);
+        }
+        if (bundle.taxonomy.documentDepartments.length > 0 && documentDepartments.length === 0) {
+          setDocumentDepartments(bundle.taxonomy.documentDepartments);
+        }
+        if (bundle.taxonomy.subjects.length > 0 && subjects.length === 0) {
+          setSubjects(bundle.taxonomy.subjects);
+        }
+      } catch {
+        const [fallbackSchemas, fallbackGovernance] = await Promise.all([
+          api.listDocumentProfileSchemas(profileCode),
+          api.getDocumentProfileGovernance(profileCode),
+        ]);
+        schemaResponse = fallbackSchemas;
+        governance = fallbackGovernance;
+      }
+    } else {
+      schemaResponse = { items: cachedSchemas };
+      governance = cachedGovernance;
+    }
     const schemas = Array.isArray(schemaResponse.items) ? schemaResponse.items : [];
     const schema = schemas.find((item) => item.isActive) ?? schemas[0] ?? null;
     if (schemas.length > 0 && !cachedSchemas) {

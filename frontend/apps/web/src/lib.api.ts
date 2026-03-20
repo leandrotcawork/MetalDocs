@@ -11,6 +11,7 @@ import type {
   DocumentProfileGovernanceItem,
   DocumentProfileItem,
   DocumentProfileSchemaItem,
+  DocumentProfileBundleResponse,
   DocumentTypeItem,
   DocumentDepartmentItem,
   DocumentContentDocxResponse,
@@ -151,6 +152,25 @@ function normalizeDocumentProfileGovernance(value: DocumentProfileGovernanceItem
     approvalRequired: Boolean(value?.approvalRequired),
     retentionDays: Number(value?.retentionDays ?? 0),
     validityDays: Number(value?.validityDays ?? 0),
+  };
+}
+
+function normalizeDocumentProfileBundle(value: DocumentProfileBundleResponse): DocumentProfileBundleResponse {
+  return {
+    profile: normalizeDocumentProfile(value?.profile),
+    schema: normalizeDocumentProfileSchema(value?.schema),
+    governance: normalizeDocumentProfileGovernance(value?.governance),
+    taxonomy: {
+      processAreas: Array.isArray(value?.taxonomy?.processAreas)
+        ? value.taxonomy.processAreas.map(normalizeProcessArea)
+        : [],
+      documentDepartments: Array.isArray(value?.taxonomy?.documentDepartments)
+        ? value.taxonomy.documentDepartments.map(normalizeDocumentDepartment)
+        : [],
+      subjects: Array.isArray(value?.taxonomy?.subjects)
+        ? value.taxonomy.subjects.map(normalizeSubject)
+        : [],
+    },
   };
 }
 
@@ -439,6 +459,8 @@ export const api = {
   createDocumentProfile: (body: Record<string, unknown>) => request<{ code: string }>("/document-profiles", { method: "POST", body: JSON.stringify(body) }),
   updateDocumentProfile: (code: string, body: Record<string, unknown>) => request<{ code: string }>(`/document-profiles/${encodeURIComponent(code)}`, { method: "PUT", body: JSON.stringify(body) }),
   deleteDocumentProfile: (code: string) => request<void>(`/document-profiles/${encodeURIComponent(code)}`, { method: "DELETE" }),
+  getDocumentProfileBundle: async (profileCode: string) =>
+    normalizeDocumentProfileBundle(await request<DocumentProfileBundleResponse>(`/document-profiles/${encodeURIComponent(profileCode)}/bundle`)),
   getDocumentProfileSchema: async (profileCode: string) => {
     const response = await request<{ items: DocumentProfileSchemaItem[] }>(`/document-profiles/${encodeURIComponent(profileCode)}/schema`);
     const items = Array.isArray(response.items) ? response.items.map(normalizeDocumentProfileSchema) : [];

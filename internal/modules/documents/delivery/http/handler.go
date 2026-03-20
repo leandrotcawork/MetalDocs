@@ -200,6 +200,19 @@ type DocumentProfileGovernanceResponse struct {
 	ValidityDays       int    `json:"validityDays"`
 }
 
+type DocumentProfileBundleTaxonomyResponse struct {
+	ProcessAreas        []ProcessAreaResponse        `json:"processAreas"`
+	DocumentDepartments []DocumentDepartmentResponse `json:"documentDepartments"`
+	Subjects            []SubjectResponse            `json:"subjects"`
+}
+
+type DocumentProfileBundleResponse struct {
+	Profile    DocumentProfileResponse             `json:"profile"`
+	Schema     DocumentProfileSchemaResponse       `json:"schema"`
+	Governance DocumentProfileGovernanceResponse   `json:"governance"`
+	Taxonomy   DocumentProfileBundleTaxonomyResponse `json:"taxonomy"`
+}
+
 type UpsertDocumentProfileGovernanceRequest struct {
 	WorkflowProfile    string `json:"workflowProfile"`
 	ReviewIntervalDays int    `json:"reviewIntervalDays"`
@@ -500,6 +513,8 @@ func (h *Handler) handleDocumentProfileSubRoutes(w http.ResponseWriter, r *http.
 		h.handleDocumentProfileGovernance(w, r, parts[0])
 	case len(parts) == 2 && parts[1] == "governance" && r.Method == http.MethodPut:
 		h.handleUpdateDocumentProfileGovernance(w, r, parts[0])
+	case len(parts) == 2 && parts[1] == "bundle" && r.Method == http.MethodGet:
+		h.handleDocumentProfileBundle(w, r, parts[0])
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
@@ -532,6 +547,88 @@ func (h *Handler) handleDocumentProfileSchemas(w http.ResponseWriter, r *http.Re
 		})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": out})
+}
+
+func (h *Handler) handleDocumentProfileBundle(w http.ResponseWriter, r *http.Request, profileCode string) {
+	traceID := requestTraceID(r)
+	bundle, err := h.service.GetDocumentProfileBundle(r.Context(), profileCode)
+	if err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+
+	rules := make([]MetadataFieldRuleResponse, 0, len(bundle.Schema.MetadataRules))
+	for _, rule := range bundle.Schema.MetadataRules {
+		rules = append(rules, MetadataFieldRuleResponse{
+			Name:     rule.Name,
+			Type:     rule.Type,
+			Required: rule.Required,
+		})
+	}
+
+	processAreas := make([]ProcessAreaResponse, 0, len(bundle.ProcessAreas))
+	for _, item := range bundle.ProcessAreas {
+		processAreas = append(processAreas, ProcessAreaResponse{
+			Code:        item.Code,
+			Name:        item.Name,
+			Description: item.Description,
+		})
+	}
+
+	departments := make([]DocumentDepartmentResponse, 0, len(bundle.DocumentDepartments))
+	for _, item := range bundle.DocumentDepartments {
+		departments = append(departments, DocumentDepartmentResponse{
+			Code:        item.Code,
+			Name:        item.Name,
+			Description: item.Description,
+		})
+	}
+
+	subjects := make([]SubjectResponse, 0, len(bundle.Subjects))
+	for _, item := range bundle.Subjects {
+		subjects = append(subjects, SubjectResponse{
+			Code:            item.Code,
+			ProcessAreaCode: item.ProcessAreaCode,
+			Name:            item.Name,
+			Description:     item.Description,
+		})
+	}
+
+	writeJSON(w, http.StatusOK, DocumentProfileBundleResponse{
+		Profile: DocumentProfileResponse{
+			Code:                bundle.Profile.Code,
+			FamilyCode:          bundle.Profile.FamilyCode,
+			Name:                bundle.Profile.Name,
+			Alias:               bundle.Profile.Alias,
+			Description:         bundle.Profile.Description,
+			ReviewIntervalDays:  bundle.Profile.ReviewIntervalDays,
+			ActiveSchemaVersion: bundle.Profile.ActiveSchemaVersion,
+			WorkflowProfile:     bundle.Profile.WorkflowProfile,
+			ApprovalRequired:    bundle.Profile.ApprovalRequired,
+			RetentionDays:       bundle.Profile.RetentionDays,
+			ValidityDays:        bundle.Profile.ValidityDays,
+		},
+		Schema: DocumentProfileSchemaResponse{
+			ProfileCode:   bundle.Schema.ProfileCode,
+			Version:       bundle.Schema.Version,
+			IsActive:      bundle.Schema.IsActive,
+			MetadataRules: rules,
+			ContentSchema: bundle.Schema.ContentSchema,
+		},
+		Governance: DocumentProfileGovernanceResponse{
+			ProfileCode:        bundle.Governance.ProfileCode,
+			WorkflowProfile:    bundle.Governance.WorkflowProfile,
+			ReviewIntervalDays: bundle.Governance.ReviewIntervalDays,
+			ApprovalRequired:   bundle.Governance.ApprovalRequired,
+			RetentionDays:      bundle.Governance.RetentionDays,
+			ValidityDays:       bundle.Governance.ValidityDays,
+		},
+		Taxonomy: DocumentProfileBundleTaxonomyResponse{
+			ProcessAreas:        processAreas,
+			DocumentDepartments: departments,
+			Subjects:            subjects,
+		},
+	})
 }
 
 func (h *Handler) handleUpsertDocumentProfileSchema(w http.ResponseWriter, r *http.Request, profileCode string) {

@@ -97,6 +97,19 @@ export interface DocumentProfileGovernanceItem {
   validityDays: number;
 }
 
+export interface DocumentProfileBundleTaxonomy {
+  processAreas: ProcessAreaItem[];
+  documentDepartments: DocumentDepartmentItem[];
+  subjects: SubjectItem[];
+}
+
+export interface DocumentProfileBundleResponse {
+  profile: DocumentProfileItem;
+  schema: DocumentProfileSchemaItem;
+  governance: DocumentProfileGovernanceItem;
+  taxonomy: DocumentProfileBundleTaxonomy;
+}
+
 export interface DocumentListItem {
   documentId: string;
   title: string;

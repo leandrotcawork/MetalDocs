@@ -102,6 +102,7 @@ k6 run -e BASE_URL=http://127.0.0.1:8081/api/v1 `
   -e USER_ID=admin-local `
   -e PROFILE_CODE=po `
   -e DOCUMENT_ID=CHANGE_ME_DOCUMENT_ID `
+  -e PDF_AVAILABLE=false `
   scripts/perf/k6-light-concurrency.js
 ```
 

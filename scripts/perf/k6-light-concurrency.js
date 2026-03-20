@@ -7,6 +7,7 @@ const BASE_URL = __ENV.BASE_URL || "http://localhost:8080/api/v1";
 const USER_ID = __ENV.USER_ID || "admin-local";
 const PROFILE_CODE = __ENV.PROFILE_CODE || "po";
 const DOCUMENT_ID = __ENV.DOCUMENT_ID || "";
+const PDF_AVAILABLE = __ENV.PDF_AVAILABLE === "true";
 
 export const options = {
   scenarios: {
@@ -81,13 +82,15 @@ export default function () {
       "native content status 200": (r) => r.status === 200,
     });
 
-    const pdf = http.get(`${BASE_URL}/documents/${DOCUMENT_ID}/content/pdf`, {
-      headers: authHeaders(),
-      tags: { operation: "get_content_pdf" },
-    });
-    check(pdf, {
-      "pdf status 200 or 404": (r) => r.status === 200 || r.status === 404,
-    });
+    if (PDF_AVAILABLE) {
+      const pdf = http.get(`${BASE_URL}/documents/${DOCUMENT_ID}/content/pdf`, {
+        headers: authHeaders(),
+        tags: { operation: "get_content_pdf" },
+      });
+      check(pdf, {
+        "pdf status 200": (r) => r.status === 200,
+      });
+    }
   }
 
   sleep(0.2);

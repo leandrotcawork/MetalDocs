@@ -3063,8 +3063,8 @@ td small {
 }
 
 .content-builder-field span {
-  font-weight: 600;
-  color: var(--text);
+  font-weight: 500;
+  color: var(--text-soft);
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -3079,12 +3079,12 @@ td small {
 .content-builder-field input,
 .content-builder-field select,
 .content-builder-field textarea {
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-2);
+  padding: 0 11px;
   background: var(--surface);
   color: var(--text);
-  font-size: 12.5px;
+  font-size: 13px;
   transition: border-color 0.12s ease, box-shadow 0.12s ease;
 }
 
@@ -3096,6 +3096,18 @@ td small {
   box-shadow: 0 0 0 3px rgba(107, 31, 42, 0.06);
 }
 
+.content-builder-field input,
+.content-builder-field select {
+  height: 36px;
+}
+
+.content-builder-field textarea {
+  padding: 9px 11px;
+  min-height: 84px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
 .content-builder-array,
 .content-builder-table {
   display: grid;
@@ -3105,9 +3117,21 @@ td small {
 .content-builder-array-row,
 .content-builder-table-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)) auto;
+  grid-template-columns: 1fr auto;
   gap: 8px;
   align-items: center;
+}
+
+.content-builder-array .ghost-button {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 6px;
+}
+
+.content-builder-array .ghost-button:hover {
+  background: var(--vinho-pale);
+  color: var(--vinho);
 }
 
 .content-builder-checklist {
@@ -3117,14 +3141,24 @@ td small {
 
 .content-builder-checklist-row {
   display: grid;
-  grid-template-columns: 18px minmax(160px, 1fr) auto;
-  gap: 8px;
+  grid-template-columns: 18px 1fr auto;
+  gap: 10px;
   align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
 }
 
 .content-builder-checklist-row input[type="checkbox"] {
   width: 16px;
   height: 16px;
+}
+
+.content-builder-checklist-row:last-child {
+  border-bottom: none;
+}
+
+.content-builder-checklist-row input[type="checkbox"] {
+  accent-color: var(--vinho);
 }
 
 .content-builder-table {
@@ -3159,6 +3193,14 @@ td small {
 
 .content-builder-table-row:nth-child(even) {
   background: var(--vinho-pale);
+}
+
+.content-builder-table-row select,
+.content-builder-table-row input {
+  height: 30px;
+  border-radius: 6px;
+  padding: 0 8px;
+  font-size: 12px;
 }
 
 .content-builder-preview {

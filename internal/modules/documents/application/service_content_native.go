@@ -242,12 +242,12 @@ func (s *Service) OpenContentStorage(ctx context.Context, storageKey string) ([]
 
 func (s *Service) renderProfileTemplate(ctx context.Context, profileCode string, data map[string]any, convertTo, traceID string) ([]byte, error) {
 	if s.carboneClient == nil || s.carboneTemplates == nil {
-		return nil, fmt.Errorf("carbone client not configured")
+		return nil, domain.ErrRenderUnavailable
 	}
 	normalized := strings.ToLower(strings.TrimSpace(profileCode))
 	templateID, ok := s.carboneTemplates.TemplateID(normalized)
 	if !ok {
-		return nil, fmt.Errorf("template not registered for profile %s", normalized)
+		return nil, domain.ErrRenderUnavailable
 	}
 	renderID, err := s.carboneClient.RenderTemplate(ctx, traceID, templateID, data, convertTo)
 	if err != nil {

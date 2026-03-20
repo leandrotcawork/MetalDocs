@@ -1761,6 +1761,8 @@ func (h *Handler) writeDomainError(w http.ResponseWriter, err error, traceID str
 		writeAPIError(w, http.StatusNotFound, "ATTACHMENT_NOT_FOUND", "Attachment not found", traceID)
 	case errors.Is(err, domain.ErrAttachmentStoreUnavailable):
 		writeAPIError(w, http.StatusInternalServerError, "ATTACHMENT_STORE_UNAVAILABLE", "Attachment storage is not configured", traceID)
+	case errors.Is(err, domain.ErrRenderUnavailable):
+		writeAPIError(w, http.StatusServiceUnavailable, "RENDER_UNAVAILABLE", "Render service is not configured", traceID)
 	case errors.Is(err, domain.ErrEditLockActive):
 		writeAPIError(w, http.StatusConflict, "EDIT_LOCK_ACTIVE", "Document is currently locked by another editor", traceID)
 	case errors.Is(err, domain.ErrEditLockNotFound):

@@ -16,6 +16,7 @@ var (
 	ErrInvalidAttachment           = errors.New("invalid attachment")
 	ErrAttachmentNotFound          = errors.New("attachment not found")
 	ErrAttachmentStoreUnavailable  = errors.New("attachment store unavailable")
+	ErrRenderUnavailable           = errors.New("render service unavailable")
 	ErrEditLockActive              = errors.New("edit lock already active")
 	ErrEditLockNotFound            = errors.New("edit lock not found")
 )

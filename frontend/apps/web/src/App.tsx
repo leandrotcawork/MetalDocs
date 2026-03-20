@@ -394,6 +394,7 @@ function AppContent() {
     setSelectedProfileSchema(schema);
     setSelectedProfileGovernance(governance);
     markUx(`profile-schema-loaded:${profileCode}`);
+    markUx(`profile-governance-loaded:${profileCode}`);
     setDocumentForm((current) => ({
       ...current,
       documentType: profileCode,
@@ -402,6 +403,17 @@ function AppContent() {
       metadata: metadataTextForProfileSchema(profileCode, schema),
     }));
     markUx(`profile-form-updated:${profileCode}`);
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          markUx(`profile-render-ready:${profileCode}`);
+        });
+      });
+    } else {
+      setTimeout(() => {
+        markUx(`profile-render-ready:${profileCode}`);
+      }, 0);
+    }
     stopApiTrace();
   }
 

@@ -5,7 +5,11 @@ Padronizar a manutencao dos templates DOCX usados pelo Carbone para gerar PDF e 
 
 ## Estrutura oficial
 - `carbone/templates/`:
-  - templates master versionados (ex: `template-po.docx`, `template-it.docx`, `template-rg.docx`)
+  - templates master versionados por profile:
+    - `template-po.docx`
+    - `template-it.docx`
+    - `template-rg.docx`
+    - `template-fm.docx` (ajuste quando o layout do formulario estiver definido)
 - `carbone/renders/`:
   - saida local de testes (gitignored)
 

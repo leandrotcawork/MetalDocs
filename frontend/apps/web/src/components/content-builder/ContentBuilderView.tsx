@@ -152,7 +152,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
                 setContentDraft(event.target.value);
                 setStatus((current) => (current === "dirty" ? current : "dirty"));
               }}
-              placeholder="{\n  \"section\": \"preencher\"\n}"
+              placeholder={`{\n  "section": "preencher"\n}`}
             />
           </div>
           {error && <div className="content-builder-error">{error}</div>}

@@ -1415,3 +1415,125 @@ Escopo:
 Aceite:
 - Equipe consegue atualizar um template e validar render sem alterar codigo.
 - Templates ficam versionados como ativos de design, nao como dados runtime.
+
+## Task 069 - Repo Hygiene: Clean working tree + ignore artifacts
+Status: `todo`
+
+Objetivo:
+Eliminar ruido operacional (artefatos locais) e garantir baseline limpo para refactors e hardening, evitando drift e commits acidentais.
+
+Motivacao:
+- Hoje existem artefatos locais frequentes (`.tmp/`, `frontend/apps/web/test-results/`) e mudancas pendentes no frontend que podem mascarar regressao.
+
+Escopo:
+- `.gitignore`:
+  - ignorar `.tmp/`
+  - ignorar `frontend/apps/web/test-results/`
+  - (se aplicavel) ignorar `frontend/apps/web/playwright-report/` e `frontend/apps/web/.cache/`
+- Resolver mudancas pendentes do frontend em commits pequenos e sem misturar refactor amplo:
+  - `frontend/apps/web/src/App.tsx`: padronizar notificacoes (toast) sem banner que empurra layout.
+  - `frontend/apps/web/tests/e2e/auth-smoke.spec.ts`: estabilizar ou reduzir escopo para nao flake.
+- Documentar comando de smoke minimo no `docs/runbooks/` (1 pagina):
+  - build frontend
+  - subir compose
+  - exercitar fluxo: login -> criar doc -> abrir editor -> salvar -> gerar PDF
+
+Execucao (como fazer):
+- Criar commit 1 apenas para `.gitignore` e runbook (sem codigo).
+- Criar commit 2 apenas para `App.tsx` (UI/toast) com verificacao visual.
+- Criar commit 3 apenas para `auth-smoke.spec.ts` (se necessario), ou reverter se nao for confiavel agora.
+
+Aceite:
+- `git status` limpo apos rodar testes/build local.
+- Nenhum artefato local volta a aparecer como untracked.
+- Notificacoes nao deslocam layout (toast overlay).
+
+## Task 070 - Contracts/Domain: Dedicated error for invalid native content
+Status: `todo`
+
+Objetivo:
+Trocar falhas de validacao de `native_content` de erro generico para um erro de dominio especifico, com codigo API estavel e observavel.
+
+Escopo:
+- Domain:
+  - adicionar `ErrInvalidNativeContent` (ou `ErrInvalidContent`) em `internal/modules/documents/domain/errors.go`.
+  - garantir que validacao de schema (Task 066) retorne esse erro (nao `ErrInvalidCommand`).
+- Delivery:
+  - mapear o erro para HTTP 400 com code dedicado (ex: `INVALID_NATIVE_CONTENT`) em `internal/modules/documents/delivery/http/handler.go`.
+- Contracts:
+  - atualizar `docs/contracts/INTERNAL_EVENTS_AND_ERRORS.md` adicionando `INVALID_NATIVE_CONTENT` ao catalogo.
+  - se existir catalogo de erros por modulo, manter sincronizado.
+- Observabilidade:
+  - logar o `trace_id` e contexto minimo (documentId, profileCode, schemaVersion) sem vazar payload completo.
+
+Execucao (como fazer):
+- Alterar service para retornar erro especifico na validacao.
+- Atualizar o mapeamento de erro no handler.
+- Validar que o frontend recebe o `code` e exibe mensagem amigavel, sem banner persistente.
+
+Aceite:
+- Payload invalido gera 400 com `error.code=INVALID_NATIVE_CONTENT`.
+- Payload valido continua criando nova versao e renderizando PDF.
+- Sem breaking change em endpoints.
+
+## Task 071 - Backend Maintainability: Split large documents files by sub-area
+Status: `todo`
+
+Objetivo:
+Reduzir risco de regressao e custo de manutencao quebrando arquivos "god" em unidades menores, mantendo o mesmo desenho de arquitetura (vertical slice) e sem mudar contratos.
+
+Escopo:
+- `internal/modules/documents/application/service.go`:
+  - mover funcoes/metodos para arquivos por sub-area no mesmo package `application`, por exemplo:
+    - `service_content_native.go` (Get/Save native, render PDF)
+    - `service_content_docx.go` (upload docx, extract text, convert PDF)
+    - `service_registry.go` (profiles/schemas/governance/taxonomy)
+    - `service_collaboration.go` (presence/locks)
+    - `service_policies.go` (audience/policies helpers)
+    - `service_helpers.go` (helpers puros)
+- `internal/modules/documents/delivery/http/handler.go`:
+  - manter `Handler` e `routes` estaveis, mas separar handlers e DTOs por area:
+    - `handler_documents.go`, `handler_content.go`, `handler_profiles.go`, `handler_taxonomy.go`, `handler_collab.go`, `handler_attachments.go`
+  - regra: sem mover logica de negocio para o handler; apenas parse/response.
+
+Guardrails:
+- Nao criar novos packages agora; apenas dividir em multiplos `.go` no mesmo package para diff pequeno.
+- Sem mudanca de comportamento (refactor-only).
+- Sem mudar nomes de rotas/paths.
+
+Execucao (como fazer):
+- Refactor em commits pequenos por area (content -> registry -> collab), com `go test ./...` a cada commit.
+
+Aceite:
+- `go test ./...` passa.
+- Nao muda OpenAPI.
+- Arquivos resultantes ficam < ~400-500 linhas por arquivo, com responsabilidades claras.
+
+## Task 072 - Frontend Maintainability: Extract schema-driven widgets + reuse create widgets
+Status: `todo`
+
+Objetivo:
+Evitar repeticao e facilitar evolucao do editor nativo orientado a schema, com widgets reutilizaveis e padrao visual unico.
+
+Escopo:
+- Extrair renderer do schema em componentes menores:
+  - `components/content-builder/ContentSchemaForm.tsx`
+  - `components/content-builder/ContentSectionAccordion.tsx`
+  - `components/content-builder/widgets/*` (TextField, TextAreaField, SelectField, ArrayField, TableField, ChecklistField)
+- Reuso:
+  - alinhar estilos e foco com widgets existentes em `frontend/apps/web/src/components/create/widgets/` quando fizer sentido (inputs, DateTimeField, etc.).
+- Tipagem:
+  - consolidar tipos de schema (Section/Field/Column) em um arquivo unico (ex: `contentSchemaTypes.ts`) e usar em toda a UI.
+- UX:
+  - required indicator consistente
+  - estados de erro: ao receber `INVALID_NATIVE_CONTENT`, mostrar toast e destacar a secao com problema (sem logica de negocio).
+
+Execucao (como fazer):
+- Primeiro refactor-only (split do arquivo atual) sem mudar comportamento.
+- Depois ajustes de reuso e tipagem.
+- Commit por subpasso para reduzir risco.
+
+Aceite:
+- Editor continua funcionando para PO/IT/RG/FM.
+- Nenhum `fetch()` fora de `lib.api.ts`.
+- Componentes nao duplicam estilos/markup de inputs (uso de widgets padrao).

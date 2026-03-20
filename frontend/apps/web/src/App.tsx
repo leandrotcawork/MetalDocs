@@ -263,6 +263,18 @@ function AppContent() {
   }, [message]);
 
   useEffect(() => {
+    if (!error) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      setError("");
+    }, 6000);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [error]);
+
+  useEffect(() => {
     if (authState !== "ready" || !selectedDocument?.documentId) {
       return;
     }
@@ -581,6 +593,7 @@ function AppContent() {
 
   async function openDocument(documentId: string, nextView: WorkspaceView = "library") {
     try {
+      const canManagePolicies = currentUserRoles.includes("admin");
       const [document, versionsResponse, approvalsResponse, attachmentsResponse, auditResponse, presenceResponse, editLockResponse] = await Promise.all([
         api.getDocument(documentId),
         api.listVersions(documentId),
@@ -613,12 +626,17 @@ function AppContent() {
       setAuditEvents(auditResponse.items);
       setPolicyResourceId(documentId);
       setActiveView(nextView);
-      const [policyResponse, nextDiff] = await Promise.all([
-        api.listAccessPolicies("document", documentId),
-        orderedVersions.length >= 2
-          ? api.getVersionDiff(documentId, orderedVersions[1].version, orderedVersions[0].version)
-          : Promise.resolve(null),
-      ]);
+      const policyResponse = canManagePolicies
+        ? await api.listAccessPolicies("document", documentId).catch((err) => {
+          if (statusOf(err) === 403) {
+            return { items: [] as AccessPolicyItem[] };
+          }
+          throw err;
+        })
+        : { items: [] as AccessPolicyItem[] };
+      const nextDiff = orderedVersions.length >= 2
+        ? await api.getVersionDiff(documentId, orderedVersions[1].version, orderedVersions[0].version)
+        : null;
       setPolicies(policyResponse.items);
       setVersionDiff(nextDiff);
     } catch (err) {
@@ -1084,8 +1102,30 @@ function AppContent() {
 
   return (
     <div className={`app-shell ${!user.mustChangePassword ? "is-workspace" : ""}`}>
-      {error && <section data-testid="app-banner" className="banner banner-error">{error}</section>}
-      {message && <div className="toast toast-success" role="status">{message}</div>}
+      {(error || message) && (
+        <div className="toast-container" aria-live="polite" aria-atomic="false">
+          {error && (
+            <div data-testid="app-toast-error" className="toast toast-error" role="alert">
+              <span className="toast-icon" aria-hidden="true">!</span>
+              <div className="toast-body">
+                <strong>Falha</strong>
+                <span>{error}</span>
+              </div>
+              <button type="button" className="toast-close" aria-label="Fechar alerta" onClick={() => setError("")}>x</button>
+            </div>
+          )}
+          {message && (
+            <div data-testid="app-toast" className="toast toast-success" role="status">
+              <span className="toast-icon" aria-hidden="true">v</span>
+              <div className="toast-body">
+                <strong>Pronto</strong>
+                <span>{message}</span>
+              </div>
+              <button type="button" className="toast-close" aria-label="Fechar mensagem" onClick={() => setMessage("")}>x</button>
+            </div>
+          )}
+        </div>
+      )}
 
       {user.mustChangePassword && (
         <PasswordChangePanel newPassword={passwordForm.newPassword} confirmPassword={passwordForm.confirmPassword} onNewPasswordChange={(newPassword) => setPasswordForm({ ...passwordForm, newPassword })} onConfirmPasswordChange={(confirmPassword) => setPasswordForm({ ...passwordForm, confirmPassword })} onSubmit={handleChangePassword} />

@@ -1,5 +1,5 @@
 import { Component, useEffect, useRef, useState } from "react";
-import { api } from "./lib.api";
+import { api, startApiTrace, stopApiTrace } from "./lib.api";
 import { AuthShell } from "./components/AuthShell";
 import { DocumentCreateView } from "./components/DocumentCreateView";
 import { DocumentWorkspaceShell, type WorkspaceView } from "./components/DocumentWorkspaceShell";
@@ -382,6 +382,7 @@ function AppContent() {
   }
 
   async function applyDocumentProfile(profileCode: string, preferredProcessArea = "") {
+    startApiTrace(`apply-profile:${profileCode}`);
     const [schemaResponse, governance] = await Promise.all([
       api.listDocumentProfileSchemas(profileCode),
       api.getDocumentProfileGovernance(profileCode),
@@ -398,6 +399,7 @@ function AppContent() {
       processArea: preferredProcessArea,
       metadata: metadataTextForProfileSchema(profileCode, schema),
     }));
+    stopApiTrace();
   }
 
   async function handleLogin(event: React.FormEvent<HTMLFormElement>) {
@@ -494,6 +496,7 @@ function AppContent() {
     setError("");
     setMessage("");
     try {
+      startApiTrace("create-document");
       const needsAudience = ["CONFIDENTIAL", "RESTRICTED"].includes(documentForm.classification);
       const audienceMode = documentForm.audienceMode || "DEPARTMENT";
       const audienceDepartments = documentForm.classification === "CONFIDENTIAL"
@@ -550,10 +553,12 @@ function AppContent() {
         setActiveView("library");
       }
       if (user) await loadWorkspace(user);
+      stopApiTrace();
     } catch (err) {
       setContentStatus("error");
       setContentError("Falha ao gerar o conteudo. O documento foi criado.");
       handleError(err);
+      stopApiTrace();
     }
   }
 
@@ -573,6 +578,7 @@ function AppContent() {
   }
 
   function handleContentModeChange(mode: ContentMode) {
+    startApiTrace(`switch-content-mode:${mode}`);
     setContentMode(mode);
     setContentError("");
     setContentStatus("idle");
@@ -581,6 +587,7 @@ function AppContent() {
     if (mode === "native") {
       setContentFile(null);
     }
+    stopApiTrace();
   }
 
   function handleContentFileChange(file: File | null) {
@@ -593,6 +600,7 @@ function AppContent() {
 
   async function openDocument(documentId: string, nextView: WorkspaceView = "library") {
     try {
+      startApiTrace(`open-document:${documentId}`);
       const canManagePolicies = currentUserRoles.includes("admin");
       const [document, versionsResponse, approvalsResponse, attachmentsResponse, auditResponse, presenceResponse, editLockResponse] = await Promise.all([
         api.getDocument(documentId),
@@ -637,11 +645,13 @@ function AppContent() {
       const nextDiff = orderedVersions.length >= 2
         ? await api.getVersionDiff(documentId, orderedVersions[1].version, orderedVersions[0].version)
         : null;
-      setPolicies(policyResponse.items);
-      setVersionDiff(nextDiff);
-    } catch (err) {
-      handleError(err);
-    }
+        setPolicies(policyResponse.items);
+        setVersionDiff(nextDiff);
+        stopApiTrace();
+      } catch (err) {
+        handleError(err);
+        stopApiTrace();
+      }
   }
 
   async function handleUploadAttachment(event: React.FormEvent<HTMLFormElement>) {

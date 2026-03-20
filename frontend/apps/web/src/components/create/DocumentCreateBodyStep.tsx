@@ -10,6 +10,7 @@ type DocumentCreateBodyStepProps = {
   contentStatus: "idle" | "saving" | "ready" | "error";
   contentError: string;
   profileCode: string;
+  canOpenEditor: boolean;
   onContentModeChange: (mode: ContentMode) => void;
   onContentFileChange: (file: File | null) => void;
   onDownloadTemplate: (profileCode: string) => void | Promise<void>;
@@ -90,7 +91,7 @@ export function DocumentCreateBodyStep(props: DocumentCreateBodyStepProps) {
               <strong>Editor de conteudo</strong>
               <p>O conteudo nativo e preenchido em uma tela dedicada apos a criacao do documento.</p>
             </div>
-            <button type="button" className="ghost-button" disabled>
+            <button type="submit" className="ghost-button" disabled={!props.canOpenEditor}>
               Abrir editor de conteudo
             </button>
           </div>

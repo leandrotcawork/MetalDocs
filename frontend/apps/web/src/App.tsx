@@ -251,6 +251,18 @@ function AppContent() {
   }, [authState, user?.mustChangePassword, user?.userId]);
 
   useEffect(() => {
+    if (!message) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      setMessage("");
+    }, 2000);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [message]);
+
+  useEffect(() => {
     if (authState !== "ready" || !selectedDocument?.documentId) {
       return;
     }
@@ -1072,7 +1084,8 @@ function AppContent() {
 
   return (
     <div className={`app-shell ${!user.mustChangePassword ? "is-workspace" : ""}`}>
-      {(message || error) && <section data-testid="app-banner" className={`banner ${error ? "banner-error" : "banner-success"}`}>{error || message}</section>}
+      {error && <section data-testid="app-banner" className="banner banner-error">{error}</section>}
+      {message && <div className="toast toast-success" role="status">{message}</div>}
 
       {user.mustChangePassword && (
         <PasswordChangePanel newPassword={passwordForm.newPassword} confirmPassword={passwordForm.confirmPassword} onNewPasswordChange={(newPassword) => setPasswordForm({ ...passwordForm, newPassword })} onConfirmPasswordChange={(confirmPassword) => setPasswordForm({ ...passwordForm, confirmPassword })} onSubmit={handleChangePassword} />

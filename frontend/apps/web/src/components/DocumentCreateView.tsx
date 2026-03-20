@@ -54,6 +54,10 @@ export function DocumentCreateView(props: DocumentCreateViewProps) {
       && audienceComplete,
     body: contentCompleted,
   };
+  const canOpenEditor = stepCompletion.identification
+    && stepCompletion.context
+    && stepCompletion.metadata
+    && stepCompletion.content;
 
   function stepStateFor(step: WizardStep): StepStatus {
     if (step === currentStep) {
@@ -202,6 +206,7 @@ export function DocumentCreateView(props: DocumentCreateViewProps) {
             contentStatus={props.contentStatus}
             contentError={props.contentError}
             profileCode={selectedProfile?.code ?? ""}
+            canOpenEditor={canOpenEditor}
             onContentModeChange={props.onContentModeChange}
             onContentFileChange={props.onContentFileChange}
             onDownloadTemplate={props.onDownloadTemplate}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useReducer } from "react";
 import { api } from "../../lib.api";
 import type { DocumentListItem, DocumentProfileSchemaItem } from "../../lib.types";
 import { PdfPreview } from "../create/widgets/PdfPreview";
@@ -8,17 +8,73 @@ type ContentBuilderViewProps = {
   onBack: () => void;
 };
 
-type BuilderStatus = "loading" | "idle" | "dirty" | "saving" | "error";
+type BuilderStatus = "loading" | "idle" | "dirty" | "saving" | "rendering" | "error";
+
+type BuilderState = {
+  status: BuilderStatus;
+  error: string;
+  pdfUrl: string;
+  version: number | null;
+  contentDraft: Record<string, unknown>;
+  schema: DocumentProfileSchemaItem | null;
+  previewCollapsed: boolean;
+};
+
+type BuilderAction =
+  | { type: "load_start" }
+  | { type: "load_success"; payload: { contentDraft: Record<string, unknown>; schema: DocumentProfileSchemaItem | null; version: number | null; pdfUrl: string } }
+  | { type: "load_error"; payload: { message: string } }
+  | { type: "set_draft"; payload: { contentDraft: Record<string, unknown> } }
+  | { type: "set_status"; payload: { status: BuilderStatus } }
+  | { type: "set_error"; payload: { message: string } }
+  | { type: "set_pdf"; payload: { pdfUrl: string } }
+  | { type: "set_preview"; payload: { collapsed: boolean } };
+
+const initialState: BuilderState = {
+  status: "loading",
+  error: "",
+  pdfUrl: "",
+  version: null,
+  contentDraft: {},
+  schema: null,
+  previewCollapsed: false,
+};
+
+function reducer(state: BuilderState, action: BuilderAction): BuilderState {
+  switch (action.type) {
+    case "load_start":
+      return { ...state, status: "loading", error: "" };
+    case "load_success":
+      return {
+        ...state,
+        status: "idle",
+        error: "",
+        contentDraft: action.payload.contentDraft,
+        schema: action.payload.schema,
+        version: action.payload.version,
+        pdfUrl: action.payload.pdfUrl,
+      };
+    case "load_error":
+      return { ...state, status: "error", error: action.payload.message };
+    case "set_draft":
+      return { ...state, contentDraft: action.payload.contentDraft };
+    case "set_status":
+      return { ...state, status: action.payload.status };
+    case "set_error":
+      return { ...state, error: action.payload.message };
+    case "set_pdf":
+      return { ...state, pdfUrl: action.payload.pdfUrl };
+    case "set_preview":
+      return { ...state, previewCollapsed: action.payload.collapsed };
+    default:
+      return state;
+  }
+}
 
 export function ContentBuilderView(props: ContentBuilderViewProps) {
   const documentId = props.document?.documentId ?? "";
-  const [contentDraft, setContentDraft] = useState<Record<string, unknown>>({});
-  const [status, setStatus] = useState<BuilderStatus>("loading");
-  const [error, setError] = useState("");
-  const [pdfUrl, setPdfUrl] = useState("");
-  const [version, setVersion] = useState<number | null>(null);
-  const [previewCollapsed, setPreviewCollapsed] = useState(false);
-  const [schema, setSchema] = useState<DocumentProfileSchemaItem | null>(null);
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const { status, error, pdfUrl, version, contentDraft, schema, previewCollapsed } = state;
 
   const documentCode = useMemo(() => {
     if (!props.document?.documentId) return "--";
@@ -27,58 +83,67 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
 
   useEffect(() => {
     if (!documentId) {
-      setStatus("idle");
-      setContentDraft({});
+      dispatch({ type: "set_status", payload: { status: "idle" } });
+      dispatch({ type: "set_draft", payload: { contentDraft: {} } });
       return;
     }
     let isActive = true;
     async function loadContent() {
-      setStatus("loading");
-      setError("");
+      dispatch({ type: "load_start" });
       try {
-        const [contentResponse, schemasResponse] = await Promise.all([
+        const [contentResponse, schemasResponse, pdfResponse] = await Promise.all([
           api.getDocumentContentNative(documentId),
           props.document?.documentProfile
             ? api.listDocumentProfileSchemas(props.document.documentProfile)
             : Promise.resolve({ items: [] as DocumentProfileSchemaItem[] }),
+          api.getDocumentContentPdf(documentId).catch((err) => {
+            if (statusOf(err) === 404) {
+              return null;
+            }
+            throw err;
+          }),
         ]);
         if (!isActive) return;
         const items = Array.isArray(schemasResponse.items) ? schemasResponse.items : [];
         const activeSchema = items.find((item) => item.isActive) ?? items[0] ?? null;
-        setSchema(activeSchema);
-        setVersion(contentResponse.version);
-        setContentDraft((contentResponse.content ?? {}) as Record<string, unknown>);
-        setStatus("idle");
+        dispatch({
+          type: "load_success",
+          payload: {
+            contentDraft: (contentResponse.content ?? {}) as Record<string, unknown>,
+            schema: activeSchema,
+            version: contentResponse.version ?? null,
+            pdfUrl: pdfResponse?.url ?? "",
+          },
+        });
       } catch (err) {
         if (!isActive) return;
         if (statusOf(err) === 404) {
-          setContentDraft({});
-          setStatus("idle");
+          dispatch({
+            type: "load_success",
+            payload: { contentDraft: {}, schema: null, version: null, pdfUrl: "" },
+          });
           return;
         }
-        setError("Falha ao carregar o conteudo nativo.");
-        setStatus("error");
+        dispatch({ type: "load_error", payload: { message: "Falha ao carregar o conteudo nativo." } });
       }
     }
     void loadContent();
     return () => {
       isActive = false;
     };
-  }, [documentId]);
+  }, [documentId, props.document?.documentProfile]);
 
   async function handleSave() {
     if (!documentId) return;
-    setError("");
+    dispatch({ type: "set_error", payload: { message: "" } });
     const parsedContent: Record<string, unknown> = contentDraft ?? {};
-    setStatus("saving");
+    dispatch({ type: "set_status", payload: { status: "saving" } });
     try {
       const response = await api.saveDocumentContentNative(documentId, { content: parsedContent });
-      setVersion(response.version);
-      setPdfUrl(response.pdfUrl);
-      setStatus("idle");
+      dispatch({ type: "set_pdf", payload: { pdfUrl: response.pdfUrl } });
+      dispatch({ type: "load_success", payload: { contentDraft: parsedContent, schema, version: response.version ?? null, pdfUrl: response.pdfUrl } });
     } catch {
-      setError("Falha ao salvar o conteudo.");
-      setStatus("error");
+      dispatch({ type: "load_error", payload: { message: "Falha ao salvar o conteudo." } });
     }
   }
 
@@ -88,15 +153,14 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
       await handleSave();
       return;
     }
-    setError("");
-    setStatus("saving");
+    dispatch({ type: "set_error", payload: { message: "" } });
+    dispatch({ type: "set_status", payload: { status: "rendering" } });
     try {
       const response = await api.renderDocumentContentPdf(documentId);
-      setPdfUrl(response.pdfUrl);
-      setStatus("idle");
+      dispatch({ type: "set_pdf", payload: { pdfUrl: response.pdfUrl } });
+      dispatch({ type: "set_status", payload: { status: "idle" } });
     } catch {
-      setError("Nao foi possivel gerar o PDF.");
-      setStatus("error");
+      dispatch({ type: "load_error", payload: { message: "Nao foi possivel gerar o PDF." } });
     }
   }
 
@@ -104,6 +168,8 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
     ? "Nao salvo"
     : status === "saving"
       ? "Salvando..."
+      : status === "rendering"
+        ? "Gerando PDF..."
       : "Salvo";
 
   if (!props.document) {
@@ -122,11 +188,19 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
     <section className="content-builder">
       <header className="content-builder-header">
         <div>
+          <div className="content-builder-breadcrumb">
+            <span>MetalDocs</span>
+            <span>/</span>
+            <span>Acervo</span>
+            <span>/</span>
+            <strong>Editor</strong>
+          </div>
           <div className="content-builder-code">{documentCode}</div>
           <h2 className="content-builder-title">{props.document.title}</h2>
           <div className="content-builder-meta">
-            <span>Profile: {props.document.documentProfile.toUpperCase()}</span>
-            <span>Status: {props.document.status}</span>
+            <span className="content-builder-badge">Profile: {props.document.documentProfile.toUpperCase()}</span>
+            <span className="content-builder-badge">Status: {props.document.status}</span>
+            <span className="content-builder-badge">Versao: {version ?? "-"}</span>
           </div>
         </div>
         <div className="content-builder-header-actions">
@@ -143,8 +217,8 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
             schema={schema}
             value={contentDraft}
             onChange={(next) => {
-              setContentDraft(next);
-              setStatus((current) => (current === "dirty" ? current : "dirty"));
+              dispatch({ type: "set_draft", payload: { contentDraft: next } });
+              dispatch({ type: "set_status", payload: { status: "dirty" } });
             }}
           />
           {error && <div className="content-builder-error">{error}</div>}
@@ -155,7 +229,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
             <div className="content-builder-preview-inner">
               <div className="content-builder-preview-header">
                 <strong>Preview do PDF</strong>
-                <button type="button" className="ghost-button" onClick={() => setPreviewCollapsed(true)}>
+                <button type="button" className="ghost-button" onClick={() => dispatch({ type: "set_preview", payload: { collapsed: true } })}>
                   Recolher
                 </button>
               </div>
@@ -170,7 +244,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
             </div>
           )}
           {previewCollapsed && (
-            <button type="button" className="content-builder-preview-collapsed" onClick={() => setPreviewCollapsed(false)}>
+            <button type="button" className="content-builder-preview-collapsed" onClick={() => dispatch({ type: "set_preview", payload: { collapsed: false } })}>
               Preview PDF
             </button>
           )}
@@ -178,12 +252,12 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
       </div>
 
       <footer className="content-builder-footer">
-        <span>Versao: {version ?? "-"}</span>
+        <span>Versao ativa: {version ?? "-"}</span>
         <div className="content-builder-footer-actions">
-          <button type="button" className="ghost-button" onClick={handleSave} disabled={status === "saving" || status === "loading"}>
+          <button type="button" className="ghost-button" onClick={handleSave} disabled={status === "saving" || status === "loading" || status === "rendering"}>
             Salvar
           </button>
-          <button type="button" onClick={handleRenderPdf} disabled={status === "saving" || status === "loading"}>
+          <button type="button" onClick={handleRenderPdf} disabled={status === "saving" || status === "loading" || status === "rendering"}>
             Gerar PDF
           </button>
         </div>

@@ -207,8 +207,13 @@ export function DocumentCreateView(props: DocumentCreateViewProps) {
           />
           </CreateDocumentSection>
 
-          <footer className="create-doc-footer">
-            <button type="button" className="ghost-button">← Voltar</button>
+                    <footer className="create-doc-footer">
+            <button type="button" className="ghost-button create-doc-footer-back">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M10.5 3.5L6 8l4.5 4.5" />
+              </svg>
+              Voltar
+            </button>
             <div className="create-doc-footer-actions">
               <button data-testid="document-submit" type="submit" className="create-doc-footer-primary" disabled={props.isSubmitting}>
                 <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
@@ -236,3 +241,4 @@ export function DocumentCreateView(props: DocumentCreateViewProps) {
     </CreateDocumentShell>
   );
 }
+

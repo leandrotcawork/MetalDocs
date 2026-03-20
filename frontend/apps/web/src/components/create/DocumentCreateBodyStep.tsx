@@ -59,8 +59,8 @@ const DocumentCreateBodyStep = memo(function DocumentCreateBodyStep(props: Docum
             </svg>
           </span>
           <div className="create-doc-content-card-body">
-            <strong>Editor nativo</strong>
-            <small>Preencha o conteudo direto na plataforma em uma tela dedicada.</small>
+            <strong className="create-doc-content-card-title">Preencher na Plataforma</strong>
+            <small className="create-doc-content-card-desc">Preencha o conteudo direto na plataforma em uma tela dedicada.</small>
             <span className="create-doc-content-badge">Recomendado</span>
           </div>
         </button>
@@ -77,8 +77,8 @@ const DocumentCreateBodyStep = memo(function DocumentCreateBodyStep(props: Docum
             </svg>
           </span>
           <div className="create-doc-content-card-body">
-            <strong>Usar template Word</strong>
-            <small>Baixe o .docx, preencha offline no Word e envie de volta.</small>
+            <strong className="create-doc-content-card-title">Usar Template Word</strong>
+            <small className="create-doc-content-card-desc">Baixe o .docx, preencha offline no Word e envie de volta.</small>
           </div>
         </button>
       </div>

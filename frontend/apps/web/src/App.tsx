@@ -319,10 +319,10 @@ function AppContent() {
       const currentUser = await api.me();
       setUser(currentUser);
       setDocumentForm((current) => ({ ...current, ownerId: currentUser.userId }));
-      if (!currentUser.mustChangePassword) {
-        await loadWorkspace(currentUser);
-      }
       setAuthState("ready");
+      if (!currentUser.mustChangePassword) {
+        void loadWorkspace(currentUser);
+      }
     } catch (err) {
       if (statusOf(err) === 401) {
         setAuthState("idle");

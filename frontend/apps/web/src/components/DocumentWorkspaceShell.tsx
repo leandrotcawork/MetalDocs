@@ -479,7 +479,7 @@ export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
           </div>
         </aside>
 
-        <main className={`workspace-main ${isCatalogView || isCreateView || isContentBuilder ? "is-toolbarless" : ""} ${isCreateView ? "is-create-view" : ""}`}>
+        <main className={`workspace-main ${isCatalogView || isCreateView || isContentBuilder ? "is-toolbarless" : ""} ${isCreateView ? "is-create-view" : ""} ${isContentBuilder ? "is-content-builder-view" : ""}`}>
           {!isCatalogView && !isCreateView && !isContentBuilder && (
             <div className="workspace-toolbar workspace-toolbar-as-panel">
               <div className="workspace-toolbar-top">

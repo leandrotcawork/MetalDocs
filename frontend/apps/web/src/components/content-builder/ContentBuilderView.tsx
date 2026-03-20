@@ -338,7 +338,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
           {!previewCollapsed && (
             <div className="content-builder-preview-inner">
               <div className="content-builder-preview-header">
-                <div>
+                <div className="content-builder-preview-title">
                   <strong>Preview do PDF</strong>
                   <small>Atualize para refletir as ultimas edicoes.</small>
                 </div>
@@ -346,14 +346,23 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
                   Recolher
                 </button>
               </div>
-              {pdfUrl ? (
-                <PdfPreview url={pdfUrl} className="content-builder-preview-frame" width={320} />
-              ) : (
-                <div className="content-builder-preview-empty">
-                  <strong>Nenhum PDF gerado</strong>
-                  <span>Salve o conteudo e clique em "Gerar PDF" para visualizar.</span>
-                </div>
-              )}
+              <div className="content-builder-preview-body">
+                {pdfUrl ? (
+                  <PdfPreview url={pdfUrl} className="content-builder-preview-frame" width={320} />
+                ) : (
+                  <div className="content-builder-preview-empty">
+                    <div className="content-builder-preview-empty-icon" aria-hidden="true">
+                      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
+                        <path d="M4 2h7l3 3v11H4V2z" strokeLinejoin="round" />
+                        <path d="M11 2v3h3" strokeLinejoin="round" />
+                        <path d="M6 9h6M6 12h4" strokeLinecap="round" />
+                      </svg>
+                    </div>
+                    <strong>Nenhum PDF gerado</strong>
+                    <span>Salve o conteudo e clique em "Gerar PDF" para visualizar.</span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
           {previewCollapsed && (

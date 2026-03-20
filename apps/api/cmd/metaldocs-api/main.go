@@ -83,10 +83,8 @@ func main() {
 
 	authorizer := iamapp.NewStaticAuthorizer()
 	cachedProvider := iamapp.NewCachedRoleProvider(deps.RoleProvider, authn.CacheTTL())
-	runtimeAuthCfg := authCfg
-	runtimeAuthCfg.LegacyHeaderEnabled = false
-	authMiddleware := authdelivery.NewMiddleware(authService, runtimeAuthCfg, authn.Enabled())
-	iamMiddleware := iamdelivery.NewMiddleware(authorizer, cachedProvider, authn.Enabled(), false).
+	authMiddleware := authdelivery.NewMiddleware(authService, authCfg, authn.Enabled())
+	iamMiddleware := iamdelivery.NewMiddleware(authorizer, cachedProvider, authn.Enabled(), authCfg.LegacyHeaderEnabled).
 		WithPermissionResolver(newPermissionResolver())
 	originProtection := security.NewOriginProtection(security.OriginProtectionConfig{
 		Enabled:           authCfg.OriginProtection,

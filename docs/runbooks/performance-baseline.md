@@ -88,3 +88,35 @@ Execucao oficial: `2026-03-16 22:19` ate `22:23` (America/Sao_Paulo), com duraca
   - `versions status 200`: `3202/3202`
 - Status:
   - `aprovado`
+
+## Runbook: Light concurrency (Task 083)
+Objetivo:
+- Medir degradacao leve com 5-20 req/s nos endpoints criticos do editor.
+
+Script:
+- `scripts/perf/k6-light-concurrency.js`
+
+Comando:
+```powershell
+k6 run -e BASE_URL=http://127.0.0.1:8080/api/v1 `
+  -e USER_ID=admin-local `
+  -e PROFILE_CODE=po `
+  -e DOCUMENT_ID=CHANGE_ME_DOCUMENT_ID `
+  scripts/perf/k6-light-concurrency.js
+```
+
+Notas:
+- Se `DOCUMENT_ID` nao for informado, o script testa apenas as rotas de registry/taxonomia.
+- Para validação oficial, usar um documento real e salvar o output de p95/p99.
+
+## Evidencia registrada (light concurrency - tentativa 1)
+Execucao: `2026-03-20 12:15` ate `12:19` (America/Sao_Paulo).
+
+- Comando:
+  - `k6 run -e BASE_URL=http://127.0.0.1:8081/api/v1 -e USER_ID=admin-local -e PROFILE_CODE=po -e DOCUMENT_ID=<id> scripts/perf/k6-light-concurrency.js`
+- Resultado:
+  - `http_req_failed`: `100.00%` (threshold `< 1%`) - falhou
+  - `http_req_duration p95`: `713.23µs`
+  - `http_req_duration p99`: `939.73µs`
+- Observacao:
+  - Todas as checks falharam (status != 200). Precisa investigar auth/permissions ou endpoint base antes de validar a metrica oficial.

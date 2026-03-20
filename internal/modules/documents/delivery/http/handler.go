@@ -1908,6 +1908,8 @@ func (h *Handler) writeDomainError(w http.ResponseWriter, err error, traceID str
 		writeAPIError(w, http.StatusBadRequest, "INVALID_ACCESS_POLICY", "Invalid access policy", traceID)
 	case errors.Is(err, domain.ErrInvalidMetadata):
 		writeAPIError(w, http.StatusBadRequest, "INVALID_METADATA", "Invalid metadata for document type", traceID)
+	case errors.Is(err, domain.ErrInvalidNativeContent):
+		writeAPIError(w, http.StatusBadRequest, "INVALID_NATIVE_CONTENT", "Invalid native content payload", traceID)
 	case errors.Is(err, domain.ErrDocumentNotFound):
 		writeAPIError(w, http.StatusNotFound, "DOC_NOT_FOUND", "Document not found", traceID)
 	case errors.Is(err, domain.ErrDocumentAlreadyExists):

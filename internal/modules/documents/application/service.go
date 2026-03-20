@@ -1430,7 +1430,7 @@ func validateContentField(field map[string]any, container map[string]any) error 
 	value, exists := container[key]
 	if !exists || isEmptyContentValue(value) {
 		if required {
-			return domain.ErrInvalidCommand
+			return domain.ErrInvalidNativeContent
 		}
 		return nil
 	}
@@ -1438,28 +1438,28 @@ func validateContentField(field map[string]any, container map[string]any) error 
 	switch fieldType {
 	case "text", "textarea":
 		if _, ok := value.(string); !ok {
-			return domain.ErrInvalidCommand
+			return domain.ErrInvalidNativeContent
 		}
 	case "number":
 		if !isNumericValue(value) {
-			return domain.ErrInvalidCommand
+			return domain.ErrInvalidNativeContent
 		}
 	case "select":
 		selected, ok := value.(string)
 		if !ok {
-			return domain.ErrInvalidCommand
+			return domain.ErrInvalidNativeContent
 		}
 		options := normalizeSchemaStringList(field["options"])
 		if len(options) > 0 && !containsSchemaOption(options, selected) {
-			return domain.ErrInvalidCommand
+			return domain.ErrInvalidNativeContent
 		}
 	case "array":
 		items, ok := value.([]any)
 		if !ok {
-			return domain.ErrInvalidCommand
+			return domain.ErrInvalidNativeContent
 		}
 		if required && len(items) == 0 {
-			return domain.ErrInvalidCommand
+			return domain.ErrInvalidNativeContent
 		}
 		itemType, _ := asSchemaString(field["itemType"])
 		if itemType != "" {
@@ -1468,23 +1468,23 @@ func validateContentField(field map[string]any, container map[string]any) error 
 					continue
 				}
 				if !matchesContentType(itemType, item, field) {
-					return domain.ErrInvalidCommand
+					return domain.ErrInvalidNativeContent
 				}
 			}
 		}
 	case "table":
 		rows, ok := value.([]any)
 		if !ok {
-			return domain.ErrInvalidCommand
+			return domain.ErrInvalidNativeContent
 		}
 		if required && len(rows) == 0 {
-			return domain.ErrInvalidCommand
+			return domain.ErrInvalidNativeContent
 		}
 		columns, _ := field["columns"].([]any)
 		for _, rawRow := range rows {
 			row, ok := rawRow.(map[string]any)
 			if !ok {
-				return domain.ErrInvalidCommand
+				return domain.ErrInvalidNativeContent
 			}
 			for _, rawColumn := range columns {
 				column, ok := rawColumn.(map[string]any)

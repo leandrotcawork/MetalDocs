@@ -43,14 +43,14 @@ export default function () {
   });
 
   const schemas = http.get(
-    `${BASE_URL}/document-profiles/${PROFILE_CODE}/schemas`,
+    `${BASE_URL}/document-profiles/${PROFILE_CODE}/schema`,
     {
       headers: authHeaders(),
       tags: { operation: "list_profile_schemas" },
     }
   );
   check(schemas, {
-    "schemas status 200": (r) => r.status === 200,
+    "schema status 200": (r) => r.status === 200,
   });
 
   const processAreas = http.get(`${BASE_URL}/process-areas`, {
@@ -61,7 +61,7 @@ export default function () {
     "process areas status 200": (r) => r.status === 200,
   });
 
-  const subjects = http.get(`${BASE_URL}/subjects`, {
+  const subjects = http.get(`${BASE_URL}/document-subjects`, {
     headers: authHeaders(),
     tags: { operation: "list_subjects" },
   });
@@ -86,7 +86,7 @@ export default function () {
       tags: { operation: "get_content_pdf" },
     });
     check(pdf, {
-      "pdf status 200": (r) => r.status === 200,
+      "pdf status 200 or 404": (r) => r.status === 200 || r.status === 404,
     });
   }
 

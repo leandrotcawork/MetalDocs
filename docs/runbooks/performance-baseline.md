@@ -98,6 +98,20 @@ Script:
 
 Comando:
 ```powershell
+k6 run -e BASE_URL=http://127.0.0.1:8081/api/v1 `
+  -e USER_ID=admin-local `
+  -e PROFILE_CODE=po `
+  -e DOCUMENT_ID=CHANGE_ME_DOCUMENT_ID `
+  scripts/perf/k6-light-concurrency.js
+```
+
+Se precisar usar o header tecnico `X-User-Id`, suba a API com:
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/dev-api-perf.ps1
+```
+
+Comando completo:
+```powershell
 k6 run -e BASE_URL=http://127.0.0.1:8080/api/v1 `
   -e USER_ID=admin-local `
   -e PROFILE_CODE=po `

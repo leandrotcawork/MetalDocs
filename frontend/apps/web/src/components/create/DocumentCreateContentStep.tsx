@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { DocumentDepartmentItem, ProcessAreaItem } from "../../lib.types";
 import type { DocumentForm } from "./documentCreateTypes";
 import { CreateField } from "./widgets/CreateField";
@@ -18,7 +19,7 @@ const classificationOptions = [
   { value: "RESTRICTED", label: "Restrito", desc: "Departamento + area especifica" },
 ];
 
-export function DocumentCreateContentStep(props: DocumentCreateContentStepProps) {
+const DocumentCreateContentStep = memo(function DocumentCreateContentStep(props: DocumentCreateContentStepProps) {
   const isConfidential = props.form.classification === "CONFIDENTIAL";
   const isRestricted = props.form.classification === "RESTRICTED";
   const showAudience = isConfidential || isRestricted;
@@ -150,4 +151,18 @@ export function DocumentCreateContentStep(props: DocumentCreateContentStepProps)
       </div>
     </div>
   );
-}
+}, (prev, next) => (
+  prev.form.classification === next.form.classification
+  && prev.form.audienceMode === next.form.audienceMode
+  && prev.form.audienceDepartment === next.form.audienceDepartment
+  && prev.form.audienceProcessArea === next.form.audienceProcessArea
+  && prev.form.audienceDepartments === next.form.audienceDepartments
+  && prev.form.department === next.form.department
+  && prev.form.processArea === next.form.processArea
+  && prev.form.effectiveAt === next.form.effectiveAt
+  && prev.form.expiryAt === next.form.expiryAt
+  && prev.documentDepartments === next.documentDepartments
+  && prev.processAreas === next.processAreas
+));
+
+export { DocumentCreateContentStep };

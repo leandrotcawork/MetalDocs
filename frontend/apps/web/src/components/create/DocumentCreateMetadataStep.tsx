@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import type { DocumentProfileSchemaItem } from "../../lib.types";
 import type { DocumentForm } from "./documentCreateTypes";
 import { deleteMetadataField, parseMetadata, renameMetadataField, updateMetadataField } from "./documentCreateTypes";
@@ -15,7 +15,7 @@ type CustomMetadataRow = {
   value: string;
 };
 
-export function DocumentCreateMetadataStep(props: DocumentCreateMetadataStepProps) {
+const DocumentCreateMetadataStep = memo(function DocumentCreateMetadataStep(props: DocumentCreateMetadataStepProps) {
   const metadataMap = parseMetadata(props.form.metadata);
   const metadataRules = (props.selectedProfileSchema?.metadataRules ?? []).filter((rule) => rule.name.trim().length > 0);
   const schemaNames = useMemo(() => new Set(metadataRules.map((rule) => rule.name)), [metadataRules]);
@@ -135,4 +135,12 @@ export function DocumentCreateMetadataStep(props: DocumentCreateMetadataStepProp
       </div>
     </div>
   );
-}
+}, (prev, next) => (
+  prev.form.metadata === next.form.metadata
+  && prev.form.documentProfile === next.form.documentProfile
+  && prev.selectedProfileSchema?.profileCode === next.selectedProfileSchema?.profileCode
+  && prev.selectedProfileSchema?.version === next.selectedProfileSchema?.version
+  && prev.selectedProfileSchema?.metadataRules === next.selectedProfileSchema?.metadataRules
+));
+
+export { DocumentCreateMetadataStep };

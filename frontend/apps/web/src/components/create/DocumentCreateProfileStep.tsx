@@ -1,3 +1,4 @@
+import { memo } from "react";
 import {
   metalNobreProfileContext,
   metalNobreProfileOptionLabel,
@@ -15,7 +16,7 @@ type DocumentCreateProfileStepProps = {
   onApplyProfile: (profileCode: string, preferredProcessArea?: string) => void | Promise<void>;
 };
 
-export function DocumentCreateProfileStep(props: DocumentCreateProfileStepProps) {
+const DocumentCreateProfileStep = memo(function DocumentCreateProfileStep(props: DocumentCreateProfileStepProps) {
   const profileOptions: SelectMenuOption[] = props.documentProfiles.map((item) => ({
     value: item.code,
     label: metalNobreProfileOptionLabel(item),
@@ -58,4 +59,15 @@ export function DocumentCreateProfileStep(props: DocumentCreateProfileStepProps)
       </div>
     </div>
   );
-}
+}, (prev, next) => (
+  prev.form.title === next.form.title
+  && prev.form.documentProfile === next.form.documentProfile
+  && prev.form.processArea === next.form.processArea
+  && prev.documentProfiles === next.documentProfiles
+  && prev.selectedProfile?.code === next.selectedProfile?.code
+  && prev.selectedProfile?.familyCode === next.selectedProfile?.familyCode
+  && prev.selectedProfile?.name === next.selectedProfile?.name
+  && prev.selectedProfile?.alias === next.selectedProfile?.alias
+));
+
+export { DocumentCreateProfileStep };

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import type { ContentMode } from "./documentCreateTypes";
 import { PdfPreview } from "./widgets/PdfPreview";
 
@@ -10,13 +10,12 @@ type DocumentCreateBodyStepProps = {
   contentStatus: "idle" | "saving" | "ready" | "error";
   contentError: string;
   profileCode: string;
-  canOpenEditor: boolean;
   onContentModeChange: (mode: ContentMode) => void;
   onContentFileChange: (file: File | null) => void;
   onDownloadTemplate: (profileCode: string) => void | Promise<void>;
 };
 
-export function DocumentCreateBodyStep(props: DocumentCreateBodyStepProps) {
+const DocumentCreateBodyStep = memo(function DocumentCreateBodyStep(props: DocumentCreateBodyStepProps) {
   const isNative = props.contentMode === "native";
   const isDocx = props.contentMode === "docx_upload";
   const fileName = props.contentFile?.name ?? "";
@@ -86,16 +85,9 @@ export function DocumentCreateBodyStep(props: DocumentCreateBodyStepProps) {
 
       {isNative && (
         <div className="create-doc-content-block">
-          <div className="create-doc-native-card">
-            <div>
-              <strong>Editor de conteudo</strong>
-              <p>O conteudo nativo e preenchido em uma tela dedicada apos a criacao do documento.</p>
-            </div>
-            <button type="submit" className="ghost-button" disabled={!props.canOpenEditor}>
-              Abrir editor de conteudo
-            </button>
-          </div>
-          <p className="create-doc-content-hint">Disponivel assim que o documento for criado.</p>
+          <p className="create-doc-content-hint">
+            O conteudo nativo e preenchido em uma tela dedicada apos a criacao do documento.
+          </p>
         </div>
       )}
 
@@ -170,4 +162,14 @@ export function DocumentCreateBodyStep(props: DocumentCreateBodyStepProps) {
       )}
     </div>
   );
-}
+}, (prev, next) => (
+  prev.contentMode === next.contentMode
+  && prev.contentFile === next.contentFile
+  && prev.contentPdfUrl === next.contentPdfUrl
+  && prev.contentDocxUrl === next.contentDocxUrl
+  && prev.contentStatus === next.contentStatus
+  && prev.contentError === next.contentError
+  && prev.profileCode === next.profileCode
+));
+
+export { DocumentCreateBodyStep };

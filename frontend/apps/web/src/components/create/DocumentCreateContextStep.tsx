@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { metalNobreProcessAreaHint, metalNobreProcessAreaOptionLabel } from "../../features/documents/adapters/metalNobreExperience";
 import type { DocumentDepartmentItem, ProcessAreaItem, SubjectItem } from "../../lib.types";
 import type { DocumentForm } from "./documentCreateTypes";
@@ -12,7 +13,7 @@ type DocumentCreateContextStepProps = {
   onDocumentFormChange: (next: DocumentForm) => void;
 };
 
-export function DocumentCreateContextStep(props: DocumentCreateContextStepProps) {
+const DocumentCreateContextStep = memo(function DocumentCreateContextStep(props: DocumentCreateContextStepProps) {
   const availableSubjects = props.subjects.filter((item) => !props.form.processArea || item.processAreaCode === props.form.processArea);
   const processAreaOptions: SelectMenuOption[] = [
     { value: "", label: "Sem process area" },
@@ -100,4 +101,14 @@ export function DocumentCreateContextStep(props: DocumentCreateContextStepProps)
       </div>
     </div>
   );
-}
+}, (prev, next) => (
+  prev.form.ownerId === next.form.ownerId
+  && prev.form.department === next.form.department
+  && prev.form.processArea === next.form.processArea
+  && prev.form.subject === next.form.subject
+  && prev.documentDepartments === next.documentDepartments
+  && prev.processAreas === next.processAreas
+  && prev.subjects === next.subjects
+));
+
+export { DocumentCreateContextStep };

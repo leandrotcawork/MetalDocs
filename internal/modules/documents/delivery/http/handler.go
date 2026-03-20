@@ -89,6 +89,15 @@ type VersionResponse struct {
 	CreatedAt     string `json:"createdAt"`
 }
 
+type DocumentEditorBundleResponse struct {
+	Document   DocumentResponse               `json:"document"`
+	Versions   []VersionResponse              `json:"versions"`
+	Schema     DocumentProfileSchemaResponse  `json:"schema"`
+	Governance DocumentProfileGovernanceResponse `json:"governance"`
+	Presence   []CollaborationPresenceResponse `json:"presence"`
+	EditLock   *DocumentEditLockResponse       `json:"editLock,omitempty"`
+}
+
 type DocumentContentNativeRequest struct {
 	Content map[string]any `json:"content"`
 }
@@ -1360,6 +1369,10 @@ func (h *Handler) handleDocumentSubRoutes(w http.ResponseWriter, r *http.Request
 		h.handleDocumentTemplateDocx(w, r, parts[0])
 		return
 	}
+	if len(parts) == 2 && strings.TrimSpace(parts[0]) != "" && parts[1] == "editor-bundle" && r.Method == http.MethodGet {
+		h.handleDocumentEditorBundle(w, r, parts[0])
+		return
+	}
 	if len(parts) == 4 && strings.TrimSpace(parts[0]) != "" && parts[1] == "attachments" && parts[3] == "download-url" && r.Method == http.MethodGet {
 		h.handleCreateAttachmentDownloadURL(w, r, parts[0], parts[2])
 		return
@@ -1421,6 +1434,96 @@ func (h *Handler) handleGetDocument(w http.ResponseWriter, r *http.Request, docu
 		Tags:                 append([]string(nil), doc.Tags...),
 		EffectiveAt:          formatOptionalTime(doc.EffectiveAt),
 		ExpiryAt:             formatOptionalTime(doc.ExpiryAt),
+	})
+}
+
+func (h *Handler) handleDocumentEditorBundle(w http.ResponseWriter, r *http.Request, documentID string) {
+	traceID := requestTraceID(r)
+	bundle, err := h.service.GetDocumentEditorBundle(r.Context(), documentID)
+	if err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+
+	versions := make([]VersionResponse, 0, len(bundle.Versions))
+	for _, item := range bundle.Versions {
+		versions = append(versions, VersionResponse{
+			DocumentID:    item.DocumentID,
+			Version:       item.Number,
+			ContentHash:   item.ContentHash,
+			ChangeSummary: item.ChangeSummary,
+			CreatedAt:     item.CreatedAt.UTC().Format(time.RFC3339),
+		})
+	}
+
+	rules := make([]MetadataFieldRuleResponse, 0, len(bundle.Schema.MetadataRules))
+	for _, rule := range bundle.Schema.MetadataRules {
+		rules = append(rules, MetadataFieldRuleResponse{
+			Name:     rule.Name,
+			Type:     rule.Type,
+			Required: rule.Required,
+		})
+	}
+
+	presence := make([]CollaborationPresenceResponse, 0, len(bundle.Presence))
+	for _, item := range bundle.Presence {
+		presence = append(presence, CollaborationPresenceResponse{
+			DocumentID:  item.DocumentID,
+			UserID:      item.UserID,
+			DisplayName: item.DisplayName,
+			LastSeenAt:  item.LastSeenAt.UTC().Format(time.RFC3339),
+		})
+	}
+
+	var editLock *DocumentEditLockResponse
+	if bundle.EditLock != nil {
+		editLock = &DocumentEditLockResponse{
+			DocumentID:  bundle.EditLock.DocumentID,
+			LockedBy:    bundle.EditLock.LockedBy,
+			DisplayName: bundle.EditLock.DisplayName,
+			LockReason:  bundle.EditLock.LockReason,
+			AcquiredAt:  bundle.EditLock.AcquiredAt.UTC().Format(time.RFC3339),
+			ExpiresAt:   bundle.EditLock.ExpiresAt.UTC().Format(time.RFC3339),
+		}
+	}
+
+	writeJSON(w, http.StatusOK, DocumentEditorBundleResponse{
+		Document: DocumentResponse{
+			DocumentID:           bundle.Document.ID,
+			Title:                bundle.Document.Title,
+			DocumentType:         bundle.Document.DocumentType,
+			DocumentProfile:      bundle.Document.DocumentProfile,
+			DocumentFamily:       bundle.Document.DocumentFamily,
+			ProfileSchemaVersion: bundle.Document.ProfileSchemaVersion,
+			ProcessArea:          bundle.Document.ProcessArea,
+			Subject:              bundle.Document.Subject,
+			OwnerID:              bundle.Document.OwnerID,
+			BusinessUnit:         bundle.Document.BusinessUnit,
+			Department:           bundle.Document.Department,
+			Classification:       bundle.Document.Classification,
+			Status:               bundle.Document.Status,
+			Tags:                 append([]string(nil), bundle.Document.Tags...),
+			EffectiveAt:          formatOptionalTime(bundle.Document.EffectiveAt),
+			ExpiryAt:             formatOptionalTime(bundle.Document.ExpiryAt),
+		},
+		Versions: versions,
+		Schema: DocumentProfileSchemaResponse{
+			ProfileCode:   bundle.Schema.ProfileCode,
+			Version:       bundle.Schema.Version,
+			IsActive:      bundle.Schema.IsActive,
+			MetadataRules: rules,
+			ContentSchema: bundle.Schema.ContentSchema,
+		},
+		Governance: DocumentProfileGovernanceResponse{
+			ProfileCode:        bundle.Governance.ProfileCode,
+			WorkflowProfile:    bundle.Governance.WorkflowProfile,
+			ReviewIntervalDays: bundle.Governance.ReviewIntervalDays,
+			ApprovalRequired:   bundle.Governance.ApprovalRequired,
+			RetentionDays:      bundle.Governance.RetentionDays,
+			ValidityDays:       bundle.Governance.ValidityDays,
+		},
+		Presence: presence,
+		EditLock: editLock,
 	})
 }
 

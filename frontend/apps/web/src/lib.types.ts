@@ -228,6 +228,15 @@ export interface DocumentEditLockItem {
   expiresAt: string;
 }
 
+export interface DocumentEditorBundleResponse {
+  document: DocumentListItem;
+  versions: VersionListItem[];
+  schema: DocumentProfileSchemaItem;
+  governance: DocumentProfileGovernanceItem;
+  presence: CollaborationPresenceItem[];
+  editLock?: DocumentEditLockItem;
+}
+
 export interface AccessPolicyItem {
   subjectType: "user" | "role" | "group";
   subjectId: string;

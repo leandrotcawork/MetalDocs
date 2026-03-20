@@ -705,35 +705,24 @@ function AppContent() {
       startApiTrace(`open-document:${documentId}`);
       markUx(`open-document-start:${documentId}`);
       const canManagePolicies = currentUserRoles.includes("admin");
-      const [document, versionsResponse, approvalsResponse, attachmentsResponse, auditResponse, presenceResponse, editLockResponse] = await Promise.all([
-        api.getDocument(documentId),
-        api.listVersions(documentId),
+      const [bundle, approvalsResponse, attachmentsResponse, auditResponse] = await Promise.all([
+        api.getDocumentEditorBundle(documentId),
         api.listApprovals(documentId),
         api.listAttachments(documentId),
         api.listAuditEvents(new URLSearchParams({ resourceType: "document", resourceId: documentId, limit: "10" })),
-        api.listDocumentPresence(documentId),
-        api.getDocumentEditLock(documentId).catch((err) => {
-          if (statusOf(err) === 404) {
-            return null;
-          }
-          throw err;
-        }),
       ]);
-      const [schema, governance] = await Promise.all([
-        api.listDocumentProfileSchemas(document.documentProfile),
-        api.getDocumentProfileGovernance(document.documentProfile),
-      ]);
-      const orderedVersions = [...versionsResponse.items].sort((left, right) => right.version - left.version);
-      const schemas = Array.isArray(schema.items) ? schema.items : [];
+      const document = bundle.document;
+      const orderedVersions = [...bundle.versions].sort((left, right) => right.version - left.version);
+      const schemas = bundle.schema ? [bundle.schema] : [];
       setSelectedProfileSchemas(schemas);
-      setSelectedProfileSchema(schemas.find((item) => item.isActive) ?? schemas[0] ?? null);
-      setSelectedProfileGovernance(governance);
+      setSelectedProfileSchema(bundle.schema ?? null);
+      setSelectedProfileGovernance(bundle.governance);
       setSelectedDocument(document);
       setVersions(orderedVersions);
       setApprovals(approvalsResponse.items);
       setAttachments(attachmentsResponse.items);
-      setCollaborationPresence(presenceResponse.items);
-      setDocumentEditLock(editLockResponse);
+      setCollaborationPresence(bundle.presence);
+      setDocumentEditLock(bundle.editLock ?? null);
       setAuditEvents(auditResponse.items);
       setPolicyResourceId(documentId);
       setActiveView(nextView);

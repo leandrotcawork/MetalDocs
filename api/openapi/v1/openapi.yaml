@@ -1808,6 +1808,36 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
+  /documents/{documentId}/editor-bundle:
+    get:
+      summary: Carrega bundle para o editor de documentos
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      responses:
+        '200':
+          description: Bundle do editor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentEditorBundleResponse'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '404':
+          description: Documento nao encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
   /documents/{documentId}/collaboration/presence:
     get:
       summary: Lista presencas colaborativas ativas no documento
@@ -3250,6 +3280,26 @@ components:
         expiresAt:
           type: string
           format: date-time
+    DocumentEditorBundleResponse:
+      type: object
+      required: [document, versions, schema, governance, presence]
+      properties:
+        document:
+          $ref: '#/components/schemas/DocumentListItem'
+        versions:
+          type: array
+          items:
+            $ref: '#/components/schemas/VersionListItem'
+        schema:
+          $ref: '#/components/schemas/DocumentProfileSchemaVersionItem'
+        governance:
+          $ref: '#/components/schemas/DocumentProfileGovernance'
+        presence:
+          type: array
+          items:
+            $ref: '#/components/schemas/CollaborationPresenceItem'
+        editLock:
+          $ref: '#/components/schemas/DocumentEditLock'
     AcquireDocumentEditLockRequest:
       type: object
       properties:

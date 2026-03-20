@@ -12,6 +12,7 @@ import type {
   DocumentProfileItem,
   DocumentProfileSchemaItem,
   DocumentProfileBundleResponse,
+  DocumentEditorBundleResponse,
   DocumentTypeItem,
   DocumentDepartmentItem,
   DocumentContentDocxResponse,
@@ -312,6 +313,17 @@ function normalizeVersionDiff(value: VersionDiffResponse): VersionDiffResponse {
   };
 }
 
+function normalizeDocumentEditorBundle(value: DocumentEditorBundleResponse): DocumentEditorBundleResponse {
+  return {
+    document: normalizeDocumentListItem(value?.document),
+    versions: Array.isArray(value?.versions) ? value.versions.map(normalizeVersionItem) : [],
+    schema: normalizeDocumentProfileSchema(value?.schema),
+    governance: normalizeDocumentProfileGovernance(value?.governance),
+    presence: Array.isArray(value?.presence) ? value.presence.map(normalizeCollaborationPresenceItem) : [],
+    editLock: value?.editLock ? normalizeDocumentEditLockItem(value.editLock) : undefined,
+  };
+}
+
 type RequestTrace = {
   id: number;
   method: string;
@@ -518,6 +530,8 @@ export const api = {
     return { items: Array.isArray(response.items) ? response.items.map(normalizeSearchDocument) : [] };
   },
   getDocument: async (documentId: string) => normalizeDocumentListItem(await request<DocumentListItem>(`/documents/${documentId}`)),
+  getDocumentEditorBundle: async (documentId: string) =>
+    normalizeDocumentEditorBundle(await request<DocumentEditorBundleResponse>(`/documents/${encodeURIComponent(documentId)}/editor-bundle`)),
   createDocument: (body: Record<string, unknown>) => request<{ documentId: string; version: number; status: string; documentType: string; documentProfile: string; documentFamily: string; profileSchemaVersion: number; processArea?: string; subject?: string }>("/documents", { method: "POST", body: JSON.stringify(body) }),
   listVersions: async (documentId: string) => {
     const response = await request<{ items: VersionListItem[] }>(`/documents/${documentId}/versions`);

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { buildProfileAccordions } from "../features/documents/adapters/catalogSummary";
 import type { DocumentProfileItem, ProcessAreaItem, SearchDocumentItem } from "../lib.types";
 
-export type WorkspaceView = "operations" | "approvals" | "audit" | "library" | "my-docs" | "recent" | "create" | "registry" | "notifications" | "admin";
+export type WorkspaceView = "operations" | "approvals" | "audit" | "library" | "my-docs" | "recent" | "create" | "content-builder" | "registry" | "notifications" | "admin";
 
 type WorkspaceShellProps = {
   userDisplayName: string;
@@ -184,6 +184,8 @@ function activeTitle(activeView: WorkspaceView): string {
       return "Recentes";
     case "create":
       return "Novo Documento";
+    case "content-builder":
+      return "Editor de Conteudo";
     case "registry":
       return "Tipos Documentais";
     case "notifications":
@@ -209,6 +211,7 @@ export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
   );
   const currentTitle = activeTitle(props.activeView);
   const isCreateView = props.activeView === "create";
+  const isContentBuilder = props.activeView === "content-builder";
   const isCatalogView = isDocumentCatalogView(props.activeView);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -476,8 +479,8 @@ export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
           </div>
         </aside>
 
-        <main className={`workspace-main ${isCatalogView || isCreateView ? "is-toolbarless" : ""} ${isCreateView ? "is-create-view" : ""}`}>
-          {!isCatalogView && !isCreateView && (
+        <main className={`workspace-main ${isCatalogView || isCreateView || isContentBuilder ? "is-toolbarless" : ""} ${isCreateView ? "is-create-view" : ""}`}>
+          {!isCatalogView && !isCreateView && !isContentBuilder && (
             <div className="workspace-toolbar workspace-toolbar-as-panel">
               <div className="workspace-toolbar-top">
                 <p className="workspace-toolbar-kicker">Workspace</p>
@@ -487,7 +490,7 @@ export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
               </div>
             </div>
           )}
-          {isCreateView
+          {isCreateView || isContentBuilder
             ? props.children
             : <div className={`workspace-content ${isCatalogView ? "is-toolbarless" : ""}`}>{props.children}</div>}
         </main>

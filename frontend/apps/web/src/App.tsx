@@ -9,6 +9,7 @@ import { NotificationsPanel } from "./components/NotificationsPanel";
 import { OperationsCenter } from "./components/OperationsCenter";
 import { PasswordChangePanel } from "./components/PasswordChangePanel";
 import { RegistryExplorer } from "./components/RegistryExplorer";
+import { ContentBuilderView } from "./components/content-builder/ContentBuilderView";
 import { WorkspacePlaceholder } from "./components/WorkspacePlaceholder";
 import type {
   AccessPolicyItem,
@@ -519,7 +520,9 @@ function AppContent() {
         setContentError("");
       }
       setMessage(handledContent ? "Documento criado e conteudo processado." : "Documento criado com sucesso.");
-      if (!handledContent) {
+      if (contentMode === "native") {
+        await openDocument(created.documentId, "content-builder");
+      } else if (!handledContent) {
         setActiveView("library");
       }
       if (user) await loadWorkspace(user);
@@ -564,7 +567,7 @@ function AppContent() {
     setContentDocxUrl("");
   }
 
-  async function openDocument(documentId: string) {
+  async function openDocument(documentId: string, nextView: WorkspaceView = "library") {
     try {
       const [document, versionsResponse, approvalsResponse, attachmentsResponse, auditResponse, presenceResponse, editLockResponse] = await Promise.all([
         api.getDocument(documentId),
@@ -597,7 +600,7 @@ function AppContent() {
       setDocumentEditLock(editLockResponse);
       setAuditEvents(auditResponse.items);
       setPolicyResourceId(documentId);
-      setActiveView("library");
+      setActiveView(nextView);
       const [policyResponse, nextDiff] = await Promise.all([
         api.listAccessPolicies("document", documentId),
         orderedVersions.length >= 2
@@ -974,6 +977,15 @@ function AppContent() {
           onContentModeChange={handleContentModeChange}
           onContentFileChange={handleContentFileChange}
           onDownloadTemplate={handleDownloadTemplate}
+        />
+      );
+    }
+
+    if (activeView === "content-builder") {
+      return (
+        <ContentBuilderView
+          document={selectedDocument}
+          onBack={() => setActiveView("library")}
         />
       );
     }

@@ -8,12 +8,15 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 type PdfPreviewProps = {
   url: string;
   className?: string;
+  width?: number;
 };
 
 export function PdfPreview(props: PdfPreviewProps) {
   if (!props.url) {
     return null;
   }
+
+  const pageWidth = props.width ?? 520;
 
   return (
     <div className={props.className ?? "create-doc-pdf-preview"}>
@@ -22,7 +25,7 @@ export function PdfPreview(props: PdfPreviewProps) {
         loading={<div className="create-doc-pdf-loading">Carregando PDF...</div>}
         error={<div className="create-doc-pdf-error">Nao foi possivel carregar o PDF.</div>}
       >
-        <Page pageNumber={1} width={520} />
+        <Page pageNumber={1} width={pageWidth} />
       </Document>
     </div>
   );

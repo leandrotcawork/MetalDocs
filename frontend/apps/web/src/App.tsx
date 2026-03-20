@@ -187,6 +187,8 @@ function AppContent() {
   const [selectedProfileGovernance, setSelectedProfileGovernance] = useState<DocumentProfileGovernanceItem | null>(null);
   const profileSchemaCacheRef = useRef(new Map<string, DocumentProfileSchemaItem[]>());
   const profileGovernanceCacheRef = useRef(new Map<string, DocumentProfileGovernanceItem>());
+  const profileSchemaCacheMetaRef = useRef(new Map<string, number>());
+  const profileGovernanceCacheMetaRef = useRef(new Map<string, number>());
   const profilePrefetchRef = useRef(new Set<string>());
   const [documents, setDocuments] = useState<SearchDocumentItem[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<DocumentListItem | null>(null);
@@ -206,6 +208,7 @@ function AppContent() {
   const [userForm, setUserForm] = useState(emptyUserForm);
   const [managedUserForm, setManagedUserForm] = useState(emptyManagedUserForm);
   const streamRefreshInFlightRef = useRef(false);
+  const profileCacheTtlMs = 5 * 60 * 1000;
 
   const currentUserRoles = Array.isArray(user?.roles) ? user.roles : [];
   const isAdmin = currentUserRoles.includes("admin");
@@ -366,9 +369,11 @@ function AppContent() {
               const schemas = bundle.schema ? [bundle.schema] : [];
               if (schemas.length > 0) {
                 profileSchemaCacheRef.current.set(nextProfileCode, schemas);
+                profileSchemaCacheMetaRef.current.set(nextProfileCode, Date.now());
               }
               if (bundle.governance) {
                 profileGovernanceCacheRef.current.set(nextProfileCode, bundle.governance);
+                profileGovernanceCacheMetaRef.current.set(nextProfileCode, Date.now());
               }
             } catch {
               // Prefetch is best-effort; ignore failures here.
@@ -405,8 +410,11 @@ function AppContent() {
   async function applyDocumentProfile(profileCode: string, preferredProcessArea = "") {
     startApiTrace(`apply-profile:${profileCode}`);
     markUx(`profile-change-start:${profileCode}`);
-    const cachedSchemas = profileSchemaCacheRef.current.get(profileCode);
-    const cachedGovernance = profileGovernanceCacheRef.current.get(profileCode);
+    const now = Date.now();
+    const schemaCacheAge = now - (profileSchemaCacheMetaRef.current.get(profileCode) ?? 0);
+    const governanceCacheAge = now - (profileGovernanceCacheMetaRef.current.get(profileCode) ?? 0);
+    const cachedSchemas = schemaCacheAge <= profileCacheTtlMs ? profileSchemaCacheRef.current.get(profileCode) : undefined;
+    const cachedGovernance = governanceCacheAge <= profileCacheTtlMs ? profileGovernanceCacheRef.current.get(profileCode) : undefined;
     const cachedSchema = cachedSchemas?.find((item) => item.isActive) ?? cachedSchemas?.[0] ?? null;
     setSelectedProfileSchemas(cachedSchemas ?? []);
     setSelectedProfileSchema(cachedSchema);
@@ -427,9 +435,11 @@ function AppContent() {
         governance = bundle.governance ?? null;
         if (bundle.schema) {
           profileSchemaCacheRef.current.set(profileCode, schemaResponse.items);
+          profileSchemaCacheMetaRef.current.set(profileCode, Date.now());
         }
         if (bundle.governance) {
           profileGovernanceCacheRef.current.set(profileCode, bundle.governance);
+          profileGovernanceCacheMetaRef.current.set(profileCode, Date.now());
         }
         if (bundle.profile) {
           setDocumentProfiles((current) => current.map((item) => (item.code === bundle.profile.code ? bundle.profile : item)));
@@ -459,9 +469,11 @@ function AppContent() {
     const schema = schemas.find((item) => item.isActive) ?? schemas[0] ?? null;
     if (schemas.length > 0 && !cachedSchemas) {
       profileSchemaCacheRef.current.set(profileCode, schemas);
+      profileSchemaCacheMetaRef.current.set(profileCode, Date.now());
     }
     if (governance && !cachedGovernance) {
       profileGovernanceCacheRef.current.set(profileCode, governance);
+      profileGovernanceCacheMetaRef.current.set(profileCode, Date.now());
     }
     setSelectedProfileSchemas(schemas);
     setSelectedProfileSchema(schema);
@@ -941,6 +953,8 @@ function AppContent() {
       setError("");
       await api.updateDocumentProfileGovernance(payload.profileCode, payload);
       setMessage("Governanca atualizada.");
+      profileGovernanceCacheRef.current.delete(payload.profileCode);
+      profileGovernanceCacheMetaRef.current.delete(payload.profileCode);
       await refreshWorkspace();
     } catch (err) {
       handleError(err);
@@ -952,6 +966,8 @@ function AppContent() {
       setError("");
       await api.upsertDocumentProfileSchema(payload.profileCode, payload);
       setMessage("Schema versionado atualizado.");
+      profileSchemaCacheRef.current.delete(payload.profileCode);
+      profileSchemaCacheMetaRef.current.delete(payload.profileCode);
       await applyDocumentProfile(payload.profileCode, documentForm.processArea);
     } catch (err) {
       handleError(err);
@@ -963,6 +979,8 @@ function AppContent() {
       setError("");
       await api.activateDocumentProfileSchema(payload.profileCode, payload.version);
       setMessage("Schema ativo atualizado.");
+      profileSchemaCacheRef.current.delete(payload.profileCode);
+      profileSchemaCacheMetaRef.current.delete(payload.profileCode);
       await applyDocumentProfile(payload.profileCode, documentForm.processArea);
     } catch (err) {
       handleError(err);

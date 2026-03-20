@@ -15,7 +15,7 @@ Get-Content ".env" | ForEach-Object {
   [System.Environment]::SetEnvironmentVariable($name, $value, 'Process')
 }
 
--- Perf harness overrides (technical mode only).
+# Perf harness overrides (technical mode only).
 $env:METALDOCS_AUTH_LEGACY_HEADER_ENABLED = "true"
 $env:METALDOCS_AUTH_ORIGIN_PROTECTION_ENABLED = "false"
 

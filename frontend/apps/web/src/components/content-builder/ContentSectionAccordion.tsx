@@ -1,6 +1,6 @@
 import type { SchemaSection } from "./contentSchemaTypes";
 import { SchemaFieldRenderer } from "./SchemaFieldRenderer";
-import type { SchemaField } from "./contentSchemaTypes";
+import { sectionProgress } from "./contentBuilderUtils";
 
 type ContentSectionAccordionProps = {
   section: SchemaSection;
@@ -17,7 +17,7 @@ export function ContentSectionAccordion(props: ContentSectionAccordionProps) {
   const sectionKey = section.key;
   const sectionValue = (props.value[sectionKey] as Record<string, unknown>) ?? {};
   const fields = section.fields ?? [];
-  const sectionProgress = sectionCompletion(fields, sectionValue);
+  const sectionProgressState = sectionProgress(fields, sectionValue);
 
   function updateSectionField(fieldKey: string, nextValue: unknown) {
     const nextSection = { ...sectionValue, [fieldKey]: nextValue };
@@ -49,11 +49,11 @@ export function ContentSectionAccordion(props: ContentSectionAccordionProps) {
               {Array.from({ length: 3 }).map((_, index) => (
                 <span
                   key={`${sectionKey}-dot-${index}`}
-                  className={`content-builder-progress-dot ${sectionProgress.progressDots > index ? "is-filled" : ""}`}
+                  className={`content-builder-progress-dot ${sectionProgressState.progressDots > index ? "is-filled" : ""}`}
                 />
               ))}
             </span>
-            <span>{sectionProgress.progressLabel}</span>
+            <span>{sectionProgressState.progressLabel}</span>
           </div>
           <span className="content-builder-section-chevron" aria-hidden="true">
             {props.expanded ? "-" : "+"}
@@ -72,36 +72,4 @@ export function ContentSectionAccordion(props: ContentSectionAccordionProps) {
       </div>
     </div>
   );
-}
-
-function sectionCompletion(fields: SchemaField[], sectionValue: Record<string, unknown>) {
-  const total = fields.length;
-  if (total === 0) {
-    return { progressDots: 0, progressLabel: "0%" };
-  }
-  const completed = fields.reduce((acc, field) => {
-    const value = sectionValue[field.key];
-    return acc + (isFieldComplete(field, value) ? 1 : 0);
-  }, 0);
-  const ratio = Math.round((completed / total) * 100);
-  return {
-    progressDots: ratio === 0 ? 0 : ratio < 50 ? 1 : ratio < 90 ? 2 : 3,
-    progressLabel: `${ratio}%`,
-  };
-}
-
-function isFieldComplete(field: SchemaField, value: unknown) {
-  if (field.type === "table") {
-    return Array.isArray(value) && value.length > 0;
-  }
-  if (field.type === "array") {
-    return Array.isArray(value) && value.some((item) => String(item ?? "").trim() !== "");
-  }
-  if (field.type === "checklist") {
-    return Array.isArray(value) && value.some((item) => typeof item === "string" ? item.trim() !== "" : Boolean((item as { label?: string }).label));
-  }
-  if (field.type === "number") {
-    return value !== null && value !== undefined && value !== "";
-  }
-  return String(value ?? "").trim() !== "";
 }

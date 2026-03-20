@@ -3,7 +3,8 @@ import { api } from "../../lib.api";
 import type { DocumentListItem, DocumentProfileSchemaItem } from "../../lib.types";
 import { PdfPreview } from "../create/widgets/PdfPreview";
 import { ContentSchemaForm } from "./ContentSchemaForm";
-import type { SchemaField, SchemaSection } from "./contentSchemaTypes";
+import type { SchemaSection } from "./contentSchemaTypes";
+import { hasAnyValue, isFieldComplete, sectionAnchorId } from "./contentBuilderUtils";
 
 type ContentBuilderViewProps = {
   document: DocumentListItem | null;
@@ -99,7 +100,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
       const fields = section.fields ?? [];
       const requiredFields = fields.filter((field) => field.required);
       const hasRequired = requiredFields.length > 0;
-      const requiredOk = requiredFields.every((field) => isFieldCompleted(field, sectionValue[field.key]));
+      const requiredOk = requiredFields.every((field) => isFieldComplete(field, sectionValue[field.key]));
       const anyValue = fields.some((field) => hasAnyValue(field, sectionValue[field.key]));
       completion[section.key] = hasRequired ? requiredOk : anyValue;
     });
@@ -428,44 +429,4 @@ function statusOf(error: unknown): number | undefined {
     return (error as { status: number }).status;
   }
   return undefined;
-}
-
-function sectionAnchorId(sectionKey: string) {
-  return `content-section-${sectionKey}`;
-}
-
-function hasAnyValue(field: SchemaField, value: unknown): boolean {
-  if (field.type === "table") {
-    return Array.isArray(value) && value.length > 0;
-  }
-  if (field.type === "array") {
-    return Array.isArray(value) && value.some((item) => String(item ?? "").trim() !== "");
-  }
-  if (field.type === "checklist") {
-    return Array.isArray(value) && value.some((item) => typeof item === "string" ? item.trim() !== "" : Boolean((item as { label?: string }).label));
-  }
-  if (field.type === "number") {
-    return value !== null && value !== undefined && value !== "";
-  }
-  return String(value ?? "").trim() !== "";
-}
-
-function isFieldCompleted(field: SchemaField, value: unknown): boolean {
-  if (field.type === "table") {
-    if (!Array.isArray(value) || value.length === 0) return false;
-    return value.some((row) => {
-      if (!row || typeof row !== "object") return false;
-      return Object.values(row as Record<string, unknown>).some((cell) => String(cell ?? "").trim() !== "");
-    });
-  }
-  if (field.type === "array") {
-    return Array.isArray(value) && value.length > 0 && value.every((item) => String(item ?? "").trim() !== "");
-  }
-  if (field.type === "checklist") {
-    return Array.isArray(value) && value.length > 0 && value.every((item) => typeof item === "string" ? item.trim() !== "" : String((item as { label?: string }).label ?? "").trim() !== "");
-  }
-  if (field.type === "number") {
-    return value !== null && value !== undefined && value !== "";
-  }
-  return String(value ?? "").trim() !== "";
 }

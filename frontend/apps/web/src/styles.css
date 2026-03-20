@@ -3423,6 +3423,54 @@ td small {
   color: var(--text-soft);
 }
 
+@media (max-width: 1200px) {
+  .content-builder-preview {
+    width: 320px;
+  }
+}
+
+@media (max-width: 980px) {
+  .content-builder-layout {
+    flex-direction: column;
+  }
+
+  .content-builder-sections-nav {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 10px 0;
+  }
+
+  .content-builder-sections-list {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 0 12px 6px;
+  }
+
+  .content-builder-section-link {
+    border-left: none;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+  }
+
+  .content-builder-section-link.is-active {
+    border-left-color: transparent;
+    border-bottom-color: var(--vinho);
+  }
+
+  .content-builder-editor {
+    padding: 16px;
+  }
+
+  .content-builder-preview {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
+}
+
 .create-doc-identification-stack {
   display: grid;
   gap: 16px;

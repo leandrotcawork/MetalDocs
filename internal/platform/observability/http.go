@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -18,6 +19,9 @@ type routeMetrics struct {
 	requests   uint64
 	errors     uint64
 	durationMs uint64
+	mu         sync.Mutex
+	samples    []uint64
+	cursor     int
 }
 
 type HTTPObservability struct {
@@ -34,6 +38,9 @@ type metricItem struct {
 	Errors          uint64 `json:"errors"`
 	DurationTotalMs uint64 `json:"durationTotalMs"`
 	AvgDurationMs   uint64 `json:"avgDurationMs"`
+	P50DurationMs   uint64 `json:"p50DurationMs"`
+	P95DurationMs   uint64 `json:"p95DurationMs"`
+	P99DurationMs   uint64 `json:"p99DurationMs"`
 }
 
 func NewHTTPObservability(runtimeProvider ...RuntimeStatusProvider) *HTTPObservability {
@@ -69,6 +76,7 @@ func (o *HTTPObservability) Wrap(next http.Handler) http.Handler {
 			atomic.AddUint64(&m.errors, 1)
 		}
 		atomic.AddUint64(&m.durationMs, durationMs)
+		m.record(durationMs)
 
 		traceID := strings.TrimSpace(r.Header.Get("X-Trace-Id"))
 		if traceID == "" {
@@ -78,6 +86,7 @@ func (o *HTTPObservability) Wrap(next http.Handler) http.Handler {
 		if currentUser, ok := authdomain.CurrentUserFromContext(r.Context()); ok && strings.TrimSpace(currentUser.UserID) != "" {
 			userID = currentUser.UserID
 		}
+		documentID, profileCode := extractRouteContext(r.URL.Path)
 
 		o.logger.Info("http_request",
 			"trace_id", traceID,
@@ -87,6 +96,8 @@ func (o *HTTPObservability) Wrap(next http.Handler) http.Handler {
 			"route", route,
 			"status", sw.status,
 			"duration_ms", durationMs,
+			"document_id", documentID,
+			"profile_code", profileCode,
 		)
 	})
 }
@@ -122,6 +133,7 @@ func (o *HTTPObservability) snapshot() []metricItem {
 		if req > 0 {
 			avg = dur / req
 		}
+		p50, p95, p99 := m.percentiles()
 		out = append(out, metricItem{
 			Route:           route,
 			Method:          method,
@@ -129,6 +141,9 @@ func (o *HTTPObservability) snapshot() []metricItem {
 			Errors:          errs,
 			DurationTotalMs: dur,
 			AvgDurationMs:   avg,
+			P50DurationMs:   p50,
+			P95DurationMs:   p95,
+			P99DurationMs:   p99,
 		})
 	}
 	return out
@@ -148,12 +163,26 @@ func (o *HTTPObservability) getMetric(route, method string) *routeMetrics {
 	if existing, ok := o.byKey[key]; ok {
 		return existing
 	}
-	created := &routeMetrics{}
+	created := &routeMetrics{samples: make([]uint64, 0, 200)}
 	o.byKey[key] = created
 	return created
 }
 
 func normalizeRoute(path string) string {
+	if strings.HasPrefix(path, "/api/v1/documents/") {
+		parts := strings.Split(path, "/")
+		if len(parts) > 4 {
+			parts[4] = "{documentId}"
+			return strings.Join(parts, "/")
+		}
+	}
+	if strings.HasPrefix(path, "/api/v1/document-profiles/") {
+		parts := strings.Split(path, "/")
+		if len(parts) > 4 {
+			parts[4] = "{profileCode}"
+			return strings.Join(parts, "/")
+		}
+	}
 	if strings.HasPrefix(path, "/api/v1/documents/") && strings.HasSuffix(path, "/versions") {
 		return "/api/v1/documents/{documentId}/versions"
 	}
@@ -178,6 +207,22 @@ func splitKey(key string) (method, route string) {
 		return "UNKNOWN", key
 	}
 	return parts[0], parts[1]
+}
+
+func extractRouteContext(path string) (documentID string, profileCode string) {
+	if strings.HasPrefix(path, "/api/v1/documents/") {
+		parts := strings.Split(path, "/")
+		if len(parts) > 4 {
+			documentID = parts[4]
+		}
+	}
+	if strings.HasPrefix(path, "/api/v1/document-profiles/") {
+		parts := strings.Split(path, "/")
+		if len(parts) > 4 {
+			profileCode = parts[4]
+		}
+	}
+	return documentID, profileCode
 }
 
 type statusWriter struct {
@@ -208,4 +253,41 @@ func (w *statusWriter) Flush() {
 	if flusher, ok := w.ResponseWriter.(http.Flusher); ok {
 		flusher.Flush()
 	}
+}
+
+func (m *routeMetrics) record(durationMs uint64) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if len(m.samples) < cap(m.samples) {
+		m.samples = append(m.samples, durationMs)
+		return
+	}
+	m.samples[m.cursor] = durationMs
+	m.cursor = (m.cursor + 1) % len(m.samples)
+}
+
+func (m *routeMetrics) percentiles() (uint64, uint64, uint64) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if len(m.samples) == 0 {
+		return 0, 0, 0
+	}
+	cpy := make([]uint64, len(m.samples))
+	copy(cpy, m.samples)
+	sort.Slice(cpy, func(i, j int) bool { return cpy[i] < cpy[j] })
+	return percentile(cpy, 0.50), percentile(cpy, 0.95), percentile(cpy, 0.99)
+}
+
+func percentile(values []uint64, p float64) uint64 {
+	if len(values) == 0 {
+		return 0
+	}
+	if p <= 0 {
+		return values[0]
+	}
+	if p >= 1 {
+		return values[len(values)-1]
+	}
+	idx := int(float64(len(values)-1) * p)
+	return values[idx]
 }

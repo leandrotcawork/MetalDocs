@@ -2690,6 +2690,13 @@ components:
       type: object
       required: [pdfUrl, expiresAt]
       properties:
+        documentId:
+          type: string
+        version:
+          type: integer
+          minimum: 1
+        contentSource:
+          $ref: '#/components/schemas/DocumentContentSource'
         pdfUrl:
           type: string
         expiresAt:

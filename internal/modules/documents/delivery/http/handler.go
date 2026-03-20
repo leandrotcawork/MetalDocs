@@ -109,9 +109,12 @@ type DocumentContentSaveResponse struct {
 }
 
 type DocumentContentPdfResponse struct {
-	PdfURL    string `json:"pdfUrl"`
-	ExpiresAt string `json:"expiresAt"`
-	PageCount int    `json:"pageCount,omitempty"`
+	DocumentID    string `json:"documentId,omitempty"`
+	Version       int    `json:"version,omitempty"`
+	ContentSource string `json:"contentSource,omitempty"`
+	PdfURL        string `json:"pdfUrl"`
+	ExpiresAt     string `json:"expiresAt"`
+	PageCount     int    `json:"pageCount,omitempty"`
 }
 
 type DocumentContentDocxResponse struct {
@@ -1549,9 +1552,12 @@ func (h *Handler) handleDocumentContentRenderPDF(w http.ResponseWriter, r *http.
 	expiresAt := time.Now().UTC().Add(h.downloadTTL)
 	pdfURL := h.signer.BuildDownloadURL("/api/v1/documents/"+documentID+"/content/pdf", documentID+":pdf", expiresAt)
 	writeJSON(w, http.StatusOK, DocumentContentPdfResponse{
-		PdfURL:    pdfURL,
-		ExpiresAt: expiresAt.Format(time.RFC3339),
-		PageCount: version.PageCount,
+		DocumentID:    documentID,
+		Version:       version.Number,
+		ContentSource: normalizeContentSource(version.ContentSource),
+		PdfURL:        pdfURL,
+		ExpiresAt:     expiresAt.Format(time.RFC3339),
+		PageCount:     version.PageCount,
 	})
 }
 
@@ -1602,9 +1608,12 @@ func (h *Handler) handleDocumentContentPDF(w http.ResponseWriter, r *http.Reques
 	exp := time.Now().UTC().Add(h.downloadTTL)
 	pdfURL := h.signer.BuildDownloadURL("/api/v1/documents/"+documentID+"/content/pdf", documentID+":pdf", exp)
 	writeJSON(w, http.StatusOK, DocumentContentPdfResponse{
-		PdfURL:    pdfURL,
-		ExpiresAt: exp.Format(time.RFC3339),
-		PageCount: version.PageCount,
+		DocumentID:    documentID,
+		Version:       version.Number,
+		ContentSource: normalizeContentSource(version.ContentSource),
+		PdfURL:        pdfURL,
+		ExpiresAt:     exp.Format(time.RFC3339),
+		PageCount:     version.PageCount,
 	})
 }
 

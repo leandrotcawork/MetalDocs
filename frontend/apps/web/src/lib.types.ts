@@ -155,6 +155,9 @@ export interface DocumentContentSaveResponse {
 }
 
 export interface DocumentContentPdfResponse {
+  documentId?: string;
+  version?: number;
+  contentSource?: DocumentContentSource;
   pdfUrl: string;
   expiresAt: string;
   pageCount?: number;

@@ -333,6 +333,13 @@ func (s *Service) SaveNativeContentAuthorized(ctx context.Context, cmd domain.Sa
 	if contentPayload == nil {
 		contentPayload = map[string]any{}
 	}
+	if schema, ok, err := s.resolveDocumentProfileSchema(ctx, doc.DocumentProfile, doc.ProfileSchemaVersion); err != nil {
+		return domain.Version{}, err
+	} else if ok {
+		if err := validateContentSchema(schema.ContentSchema, contentPayload); err != nil {
+			return domain.Version{}, err
+		}
+	}
 	rawContent, err := json.Marshal(contentPayload)
 	if err != nil {
 		return domain.Version{}, domain.ErrInvalidCommand
@@ -1299,6 +1306,29 @@ func (s *Service) resolveActiveProfileSchema(ctx context.Context, profileCode st
 	return items[len(items)-1], nil
 }
 
+func (s *Service) resolveDocumentProfileSchema(ctx context.Context, profileCode string, version int) (domain.DocumentProfileSchemaVersion, bool, error) {
+	items, err := s.ListDocumentProfileSchemas(ctx, profileCode)
+	if err != nil {
+		return domain.DocumentProfileSchemaVersion{}, false, err
+	}
+	if version > 0 {
+		for _, item := range items {
+			if item.Version == version {
+				return item, true, nil
+			}
+		}
+	}
+	for _, item := range items {
+		if item.IsActive {
+			return item, true, nil
+		}
+	}
+	if len(items) == 0 {
+		return domain.DocumentProfileSchemaVersion{}, false, nil
+	}
+	return items[len(items)-1], true, nil
+}
+
 func normalizeTags(tags []string) []string {
 	if len(tags) == 0 {
 		return []string{}
@@ -1349,6 +1379,220 @@ func validateMetadata(rules []domain.MetadataFieldRule, metadata map[string]any)
 		}
 	}
 	return nil
+}
+
+func validateContentSchema(schema map[string]any, content map[string]any) error {
+	if len(schema) == 0 {
+		return nil
+	}
+	rawSections, ok := schema["sections"]
+	if !ok {
+		return nil
+	}
+	sections, ok := rawSections.([]any)
+	if !ok {
+		return nil
+	}
+	for _, rawSection := range sections {
+		section, ok := rawSection.(map[string]any)
+		if !ok {
+			continue
+		}
+		sectionKey, _ := asSchemaString(section["key"])
+		if sectionKey == "" {
+			continue
+		}
+		sectionValue, _ := content[sectionKey].(map[string]any)
+		if sectionValue == nil {
+			sectionValue = map[string]any{}
+		}
+		fields, _ := section["fields"].([]any)
+		for _, rawField := range fields {
+			field, ok := rawField.(map[string]any)
+			if !ok {
+				continue
+			}
+			if err := validateContentField(field, sectionValue); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func validateContentField(field map[string]any, container map[string]any) error {
+	key, _ := asSchemaString(field["key"])
+	if key == "" {
+		return nil
+	}
+	fieldType, _ := asSchemaString(field["type"])
+	required, _ := field["required"].(bool)
+	value, exists := container[key]
+	if !exists || isEmptyContentValue(value) {
+		if required {
+			return domain.ErrInvalidCommand
+		}
+		return nil
+	}
+
+	switch fieldType {
+	case "text", "textarea":
+		if _, ok := value.(string); !ok {
+			return domain.ErrInvalidCommand
+		}
+	case "number":
+		if !isNumericValue(value) {
+			return domain.ErrInvalidCommand
+		}
+	case "select":
+		selected, ok := value.(string)
+		if !ok {
+			return domain.ErrInvalidCommand
+		}
+		options := normalizeSchemaStringList(field["options"])
+		if len(options) > 0 && !containsSchemaOption(options, selected) {
+			return domain.ErrInvalidCommand
+		}
+	case "array":
+		items, ok := value.([]any)
+		if !ok {
+			return domain.ErrInvalidCommand
+		}
+		if required && len(items) == 0 {
+			return domain.ErrInvalidCommand
+		}
+		itemType, _ := asSchemaString(field["itemType"])
+		if itemType != "" {
+			for _, item := range items {
+				if isEmptyContentValue(item) {
+					continue
+				}
+				if !matchesContentType(itemType, item, field) {
+					return domain.ErrInvalidCommand
+				}
+			}
+		}
+	case "table":
+		rows, ok := value.([]any)
+		if !ok {
+			return domain.ErrInvalidCommand
+		}
+		if required && len(rows) == 0 {
+			return domain.ErrInvalidCommand
+		}
+		columns, _ := field["columns"].([]any)
+		for _, rawRow := range rows {
+			row, ok := rawRow.(map[string]any)
+			if !ok {
+				return domain.ErrInvalidCommand
+			}
+			for _, rawColumn := range columns {
+				column, ok := rawColumn.(map[string]any)
+				if !ok {
+					continue
+				}
+				if err := validateContentField(column, row); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+func matchesContentType(fieldType string, value any, field map[string]any) bool {
+	switch fieldType {
+	case "text", "textarea":
+		_, ok := value.(string)
+		return ok
+	case "number":
+		return isNumericValue(value)
+	case "select":
+		selected, ok := value.(string)
+		if !ok {
+			return false
+		}
+		options := normalizeSchemaStringList(field["options"])
+		if len(options) == 0 {
+			return true
+		}
+		return containsSchemaOption(options, selected)
+	default:
+		return true
+	}
+}
+
+func isNumericValue(value any) bool {
+	switch value.(type) {
+	case float64, float32, int, int32, int64, uint, uint32, uint64, json.Number:
+		return true
+	default:
+		return false
+	}
+}
+
+func isEmptyContentValue(value any) bool {
+	switch typed := value.(type) {
+	case nil:
+		return true
+	case string:
+		return strings.TrimSpace(typed) == ""
+	case []any:
+		return len(typed) == 0
+	case map[string]any:
+		return len(typed) == 0
+	default:
+		return false
+	}
+}
+
+func asSchemaString(value any) (string, bool) {
+	typed, ok := value.(string)
+	if !ok {
+		return "", false
+	}
+	trimmed := strings.TrimSpace(typed)
+	if trimmed == "" {
+		return "", false
+	}
+	return trimmed, true
+}
+
+func normalizeSchemaStringList(value any) []string {
+	switch typed := value.(type) {
+	case []string:
+		out := make([]string, 0, len(typed))
+		for _, item := range typed {
+			if trimmed := strings.TrimSpace(item); trimmed != "" {
+				out = append(out, trimmed)
+			}
+		}
+		return out
+	case []any:
+		out := make([]string, 0, len(typed))
+		for _, item := range typed {
+			str, ok := item.(string)
+			if !ok {
+				continue
+			}
+			if trimmed := strings.TrimSpace(str); trimmed != "" {
+				out = append(out, trimmed)
+			}
+		}
+		return out
+	default:
+		return nil
+	}
+}
+
+func containsSchemaOption(options []string, value string) bool {
+	for _, option := range options {
+		if strings.EqualFold(option, value) {
+			return true
+		}
+	}
+	return false
 }
 
 func filterDefaultSchemas(profileCode string) []domain.DocumentProfileSchemaVersion {

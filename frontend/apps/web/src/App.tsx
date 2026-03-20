@@ -409,6 +409,17 @@ function AppContent() {
     markUx(`profile-change-start:${profileCode}`);
     const cachedSchemas = profileSchemaCacheRef.current.get(profileCode);
     const cachedGovernance = profileGovernanceCacheRef.current.get(profileCode);
+    const cachedSchema = cachedSchemas?.find((item) => item.isActive) ?? cachedSchemas?.[0] ?? null;
+    setSelectedProfileSchemas(cachedSchemas ?? []);
+    setSelectedProfileSchema(cachedSchema);
+    setSelectedProfileGovernance(cachedGovernance ?? null);
+    setDocumentForm((current) => ({
+      ...current,
+      documentType: profileCode,
+      documentProfile: profileCode,
+      processArea: preferredProcessArea,
+      metadata: cachedSchema ? metadataTextForProfileSchema(profileCode, cachedSchema) : "{}",
+    }));
     const [schemaResponse, governance] = await Promise.all([
       cachedSchemas ? Promise.resolve({ items: cachedSchemas }) : api.listDocumentProfileSchemas(profileCode),
       cachedGovernance ? Promise.resolve(cachedGovernance) : api.getDocumentProfileGovernance(profileCode),

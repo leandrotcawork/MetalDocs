@@ -184,6 +184,8 @@ function AppContent() {
   const [selectedProfileSchema, setSelectedProfileSchema] = useState<DocumentProfileSchemaItem | null>(null);
   const [selectedProfileSchemas, setSelectedProfileSchemas] = useState<DocumentProfileSchemaItem[]>([]);
   const [selectedProfileGovernance, setSelectedProfileGovernance] = useState<DocumentProfileGovernanceItem | null>(null);
+  const profileSchemaCacheRef = useRef(new Map<string, DocumentProfileSchemaItem[]>());
+  const profileGovernanceCacheRef = useRef(new Map<string, DocumentProfileGovernanceItem>());
   const [documents, setDocuments] = useState<SearchDocumentItem[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<DocumentListItem | null>(null);
   const [versions, setVersions] = useState<VersionListItem[]>([]);
@@ -384,12 +386,20 @@ function AppContent() {
   async function applyDocumentProfile(profileCode: string, preferredProcessArea = "") {
     startApiTrace(`apply-profile:${profileCode}`);
     markUx(`profile-change-start:${profileCode}`);
+    const cachedSchemas = profileSchemaCacheRef.current.get(profileCode);
+    const cachedGovernance = profileGovernanceCacheRef.current.get(profileCode);
     const [schemaResponse, governance] = await Promise.all([
-      api.listDocumentProfileSchemas(profileCode),
-      api.getDocumentProfileGovernance(profileCode),
+      cachedSchemas ? Promise.resolve({ items: cachedSchemas }) : api.listDocumentProfileSchemas(profileCode),
+      cachedGovernance ? Promise.resolve(cachedGovernance) : api.getDocumentProfileGovernance(profileCode),
     ]);
     const schemas = Array.isArray(schemaResponse.items) ? schemaResponse.items : [];
     const schema = schemas.find((item) => item.isActive) ?? schemas[0] ?? null;
+    if (schemas.length > 0 && !cachedSchemas) {
+      profileSchemaCacheRef.current.set(profileCode, schemas);
+    }
+    if (governance && !cachedGovernance) {
+      profileGovernanceCacheRef.current.set(profileCode, governance);
+    }
     setSelectedProfileSchemas(schemas);
     setSelectedProfileSchema(schema);
     setSelectedProfileGovernance(governance);

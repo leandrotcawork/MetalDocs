@@ -62,24 +62,24 @@ commit: `refactor(frontend-store): introduce zustand domain stores`
 Goal: App becomes “router/shell only”; domain logic lives in hooks under `src/features/<domain>/`.
 
 Tasks
-- [ ] Create hooks per domain (compose store + api; no JSX):
+- [x] Create hooks per domain (compose store + api; no JSX):
   - `frontend/apps/web/src/features/auth/useAuthSession.ts`
   - `frontend/apps/web/src/features/documents/useDocumentsWorkspace.ts`
   - `frontend/apps/web/src/features/documents/useDocumentDetail.ts`
   - `frontend/apps/web/src/features/registry/useRegistryExplorer.ts`
   - `frontend/apps/web/src/features/notifications/useNotifications.ts`
-- [ ] Move handlers out of `App.tsx` into those hooks (keep signatures stable; update call sites).
-- [ ] Move big UI blocks out of `App.tsx` into feature components:
+- [x] Move handlers out of `App.tsx` into those hooks (keep signatures stable; update call sites).
+- [x] Move big UI blocks out of `App.tsx` into feature components:
   - `frontend/apps/web/src/features/documents/DocumentsWorkspaceView.tsx`
   - `frontend/apps/web/src/features/registry/RegistryExplorerView.tsx`
   - `frontend/apps/web/src/features/shell/WorkspaceShell.tsx`
-- [ ] `App.tsx` becomes a thin shell deciding what to render based on store state.
+- [x] `App.tsx` becomes a thin shell deciding what to render based on store state.
 
 Acceptance
-- [ ] `cd frontend/apps/web; npm run build` passes
-- [ ] App opens with no console errors in main flows
-- [ ] login → listagem → detalhe works
-- [ ] `cd frontend/apps/web; npm run e2e:smoke` passes
+- [x] `cd frontend/apps/web; npm run build` passes
+- [x] App opens with no console errors in main flows
+- [x] login -> listagem -> detalhe works
+- [x] `cd frontend/apps/web; npm run e2e:smoke` passes
 commit: `refactor(frontend-app): dismantle App.tsx into features`
 
 ## Phase 4 — CSS Modules for the biggest components
@@ -98,7 +98,9 @@ Tasks
 
 Acceptance
 - [ ] `cd frontend/apps/web; npm run build` passes
-- [ ] App opens with no console errors in main flows
-- [ ] login → listagem → detalhe works
-- [ ] `cd frontend/apps/web; npm run e2e:smoke` passes
+- [x] App opens with no console errors in main flows
+- [x] login -> listagem -> detalhe works
+- [x] `cd frontend/apps/web; npm run e2e:smoke` passes
 commit: `refactor(frontend-css): introduce css modules for workspaces`
+
+

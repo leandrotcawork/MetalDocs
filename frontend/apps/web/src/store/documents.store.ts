@@ -37,7 +37,7 @@ type DocumentFormState = {
   initialContent: string;
 };
 
-const emptyDocumentForm: DocumentFormState = {
+export const emptyDocumentForm: DocumentFormState = {
   title: "",
   documentType: "po",
   documentProfile: "po",

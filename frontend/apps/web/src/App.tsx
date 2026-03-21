@@ -1,123 +1,26 @@
-import { Component, useEffect, useRef } from "react";
-import { api, markUx, reportUxSequence, startApiTrace, stopApiTrace } from "./lib.api";
+import { Component, useCallback, useEffect } from "react";
+import { api } from "./lib.api";
 import { AuthShell } from "./components/AuthShell";
 import { DocumentCreateView } from "./components/DocumentCreateView";
-import { DocumentWorkspaceShell, type WorkspaceView } from "./components/DocumentWorkspaceShell";
-import { DocumentsWorkspace } from "./components/DocumentsWorkspace";
 import { ManagedUsersPanel } from "./components/ManagedUsersPanel";
 import { NotificationsPanel } from "./components/NotificationsPanel";
 import { OperationsCenter } from "./components/OperationsCenter";
 import { PasswordChangePanel } from "./components/PasswordChangePanel";
-import { RegistryExplorer } from "./components/RegistryExplorer";
 import { ContentBuilderView } from "./components/content-builder/ContentBuilderView";
 import { WorkspacePlaceholder } from "./components/WorkspacePlaceholder";
-import type {
-  AccessPolicyItem,
-  AttachmentItem,
-  AuditEventItem,
-  CollaborationPresenceItem,
-  CurrentUser,
-  DocumentEditLockItem,
-  DocumentProfileGovernanceItem,
-  DocumentProfileItem,
-  DocumentProfileSchemaItem,
-  DocumentListItem,
-  DocumentDepartmentItem,
-  ManagedUserItem,
-  MetadataFieldRuleItem,
-  NotificationItem,
-  ProcessAreaItem,
-  SearchDocumentItem,
-  SubjectItem,
-  VersionDiffResponse,
-  UserRole,
-  VersionListItem,
-  WorkflowApprovalItem,
-} from "./lib.types";
-import type { ContentMode } from "./components/create/documentCreateTypes";
-import { useAuthStore } from "./store/auth.store";
-import { useDocumentsStore } from "./store/documents.store";
-import { useNotificationsStore } from "./store/notifications.store";
-import { useRegistryStore } from "./store/registry.store";
+import type { UserRole } from "./lib.types";
 import { useUiStore } from "./store/ui.store";
+import { useAuthSession } from "./features/auth/useAuthSession";
+import { useDocumentsWorkspace } from "./features/documents/useDocumentsWorkspace";
+import { useRegistryExplorer } from "./features/registry/useRegistryExplorer";
+import { useNotifications } from "./features/notifications/useNotifications";
+import { useManagedUsers } from "./features/iam/useManagedUsers";
+import { statusOf } from "./features/shared/errors";
+import { DocumentsWorkspaceView } from "./features/documents/DocumentsWorkspaceView";
+import { RegistryExplorerView } from "./features/registry/RegistryExplorerView";
+import { WorkspaceShell } from "./features/shell/WorkspaceShell";
 
-type LoadState = "idle" | "loading" | "ready" | "error";
 type PolicyScope = "document" | "document_type" | "area";
-
-function metadataValueExample(rule: { name: string; type: string }, profileCode: string): string {
-  if (rule.type === "date") {
-    return rule.name.includes("end") || rule.name.includes("expiry") ? "2026-12-31" : "2026-01-01";
-  }
-  if (rule.name.endsWith("_code") || rule.name.endsWith("_number")) {
-    return `${profileCode.toUpperCase()}-001`;
-  }
-  if (rule.name.includes("issuer")) {
-    return "Organizacao Exemplo";
-  }
-  if (rule.name.includes("counterparty") || rule.name.includes("supplier")) {
-    return "Metal Nobre";
-  }
-  if (rule.name.includes("plant")) {
-    return "Matriz";
-  }
-  if (rule.name.includes("revision")) {
-    return "A";
-  }
-  if (rule.name.includes("period")) {
-    return "2026-Q1";
-  }
-  return "preencher";
-}
-
-function metadataTextForProfileSchema(profileCode: string, schema?: DocumentProfileSchemaItem | null): string {
-  const metadata: Record<string, string> = {};
-  for (const rule of schema?.metadataRules ?? []) {
-    const key = rule.name.trim();
-    if (!key) continue;
-    metadata[key] = "";
-  }
-  return JSON.stringify(metadata, null, 2);
-}
-
-const emptyDocumentForm = {
-  title: "",
-  documentType: "po",
-  documentProfile: "po",
-  processArea: "",
-  subject: "",
-  ownerId: "",
-  businessUnit: "Quality",
-  department: "operacoes",
-  classification: "INTERNAL",
-  audienceMode: "DEPARTMENT",
-  audienceDepartment: "operacoes",
-  audienceDepartments: ["operacoes"],
-  audienceProcessArea: "",
-  tags: "",
-  effectiveAt: "",
-  expiryAt: "",
-  metadata: "{}",
-  initialContent: "",
-};
-
-const emptyUserForm = {
-  userId: "",
-  username: "",
-  email: "",
-  displayName: "",
-  password: "",
-  roles: ["viewer"] as UserRole[],
-};
-
-const emptyManagedUserForm = {
-  userId: "",
-  displayName: "",
-  email: "",
-  isActive: true,
-  mustChangePassword: false,
-  roles: ["viewer"] as UserRole[],
-  resetPassword: "",
-};
 
 type AppErrorBoundaryState = {
   hasError: boolean;
@@ -166,7 +69,26 @@ export default function App() {
 }
 
 function AppContent() {
-  const { authState, user, loginForm, passwordForm, setAuthState, setUser, setLoginForm, setPasswordForm } = useAuthStore();
+  const {
+    message,
+    error,
+    isCreateSubmitting,
+    activeView,
+    searchQuery,
+    setMessage,
+    setError,
+    setActiveView,
+    setSearchQuery,
+  } = useUiStore();
+
+  const registry = useRegistryExplorer(() => documentsWorkspace.refreshWorkspace(user));
+  const documentsWorkspace = useDocumentsWorkspace(registry.applyDocumentProfile, registry.prefetchProfile);
+  const notificationsApi = useNotifications();
+  const authSession = useAuthSession({ onAuthenticated: documentsWorkspace.loadWorkspace });
+
+  const { authState, user, loginForm, passwordForm, setLoginForm, setPasswordForm, bootstrap, handleLogin, handleLogout, handleChangePassword } = authSession;
+  const refreshWorkspace = useCallback(() => documentsWorkspace.refreshWorkspace(user), [documentsWorkspace, user]);
+  const managedUsersApi = useManagedUsers(refreshWorkspace);
   const {
     loadState,
     documentForm,
@@ -188,28 +110,36 @@ function AppContent() {
     auditEvents,
     selectedFile,
     policyResourceId,
-    setLoadState,
     setDocumentForm,
-    setContentMode,
-    setContentFile,
-    setContentPdfUrl,
-    setContentDocxUrl,
-    setContentStatus,
-    setContentError,
-    setDocuments,
-    setSelectedDocument,
-    setVersions,
-    setVersionDiff,
-    setApprovals,
-    setAttachments,
     setCollaborationPresence,
     setDocumentEditLock,
-    setPolicies,
-    setAuditEvents,
     setSelectedFile,
-    setPolicyResourceId,
-  } = useDocumentsStore();
+    openDocument,
+    refreshOperationalSignals,
+    handleCreateDocument: handleCreateDocumentInternal,
+    handleContentModeChange,
+    handleContentFileChange,
+    handleDownloadTemplate,
+    handleUploadAttachment,
+  } = documentsWorkspace;
+  const handleCreateDocument = useCallback(
+    (event: React.FormEvent<HTMLFormElement>) => handleCreateDocumentInternal(event, user),
+    [handleCreateDocumentInternal, user],
+  );
   const {
+    applyDocumentProfile,
+    handleCreateProcessArea,
+    handleUpdateProcessArea,
+    handleDeleteProcessArea,
+    handleCreateSubject,
+    handleUpdateSubject,
+    handleDeleteSubject,
+    handleCreateDocumentProfile,
+    handleUpdateDocumentProfile,
+    handleDeleteDocumentProfile,
+    handleUpdateDocumentProfileGovernance,
+    handleUpsertDocumentProfileSchema,
+    handleActivateDocumentProfileSchema,
     documentProfiles,
     processAreas,
     documentDepartments,
@@ -217,41 +147,22 @@ function AppContent() {
     selectedProfileSchema,
     selectedProfileSchemas,
     selectedProfileGovernance,
-    setDocumentProfiles,
-    setProcessAreas,
-    setDocumentDepartments,
-    setSubjects,
-    setSelectedProfileSchema,
-    setSelectedProfileSchemas,
-    setSelectedProfileGovernance,
-  } = useRegistryStore();
-  const { notifications, setNotifications } = useNotificationsStore();
+  } = registry;
+  const { notifications, handleMarkNotificationRead, subscribeOperations } = notificationsApi;
   const {
-    message,
-    error,
-    isCreateSubmitting,
-    activeView,
-    searchQuery,
     userForm,
     managedUserForm,
     managedUsers,
-    setMessage,
-    setError,
-    setIsCreateSubmitting,
-    setActiveView,
-    setSearchQuery,
     setUserForm,
     setManagedUserForm,
-    setManagedUsers,
-  } = useUiStore();
-  const profileSchemaCacheRef = useRef(new Map<string, DocumentProfileSchemaItem[]>());
-  const profileGovernanceCacheRef = useRef(new Map<string, DocumentProfileGovernanceItem>());
-  const profileSchemaCacheMetaRef = useRef(new Map<string, number>());
-  const profileGovernanceCacheMetaRef = useRef(new Map<string, number>());
-  const profilePrefetchRef = useRef(new Set<string>());
+    handleCreateUser,
+    selectManagedUser,
+    toggleManagedUserRole,
+    handleSaveManagedUser,
+    handleAdminResetPassword,
+    handleUnlockManagedUser,
+  } = managedUsersApi;
   const policyScope: PolicyScope = "document";
-  const streamRefreshInFlightRef = useRef(false);
-  const profileCacheTtlMs = 5 * 60 * 1000;
 
   const currentUserRoles = Array.isArray(user?.roles) ? user.roles : [];
   const isAdmin = currentUserRoles.includes("admin");
@@ -265,7 +176,7 @@ function AppContent() {
 
   useEffect(() => {
     void bootstrap();
-  }, []);
+  }, [bootstrap]);
 
   useEffect(() => {
     if (!managedUserForm.userId) {
@@ -290,15 +201,10 @@ function AppContent() {
     if (authState !== "ready" || !user || user.mustChangePassword) {
       return;
     }
-    return api.subscribeOperationsStream(
-      () => {
-        void refreshOperationalSignals();
-      },
-      () => {
-        // Stream keeps retrying in browser; UI fallback remains available.
-      },
-    );
-  }, [authState, user?.mustChangePassword, user?.userId]);
+    return subscribeOperations(() => {
+      void refreshOperationalSignals();
+    });
+  }, [authState, refreshOperationalSignals, subscribeOperations, user?.mustChangePassword, user?.userId]);
 
   useEffect(() => {
     if (!message) {
@@ -357,756 +263,12 @@ function AppContent() {
     };
   }, [authState, selectedDocument?.documentId, user?.displayName]);
 
-  async function bootstrap() {
-    try {
-      const currentUser = await api.me();
-      setUser(currentUser);
-      setDocumentForm((current) => ({ ...current, ownerId: currentUser.userId }));
-      setAuthState("ready");
-      if (!currentUser.mustChangePassword) {
-        void loadWorkspace(currentUser);
-      }
-    } catch (err) {
-      if (statusOf(err) === 401) {
-        setAuthState("idle");
-        return;
-      }
-      setAuthState("error");
-      setError(asMessage(err));
-    }
-  }
-
-  async function loadWorkspace(currentUser: CurrentUser) {
-    setLoadState("loading");
-    try {
-      const [profilesResponse, processAreasResponse, departmentsResponse, subjectsResponse, docsResponse, usersResponse, notificationsResponse] = await Promise.all([
-        api.listDocumentProfiles(),
-        api.listProcessAreas(),
-        api.listDocumentDepartments(),
-        api.listSubjects(),
-        api.searchDocuments(new URLSearchParams({ limit: "25" })),
-        (Array.isArray(currentUser.roles) ? currentUser.roles : []).includes("admin") ? api.listUsers() : Promise.resolve({ items: [] as ManagedUserItem[] }),
-        api.listNotifications(new URLSearchParams({ limit: "10" })),
-      ]);
-      const profiles = Array.isArray(profilesResponse.items) ? profilesResponse.items : [];
-      const areas = Array.isArray(processAreasResponse.items) ? processAreasResponse.items : [];
-      const departments = Array.isArray(departmentsResponse.items) ? departmentsResponse.items : [];
-      const nextSubjects = Array.isArray(subjectsResponse.items) ? subjectsResponse.items : [];
-      const docs = Array.isArray(docsResponse.items) ? docsResponse.items : [];
-      const users = Array.isArray(usersResponse.items) ? usersResponse.items : [];
-      setDocumentProfiles(profiles);
-      setProcessAreas(areas);
-      setDocumentDepartments(departments);
-      setSubjects(nextSubjects);
-      setDocuments(docs);
-      setManagedUsers(users);
-      setNotifications(Array.isArray(notificationsResponse.items) ? notificationsResponse.items : []);
-      const nextProfileCode = profiles.find((item) => item.code === documentForm.documentProfile)?.code ?? profiles[0]?.code ?? "";
-      if (nextProfileCode) {
-        await applyDocumentProfile(nextProfileCode, documentForm.processArea);
-        if (!profilePrefetchRef.current.has(nextProfileCode)) {
-          profilePrefetchRef.current.add(nextProfileCode);
-          void (async () => {
-            try {
-              const bundle = await api.getDocumentProfileBundle(nextProfileCode);
-              const schemas = bundle.schema ? [bundle.schema] : [];
-              if (schemas.length > 0) {
-                profileSchemaCacheRef.current.set(nextProfileCode, schemas);
-                profileSchemaCacheMetaRef.current.set(nextProfileCode, Date.now());
-              }
-              if (bundle.governance) {
-                profileGovernanceCacheRef.current.set(nextProfileCode, bundle.governance);
-                profileGovernanceCacheMetaRef.current.set(nextProfileCode, Date.now());
-              }
-            } catch {
-              // Prefetch is best-effort; ignore failures here.
-            }
-          })();
-        }
-      }
-      setLoadState("ready");
-    } catch (err) {
-      handleError(err);
-      setLoadState("error");
-    }
-  }
-
-  async function refreshOperationalSignals() {
-    if (streamRefreshInFlightRef.current) {
-      return;
-    }
-    streamRefreshInFlightRef.current = true;
-    try {
-      const [docsResponse, notificationsResponse] = await Promise.all([
-        api.searchDocuments(new URLSearchParams({ limit: "25" })),
-        api.listNotifications(new URLSearchParams({ limit: "10" })),
-      ]);
-      setDocuments(Array.isArray(docsResponse.items) ? docsResponse.items : []);
-      setNotifications(Array.isArray(notificationsResponse.items) ? notificationsResponse.items : []);
-    } catch {
-      // Keep stream resilient: realtime refresh failure should not break UI session.
-    } finally {
-      streamRefreshInFlightRef.current = false;
-    }
-  }
-
-  async function applyDocumentProfile(profileCode: string, preferredProcessArea = "") {
-    startApiTrace(`apply-profile:${profileCode}`);
-    markUx(`profile-change-start:${profileCode}`);
-    const now = Date.now();
-    const schemaCacheAge = now - (profileSchemaCacheMetaRef.current.get(profileCode) ?? 0);
-    const governanceCacheAge = now - (profileGovernanceCacheMetaRef.current.get(profileCode) ?? 0);
-    const cachedSchemas = schemaCacheAge <= profileCacheTtlMs ? profileSchemaCacheRef.current.get(profileCode) : undefined;
-    const cachedGovernance = governanceCacheAge <= profileCacheTtlMs ? profileGovernanceCacheRef.current.get(profileCode) : undefined;
-    const cachedSchema = cachedSchemas?.find((item) => item.isActive) ?? cachedSchemas?.[0] ?? null;
-    setSelectedProfileSchemas(cachedSchemas ?? []);
-    setSelectedProfileSchema(cachedSchema);
-    setSelectedProfileGovernance(cachedGovernance ?? null);
-    setDocumentForm((current) => ({
-      ...current,
-      documentType: profileCode,
-      documentProfile: profileCode,
-      processArea: preferredProcessArea,
-      metadata: cachedSchema ? metadataTextForProfileSchema(profileCode, cachedSchema) : "{}",
-    }));
-    let schemaResponse: { items: DocumentProfileSchemaItem[] };
-    let governance: DocumentProfileGovernanceItem | null = null;
-    if (!cachedSchemas || !cachedGovernance) {
-      try {
-        const bundle = await api.getDocumentProfileBundle(profileCode);
-        schemaResponse = { items: bundle.schema ? [bundle.schema] : [] };
-        governance = bundle.governance ?? null;
-        if (bundle.schema) {
-          profileSchemaCacheRef.current.set(profileCode, schemaResponse.items);
-          profileSchemaCacheMetaRef.current.set(profileCode, Date.now());
-        }
-        if (bundle.governance) {
-          profileGovernanceCacheRef.current.set(profileCode, bundle.governance);
-          profileGovernanceCacheMetaRef.current.set(profileCode, Date.now());
-        }
-        if (bundle.profile) {
-          setDocumentProfiles((current) => current.map((item) => (item.code === bundle.profile.code ? bundle.profile : item)));
-        }
-        if (bundle.taxonomy.processAreas.length > 0 && processAreas.length === 0) {
-          setProcessAreas(bundle.taxonomy.processAreas);
-        }
-        if (bundle.taxonomy.documentDepartments.length > 0 && documentDepartments.length === 0) {
-          setDocumentDepartments(bundle.taxonomy.documentDepartments);
-        }
-        if (bundle.taxonomy.subjects.length > 0 && subjects.length === 0) {
-          setSubjects(bundle.taxonomy.subjects);
-        }
-      } catch {
-        const [fallbackSchemas, fallbackGovernance] = await Promise.all([
-          api.listDocumentProfileSchemas(profileCode),
-          api.getDocumentProfileGovernance(profileCode),
-        ]);
-        schemaResponse = fallbackSchemas;
-        governance = fallbackGovernance;
-      }
-    } else {
-      schemaResponse = { items: cachedSchemas };
-      governance = cachedGovernance;
-    }
-    const schemas = Array.isArray(schemaResponse.items) ? schemaResponse.items : [];
-    const schema = schemas.find((item) => item.isActive) ?? schemas[0] ?? null;
-    if (schemas.length > 0 && !cachedSchemas) {
-      profileSchemaCacheRef.current.set(profileCode, schemas);
-      profileSchemaCacheMetaRef.current.set(profileCode, Date.now());
-    }
-    if (governance && !cachedGovernance) {
-      profileGovernanceCacheRef.current.set(profileCode, governance);
-      profileGovernanceCacheMetaRef.current.set(profileCode, Date.now());
-    }
-    setSelectedProfileSchemas(schemas);
-    setSelectedProfileSchema(schema);
-    setSelectedProfileGovernance(governance);
-    markUx(`profile-schema-loaded:${profileCode}`);
-    markUx(`profile-governance-loaded:${profileCode}`);
-    setDocumentForm((current) => ({
-      ...current,
-      documentType: profileCode,
-      documentProfile: profileCode,
-      processArea: preferredProcessArea,
-      metadata: metadataTextForProfileSchema(profileCode, schema),
-    }));
-    markUx(`profile-form-updated:${profileCode}`);
-    if (typeof requestAnimationFrame === "function") {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          markUx(`profile-render-ready:${profileCode}`);
-          reportUxSequence(`profile-change:${profileCode}`, [
-            `profile-change-start:${profileCode}`,
-            `profile-schema-loaded:${profileCode}`,
-            `profile-governance-loaded:${profileCode}`,
-            `profile-form-updated:${profileCode}`,
-            `profile-render-ready:${profileCode}`,
-          ]);
-        });
-      });
-    } else {
-      setTimeout(() => {
-        markUx(`profile-render-ready:${profileCode}`);
-        reportUxSequence(`profile-change:${profileCode}`, [
-          `profile-change-start:${profileCode}`,
-          `profile-schema-loaded:${profileCode}`,
-          `profile-governance-loaded:${profileCode}`,
-          `profile-form-updated:${profileCode}`,
-          `profile-render-ready:${profileCode}`,
-        ]);
-      }, 0);
-    }
-    stopApiTrace();
-  }
-
-  async function handleLogin(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError("");
-    setMessage("");
-    const response = await api.login(loginForm).catch((err) => {
-      setUser(null);
-      setManagedUsers([]);
-      setDocuments([]);
-      setSelectedDocument(null);
-      setAuthState("idle");
-      setError(asMessage(err));
-      return null;
-    });
-    if (!response) return;
-    setUser(response.user);
-    setDocumentForm((current) => ({ ...current, ownerId: response.user.userId }));
-    if (!response.user.mustChangePassword) {
-      await loadWorkspace(response.user);
-    } else {
-      setSubjects([]);
-      setDocuments([]);
-      setVersions([]);
-      setVersionDiff(null);
-      setApprovals([]);
-      setAttachments([]);
-      setCollaborationPresence([]);
-      setDocumentEditLock(null);
-      setPolicies([]);
-      setAuditEvents([]);
-      setManagedUsers([]);
-      setNotifications([]);
-      setSelectedDocument(null);
-      setLoadState("idle");
-    }
-    setAuthState("ready");
-  }
-
-  async function handleLogout() {
-    await api.logout().catch(() => undefined);
-    setUser(null);
-    setSelectedProfileSchema(null);
-    setSelectedProfileSchemas([]);
-    setSelectedProfileGovernance(null);
-    setSubjects([]);
-    setDocuments([]);
-    setVersions([]);
-    setVersionDiff(null);
-    setApprovals([]);
-    setAttachments([]);
-    setCollaborationPresence([]);
-    setDocumentEditLock(null);
-    setPolicies([]);
-    setAuditEvents([]);
-    setManagedUsers([]);
-    setNotifications([]);
-    setSelectedDocument(null);
-    setContentMode("native");
-    setContentFile(null);
-    setContentPdfUrl("");
-    setContentDocxUrl("");
-    setContentStatus("idle");
-    setContentError("");
-    setMessage("");
-    setError("");
-    setAuthState("idle");
-  }
-
-  async function handleChangePassword(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    try {
-      setError("");
-      setMessage("");
-      if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-        setError("A confirmacao da nova senha nao confere.");
-        return;
-      }
-      const response = await api.changePassword(passwordForm);
-      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
-      setUser(response.user);
-      setLoginForm((current) => ({ ...current, identifier: response.user.username, password: "" }));
-      setDocumentForm((current) => ({ ...current, ownerId: response.user.userId }));
-      await loadWorkspace(response.user);
-      setAuthState("ready");
-      setMessage("Senha alterada com sucesso.");
-    } catch (err) {
-      handleError(err);
-    }
-  }
-
-  async function handleCreateDocument(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError("");
-    setMessage("");
-    const shouldOpenEditor = contentMode === "native";
-    if (shouldOpenEditor) {
-      setIsCreateSubmitting(true);
-    }
-    try {
-      startApiTrace("create-document");
-      const needsAudience = ["CONFIDENTIAL", "RESTRICTED"].includes(documentForm.classification);
-      const audienceMode = documentForm.audienceMode || "DEPARTMENT";
-      const audienceDepartments = documentForm.classification === "CONFIDENTIAL"
-        ? documentForm.audienceDepartments
-        : [documentForm.audienceDepartment || documentForm.department].filter(Boolean);
-      const audience = needsAudience ? {
-        mode: audienceMode,
-        departmentCodes: audienceDepartments,
-        processAreaCodes: audienceMode === "AREAS"
-          ? [documentForm.audienceProcessArea || documentForm.processArea].filter(Boolean)
-          : undefined,
-      } : undefined;
-      const created = await api.createDocument({
-        ...documentForm,
-        documentType: documentForm.documentProfile,
-        documentProfile: documentForm.documentProfile,
-        tags: documentForm.tags.split(",").map((item) => item.trim()).filter(Boolean),
-        effectiveAt: documentForm.effectiveAt ? new Date(documentForm.effectiveAt).toISOString() : undefined,
-        expiryAt: documentForm.expiryAt ? new Date(documentForm.expiryAt).toISOString() : undefined,
-        metadata: documentForm.metadata.trim() ? JSON.parse(documentForm.metadata) : {},
-        audience,
-      });
-      let handledContent = false;
-      setContentError("");
-
-      if (contentMode === "docx_upload" && contentFile) {
-        handledContent = true;
-        setContentStatus("saving");
-        const response = await api.uploadDocumentContentDocx(created.documentId, contentFile);
-        setContentPdfUrl(response.pdfUrl);
-        setContentDocxUrl(response.docxUrl);
-        setContentStatus("ready");
-      }
-      setDocumentForm({
-        ...emptyDocumentForm,
-        ownerId: user?.userId ?? "",
-        documentType: documentForm.documentProfile,
-        documentProfile: documentForm.documentProfile,
-        processArea: documentForm.processArea,
-        metadata: metadataTextForProfileSchema(documentForm.documentProfile, selectedProfileSchema),
-      });
-      if (!handledContent) {
-        setContentMode("native");
-        setContentFile(null);
-        setContentPdfUrl("");
-        setContentDocxUrl("");
-        setContentStatus("idle");
-        setContentError("");
-      }
-      setMessage(handledContent ? "Documento criado e conteudo processado." : "Documento criado com sucesso.");
-      if (contentMode === "native") {
-        await openDocument(created.documentId, "content-builder");
-        setIsCreateSubmitting(false);
-      } else if (!handledContent) {
-        setActiveView("library");
-        setIsCreateSubmitting(false);
-      }
-      if (user) await loadWorkspace(user);
-      stopApiTrace();
-    } catch (err) {
-      setContentStatus("error");
-      setContentError("Falha ao gerar o conteudo. O documento foi criado.");
-      handleError(err);
-      setIsCreateSubmitting(false);
-      stopApiTrace();
-    }
-  }
-
-  async function handleDownloadTemplate(profileCode: string) {
-    try {
-      if (!profileCode.trim()) return;
-      const blob = await api.downloadProfileTemplateDocx(profileCode);
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `template-${profileCode.toLowerCase()}.docx`;
-      link.click();
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      handleError(err);
-    }
-  }
-
-  function handleContentModeChange(mode: ContentMode) {
-    startApiTrace(`switch-content-mode:${mode}`);
-    setContentMode(mode);
-    setContentError("");
-    setContentStatus("idle");
-    setContentPdfUrl("");
-    setContentDocxUrl("");
-    if (mode === "native") {
-      setContentFile(null);
-    }
-    markUx(`content-mode-changed:${mode}`);
-    stopApiTrace();
-  }
-
-  function handleContentFileChange(file: File | null) {
-    setContentFile(file);
-    setContentError("");
-    setContentStatus("idle");
-    setContentPdfUrl("");
-    setContentDocxUrl("");
-  }
-
-  async function openDocument(documentId: string, nextView: WorkspaceView = "library") {
-    try {
-      startApiTrace(`open-document:${documentId}`);
-      markUx(`open-document-start:${documentId}`);
-      const canManagePolicies = currentUserRoles.includes("admin");
-      const [bundle, approvalsResponse, attachmentsResponse, auditResponse] = await Promise.all([
-        api.getDocumentEditorBundle(documentId),
-        api.listApprovals(documentId),
-        api.listAttachments(documentId),
-        api.listAuditEvents(new URLSearchParams({ resourceType: "document", resourceId: documentId, limit: "10" })),
-      ]);
-      const document = bundle.document;
-      const orderedVersions = [...bundle.versions].sort((left, right) => right.version - left.version);
-      const schemas = bundle.schema ? [bundle.schema] : [];
-      setSelectedProfileSchemas(schemas);
-      setSelectedProfileSchema(bundle.schema ?? null);
-      setSelectedProfileGovernance(bundle.governance);
-      setSelectedDocument(document);
-      setVersions(orderedVersions);
-      setApprovals(approvalsResponse.items);
-      setAttachments(attachmentsResponse.items);
-      setCollaborationPresence(bundle.presence);
-      setDocumentEditLock(bundle.editLock ?? null);
-      setAuditEvents(auditResponse.items);
-      setPolicyResourceId(documentId);
-      setActiveView(nextView);
-      const policyResponse = canManagePolicies
-        ? await api.listAccessPolicies("document", documentId).catch((err) => {
-          if (statusOf(err) === 403) {
-            return { items: [] as AccessPolicyItem[] };
-          }
-          throw err;
-        })
-        : { items: [] as AccessPolicyItem[] };
-      const nextDiff = orderedVersions.length >= 2
-        ? await api.getVersionDiff(documentId, orderedVersions[1].version, orderedVersions[0].version)
-        : null;
-        setPolicies(policyResponse.items);
-        setVersionDiff(nextDiff);
-        markUx(`open-document-ready:${documentId}`);
-        stopApiTrace();
-      } catch (err) {
-        handleError(err);
-        stopApiTrace();
-      }
-  }
-
-  async function handleUploadAttachment(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!selectedDocument || !selectedFile) return;
-    try {
-      await api.uploadAttachment(selectedDocument.documentId, selectedFile);
-      await openDocument(selectedDocument.documentId);
-      setSelectedFile(null);
-      setMessage("Anexo enviado.");
-    } catch (err) {
-      handleError(err);
-    }
-  }
-
-  async function handleCreateUser(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError("");
-    setMessage("");
-    try {
-      await api.createUser(userForm);
-      setUserForm(emptyUserForm);
-      if (user) await loadWorkspace(user);
-      setMessage("Usuario criado. A senha inicial exigira troca no primeiro acesso.");
-    } catch (err) {
-      handleError(err);
-    }
-  }
-
-  function selectManagedUser(item: ManagedUserItem) {
-    setManagedUserForm({
-      userId: item.userId,
-      displayName: item.displayName,
-      email: item.email ?? "",
-      isActive: item.isActive,
-      mustChangePassword: item.mustChangePassword,
-      roles: Array.isArray(item.roles) && item.roles.length > 0 ? item.roles : ["viewer"],
-      resetPassword: "",
-    });
-  }
-
-  function toggleManagedUserRole(role: UserRole) {
-    setManagedUserForm((current) => {
-      const hasRole = current.roles.includes(role);
-      const nextRoles = hasRole ? current.roles.filter((item) => item !== role) : [...current.roles, role];
-      return {
-        ...current,
-        roles: nextRoles.length > 0 ? nextRoles : current.roles,
-      };
-    });
-  }
-
-  async function handleSaveManagedUser() {
-    if (!managedUserForm.userId) {
-      setError("Selecione um usuario para editar.");
-      return;
-    }
-    if (managedUserForm.roles.length === 0) {
-      setError("Selecione pelo menos uma role.");
-      return;
-    }
-    try {
-      setError("");
-      setMessage("");
-      await api.updateUser(managedUserForm.userId, {
-        displayName: managedUserForm.displayName,
-        email: managedUserForm.email,
-        isActive: managedUserForm.isActive,
-        mustChangePassword: managedUserForm.mustChangePassword,
-      });
-      await api.replaceUserRoles(managedUserForm.userId, {
-        displayName: managedUserForm.displayName,
-        roles: managedUserForm.roles,
-      });
-      if (user) {
-        await loadWorkspace(user);
-      }
-      setMessage("Usuario administrativo atualizado com sucesso.");
-    } catch (err) {
-      handleError(err);
-    }
-  }
-
-  async function handleAdminResetPassword() {
-    if (!managedUserForm.userId) {
-      setError("Selecione um usuario para resetar a senha.");
-      return;
-    }
-    if (!managedUserForm.resetPassword.trim()) {
-      setError("Informe a nova senha temporaria.");
-      return;
-    }
-    try {
-      setError("");
-      setMessage("");
-      await api.adminResetPassword(managedUserForm.userId, {
-        newPassword: managedUserForm.resetPassword,
-      });
-      setManagedUserForm((current) => ({
-        ...current,
-        resetPassword: "",
-        mustChangePassword: true,
-      }));
-      if (user) {
-        await loadWorkspace(user);
-      }
-      setMessage("Senha administrativa resetada. O usuario precisara trocar no proximo login.");
-    } catch (err) {
-      handleError(err);
-    }
-  }
-
-  async function handleUnlockManagedUser() {
-    if (!managedUserForm.userId) {
-      setError("Selecione um usuario para desbloquear.");
-      return;
-    }
-    try {
-      setError("");
-      setMessage("");
-      await api.unlockUser(managedUserForm.userId);
-      if (user) {
-        await loadWorkspace(user);
-      }
-      setMessage("Usuario desbloqueado com sucesso.");
-    } catch (err) {
-      handleError(err);
-    }
-  }
-
-  async function handleMarkNotificationRead(notificationId: string) {
-    try {
-      await api.markNotificationRead(notificationId);
-      setNotifications((current) => current.map((item) => item.id === notificationId ? { ...item, status: "READ", readAt: new Date().toISOString() } : item));
-    } catch (err) {
-      handleError(err);
-    }
-  }
-
-  async function handleCreateProcessArea(payload: { code: string; name: string; description: string }) {
-    try {
-      setError("");
-      await api.createProcessArea(payload);
-      setMessage("Area de processo criada.");
-      await refreshWorkspace();
-    } catch (err) {
-      handleError(err);
-    }
-  }
-
-  async function handleCreateDocumentProfile(payload: { code: string; familyCode: string; name: string; alias: string; description: string; reviewIntervalDays: number }) {
-    try {
-      setError("");
-      await api.createDocumentProfile(payload);
-      setMessage("Profile criado.");
-      await refreshWorkspace();
-    } catch (err) {
-      handleError(err);
-    }
-  }
-
-  async function handleUpdateDocumentProfile(payload: { code: string; familyCode: string; name: string; alias: string; description: string; reviewIntervalDays: number }) {
-    try {
-      setError("");
-      await api.updateDocumentProfile(payload.code, payload);
-      setMessage("Profile atualizado.");
-      await refreshWorkspace();
-    } catch (err) {
-      handleError(err);
-    }
-  }
-
-  async function handleDeleteDocumentProfile(code: string) {
-    try {
-      setError("");
-      await api.deleteDocumentProfile(code);
-      setMessage("Profile desativado.");
-      await refreshWorkspace();
-    } catch (err) {
-      handleError(err);
-    }
-  }
-
-  async function handleUpdateDocumentProfileGovernance(payload: { profileCode: string; workflowProfile: string; reviewIntervalDays: number; approvalRequired: boolean; retentionDays: number; validityDays: number }) {
-    try {
-      setError("");
-      await api.updateDocumentProfileGovernance(payload.profileCode, payload);
-      setMessage("Governanca atualizada.");
-      profileGovernanceCacheRef.current.delete(payload.profileCode);
-      profileGovernanceCacheMetaRef.current.delete(payload.profileCode);
-      await refreshWorkspace();
-    } catch (err) {
-      handleError(err);
-    }
-  }
-
-  async function handleUpsertDocumentProfileSchema(payload: { profileCode: string; version: number; isActive: boolean; metadataRules: MetadataFieldRuleItem[] }) {
-    try {
-      setError("");
-      await api.upsertDocumentProfileSchema(payload.profileCode, payload);
-      setMessage("Schema versionado atualizado.");
-      profileSchemaCacheRef.current.delete(payload.profileCode);
-      profileSchemaCacheMetaRef.current.delete(payload.profileCode);
-      await applyDocumentProfile(payload.profileCode, documentForm.processArea);
-    } catch (err) {
-      handleError(err);
-    }
-  }
-
-  async function handleActivateDocumentProfileSchema(payload: { profileCode: string; version: number }) {
-    try {
-      setError("");
-      await api.activateDocumentProfileSchema(payload.profileCode, payload.version);
-      setMessage("Schema ativo atualizado.");
-      profileSchemaCacheRef.current.delete(payload.profileCode);
-      profileSchemaCacheMetaRef.current.delete(payload.profileCode);
-      await applyDocumentProfile(payload.profileCode, documentForm.processArea);
-    } catch (err) {
-      handleError(err);
-    }
-  }
-
-  async function handleUpdateProcessArea(payload: { code: string; name: string; description: string }) {
-    try {
-      setError("");
-      await api.updateProcessArea(payload.code, payload);
-      setMessage("Area de processo atualizada.");
-      await refreshWorkspace();
-    } catch (err) {
-      handleError(err);
-    }
-  }
-
-  async function handleDeleteProcessArea(code: string) {
-    try {
-      setError("");
-      await api.deleteProcessArea(code);
-      setMessage("Area de processo desativada.");
-      await refreshWorkspace();
-    } catch (err) {
-      handleError(err);
-    }
-  }
-
-  async function handleCreateSubject(payload: { code: string; processAreaCode: string; name: string; description: string }) {
-    try {
-      setError("");
-      await api.createSubject(payload);
-      setMessage("Subject criado.");
-      await refreshWorkspace();
-    } catch (err) {
-      handleError(err);
-    }
-  }
-
-  async function handleUpdateSubject(payload: { code: string; processAreaCode: string; name: string; description: string }) {
-    try {
-      setError("");
-      await api.updateSubject(payload.code, payload);
-      setMessage("Subject atualizado.");
-      await refreshWorkspace();
-    } catch (err) {
-      handleError(err);
-    }
-  }
-
-  async function handleDeleteSubject(code: string) {
-    try {
-      setError("");
-      await api.deleteSubject(code);
-      setMessage("Subject desativado.");
-      await refreshWorkspace();
-    } catch (err) {
-      handleError(err);
-    }
-  }
-
-  function handleError(err: unknown) {
-    if (statusOf(err) === 401) {
-      setUser(null);
-      setAuthState("idle");
-      setError("Sua sessao expirou. Faca login novamente.");
-      return;
-    }
-    setError(asMessage(err));
-  }
-
   if (authState === "loading") {
     return <div className="app-shell"><section className="hero-panel"><strong>Validando sessao...</strong></section></div>;
   }
 
   if (!user) {
     return <AuthShell identifier={loginForm.identifier} password={loginForm.password} message={message} error={error} onIdentifierChange={(identifier) => setLoginForm({ ...loginForm, identifier })} onPasswordChange={(password) => setLoginForm({ ...loginForm, password })} onSubmit={handleLogin} />;
-  }
-
-  const currentUser = user;
-
-  function refreshWorkspace() {
-    return loadWorkspace(currentUser);
   }
 
   function renderWorkspaceView() {
@@ -1128,7 +290,7 @@ function AppContent() {
 
     if (activeView === "library" || activeView === "my-docs" || activeView === "recent") {
       return (
-        <DocumentsWorkspace
+        <DocumentsWorkspaceView
           view={activeView}
           loadState={loadState}
           documentProfiles={documentProfiles}
@@ -1195,7 +357,7 @@ function AppContent() {
 
     if (activeView === "registry") {
       return (
-        <RegistryExplorer
+        <RegistryExplorerView
           loadState={loadState}
           documentProfiles={documentProfiles}
           processAreas={processAreas}
@@ -1305,10 +467,9 @@ function AppContent() {
       )}
 
       {!user.mustChangePassword && (
-        <DocumentWorkspaceShell
+        <WorkspaceShell
           userDisplayName={user.displayName}
           userRoleLabel={userRoleLabel}
-          organizationLabel="Metal Nobre"
           activeView={activeView}
           searchValue={searchQuery}
           notificationsPending={notifications.filter((item) => item.status !== "READ").length}
@@ -1327,21 +488,10 @@ function AppContent() {
           onLogout={handleLogout}
         >
           {workspaceView}
-        </DocumentWorkspaceShell>
+        </WorkspaceShell>
       )}
     </div>
   );
-}
-
-function asMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Falha inesperada.";
-}
-
-function statusOf(error: unknown): number | undefined {
-  if (error && typeof error === "object" && "status" in error && typeof (error as { status?: unknown }).status === "number") {
-    return (error as { status: number }).status;
-  }
-  return undefined;
 }
 
 function formatDate(value?: string): string {
@@ -1355,3 +505,4 @@ function roleLabelFromRoles(roles: UserRole[]): string {
   if (roles.includes("editor")) return "Editor";
   return "Visualizador";
 }
+

@@ -95,6 +95,13 @@ Correct: `param(...)` is the first non-comment statement in the script, before a
 Rule:    In PowerShell, `param` must come first or parameter binding breaks at runtime.
 Layer:   process
 
+## Lesson P â€” useEffect must not depend on unstable hook objects
+Date: 2026-03-21 | Trigger: correction
+Wrong:   `useEffect(..., [authSession])` and `useEffect(..., [notificationsApi, documentsWorkspace])` causing re-bootstrap/re-subscribe on every render
+Correct: Depend on stable callbacks only (e.g. `bootstrap`, `subscribeOperations`, `refreshOperationalSignals`)
+Rule:    Effects that trigger I/O must use stable function dependencies, never whole hook return objects.
+Layer:   frontend
+
 ## Lesson O — EPERM indicates sandbox permission issue
 Date: 2026-03-21 | Trigger: correction
 Wrong:   Retrying Playwright after `spawn EPERM` inside sandbox

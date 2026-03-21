@@ -103,4 +103,46 @@ Acceptance
 - [x] `cd frontend/apps/web; npm run e2e:smoke` passes
 commit: `refactor(frontend-css): introduce css modules for workspaces`
 
+---
+
+## Feature: Content Builder UX + consistency
+Area: `frontend/apps/web/src/components/create/` + `frontend/apps/web/src/components/content-builder/`  |  Risk: medium (UI flow + state transitions)  |  Goal: align flows and polish UX
+
+Notes
+- Scope is frontend-only (no API contract changes).
+- Keep diffs per task; one commit per task (Lesson H).
+
+## Tasks
+- [ ] T1: Split "Salvar e ir" behavior by mode
+      - Default path: button navigates to editor without persisting document until the user fills it
+      - Exception: if user selects "Usar Template Word", it must save/prepare first
+      commit: `fix(frontend-create): navigate-to-editor without save by default`
+
+- [ ] T2: Reuse progress sidebar on "preencher documento" screen
+      - Extract sidebar from create flow into a reusable component (used in Create + Fill/Edit)
+      commit: `refactor(frontend-ui): extract progress sidebar component`
+
+- [ ] T3: Normalize Content Builder action buttons (size + color)
+      - Back / Save draft / Generate PDF match the Create flow visual standard
+      commit: `fix(frontend-ui): normalize content builder buttons`
+
+- [ ] T4: Make PDF preview collapsible/expandable
+      - Persist state in UI store if it’s shared; otherwise local state in feature
+      commit: `feat(frontend-content-builder): add collapsible pdf preview`
+
+- [ ] T5: Remove "Voltar" button from content builder topbar
+      - Keep only the correct navigation affordance (per design decision)
+      commit: `fix(frontend-content-builder): remove topbar back button`
+
+- [ ] T6: Improve document bar text hierarchy and format
+      - Title becomes `PO-XX-<Nome do Documento>`
+      - Version and Status become clearer and consistent with typography
+      commit: `fix(frontend-content-builder): improve document bar hierarchy`
+
+## Acceptance tests (run after each task)
+- [ ] `cd frontend/apps/web; npm.cmd run build`
+- [ ] Manual: Create doc -> reach editor via both paths (no-template vs Word template)
+- [ ] Manual: In editor, verify buttons are consistent + PDF preview toggles cleanly
+- [ ] No console errors in browser during the flows above
+
 

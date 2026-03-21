@@ -221,7 +221,11 @@ export function DocumentCreateView(props: DocumentCreateViewProps) {
             <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
               <path d="M2 7l3.5 3.5L11 4" />
             </svg>
-            {props.isSubmitting ? "Abrindo editor..." : "Salvar e ir para o editor"}
+            {props.isSubmitting
+              ? "Abrindo editor..."
+              : props.contentMode === "docx_upload"
+                ? "Salvar e ir para o editor"
+                : "Ir para o editor"}
           </button>
         </div>
       </div>

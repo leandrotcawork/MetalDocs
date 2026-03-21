@@ -1,6 +1,6 @@
 ---
 name: md
-description: MetalDocs master orchestrator. Use for any implementation task. Enters plan mode, validates module structure and architecture before any code, orchestrates specialist skills.
+description: MetalDocs master orchestrator. Use for any implementation task. Enters plan mode, validates module structure and architecture before any code, orchestrates specialist skills. Usage: "use $md to implement X".
 ---
 
 # MetalDocs — Master Orchestrator

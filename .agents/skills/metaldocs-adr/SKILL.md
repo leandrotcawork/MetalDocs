@@ -1,6 +1,6 @@
 ---
 name: metaldocs-adr
-description: "Full ADR lifecycle for MetalDocs. An ADR is DONE only when documented with a runnable acceptance test, implementation verified, and git commit made. Required for: architecture changes, boundary changes, security/auth changes, schema migrations, deploy/rollback strategy changes, new relevant dependencies."
+description: Full ADR lifecycle for MetalDocs. An ADR is DONE only when documented with a runnable acceptance test, implementation verified, and git commit made. Required for: architecture changes, boundary changes, security/auth changes, schema migrations, deploy/rollback strategy changes, new relevant dependencies.
 ---
 
 # MetalDocs ADR

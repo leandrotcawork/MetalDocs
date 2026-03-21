@@ -1,6 +1,6 @@
 ---
 name: metaldocs-module
-description: "Implement any MetalDocs Go module layer: domain, infrastructure (postgres + memory), application service, or delivery handler. Called by $md for T2–T6. Uses real repo patterns anchored to existing modules."
+description: Implement any MetalDocs Go module layer: domain, infrastructure (postgres + memory), application service, or delivery handler. Called by $md for T2–T6. Uses real repo patterns anchored to existing modules.
 ---
 
 # MetalDocs Module

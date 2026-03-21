@@ -1,6 +1,6 @@
 ---
 name: metaldocs-review
-description: "Architecture and implementation review for MetalDocs. Two levels: (1) compliance — does code follow current patterns, (2) quality — are the patterns themselves professional and scalable at big-tech level. Always runs both. Produces severity-ordered findings and verdict."
+description: Architecture and implementation review for MetalDocs. Two levels: (1) compliance — does code follow current patterns, (2) quality — are the patterns themselves professional and scalable at big-tech level. Always runs both. Produces severity-ordered findings and verdict.
 ---
 
 # MetalDocs Review

@@ -1510,7 +1510,7 @@ Aceite:
 - Arquivos resultantes ficam < ~400-500 linhas por arquivo, com responsabilidades claras.
 
 ## Task 072 - Frontend Maintainability: Extract schema-driven widgets + reuse create widgets
-Status: `todo`
+  Status: `todo`
 
 Objetivo:
 Evitar repeticao e facilitar evolucao do editor nativo orientado a schema, com widgets reutilizaveis e padrao visual unico.
@@ -1533,7 +1533,168 @@ Execucao (como fazer):
 - Depois ajustes de reuso e tipagem.
 - Commit por subpasso para reduzir risco.
 
+  Aceite:
+  - Editor continua funcionando para PO/IT/RG/FM.
+  - Nenhum `fetch()` fora de `lib.api.ts`.
+  - Componentes nao duplicam estilos/markup de inputs (uso de widgets padrao).
+
+## Task 079 - Performance Diagnosis: Backend latency instrumentation
+Status: `todo`
+
+Objetivo:
+Medir tempo real de resposta (TTFB/p95/p99) dos endpoints criticos ligados a criacao e edicao de documentos.
+
+Escopo:
+- Instrumentar logs/metrics em:
+  - `listDocumentProfiles`
+  - `listDocumentProfileSchemas`
+  - `getDocumentContentNative`
+  - `getDocumentContentPdf`
+  - `createDocument`
+  - `listProcessAreas`
+  - `listSubjects`
+- Registrar: `duration_ms`, `trace_id`, `route`, `status`, `user_id`, `document_id/profile_code` quando aplicavel.
+
+Execucao (como fazer):
+- Centralizar metricas no middleware HTTP (quando possivel).
+- Adicionar logs detalhados apenas nos handlers criticos para evitar ruido.
+
 Aceite:
-- Editor continua funcionando para PO/IT/RG/FM.
-- Nenhum `fetch()` fora de `lib.api.ts`.
-- Componentes nao duplicam estilos/markup de inputs (uso de widgets padrao).
+- Logs mostram p50/p95/p99 com dados suficientes para identificar gargalos.
+
+## Task 080 - Performance Diagnosis: Frontend request waterfall tracing
+Status: `todo`
+
+Objetivo:
+Mapear quantas chamadas sao disparadas e em que ordem quando:
+1) troca o tipo documental no create
+2) abre o editor nativo
+
+Escopo:
+- Instrumentar `lib.api.ts` com logs `start/end` por request (apenas em dev).
+- Salvar os tempos em uma tabela simples no console para analise.
+
+Execucao (como fazer):
+- Adicionar wrapper no `api` para medir `performance.now()`.
+- Usar `console.groupCollapsed` para agrupar por acao do usuario.
+
+Aceite:
+- Relatorio mostrando cadeia de chamadas e tempo total por acao.
+
+## Task 081 - Performance Diagnosis: Perceived latency markers
+Status: `todo`
+
+Objetivo:
+Medir o tempo percebido do usuario desde a acao ate o primeiro render util.
+
+Escopo:
+- Criar marcadores `performance.now()` em:
+  - clique em trocar profile
+  - schema carregado
+  - form renderizado
+  - editor pronto
+
+Execucao (como fazer):
+- Adicionar logs condicionais em dev para cada marco.
+
+Aceite:
+- Relatorio com tempos reais de UX (ms).
+
+## Task 082 - Performance Diagnosis: DB query analysis
+Status: `todo`
+
+Objetivo:
+Identificar se o gargalo esta no banco (queries lentas).
+
+Escopo:
+- Executar `EXPLAIN ANALYZE` nas queries de schema/profile/metadata.
+- Verificar indices em tabelas de profiles, schemas e versions.
+
+Execucao (como fazer):
+- Mapear SQL exato que o repo executa.
+- Rodar explain com dados reais.
+
+Aceite:
+- Lista de queries lentas com sugestoes de indice.
+
+## Task 083 - Performance Diagnosis: Concurrency test (light load)
+Status: `todo`
+
+Objetivo:
+Ver como a latencia se comporta com 5-20 requests concorrentes.
+
+Escopo:
+- Script simples (curl loop ou k6) para endpoints criticos.
+- Medir degradacao de p95/p99.
+
+Execucao (como fazer):
+- Rodar teste local em ambiente dev.
+
+Aceite:
+- Dados de latencia sob concorrencia leve.
+
+## Task 084 - Performance Diagnosis: Editor flow isolation
+Status: `todo`
+
+Objetivo:
+Separar custo de render do custo de fetch.
+
+Escopo:
+- Rodar editor com mock local (sem fetch) e comparar tempo.
+- Medir render inicial e re-render.
+
+Execucao (como fazer):
+- Criar flag `DEV_MOCK_SCHEMA` (somente dev) para injetar schema local.
+
+Aceite:
+- Comparativo claro entre custo de render e custo de fetch.
+
+## Task 085 - Performance Diagnosis: External dependencies
+Status: `todo`
+
+Objetivo:
+Verificar se chamadas externas (Carbone/storage) afetam o load.
+
+Escopo:
+- Trace de chamadas para Carbone e storage durante editor/load.
+- Medir tempos de cada chamada.
+
+Execucao (como fazer):
+- Log de duracao nas funcoes de client Carbone e storage.
+
+Aceite:
+- Relatorio de tempos por dependencia externa.
+
+## Task 086 - Performance Diagnosis: Consolidated report
+Status: `todo`
+
+Objetivo:
+Consolidar dados em um relatorio final com causas e prioridades.
+
+Escopo:
+- Documento com:
+  - endpoints mais lentos
+  - UX latency
+  - waterfall
+  - DB
+  - dependencias externas
+
+Aceite:
+- Relatorio com ranking de gargalos e impacto.
+
+## Task 087 - Performance Diagnosis: Optimization candidates shortlist
+Status: `todo`
+
+Objetivo:
+Definir as 3-5 intervencoes mais impactantes antes de codar melhorias.
+
+Escopo:
+- Priorizar entre:
+  - cache/swr frontend
+  - prefetch
+  - batching de endpoints
+  - indices DB
+  - ajuste de payloads
+
+Aceite:
+- Lista priorizada com justificativa de impacto.

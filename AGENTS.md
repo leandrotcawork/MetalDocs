@@ -1,110 +1,75 @@
-# MetalDocs AGENTS.md
+# AGENTS — MetalDocs
 
-## Project Mission
-MetalDocs centraliza documentos com versionamento imutavel, workflow e auditoria confiavel.
+## On every session start
+1. Read `tasks/lessons.md` — apply every rule before touching code
+2. Read `tasks/todo.md` — know current state
+3. After any correction: write lesson to `tasks/lessons.md` immediately
 
-## Scope Freeze (v1)
-- Backend-first com UI minima.
-- Auth v1: RBAC local com login interno.
-- Deploy v1: Docker Compose single-node em `192.168.0.3`.
-- Sem IA/LLM no produto (feature/runtime) na v1.
+## Engineering bar
+Every decision passes this filter:
+*"Would a Stripe or Google senior engineer approve this in code review?"*
+- Names are self-documenting — no comment needed
+- Errors carry structured codes: `MODULE_ENTITY_REASON`
+- Every request logs `trace_id`, `user_id`, `module`, `action`, `result`, `duration_ms`
+- Every write event uses `idempotency_key` and outbox pattern
+- Authorization always validated in backend — never skipped
 
-## Token-Safe Workflow
-1. Comece com busca direcionada: `rg -n "symbol|text" .`.
-2. Abra no maximo 3 arquivos inicialmente.
-3. Nao escaneie pastas inteiras sem necessidade.
-4. Expanda leitura apenas depois de localizar alvos exatos.
-5. Menor diff seguro vence.
+## Absolute rules — violation = stop and fix immediately
 
-## Non-Negotiable Architecture
-- Arquitetura: modular monolith vertical slice.
-- Fluxo de request: `delivery -> application -> domain -> infrastructure`.
-- Frontend nunca executa regra de negocio.
-- `domain` nao depende de `infrastructure`.
-- Modulos nao importam internals de outros modulos diretamente.
-- Comunicacao cross-module via interface explicita ou evento interno.
+**Request flow (frozen)**
+- `delivery → application → domain → infrastructure`
+- Handler never contains business logic
+- Domain never depends on infrastructure
+- Modules never import internals of other modules directly
 
-## Immutable Contracts
-- OpenAPI source of truth: `api/openapi/v1/openapi.yaml`.
-- Versionamento de documento e imutavel (sem update de versao existente).
-- Auditoria e append-only (sem update/delete de eventos).
-- Permissao sempre validada no backend.
-- Nunca sobrescrever valor populado com `null`, vazio ou default acidental.
+**Auth and authorization**
+- IAM middleware handles auth — handler reads via `authn.UserIDFromContext(ctx)`
+- Permission check registered in `permissions.go` for every new endpoint
+- Never bypass authorization in handler
 
-## Decision Policy (ADR vs RFC vs Direct)
-### ADR obrigatoria quando houver:
-- Mudanca de arquitetura, boundary ou contrato publico.
-- Mudanca de seguranca, autenticacao ou autorizacao.
-- Mudanca de schema de dados, migracao destrutiva ou retencao.
-- Mudanca de estrategia de deploy/rollback/observabilidade.
-- Inclusao de dependencia relevante.
+**Events and outbox**
+- Every relevant mutation publishes a domain event via `messaging.Publisher`
+- Outbox `ON CONFLICT (idempotency_key) DO NOTHING` — idempotent by design
+- `idempotency_key` format: `event_type:aggregate_id`
+- Worker consumers must be idempotent — retry-safe
 
-### RFC curta (`docs/rfc/`) quando houver:
-- Mudanca relevante sem alterar contrato publico.
-- Troca de implementacao com tradeoff claro.
+**Data**
+- Document versions are immutable — never update existing version content
+- Audit log is append-only — never update or delete audit events
+- Migrations additive-first — destructive migration requires ADR
 
-### Sem cerimonia adicional quando houver:
-- Bugfix local sem impacto de contrato.
-- Ajuste de texto/docs sem impacto de governanca.
+**API**
+- `api/openapi/v1/openapi.yaml` is source of truth
+- No endpoint without OpenAPI entry
+- Breaking change only in `/api/v2`
+- OpenAPI updated in same PR as API change
 
-## Definition of Ready (DoR)
-### API change
-- Endpoint e payload definidos em OpenAPI.
-- Erros mapeados em catalogo padrao.
-- Regras de permissao definidas.
+**Code**
+- No secrets or credentials in code — env var only
+- No business logic in delivery layer
+- No direct table access across module boundaries
+- Smallest safe diff — never mix feature + broad refactor
 
-### Domain change
-- Invariantes e eventos definidos.
-- Regras de idempotencia e auditoria definidas.
-- Criterios de aceite testaveis definidos.
+## Skill map
 
-### Infra change
-- Impacto operacional documentado.
-- Rollback definido.
-- Risco e mitigacao registrados.
+| Task | Skill |
+|---|---|
+| Any implementation | `$md` |
+| New Go module | `$metaldocs-module` |
+| OpenAPI contract | `$metaldocs-openapi` |
+| ADR lifecycle | `$metaldocs-adr` |
+| Review | `$metaldocs-review` |
 
-### UI change
-- Contrato de API existente/definido.
-- Estados de loading/error/empty definidos.
-- Permissao e visibilidade por role definidas.
+## Commit format
+`<type>(<scope>): <what>` — feat | fix | docs | chore | refactor | test
+One commit per completed task. No uncommitted work at session end.
 
-## Definition of Done (DoD)
-### API change
-- OpenAPI atualizado.
-- Contract tests passando.
-- Breaking change apenas em nova versao.
-
-### Domain change
-- Unit + integration tests da regra nova.
-- Auditoria e eventos validados.
-- Sem violacao de boundary.
-
-### Infra change
-- Runbook atualizado.
-- Smoke test executado.
-- Plano de rollback validado.
-
-### UI change
-- Fluxo principal + estado de erro cobertos.
-- Sem logica de negocio fora do backend.
-
-## PR Gates (mandatory)
-- Checklist de PR preenchido.
-- Evidencias de teste anexadas.
-- OpenAPI atualizado quando API mudar.
-- ADR/RFC anexado quando exigido pela policy.
-- Nao misturar refactor amplo com feature.
-
-## Forbidden Patterns
-- Hardcode de segredo/credencial.
-- Bypass de autorizacao no backend.
-- Update/delete em log de auditoria.
-- Regras de negocio em handler HTTP ou frontend.
-- Refactor estrutural fora de escopo.
-
-## Delivery Format (Required)
-Sempre incluir:
-- Summary of what changed.
-- File list touched.
-- Commands executed for validation.
-- Risks and follow-up notes.
+## Lesson format (write to tasks/lessons.md after every correction)
+```
+## Lesson N — <title>
+Date: YYYY-MM-DD | Trigger: <correction | review | build failure>
+Wrong:   <exact code or decision>
+Correct: <exact code or decision>
+Rule:    <one sentence>
+Layer:   <delivery | application | domain | infrastructure | process>
+```

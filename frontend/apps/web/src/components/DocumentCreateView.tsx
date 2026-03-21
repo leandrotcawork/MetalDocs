@@ -100,7 +100,7 @@ export function DocumentCreateView(props: DocumentCreateViewProps) {
         <strong>Novo documento</strong>
       </div>
 
-      <form data-testid="document-create-form" className="create-doc-content" onSubmit={props.onSubmitCreateDocument}>
+      <form id="document-create-form" data-testid="document-create-form" className="create-doc-content" onSubmit={props.onSubmitCreateDocument}>
         <div className="create-doc-form-wrap">
           <div className="create-doc-page-title">
             <h2>Criar documento</h2>
@@ -207,24 +207,24 @@ export function DocumentCreateView(props: DocumentCreateViewProps) {
           />
           </CreateDocumentSection>
 
-                    <footer className="create-doc-footer">
-            <button type="button" className="ghost-button create-doc-footer-back">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M10.5 3.5L6 8l4.5 4.5" />
-              </svg>
-              Voltar
-            </button>
-            <div className="create-doc-footer-actions">
-              <button data-testid="document-submit" type="submit" className="create-doc-footer-primary" disabled={props.isSubmitting}>
-                <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                  <path d="M2 7l3.5 3.5L11 4" />
-                </svg>
-                {props.isSubmitting ? "Abrindo editor..." : "Salvar e ir para o editor"}
-              </button>
-            </div>
-          </footer>
         </div>
       </form>
+      <div className="create-doc-footer">
+        <button type="button" className="ghost-button create-doc-footer-back">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M10.5 3.5L6 8l4.5 4.5" />
+          </svg>
+          Voltar
+        </button>
+        <div className="create-doc-footer-actions">
+          <button data-testid="document-submit" type="submit" form="document-create-form" className="create-doc-footer-primary" disabled={props.isSubmitting}>
+            <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <path d="M2 7l3.5 3.5L11 4" />
+            </svg>
+            {props.isSubmitting ? "Abrindo editor..." : "Salvar e ir para o editor"}
+          </button>
+        </div>
+      </div>
       {props.isSubmitting && (
         <div className="create-doc-transition" role="status" aria-live="polite">
           <div className="create-doc-transition-card">

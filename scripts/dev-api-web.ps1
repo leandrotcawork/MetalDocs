@@ -1,8 +1,8 @@
-$ErrorActionPreference = "Stop"
-
 param(
   [switch]$SkipInfra
 )
+
+$ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
@@ -11,8 +11,7 @@ if (-not $SkipInfra) {
   & "$PSScriptRoot/dev-local.ps1"
 }
 
-$apiCommand = "& `"$PSScriptRoot/dev-api.ps1`""
-Start-Process powershell -ArgumentList "-NoExit", "-ExecutionPolicy", "Bypass", "-Command", $apiCommand -WorkingDirectory $root | Out-Null
+Start-Process powershell -ArgumentList "-NoExit", "-ExecutionPolicy", "Bypass", "-File", "$PSScriptRoot/dev-api.ps1" -WorkingDirectory $root | Out-Null
 
 $webCommand = "Set-Location `"$root/frontend/apps/web`"; npm run dev"
 Start-Process powershell -ArgumentList "-NoExit", "-Command", $webCommand -WorkingDirectory $root | Out-Null

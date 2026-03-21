@@ -87,3 +87,17 @@ Wrong:   idempotency keys like `doc-create-<id>` / `workflow-transition-<doc>-<t
 Correct: `"<event_type>:<aggregate_id>"` (e.g. `document.created:<docId>`, `document.version.created:<docId>:<version>`)
 Rule:    Outbox idempotency keys are deterministic and contract-shaped so retries never duplicate events.
 Layer:   application
+
+## Lesson N — PowerShell scripts must declare param first
+Date: 2026-03-21 | Trigger: correction
+Wrong:   `scripts/dev-api-web.ps1` had `$ErrorActionPreference` before `param(...)` (PowerShell treats `param` as a command and fails)
+Correct: `param(...)` is the first non-comment statement in the script, before any executable lines
+Rule:    In PowerShell, `param` must come first or parameter binding breaks at runtime.
+Layer:   process
+
+## Lesson O — EPERM indicates sandbox permission issue
+Date: 2026-03-21 | Trigger: correction
+Wrong:   Retrying Playwright after `spawn EPERM` inside sandbox
+Correct: Request escalated run when `EPERM` occurs during process spawn (outside sandbox permission required)
+Rule:    `EPERM` from child process spawn means permission denied; run with escalation.
+Layer:   process

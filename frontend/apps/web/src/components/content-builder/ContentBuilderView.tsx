@@ -138,7 +138,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
             contentDraft: (contentResponse.content ?? {}) as Record<string, unknown>,
             schema: activeSchema,
             version: contentResponse.version ?? null,
-            pdfUrl: pdfResponse?.url ?? "",
+            pdfUrl: pdfResponse?.pdfUrl ?? "",
           },
         });
       } catch (err) {

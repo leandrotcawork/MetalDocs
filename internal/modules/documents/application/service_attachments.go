@@ -73,7 +73,7 @@ func (s *Service) UploadAttachmentAuthorized(ctx context.Context, cmd domain.Upl
 			AggregateID:       doc.ID,
 			OccurredAtRFC3339: attachment.CreatedAt.Format(time.RFC3339),
 			Version:           1,
-			IdempotencyKey:    fmt.Sprintf("doc-attachment-create-%s", attachment.ID),
+			IdempotencyKey:    fmt.Sprintf("document.attachment.created:%s", attachment.ID),
 			Producer:          "documents",
 			TraceID:           cmd.TraceID,
 			Payload: map[string]any{

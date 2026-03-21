@@ -97,7 +97,7 @@ func (s *Service) UploadDocxContentAuthorized(ctx context.Context, cmd domain.Up
 			AggregateID:       doc.ID,
 			OccurredAtRFC3339: now.Format(time.RFC3339),
 			Version:           next,
-			IdempotencyKey:    fmt.Sprintf("doc-version-create-%s-%d", doc.ID, next),
+			IdempotencyKey:    fmt.Sprintf("document.version.created:%s:%d", doc.ID, next),
 			Producer:          "documents",
 			TraceID:           cmd.TraceID,
 			Payload: map[string]any{

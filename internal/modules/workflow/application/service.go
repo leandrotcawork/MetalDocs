@@ -195,7 +195,7 @@ func (s *Service) publishTransitionEvents(ctx context.Context, doc docdomain.Doc
 		AggregateID:       doc.ID,
 		OccurredAtRFC3339: now.Format(time.RFC3339),
 		Version:           1,
-		IdempotencyKey:    fmt.Sprintf("workflow-transition-%s-%s", doc.ID, toStatus),
+		IdempotencyKey:    fmt.Sprintf("workflow.transitioned:%s:%s", doc.ID, toStatus),
 		Producer:          "workflow",
 		TraceID:           strings.TrimSpace(cmd.TraceID),
 		Payload: map[string]any{
@@ -214,10 +214,10 @@ func (s *Service) publishTransitionEvents(ctx context.Context, doc docdomain.Doc
 	}
 
 	eventType := "workflow.approval.decisioned"
-	idempotencyKey := fmt.Sprintf("workflow-approval-decisioned-%s", approval.ID)
+	idempotencyKey := fmt.Sprintf("workflow.approval.decisioned:%s", approval.ID)
 	if approval.Status == workflowdomain.ApprovalStatusPending {
 		eventType = "workflow.approval.requested"
-		idempotencyKey = fmt.Sprintf("workflow-approval-requested-%s", approval.ID)
+		idempotencyKey = fmt.Sprintf("workflow.approval.requested:%s", approval.ID)
 	}
 
 	_ = s.publisher.Publish(ctx, messaging.Event{

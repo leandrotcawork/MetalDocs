@@ -1,6 +1,7 @@
 package httpdelivery
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log"
@@ -9,15 +10,23 @@ import (
 	"time"
 
 	auditdomain "metaldocs/internal/modules/audit/domain"
-	authapp "metaldocs/internal/modules/auth/application"
 	authdomain "metaldocs/internal/modules/auth/domain"
 	iamapp "metaldocs/internal/modules/iam/application"
 	iamdomain "metaldocs/internal/modules/iam/domain"
+	"metaldocs/internal/platform/authn"
 )
+
+type UserAdminService interface {
+	ListUsers(ctx context.Context) ([]authdomain.ManagedUser, error)
+	CreateUser(ctx context.Context, userID, username, email, displayName, password string, roles []iamdomain.Role, createdBy string) error
+	UpdateUser(ctx context.Context, params authdomain.UpdateUserParams, newPassword string) error
+	AdminResetPassword(ctx context.Context, userID, newPassword string) error
+	UnlockUser(ctx context.Context, userID string) error
+}
 
 type AdminHandler struct {
 	service     *iamapp.AdminService
-	authService *authapp.Service
+	authService UserAdminService
 	audit       auditdomain.Writer
 }
 
@@ -54,7 +63,7 @@ type ResetPasswordRequest struct {
 	NewPassword string `json:"newPassword"`
 }
 
-func NewAdminHandler(service *iamapp.AdminService, authService *authapp.Service, auditWriter ...auditdomain.Writer) *AdminHandler {
+func NewAdminHandler(service *iamapp.AdminService, authService UserAdminService, auditWriter ...auditdomain.Writer) *AdminHandler {
 	var writer auditdomain.Writer
 	if len(auditWriter) > 0 {
 		writer = auditWriter[0]
@@ -364,8 +373,8 @@ func parseRoles(items []string) ([]iamdomain.Role, bool) {
 }
 
 func authenticatedActor(r *http.Request) string {
-	if user, ok := authdomain.CurrentUserFromContext(r.Context()); ok && strings.TrimSpace(user.UserID) != "" {
-		return user.UserID
+	if userID := strings.TrimSpace(authn.UserIDFromContext(r.Context())); userID != "" {
+		return userID
 	}
 	return "system"
 }

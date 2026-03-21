@@ -1,4 +1,4 @@
-import { Component, useEffect, useRef, useState } from "react";
+import { Component, useEffect, useRef } from "react";
 import { api, markUx, reportUxSequence, startApiTrace, stopApiTrace } from "./lib.api";
 import { AuthShell } from "./components/AuthShell";
 import { DocumentCreateView } from "./components/DocumentCreateView";
@@ -35,6 +35,11 @@ import type {
   WorkflowApprovalItem,
 } from "./lib.types";
 import type { ContentMode } from "./components/create/documentCreateTypes";
+import { useAuthStore } from "./store/auth.store";
+import { useDocumentsStore } from "./store/documents.store";
+import { useNotificationsStore } from "./store/notifications.store";
+import { useRegistryStore } from "./store/registry.store";
+import { useUiStore } from "./store/ui.store";
 
 type LoadState = "idle" | "loading" | "ready" | "error";
 type PolicyScope = "document" | "document_type" | "area";
@@ -161,52 +166,90 @@ export default function App() {
 }
 
 function AppContent() {
-  const [authState, setAuthState] = useState<LoadState>("loading");
-  const [loadState, setLoadState] = useState<LoadState>("idle");
-  const [user, setUser] = useState<CurrentUser | null>(null);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
-  const [isCreateSubmitting, setIsCreateSubmitting] = useState(false);
-  const [activeView, setActiveView] = useState<WorkspaceView>("operations");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [loginForm, setLoginForm] = useState({ identifier: "admin", password: "" });
-  const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
-  const [documentForm, setDocumentForm] = useState(emptyDocumentForm);
-  const [contentMode, setContentMode] = useState<ContentMode>("native");
-  const [contentFile, setContentFile] = useState<File | null>(null);
-  const [contentPdfUrl, setContentPdfUrl] = useState("");
-  const [contentDocxUrl, setContentDocxUrl] = useState("");
-  const [contentStatus, setContentStatus] = useState<"idle" | "saving" | "ready" | "error">("idle");
-  const [contentError, setContentError] = useState("");
-  const [documentProfiles, setDocumentProfiles] = useState<DocumentProfileItem[]>([]);
-  const [processAreas, setProcessAreas] = useState<ProcessAreaItem[]>([]);
-  const [documentDepartments, setDocumentDepartments] = useState<DocumentDepartmentItem[]>([]);
-  const [subjects, setSubjects] = useState<SubjectItem[]>([]);
-  const [selectedProfileSchema, setSelectedProfileSchema] = useState<DocumentProfileSchemaItem | null>(null);
-  const [selectedProfileSchemas, setSelectedProfileSchemas] = useState<DocumentProfileSchemaItem[]>([]);
-  const [selectedProfileGovernance, setSelectedProfileGovernance] = useState<DocumentProfileGovernanceItem | null>(null);
+  const { authState, user, loginForm, passwordForm, setAuthState, setUser, setLoginForm, setPasswordForm } = useAuthStore();
+  const {
+    loadState,
+    documentForm,
+    contentMode,
+    contentFile,
+    contentPdfUrl,
+    contentDocxUrl,
+    contentStatus,
+    contentError,
+    documents,
+    selectedDocument,
+    versions,
+    versionDiff,
+    approvals,
+    attachments,
+    collaborationPresence,
+    documentEditLock,
+    policies,
+    auditEvents,
+    selectedFile,
+    policyResourceId,
+    setLoadState,
+    setDocumentForm,
+    setContentMode,
+    setContentFile,
+    setContentPdfUrl,
+    setContentDocxUrl,
+    setContentStatus,
+    setContentError,
+    setDocuments,
+    setSelectedDocument,
+    setVersions,
+    setVersionDiff,
+    setApprovals,
+    setAttachments,
+    setCollaborationPresence,
+    setDocumentEditLock,
+    setPolicies,
+    setAuditEvents,
+    setSelectedFile,
+    setPolicyResourceId,
+  } = useDocumentsStore();
+  const {
+    documentProfiles,
+    processAreas,
+    documentDepartments,
+    subjects,
+    selectedProfileSchema,
+    selectedProfileSchemas,
+    selectedProfileGovernance,
+    setDocumentProfiles,
+    setProcessAreas,
+    setDocumentDepartments,
+    setSubjects,
+    setSelectedProfileSchema,
+    setSelectedProfileSchemas,
+    setSelectedProfileGovernance,
+  } = useRegistryStore();
+  const { notifications, setNotifications } = useNotificationsStore();
+  const {
+    message,
+    error,
+    isCreateSubmitting,
+    activeView,
+    searchQuery,
+    userForm,
+    managedUserForm,
+    managedUsers,
+    setMessage,
+    setError,
+    setIsCreateSubmitting,
+    setActiveView,
+    setSearchQuery,
+    setUserForm,
+    setManagedUserForm,
+    setManagedUsers,
+  } = useUiStore();
   const profileSchemaCacheRef = useRef(new Map<string, DocumentProfileSchemaItem[]>());
   const profileGovernanceCacheRef = useRef(new Map<string, DocumentProfileGovernanceItem>());
   const profileSchemaCacheMetaRef = useRef(new Map<string, number>());
   const profileGovernanceCacheMetaRef = useRef(new Map<string, number>());
   const profilePrefetchRef = useRef(new Set<string>());
-  const [documents, setDocuments] = useState<SearchDocumentItem[]>([]);
-  const [selectedDocument, setSelectedDocument] = useState<DocumentListItem | null>(null);
-  const [versions, setVersions] = useState<VersionListItem[]>([]);
-  const [versionDiff, setVersionDiff] = useState<VersionDiffResponse | null>(null);
-  const [approvals, setApprovals] = useState<WorkflowApprovalItem[]>([]);
-  const [attachments, setAttachments] = useState<AttachmentItem[]>([]);
-  const [collaborationPresence, setCollaborationPresence] = useState<CollaborationPresenceItem[]>([]);
-  const [documentEditLock, setDocumentEditLock] = useState<DocumentEditLockItem | null>(null);
-  const [policies, setPolicies] = useState<AccessPolicyItem[]>([]);
-  const [auditEvents, setAuditEvents] = useState<AuditEventItem[]>([]);
-  const [managedUsers, setManagedUsers] = useState<ManagedUserItem[]>([]);
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [policyScope] = useState<PolicyScope>("document");
-  const [policyResourceId, setPolicyResourceId] = useState("");
-  const [userForm, setUserForm] = useState(emptyUserForm);
-  const [managedUserForm, setManagedUserForm] = useState(emptyManagedUserForm);
+  const policyScope: PolicyScope = "document";
   const streamRefreshInFlightRef = useRef(false);
   const profileCacheTtlMs = 5 * 60 * 1000;
 

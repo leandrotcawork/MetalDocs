@@ -21,41 +21,41 @@ commit: `chore(frontend): record baseline checks`
 Goal: remove `lib.api.ts` as god-module by extracting transport + domain files, but keep the same call sites working.
 
 Tasks
-- [ ] Create `frontend/apps/web/src/api/client.ts` (transport only: fetch wrapper, trace helpers, error normalization).
-- [ ] Create domain endpoint modules:
+- [x] Create `frontend/apps/web/src/api/client.ts` (transport only: fetch wrapper, trace helpers, error normalization).
+- [x] Create domain endpoint modules:
   - `frontend/apps/web/src/api/auth.ts`
   - `frontend/apps/web/src/api/documents.ts`
   - `frontend/apps/web/src/api/iam.ts`
   - `frontend/apps/web/src/api/notifications.ts`
   - `frontend/apps/web/src/api/registry.ts`
   - (optional, if used) `frontend/apps/web/src/api/workflow.ts`
-- [ ] Keep compatibility: `frontend/apps/web/src/lib.api.ts` becomes a thin facade re-exporting the old `api` object shape (delegating into `src/api/*`).
-- [ ] Update imports (only where needed) to keep build green.
+- [x] Keep compatibility: `frontend/apps/web/src/lib.api.ts` becomes a thin facade re-exporting the old `api` object shape (delegating into `src/api/*`).
+- [x] Update imports (only where needed) to keep build green.
 
 Acceptance
-- [ ] `cd frontend/apps/web; npm run build` passes
-- [ ] App opens with no console errors in main flows
-- [ ] login → listagem → detalhe works
-- [ ] `cd frontend/apps/web; npm run e2e:smoke` passes
+- [x] `cd frontend/apps/web; npm run build` passes
+- [x] App opens with no console errors in main flows
+- [x] login → listagem → detalhe works
+- [x] `cd frontend/apps/web; npm run e2e:smoke` passes
 commit: `refactor(frontend-api): split lib.api by domain`
 
 ## Phase 2 — Introduce Zustand stores (reduce prop drilling)
 Goal: move shared state out of `App.tsx` into domain stores, while keeping UI largely the same.
 
 Tasks
-- [ ] Add `frontend/apps/web/src/store/auth.store.ts` (session/user, auth state, must-change-password, etc.)
-- [ ] Add `frontend/apps/web/src/store/documents.store.ts` (selected doc, lists, loading flags, filters/search state)
-- [ ] Add `frontend/apps/web/src/store/registry.store.ts` (registry explorer state)
-- [ ] Add `frontend/apps/web/src/store/notifications.store.ts` (unread, items, loading)
-- [ ] Add `frontend/apps/web/src/store/ui.store.ts` (workspace tab/view, modals, toasts, ephemeral UI)
-- [ ] Wire minimal set: `App.tsx` reads from stores instead of holding domain state in `useState`.
-- [ ] Keep mutations in `App.tsx` for now (Phase 3 moves them).
+- [x] Add `frontend/apps/web/src/store/auth.store.ts` (session/user, auth state, must-change-password, etc.)
+- [x] Add `frontend/apps/web/src/store/documents.store.ts` (selected doc, lists, loading flags, filters/search state)
+- [x] Add `frontend/apps/web/src/store/registry.store.ts` (registry explorer state)
+- [x] Add `frontend/apps/web/src/store/notifications.store.ts` (unread, items, loading)
+- [x] Add `frontend/apps/web/src/store/ui.store.ts` (workspace tab/view, modals, toasts, ephemeral UI)
+- [x] Wire minimal set: `App.tsx` reads from stores instead of holding domain state in `useState`.
+- [x] Keep mutations in `App.tsx` for now (Phase 3 moves them).
 
 Acceptance
-- [ ] `cd frontend/apps/web; npm run build` passes
-- [ ] App opens with no console errors in main flows
-- [ ] login → listagem → detalhe works
-- [ ] `cd frontend/apps/web; npm run e2e:smoke` passes
+- [x] `cd frontend/apps/web; npm run build` passes
+- [x] App opens with no console errors in main flows
+- [x] login → listagem → detalhe works
+- [x] `cd frontend/apps/web; npm run e2e:smoke` passes
 commit: `refactor(frontend-store): introduce zustand domain stores`
 
 ## Phase 3 — Decompose App.tsx into feature hooks + shells

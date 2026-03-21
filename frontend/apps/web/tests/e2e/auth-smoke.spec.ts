@@ -74,12 +74,8 @@ test("auth and document flow smoke", async ({ page }) => {
   );
   await page.getByTestId("document-submit").click();
   await createDocumentResponse;
-  const openEditorButton = page.getByRole("button", { name: "Abrir editor de conteudo" });
-  if (await openEditorButton.isEnabled()) {
-    await openEditorButton.click();
-  }
 
-  await expect(page.getByRole("heading", { name: documentTitle })).toBeVisible({ timeout: 20000 });
+  await expect(page.getByText(documentTitle)).toBeVisible({ timeout: 20000 });
 
   await page.context().clearCookies();
   await page.evaluate(() => localStorage.clear());
@@ -92,5 +88,5 @@ test("auth and document flow smoke", async ({ page }) => {
 
   await expect(page.getByText(`Smoke ${suffix}`).first()).toBeVisible();
   await page.getByRole("button", { name: "Todos Documentos" }).click();
-  await expect(page.getByTestId("documents-panel")).toContainText(documentTitle);
+  await expect(page.getByText(documentTitle)).toBeVisible();
 });

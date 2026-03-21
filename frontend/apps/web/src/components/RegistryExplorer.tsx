@@ -4,6 +4,7 @@ import type { DocumentProfileGovernanceItem, DocumentProfileItem, DocumentProfil
 import { WorkspaceDataState } from "./WorkspaceDataState";
 import { WorkspaceViewFrame } from "./WorkspaceViewFrame";
 import { FilterDropdown, type SelectMenuOption } from "./ui/FilterDropdown";
+import styles from "./RegistryExplorer.module.css";
 
 type LoadState = "idle" | "loading" | "ready" | "error";
 
@@ -139,10 +140,10 @@ export function RegistryExplorer(props: RegistryExplorerProps) {
               <h2>Catalogo configurado</h2>
             </div>
           </div>
-          <ul className="catalog-mini-list registry-list">
+          <ul className={`catalog-mini-list ${styles["registry-list"]}`}>
             {props.documentProfiles.map((item) => (
               <li key={item.code}>
-                <button type="button" className={`registry-profile-button ${selectedProfile?.code === item.code ? "is-active" : ""}`} onClick={() => void props.onSelectProfile(item.code)}>
+                <button type="button" className={`${styles["registry-profile-button"]} ${selectedProfile?.code === item.code ? styles["is-active"] : ""}`} onClick={() => void props.onSelectProfile(item.code)}>
                   <span>{item.name}</span>
                   <small>{item.alias} / {item.code} / family {item.familyCode}</small>
                 </button>
@@ -188,9 +189,9 @@ export function RegistryExplorer(props: RegistryExplorerProps) {
                     value={schemaForm.version}
                     onChange={(event) => setSchemaForm((current) => ({ ...current, version: Number(event.target.value || 0) }))}
                   />
-                  <div className="registry-schema-rules">
+                  <div className={styles["registry-schema-rules"]}>
                     {schemaForm.metadataRules.map((rule, index) => (
-                      <div key={`${rule.name}-${index}`} className="registry-schema-rule-row">
+                      <div key={`${rule.name}-${index}`} className={styles["registry-schema-rule-row"]}>
                         <input
                           placeholder="nome_da_regra"
                           value={rule.name}

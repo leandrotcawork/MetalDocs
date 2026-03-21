@@ -3,6 +3,7 @@ import { buildDocumentProfileCountMap } from "../features/documents/adapters/cat
 import { metalNobreProcessAreaHint } from "../features/documents/adapters/metalNobreExperience";
 import { FilterDropdown } from "./ui/FilterDropdown";
 import { WorkspaceDataState } from "./WorkspaceDataState";
+import styles from "./DocumentsWorkspace.module.css";
 import type {
   AccessPolicyItem,
   AttachmentItem,
@@ -253,8 +254,8 @@ export function DocumentsWorkspace(props: DocumentsWorkspaceProps) {
         </div>
       </div>
 
-      <div className={`catalog-content-grid ${props.selectedDocument ? "" : "is-detail-hidden"}`}>
-        <section className="catalog-primary-column">
+      <div className={`${styles["catalog-content-grid"]} ${props.selectedDocument ? "" : styles["is-detail-hidden"]}`}>
+        <section className={styles["catalog-primary-column"]}>
           <WorkspaceDataState
             loadState={props.loadState}
             isEmpty={props.documents.length === 0}
@@ -317,26 +318,26 @@ export function DocumentsWorkspace(props: DocumentsWorkspaceProps) {
             </div>
           )}
 
-          <div className="catalog-group-list">
+          <div className={styles["catalog-group-list"]}>
             {groupedByArea.map((group, index) => {
               const isOpen = openGroups[group.code] ?? index === 0;
               return (
-                <div key={group.code} className="catalog-group-section">
-                  <button type="button" className="catalog-group-header" onClick={() => toggleGroup(group.code)}>
-                    <span className={`catalog-group-chevron ${isOpen ? "is-open" : ""}`}>
+                <div key={group.code} className={styles["catalog-group-section"]}>
+                  <button type="button" className={styles["catalog-group-header"]} onClick={() => toggleGroup(group.code)}>
+                    <span className={`${styles["catalog-group-chevron"]} ${isOpen ? styles["is-open"] : ""}`}>
                       <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5">
                         <path d="M2.5 4.5l4 4 4-4" strokeLinecap="round" />
                       </svg>
                     </span>
-                    <span className="catalog-group-dot" style={{ background: areaColor(index) }} />
-                    <span className="catalog-group-label">{group.label}</span>
-                    <span className="catalog-group-count">{group.documents.length} documentos</span>
-                    <span className="catalog-group-line" />
+                    <span className={styles["catalog-group-dot"]} style={{ background: areaColor(index) }} />
+                    <span className={styles["catalog-group-label"]}>{group.label}</span>
+                    <span className={styles["catalog-group-count"]}>{group.documents.length} documentos</span>
+                    <span className={styles["catalog-group-line"]} />
                   </button>
 
                   {isOpen && (
-                    <div className="catalog-table-shell catalog-table-shell-rich">
-                      <div className="catalog-table-head-rich">
+                    <div className={`${styles["catalog-table-shell"]} ${styles["catalog-table-shell-rich"]}`}>
+                      <div className={styles["catalog-table-head-rich"]}>
                         <span />
                         <span>Documento</span>
                         <span>Tipo / family</span>
@@ -347,22 +348,27 @@ export function DocumentsWorkspace(props: DocumentsWorkspaceProps) {
                         <span />
                       </div>
                       {group.documents.map((item) => (
-                        <button key={item.documentId} type="button" className={`catalog-row-rich ${props.selectedDocument?.documentId === item.documentId ? "is-selected" : ""}`} onClick={() => void props.onOpenDocument(item.documentId)}>
-                          <span className="catalog-row-checkbox" />
-                          <span className="catalog-row-document">
+                        <button
+                          key={item.documentId}
+                          type="button"
+                          className={`${styles["catalog-row-rich"]} ${props.selectedDocument?.documentId === item.documentId ? styles["is-selected"] : ""}`}
+                          onClick={() => void props.onOpenDocument(item.documentId)}
+                        >
+                          <span className={styles["catalog-row-checkbox"]} />
+                          <span className={styles["catalog-row-document"]}>
                             <span className={`document-icon profile-${item.documentProfile}`}>{item.documentProfile.toUpperCase().slice(0, 2)}</span>
-                            <span className="catalog-row-document-copy">
+                            <span className={styles["catalog-row-document-copy"]}>
                               <strong>{item.title}</strong>
                               <small>{item.documentId}</small>
                             </span>
                           </span>
-                          <span className="catalog-row-muted">{profileLabel(item.documentProfile, props.documentProfiles)}</span>
+                          <span className={styles["catalog-row-muted"]}>{profileLabel(item.documentProfile, props.documentProfiles)}</span>
                           <span><span className={statusClass(item.status)}>{item.status}</span></span>
-                          <span className="catalog-row-muted">{item.ownerId}</span>
-                          <span className="catalog-row-mono">v{item.profileSchemaVersion ?? 1}</span>
-                          <span className={`catalog-row-review ${item.expiryAt ? "is-warning" : ""}`}>{item.expiryAt ? formatShortDate(item.expiryAt) : "-"}</span>
-                          <span className="catalog-row-actions">
-                            <span className="catalog-row-action-dot">⋮</span>
+                          <span className={styles["catalog-row-muted"]}>{item.ownerId}</span>
+                          <span className={styles["catalog-row-mono"]}>v{item.profileSchemaVersion ?? 1}</span>
+                          <span className={`${styles["catalog-row-review"]} ${item.expiryAt ? styles["is-warning"] : ""}`}>{item.expiryAt ? formatShortDate(item.expiryAt) : "-"}</span>
+                          <span className={styles["catalog-row-actions"]}>
+                            <span className={styles["catalog-row-action-dot"]}>⋮</span>
                           </span>
                         </button>
                       ))}
@@ -374,7 +380,7 @@ export function DocumentsWorkspace(props: DocumentsWorkspaceProps) {
           </div>
 
           {filteredDocuments.length === 0 && (
-            <div className="catalog-empty-state">
+            <div className={styles["catalog-empty-state"]}>
               <svg width="36" height="36" viewBox="0 0 36 36" fill="none" stroke="currentColor" strokeWidth="1">
                 <path d="M8 4h13l7 7v21H8V4z" strokeLinejoin="round" />
                 <path d="M21 4v7h7" strokeLinejoin="round" />
@@ -384,11 +390,17 @@ export function DocumentsWorkspace(props: DocumentsWorkspaceProps) {
             </div>
           )}
 
-          <div className="catalog-pagination">
+          <div className={styles["catalog-pagination"]}>
             <span>Mostrando {filteredDocuments.length} de {props.documents.length} documentos</span>
-            <div className="catalog-pagination-buttons">
+            <div className={styles["catalog-pagination-buttons"]}>
               {["‹", "1", "2", "3", "›"].map((item, index) => (
-                <button key={`${item}-${index}`} type="button" className={`catalog-pagination-button ${item === "1" ? "is-active" : ""}`}>{item}</button>
+                <button
+                  key={`${item}-${index}`}
+                  type="button"
+                  className={`${styles["catalog-pagination-button"]} ${item === "1" ? styles["is-active"] : ""}`}
+                >
+                  {item}
+                </button>
               ))}
             </div>
           </div>

@@ -1,0 +1,64 @@
+.registry-list li {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.registry-profile-button {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  padding: 5px 8px 5px 36px;
+  border-radius: 7px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.82);
+  border: 1px solid transparent;
+  font-size: 13px;
+  font-family: "DM Sans", sans-serif;
+  position: relative;
+}
+
+.registry-profile-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.registry-profile-button.is-active {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-weight: 500;
+}
+
+.registry-profile-button.is-active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 16px;
+  background: #f4d4da;
+  border-radius: 0 3px 3px 0;
+}
+
+.registry-schema-rules {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.registry-schema-rule-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 130px auto auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+@media (max-width: 1100px) {
+  .registry-schema-rule-row {
+    grid-template-columns: 1fr;
+  }
+}

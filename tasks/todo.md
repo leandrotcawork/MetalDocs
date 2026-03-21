@@ -91,13 +91,13 @@ Targets (start with these)
 - `RegistryExplorer` (or `RegistryExplorerView`)
 
 Tasks
-- [ ] Add global split (minimal): `frontend/apps/web/src/styles/tokens.css` + `frontend/apps/web/src/styles/base.css` (keep `styles.css` only as temporary bridge).
-- [ ] For each target: create `<Component>.module.css` and migrate classes from global CSS.
-- [ ] Remove migrated selectors from `frontend/apps/web/src/styles.css` as each component converts.
-- [ ] Ensure styles use tokens (`var(--...)`) rather than hardcoded values.
+- [x] Add global split (minimal): `frontend/apps/web/src/styles/tokens.css` + `frontend/apps/web/src/styles/base.css` (keep `styles.css` only as temporary bridge).
+- [x] For each target: create `<Component>.module.css` and migrate classes from global CSS.
+- [x] Remove migrated selectors from `frontend/apps/web/src/styles.css` as each component converts.
+- [x] Ensure styles use tokens (`var(--...)`) rather than hardcoded values.
 
 Acceptance
-- [ ] `cd frontend/apps/web; npm run build` passes
+- [x] `cd frontend/apps/web; npm run build` passes
 - [x] App opens with no console errors in main flows
 - [x] login -> listagem -> detalhe works
 - [x] `cd frontend/apps/web; npm run e2e:smoke` passes

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { buildProfileAccordions } from "../features/documents/adapters/catalogSummary";
 import type { DocumentProfileItem, ProcessAreaItem, SearchDocumentItem } from "../lib.types";
+import styles from "./DocumentWorkspaceShell.module.css";
 
 export type WorkspaceView = "operations" | "approvals" | "audit" | "library" | "my-docs" | "recent" | "create" | "content-builder" | "registry" | "notifications" | "admin";
 
@@ -254,24 +255,24 @@ export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
   }
 
   return (
-    <div className="workspace-shell">
-      <header className="workspace-topbar">
-        <div className="workspace-brand">
-          <div className="workspace-brand-mark">
+    <div className={styles["workspace-shell"]}>
+      <header className={styles["workspace-topbar"]}>
+        <div className={styles["workspace-brand"]}>
+          <div className={styles["workspace-brand-mark"]}>
             <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="1.3">
               <path d="M3 2h6.5L12 4.5V13H3V2z" strokeLinejoin="round" />
               <path d="M9.5 2v2.5H12" strokeLinejoin="round" />
               <path d="M5 7h5M5 9.5h5M5 12h3" strokeLinecap="round" />
             </svg>
           </div>
-          <div className="workspace-brand-text">
-            <div className="workspace-brand-name">MetalDocs</div>
-            <div className="workspace-brand-sub">SGQ / {props.organizationLabel}</div>
+          <div className={styles["workspace-brand-text"]}>
+            <div className={styles["workspace-brand-name"]}>MetalDocs</div>
+            <div className={styles["workspace-brand-sub"]}>SGQ / {props.organizationLabel}</div>
           </div>
         </div>
 
-        <div className="workspace-search">
-          <span className="workspace-search-icon" aria-hidden="true">
+        <div className={styles["workspace-search"]}>
+          <span className={styles["workspace-search-icon"]} aria-hidden="true">
             <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5">
               <circle cx="5.5" cy="5.5" r="4" />
               <path d="M9 9l2.5 2.5" strokeLinecap="round" />
@@ -282,13 +283,13 @@ export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
             onChange={(event) => props.onSearchChange(event.target.value)}
             placeholder="Buscar por titulo, codigo, area..."
           />
-          <span className="workspace-search-kbd">CTRL+K</span>
+          <span className={styles["workspace-search-kbd"]}>CTRL+K</span>
         </div>
 
-        <div className="workspace-topbar-actions">
+        <div className={styles["workspace-topbar-actions"]}>
           <button
             type="button"
-            className="workspace-icon-button"
+            className={styles["workspace-icon-button"]}
             title="Atualizar workspace"
             onClick={() => void props.onRefreshWorkspace()}
             disabled={props.isRefreshing}
@@ -301,36 +302,36 @@ export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
               </svg>
             </span>
           </button>
-          <button type="button" className="workspace-icon-button" title="Notificacoes" onClick={() => props.onNavigate("notifications")}>
+          <button type="button" className={styles["workspace-icon-button"]} title="Notificacoes" onClick={() => props.onNavigate("notifications")}>
             <span aria-hidden="true">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4">
                 <path d="M7 1.5a4 4 0 0 1 4 4v2.5l1 1.5H2L3 8V5.5a4 4 0 0 1 4-4z" />
                 <path d="M5.5 11.5a1.5 1.5 0 0 0 3 0" strokeLinecap="round" />
               </svg>
             </span>
-            {props.notificationsPending > 0 && <span className="workspace-dot" />}
+            {props.notificationsPending > 0 && <span className={styles["workspace-dot"]} />}
           </button>
-          <button type="button" className="workspace-primary-button" onClick={props.onPrimaryAction}>
+          <button type="button" className={styles["workspace-primary-button"]} onClick={props.onPrimaryAction}>
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M6 1v10M1 6h10" strokeLinecap="round" />
             </svg>
             Novo documento
           </button>
-          <div className="workspace-user-menu" ref={userMenuRef} data-open={userMenuOpen ? "true" : "false"}>
+          <div className={styles["workspace-user-menu"]} ref={userMenuRef} data-open={userMenuOpen ? "true" : "false"}>
             <button
               type="button"
-              className="workspace-user-trigger"
+              className={styles["workspace-user-trigger"]}
               aria-haspopup="menu"
               aria-expanded={userMenuOpen}
               onClick={() => setUserMenuOpen((current) => !current)}
               title={props.userDisplayName}
             >
-              <div className="workspace-avatar">{props.userDisplayName.slice(0, 2).toUpperCase()}</div>
-              <span className="workspace-user-copy">
+              <div className={styles["workspace-avatar"]}>{props.userDisplayName.slice(0, 2).toUpperCase()}</div>
+              <span className={styles["workspace-user-copy"]}>
                 <strong>{props.userDisplayName}</strong>
                 <small>{props.userRoleLabel}</small>
               </span>
-              <span className="workspace-user-chevron" aria-hidden="true">
+              <span className={styles["workspace-user-chevron"]} aria-hidden="true">
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4">
                   <path d="M3 4.5 6 7.5l3-3" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
@@ -338,15 +339,15 @@ export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
             </button>
 
             {userMenuOpen && (
-              <div className="workspace-user-dropdown" role="menu">
-                <div className="workspace-user-meta">
+              <div className={styles["workspace-user-dropdown"]} role="menu">
+                <div className={styles["workspace-user-meta"]}>
                   <span>Workspace</span>
                   <strong>{props.organizationLabel}</strong>
                 </div>
                 <button
                   data-testid="logout-button"
                   type="button"
-                  className="workspace-user-item is-danger"
+                  className={`${styles["workspace-user-item"]} ${styles["is-danger"]}`}
                   role="menuitem"
                   onClick={() => {
                     setUserMenuOpen(false);
@@ -361,82 +362,86 @@ export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
         </div>
       </header>
 
-      <div className="workspace-layout">
-        <aside className="workspace-sidebar">
-          <div className="workspace-sidebar-scroll">
-            <div className="workspace-context-pill">
-              <div className="workspace-context-mark" aria-hidden="true">
+      <div className={styles["workspace-layout"]}>
+        <aside className={styles["workspace-sidebar"]}>
+          <div className={styles["workspace-sidebar-scroll"]}>
+            <div className={styles["workspace-context-pill"]}>
+              <div className={styles["workspace-context-mark"]} aria-hidden="true">
                 <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.4">
                   <path d="M2 2h9v9H2z" strokeLinejoin="round" />
                   <path d="M2 5h9M5 5v6" strokeLinecap="round" />
                 </svg>
               </div>
-              <div className="workspace-context-copy">
+              <div className={styles["workspace-context-copy"]}>
                 <strong>{props.organizationLabel}</strong>
                 <small>{props.userRoleLabel}</small>
               </div>
-              <span className="workspace-context-chevron" aria-hidden="true">
+              <span className={styles["workspace-context-chevron"]} aria-hidden="true">
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4">
                   <path d="M3 4.5 6 7.5l3-3" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </span>
             </div>
 
-            <div className="workspace-divider" />
+            <div className={styles["workspace-divider"]} />
 
             {primarySections.map((section, index) => (
-              <div key={section.label} className="workspace-nav-group">
-                <div className="workspace-sidebar-section-label">{section.label}</div>
-                <div className="workspace-flat-nav">
+              <div key={section.label} className={styles["workspace-nav-group"]}>
+                <div className={styles["workspace-sidebar-section-label"]}>{section.label}</div>
+                <div className={styles["workspace-flat-nav"]}>
                   {section.items.map((item) => (
                     <button
                       key={`${section.label}-${item.label}`}
                       type="button"
-                      className={`workspace-flat-nav-item ${props.activeView === item.key ? "is-active" : ""}`}
+                      className={`${styles["workspace-flat-nav-item"]} ${props.activeView === item.key ? styles["is-active"] : ""}`}
                       onClick={() => props.onNavigate(item.key)}
                     >
-                      <span className="workspace-flat-nav-main">
-                        <span className="workspace-nav-icon">{item.icon}</span>
-                        <span className="workspace-flat-nav-label">{item.label}</span>
+                      <span className={styles["workspace-flat-nav-main"]}>
+                        <span className={styles["workspace-nav-icon"]}>{item.icon}</span>
+                        <span className={styles["workspace-flat-nav-label"]}>{item.label}</span>
                       </span>
-                      {item.badge && <span className={`workspace-nav-badge ${item.accent === "danger" ? "is-danger" : item.accent === "warning" ? "is-warning" : ""}`}>{item.badge}</span>}
+                      {item.badge && (
+                        <span className={`${styles["workspace-nav-badge"]} ${item.accent === "danger" ? styles["is-danger"] : item.accent === "warning" ? styles["is-warning"] : ""}`}>
+                          {item.badge}
+                        </span>
+                      )}
                     </button>
                   ))}
                 </div>
-                {(index === 0 || index === 1) && <div className="workspace-divider" />}
+                {(index === 0 || index === 1) && <div className={styles["workspace-divider"]} />}
               </div>
             ))}
 
-            <div className="workspace-sidebar-section-label">Por tipo</div>
+            <div className={styles["workspace-sidebar-section-label"]}>Por tipo</div>
             {typedSections.map((section) => {
               const isOpen = openSections[section.code] ?? false;
               return (
-                <div key={section.code} className="workspace-accordion">
-                  <button type="button" className={`workspace-section-trigger ${isOpen ? "is-open" : ""}`} onClick={() => toggleSection(section.code)}>
-                    <span className="workspace-section-chevron" aria-hidden="true">
+                <div key={section.code} className={styles["workspace-accordion"]}>
+                  <button type="button" className={`${styles["workspace-section-trigger"]} ${isOpen ? styles["is-open"] : ""}`} onClick={() => toggleSection(section.code)}>
+                    <span className={styles["workspace-section-chevron"]} aria-hidden="true">
                       <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4">
                         <path d="M4.5 3 7.5 6l-3 3" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     </span>
-                    <span className="workspace-section-label" title={props.documentProfiles.find((item) => item.code === section.code)?.name ?? section.label}>{section.label}</span>
-                    <span className="workspace-section-count">{section.count}</span>
+                    <span className={styles["workspace-section-label"]} title={props.documentProfiles.find((item) => item.code === section.code)?.name ?? section.label}>{section.label}</span>
+                    <span className={styles["workspace-section-count"]}>{section.count}</span>
                   </button>
 
                   {isOpen && (
-                    <div className="workspace-subnav typed">
-                      <button type="button" className={`workspace-subnav-item ${props.activeView === "library" ? "is-active" : ""}`} onClick={() => props.onNavigate("library")}>
-                        <span className="workspace-subnav-main">
-                          <span className="workspace-subnav-label">Todos</span>
+                    <div className={`${styles["workspace-subnav"]} ${styles["typed"]}`}>
+                      <button type="button" className={`${styles["workspace-subnav-item"]} ${props.activeView === "library" ? styles["is-active"] : ""}`} onClick={() => props.onNavigate("library")}>
+                        <span className={styles["workspace-subnav-main"]}>
+                          <span className={styles["workspace-subnav-label"]}>Todos</span>
                         </span>
-                        <span className="workspace-sub-count">{section.count}</span>
+                        <span className={styles["workspace-sub-count"]}>{section.count}</span>
                       </button>
                       {section.areas.map((area) => (
-                        <button key={`${section.code}-${area.label}`} type="button" className="workspace-subnav-item" onClick={() => props.onNavigate("library")}>
-                          <span className="workspace-subnav-main">
-                            <span className={`workspace-sub-dot profile-${section.code}`} />
-                            <span className="workspace-subnav-label">{area.label}</span>
+                        <button key={`${section.code}-${area.label}`} type="button" className={styles["workspace-subnav-item"]} onClick={() => props.onNavigate("library")}>
+                          <span className={styles["workspace-subnav-main"]}>
+                            <span className={`${styles["workspace-sub-dot"]} profile-${section.code}`} />
+                            <span className={styles["workspace-subnav-label"]}>{area.label}</span>
                           </span>
-                          <span className="workspace-sub-count">{area.count}</span>
+                          <span className={styles["workspace-sub-count"]}>{area.count}</span>
                         </button>
                       ))}
                     </div>
@@ -445,24 +450,28 @@ export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
               );
             })}
 
-            {typedSections.length > 0 && <div className="workspace-divider" />}
+            {typedSections.length > 0 && <div className={styles["workspace-divider"]} />}
 
             {secondarySections.map((section) => (
-              <div key={section.label} className="workspace-nav-group">
-                <div className="workspace-sidebar-section-label">{section.label}</div>
-                <div className="workspace-flat-nav">
+              <div key={section.label} className={styles["workspace-nav-group"]}>
+                <div className={styles["workspace-sidebar-section-label"]}>{section.label}</div>
+                <div className={styles["workspace-flat-nav"]}>
                   {section.items.map((item) => (
                     <button
                       key={`${section.label}-${item.label}`}
                       type="button"
-                      className={`workspace-flat-nav-item ${props.activeView === item.key ? "is-active" : ""}`}
+                      className={`${styles["workspace-flat-nav-item"]} ${props.activeView === item.key ? styles["is-active"] : ""}`}
                       onClick={() => props.onNavigate(item.key)}
                     >
-                      <span className="workspace-flat-nav-main">
-                        <span className="workspace-nav-icon">{item.icon}</span>
-                        <span className="workspace-flat-nav-label">{item.label}</span>
+                      <span className={styles["workspace-flat-nav-main"]}>
+                        <span className={styles["workspace-nav-icon"]}>{item.icon}</span>
+                        <span className={styles["workspace-flat-nav-label"]}>{item.label}</span>
                       </span>
-                      {item.badge && <span className={`workspace-nav-badge ${item.accent === "danger" ? "is-danger" : item.accent === "warning" ? "is-warning" : ""}`}>{item.badge}</span>}
+                      {item.badge && (
+                        <span className={`${styles["workspace-nav-badge"]} ${item.accent === "danger" ? styles["is-danger"] : item.accent === "warning" ? styles["is-warning"] : ""}`}>
+                          {item.badge}
+                        </span>
+                      )}
                     </button>
                   ))}
                 </div>
@@ -470,8 +479,8 @@ export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
             ))}
           </div>
 
-          <div className="workspace-sidebar-footer">
-            <div className="workspace-runtime-card">
+          <div className={styles["workspace-sidebar-footer"]}>
+            <div className={styles["workspace-runtime-card"]}>
               <span>Workspace</span>
               <strong>Control room documental</strong>
               <small>{props.reviewCount} documento(s) em revisao</small>
@@ -479,11 +488,11 @@ export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
           </div>
         </aside>
 
-        <main className={`workspace-main ${isCatalogView || isCreateView || isContentBuilder ? "is-toolbarless" : ""} ${isCreateView ? "is-create-view" : ""} ${isContentBuilder ? "is-content-builder-view" : ""}`}>
+        <main className={`${styles["workspace-main"]} ${isCatalogView || isCreateView || isContentBuilder ? styles["is-toolbarless"] : ""} ${isCreateView ? styles["is-create-view"] : ""} ${isContentBuilder ? styles["is-content-builder-view"] : ""}`}>
           {!isCatalogView && !isCreateView && !isContentBuilder && (
-            <div className="workspace-toolbar workspace-toolbar-as-panel">
-              <div className="workspace-toolbar-top">
-                <p className="workspace-toolbar-kicker">Workspace</p>
+            <div className={`${styles["workspace-toolbar"]} ${styles["workspace-toolbar-as-panel"]}`}>
+              <div className={styles["workspace-toolbar-top"]}>
+                <p className={styles["workspace-toolbar-kicker"]}>Workspace</p>
                 <div className="workspace-breadcrumb">
                   <strong>{currentTitle}</strong>
                 </div>
@@ -492,7 +501,7 @@ export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
           )}
           {isCreateView || isContentBuilder
             ? props.children
-            : <div className={`workspace-content ${isCatalogView ? "is-toolbarless" : ""}`}>{props.children}</div>}
+            : <div className={`${styles["workspace-content"]} ${isCatalogView ? styles["is-toolbarless"] : ""}`}>{props.children}</div>}
         </main>
       </div>
     </div>

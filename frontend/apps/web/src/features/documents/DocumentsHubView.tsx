@@ -29,6 +29,19 @@ function recentStorageKey(userId?: string) {
   return `${recentKeyPrefix}.${userId}`;
 }
 
+function hydrateRecentDocuments(items: RecentDocumentItem[], documents: SearchDocumentItem[]): RecentDocumentItem[] {
+  if (items.length === 0 || documents.length === 0) return items;
+  const byId = new Map(documents.map((doc) => [doc.documentId, doc] as const));
+  return items.map((item) => {
+    const match = byId.get(item.documentId);
+    if (!match) return item;
+    return {
+      ...match,
+      openedAt: item.openedAt || item.createdAt || match.createdAt || new Date().toISOString(),
+    };
+  });
+}
+
 function loadRecentDocuments(userId?: string): RecentDocumentItem[] {
   const key = recentStorageKey(userId);
   if (!key) return [];
@@ -135,6 +148,28 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
   }, [props.currentUserId, setRecentDocuments]);
 
   useEffect(() => {
+    if (!props.currentUserId) return;
+    if (recentDocuments.length === 0) return;
+    if (props.documents.length === 0) return;
+
+    const hydrated = hydrateRecentDocuments(recentDocuments, props.documents);
+    const needsUpgrade = hydrated.some((item, index) => {
+      const previous = recentDocuments[index];
+      if (!previous) return true;
+      return (
+        item.documentCode !== previous.documentCode ||
+        item.documentSequence !== previous.documentSequence ||
+        item.title !== previous.title ||
+        item.openedAt !== previous.openedAt
+      );
+    });
+
+    if (!needsUpgrade) return;
+    setRecentDocuments(hydrated);
+    storeRecentDocuments(props.currentUserId, hydrated);
+  }, [props.currentUserId, props.documents, recentDocuments, setRecentDocuments]);
+
+  useEffect(() => {
     setDocumentsHubView("overview");
     setDocumentsHubStatus("all");
     setDocumentsHubArea("all");
@@ -145,7 +180,10 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
     () => scopedDocuments.slice(0, 8).map((item) => ({ ...item, openedAt: item.createdAt })),
     [scopedDocuments],
   );
-  const recentItems = recentDocuments.length > 0 ? recentDocuments : recentFallback;
+  const recentItems = useMemo(() => {
+    const base = recentDocuments.length > 0 ? recentDocuments : recentFallback;
+    return hydrateRecentDocuments(base, props.documents);
+  }, [props.documents, recentDocuments, recentFallback]);
   const profileCounts = useMemo(() => buildDocumentProfileCountMap(scopedDocuments), [scopedDocuments]);
 
   const areaCounts = useMemo(() => {

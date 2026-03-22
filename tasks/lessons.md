@@ -53,3 +53,10 @@ Wrong:   Assuming `docker-entrypoint-initdb.d` will apply new migrations on ever
 Correct: Provide an explicit migration runner for dev/prod; initdb only runs on first volume initialization
 Rule:    Postgres init scripts are not a migration system; always have an incremental apply path.
 Layer:   process
+
+## Lesson G - Hydrate/migrate cached UI data when identity fields change
+Date: 2026-03-22 | Trigger: correction
+Wrong:   “Abertos recentemente” reads raw LocalStorage items that predate `documentCode`, so labels fall back to `PO-<Titulo>`
+Correct: Hydrate cached recent items with the latest `SearchDocumentItem` data (by `documentId`) and persist the upgraded shape
+Rule:    Any cached UI data must be versioned or hydrated when source-of-truth identity fields evolve.
+Layer:   frontend

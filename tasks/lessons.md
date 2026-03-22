@@ -60,3 +60,10 @@ Wrong:   “Abertos recentemente” reads raw LocalStorage items that predate `d
 Correct: Hydrate cached recent items with the latest `SearchDocumentItem` data (by `documentId`) and persist the upgraded shape
 Rule:    Any cached UI data must be versioned or hydrated when source-of-truth identity fields evolve.
 Layer:   frontend
+
+## Lesson H - Prefer CSS layout over JS height synchronization
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Using `ResizeObserver` + inline heights to keep sibling cards the same height (fragile in empty states)
+Correct: Use CSS Grid `align-items: stretch` and let the layout engine equalize card heights; keep internal scroll areas with `minmax(0,1fr)` and `overflow-y: auto`
+Rule:    UI layout consistency should be solved in CSS first; JS measurement is a last resort.
+Layer:   frontend

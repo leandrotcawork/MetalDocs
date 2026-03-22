@@ -276,3 +276,10 @@ Wrong:   Forcing fixed height on all user cards to make Base de usuarios scroll
 Correct: Keep cards with auto height; apply scroll constraint only to the Base list container
 Rule:    When one panel needs scrolling, constrain that panel's list area instead of hard-fixing sibling card heights.
 Layer:   frontend
+
+## Lesson AO - Equal-height cards should follow grid stretch, not fixed tokens
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Mixing fixed card heights and per-card exceptions caused inconsistent panel sizing
+Correct: Let the grid row stretch items so all cards match the tallest sibling, while only the list area scrolls
+Rule:    For same-row admin cards, use grid stretch for height parity and local overflow on scrollable content only.
+Layer:   frontend

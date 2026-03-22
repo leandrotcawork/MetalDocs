@@ -19,7 +19,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1.2fr);
   gap: 1rem;
-  align-items: start;
+  align-items: stretch;
 }
 
 .card {
@@ -27,7 +27,7 @@
   border: 1px solid var(--border);
   border-radius: 0.95rem;
   box-shadow: var(--shadow);
-  height: auto;
+  height: 100%;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -118,7 +118,8 @@
 }
 
 .baseCard .userList {
-  max-height: 28rem;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
 }
 
@@ -188,14 +189,6 @@
 .roleChipViewer {
   background: var(--surface-2);
   color: var(--muted);
-}
-
-.listFooter {
-  text-align: center;
-  color: var(--vinho);
-  font-size: 0.92rem;
-  padding: 0.95rem 1.2rem;
-  border-top: 1px solid var(--border);
 }
 
 .editHero {

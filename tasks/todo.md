@@ -324,6 +324,10 @@ Notes
       - Remover altura compartilhada dos cards; manter scroll apenas na lista da Base de usuarios
       commit: `fix(frontend-admin): make base list scrollable with auto card heights`
 
+- [x] T10: Remover contador da base e equalizar altura dinamica
+      - Remover texto "Exibindo X de Y usuarios" e manter os tres cards com a altura do maior
+      commit: `fix(frontend-admin): remove base footer and equalize dynamic card heights`
+
 ## Acceptance tests
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards de criacao/base/edicao sem alongamento e no padrao da referencia

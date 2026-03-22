@@ -241,9 +241,6 @@ export function ManagedUsersSection(props: ManagedUsersPanelProps) {
               </li>
             ))}
           </ul>
-          <footer className={styles.listFooter}>
-            Exibindo {filteredUsers.length} de {props.managedUsers.length} usuarios
-          </footer>
         </article>
 
         <article className={`${styles.card} ${styles.editCard}`}>

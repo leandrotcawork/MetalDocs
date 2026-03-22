@@ -158,12 +158,12 @@ export function AdminCenterView() {
 
         <section className={styles.grid}>
           <div className={`${styles.panel} ${styles.onlinePanel}`}>
-            <div className={styles.panelHeader}>
+            <div className={`${styles.panelHeader} ${styles.panelHeaderRow}`}>
               <div>
                 <p className={styles.kicker}>Presenca</p>
                 <h2 className={styles.panelTitle}>Usuarios online</h2>
               </div>
-              <div className={styles.onlineHeaderActions}>
+              <div className={styles.panelHeaderActions}>
                 <span className={styles.panelBadge}>{onlineCount} online</span>
                 <button className={styles.onlineLink} type="button">
                   Ver todos →
@@ -173,11 +173,11 @@ export function AdminCenterView() {
             {onlineCount === 0 ? (
               <p className={styles.empty}>Nenhum usuario online agora.</p>
             ) : (
-              <ul className={styles.onlineList}>
+              <ul className={styles.panelList}>
                 {adminCenter.onlineUsers.map((item, index) => (
                   <li
                     key={item.userId}
-                    className={`${styles.listItem} ${styles.onlineListItem}`}
+                    className={`${styles.listItem} ${styles.panelListItem}`}
                     style={{ animationDelay: `${index * 0.06}s` }}
                   >
                     <span className={styles.avatar}>{toInitials(item.displayName)}</span>
@@ -194,7 +194,7 @@ export function AdminCenterView() {
           </div>
 
           <div className={`${styles.panel} ${styles.activityPanel}`}>
-            <div className={styles.panelHeader}>
+            <div className={`${styles.panelHeader} ${styles.panelHeaderRow}`}>
               <div>
                 <p className={styles.kicker}>Auditoria</p>
                 <h2 className={styles.panelTitle}>Ultimas atividades</h2>
@@ -203,9 +203,9 @@ export function AdminCenterView() {
                 Audit trail →
               </button>
             </div>
-            <ul className={styles.activityList}>
+            <ul className={styles.panelList}>
               {adminCenter.recentActivities.length === 0 ? (
-                <li className={`${styles.listItem} ${styles.activityListItem} ${styles.activityEmptyItem}`}>
+                <li className={`${styles.listItem} ${styles.panelListItem} ${styles.activityEmptyItem}`}>
                   <span className={styles.activityDotPlaceholder} />
                   <span className={styles.listSub}>Nenhuma atividade registrada.</span>
                 </li>
@@ -213,7 +213,7 @@ export function AdminCenterView() {
                 adminCenter.recentActivities.map((item, index) => (
                   <li
                     key={item.id}
-                    className={`${styles.listItem} ${styles.activityListItem}`}
+                    className={`${styles.listItem} ${styles.panelListItem} ${styles.activityListItem}`}
                     style={{ animationDelay: `${index * 0.06}s` }}
                   >
                     <span className={activityDotClass(item.action)} />
@@ -221,7 +221,7 @@ export function AdminCenterView() {
                       <strong className={styles.listTitle}>{item.action}</strong>
                       <small className={styles.listSub}>{item.actorId}</small>
                     </div>
-                    <div className={styles.activityRight}>
+                    <div className={styles.panelRowRight}>
                       <span className={styles.listTime}>{formatDate(item.occurredAt)}</span>
                       <span className={activityChipClass(item.action)}>{activityLabel(item.action)}</span>
                     </div>

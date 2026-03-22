@@ -254,6 +254,10 @@ Notes
       - Titulos, separadores e colunas alinhadas
       commit: `fix(frontend-admin): align activity card spacing to online`
 
+- [x] T8: Padronizar cards de lista (online + atividades)
+      - Mesmo header, separadores e estrutura; variacoes só no conteudo
+      commit: `refactor(frontend-admin): unify list card pattern`
+
 ## Acceptance tests
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards compactos, hierarquia clara e sem “cards gigantes”

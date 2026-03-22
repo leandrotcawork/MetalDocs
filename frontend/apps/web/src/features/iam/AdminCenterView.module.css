@@ -163,12 +163,12 @@
   gap: 1rem;
 }
 
-.onlinePanel .panelHeader {
+.panelHeaderRow {
   padding-bottom: 0.6rem;
   border-bottom: 1px solid var(--border);
 }
 
-.onlineHeaderActions {
+.panelHeaderActions {
   display: inline-flex;
   align-items: center;
   gap: 0.6rem;
@@ -208,11 +208,6 @@
   font-weight: 600;
 }
 
-.activityPanel .panelHeader {
-  padding-bottom: 0.6rem;
-  border-bottom: 1px solid var(--border);
-}
-
 .activityLink {
   border: 0;
   background: transparent;
@@ -243,7 +238,7 @@
   animation: fadeInUp var(--duration-enter) var(--ease-out) both;
 }
 
-.activityList {
+.panelList {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -251,7 +246,7 @@
   gap: 0;
 }
 
-.activityListItem {
+.panelListItem {
   background: transparent;
   border: 0;
   border-radius: 0;
@@ -259,11 +254,11 @@
   border-bottom: 1px solid var(--border);
 }
 
-.activityListItem:last-child {
+.panelListItem:last-child {
   border-bottom: 0;
 }
 
-.activityRight {
+.panelRowRight {
   display: inline-flex;
   align-items: center;
   gap: 0.7rem;
@@ -281,24 +276,8 @@
   opacity: 0.4;
 }
 
-.onlineList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 0;
-}
-
-.onlineListItem {
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  padding: 0.75rem 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.onlineListItem:last-child {
-  border-bottom: 0;
+.activityListItem {
+  animation: none;
 }
 
 .listItem strong {

@@ -112,7 +112,7 @@ export function AdminCenterView() {
         </section>
 
         <section className={styles.summary}>
-          <div className={styles.summaryCard}>
+          <div className={`${styles.summaryCard} ${styles.summaryCardOnline}`}>
             <div className={styles.summaryTop}>
               <div className={`${styles.kpiIcon} ${styles.kpiIconGreen}`}>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -126,7 +126,7 @@ export function AdminCenterView() {
             <strong className={styles.kpiValue}>{onlineCount}</strong>
             <span className={styles.kpiSub}>de {adminCenter.users.length} usuarios</span>
           </div>
-          <div className={styles.summaryCard}>
+          <div className={`${styles.summaryCard} ${styles.summaryCardActivity}`}>
             <div className={styles.summaryTop}>
               <div className={`${styles.kpiIcon} ${styles.kpiIconAmber}`}>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -140,7 +140,7 @@ export function AdminCenterView() {
             <strong className={styles.kpiValueSmall}>{latestActivityLabel}</strong>
             <span className={styles.kpiSub}>auditoria recente</span>
           </div>
-          <div className={styles.summaryCard}>
+          <div className={`${styles.summaryCard} ${styles.summaryCardTotal}`}>
             <div className={styles.summaryTop}>
               <div className={`${styles.kpiIcon} ${styles.kpiIconRed}`}>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">

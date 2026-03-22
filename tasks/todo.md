@@ -238,6 +238,10 @@ Notes
       - Remover dependência de classes globais (catalog-*)
       commit: `refactor(frontend-admin): consolidate admin center styles`
 
+- [x] T4: Adicionar barras de cor nos cards de resumo
+      - Aplicar barra inferior colorida conforme referencia HTML
+      commit: `fix(frontend-admin): add summary card accent bars`
+
 ## Acceptance tests
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards compactos, hierarquia clara e sem “cards gigantes”

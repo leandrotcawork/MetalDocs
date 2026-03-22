@@ -51,6 +51,30 @@
   box-shadow: var(--shadow);
   display: grid;
   gap: 0.35rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.summaryCard::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 3px;
+  background: var(--border);
+}
+
+.summaryCardOnline::after {
+  background: var(--success);
+}
+
+.summaryCardActivity::after {
+  background: var(--warning);
+}
+
+.summaryCardTotal::after {
+  background: var(--vinho);
 }
 
 .summaryTop {

@@ -328,6 +328,10 @@ Notes
       - Remover texto "Exibindo X de Y usuarios" e manter os tres cards com a altura do maior
       commit: `fix(frontend-admin): remove base footer and equalize dynamic card heights`
 
+- [x] T11: Reativar scroll visivel na Base de usuarios
+      - Manter estrutura/altura atual e ajustar apenas overflow da lista para scroll
+      commit: `fix(frontend-admin): restore base users list scroll behavior`
+
 ## Acceptance tests
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards de criacao/base/edicao sem alongamento e no padrao da referencia

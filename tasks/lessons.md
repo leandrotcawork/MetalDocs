@@ -283,3 +283,10 @@ Wrong:   Mixing fixed card heights and per-card exceptions caused inconsistent p
 Correct: Let the grid row stretch items so all cards match the tallest sibling, while only the list area scrolls
 Rule:    For same-row admin cards, use grid stretch for height parity and local overflow on scrollable content only.
 Layer:   frontend
+
+## Lesson AP - Scroll behavior can be restored without layout refactor
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Reworking card structure when only scroll feedback was requested
+Correct: Keep existing card sizing and change only list overflow mode in Base de usuarios
+Rule:    For UI corrections scoped to scroll behavior, apply the smallest CSS-only diff possible.
+Layer:   frontend

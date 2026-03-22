@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { buildDocumentProfileCountMap } from "../features/documents/adapters/catalogSummary";
 import { metalNobreProcessAreaHint } from "../features/documents/adapters/metalNobreExperience";
+import { formatDocumentDisplayName } from "../features/shared/documentDisplay";
 import { FilterDropdown } from "./ui/FilterDropdown";
 import { WorkspaceDataState } from "./WorkspaceDataState";
 import styles from "./DocumentsWorkspace.module.css";
@@ -358,7 +359,7 @@ export function DocumentsWorkspace(props: DocumentsWorkspaceProps) {
                           <span className={styles["catalog-row-document"]}>
                             <span className={`document-icon profile-${item.documentProfile}`}>{item.documentProfile.toUpperCase().slice(0, 2)}</span>
                             <span className={styles["catalog-row-document-copy"]}>
-                              <strong>{item.title}</strong>
+                              <strong>{formatDocumentDisplayName(item, props.documentProfiles)}</strong>
                               <small>{item.documentId}</small>
                             </span>
                           </span>

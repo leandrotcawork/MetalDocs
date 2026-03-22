@@ -1,6 +1,7 @@
-import { useEffect, useMemo } from "react";
+﻿import { useEffect, useMemo } from "react";
 import { buildDocumentProfileCountMap } from "./adapters/catalogSummary";
 import { metalNobreProcessAreaHint } from "./adapters/metalNobreExperience";
+import { formatDocumentDisplayName } from "../shared/documentDisplay";
 import { type RecentDocumentItem, useDocumentsStore } from "../../store/documents.store";
 import styles from "./DocumentsHubView.module.css";
 import type { DocumentListItem, DocumentProfileGovernanceItem, DocumentProfileItem, ProcessAreaItem, SearchDocumentItem } from "../../lib.types";
@@ -283,14 +284,14 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
           <span>/</span>
           <button type="button" onClick={() => setDocumentsHubView("collection")}>{collectionTitle}</button>
           <span>/</span>
-          <span>{doc.title || "Documento"}</span>
+          <span>{formatDocumentDisplayName(doc, props.documentProfiles)}</span>
         </div>
 
         <article className={styles.detailHero}>
           <div className={styles.detailHeroHeader}>
             <div className={styles.detailHeroBadge}>{doc.documentProfile.toUpperCase()}</div>
             <div>
-              <h2>{doc.title || "Documento sem titulo"}</h2>
+              <h2>{formatDocumentDisplayName(doc, props.documentProfiles)}</h2>
               <small>{doc.documentId}</small>
             </div>
             <span className={styles.statusChip}>{statusLabel(doc.status)}</span>
@@ -411,7 +412,7 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
                 onClick={() => handleRecentOpen(item)}
               >
                 <div className={styles.docCardHeader}>
-                  <strong>{item.title || "Documento sem titulo"}</strong>
+                  <strong>{formatDocumentDisplayName(item, props.documentProfiles)}</strong>
                   <span className={styles.statusChip}>{statusLabel(item.status)}</span>
                 </div>
                 <div className={styles.docCardMeta}>
@@ -444,8 +445,8 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
                 onClick={() => handleRecentOpen(item)}
               >
                 <span className={styles.listTitle}>
-                  <strong>{item.title || "Documento sem titulo"}</strong>
-                  <small>{item.documentId} · {item.processArea ?? "Sem area"}</small>
+                  <strong>{formatDocumentDisplayName(item, props.documentProfiles)}</strong>
+                  <small>{item.documentId} Â· {item.processArea ?? "Sem area"}</small>
                 </span>
                 <span>{item.documentProfile.toUpperCase()}</span>
                 <span>{statusLabel(item.status)}</span>
@@ -588,7 +589,7 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
                 setDocumentsHubStatus("all");
               }}
             >
-              Ver todos →
+              Ver todos â†’
             </button>
           </div>
           <div className={styles.recentList}>
@@ -604,7 +605,7 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
                 >
                   <span className={styles.recentBadge}>{item.documentProfile.toUpperCase()}</span>
                   <div className={styles.recentMeta}>
-                    <strong>{item.title || "Documento sem titulo"}</strong>
+                    <strong>{formatDocumentDisplayName(item, props.documentProfiles)}</strong>
                     <div className={styles.recentSubline}>
                       <span>{item.processArea ?? "Sem area"}</span>
                       <span>Aberto por {item.ownerId}</span>
@@ -624,3 +625,4 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
     </section>
   );
 }
+

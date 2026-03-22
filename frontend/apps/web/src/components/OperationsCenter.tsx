@@ -1,4 +1,5 @@
 import { metalNobreProcessAreaHint } from "../features/documents/adapters/metalNobreExperience";
+import { formatDocumentDisplayName } from "../features/shared/documentDisplay";
 import type { DocumentProfileItem, NotificationItem, ProcessAreaItem, SearchDocumentItem } from "../lib.types";
 import { WorkspaceDataState } from "./WorkspaceDataState";
 import { WorkspaceViewFrame } from "./WorkspaceViewFrame";
@@ -83,7 +84,7 @@ export function OperationsCenter(props: OperationsCenterProps) {
           <ul className="catalog-mini-list">
             {recentDocuments.map((item) => (
               <li key={item.documentId}>
-                <button type="button" className="inline-link-button" onClick={() => void props.onOpenDocument(item.documentId)}>{item.title}</button>
+                <button type="button" className="inline-link-button" onClick={() => void props.onOpenDocument(item.documentId)}>{formatDocumentDisplayName(item, props.documentProfiles)}</button>
                 <small>{profileNameByCode.get(item.documentProfile) ?? item.documentProfile} / {props.formatDate(item.createdAt)}</small>
               </li>
             ))}
@@ -101,7 +102,7 @@ export function OperationsCenter(props: OperationsCenterProps) {
           <ul className="catalog-mini-list">
             {pendingReviews.map((item) => (
               <li key={item.documentId}>
-                <button type="button" className="inline-link-button" onClick={() => void props.onOpenDocument(item.documentId)}>{item.title}</button>
+                <button type="button" className="inline-link-button" onClick={() => void props.onOpenDocument(item.documentId)}>{formatDocumentDisplayName(item, props.documentProfiles)}</button>
                 <small>{item.processArea || "Sem area"} / {item.ownerId}</small>
               </li>
             ))}
@@ -137,7 +138,7 @@ export function OperationsCenter(props: OperationsCenterProps) {
           <ul className="catalog-mini-list">
             {expiringSoon.map((item) => (
               <li key={item.documentId}>
-                <button type="button" className="inline-link-button" onClick={() => void props.onOpenDocument(item.documentId)}>{item.title}</button>
+                <button type="button" className="inline-link-button" onClick={() => void props.onOpenDocument(item.documentId)}>{formatDocumentDisplayName(item, props.documentProfiles)}</button>
                 <small>Vence em {props.formatDate(item.expiryAt)}</small>
               </li>
             ))}

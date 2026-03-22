@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { api } from "../../lib.api";
 import type { DocumentListItem, DocumentProfileSchemaItem } from "../../lib.types";
+import { formatDocumentDisplayName } from "../../features/shared/documentDisplay";
 import { ProgressSidebar } from "../create/widgets/ProgressSidebar";
 import type { StepStatus } from "../create/documentCreateTypes";
 import { PdfPreview } from "../create/widgets/PdfPreview";
@@ -358,7 +359,9 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
         </div>
         <div className="content-builder-docbar-center">
           <div className="content-builder-title">
-            <strong className="content-builder-doccode">PO-XX-{props.document.title}</strong>
+            <strong className="content-builder-doccode">
+              {props.document ? formatDocumentDisplayName(props.document, []) : "Documento"}
+            </strong>
           </div>
         </div>
         <div className="content-builder-docbar-right">

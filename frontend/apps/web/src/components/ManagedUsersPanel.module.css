@@ -117,10 +117,15 @@
   padding: 0;
 }
 
-.baseCard .userList {
-  flex: 1;
+.baseCard {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
   min-height: 0;
-  overflow-y: scroll;
+}
+
+.baseCard .userList {
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .userRow {

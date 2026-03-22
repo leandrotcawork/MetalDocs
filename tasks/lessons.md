@@ -297,3 +297,10 @@ Wrong:   Keeping `slice(0, 10)` while expecting a scroll bar with larger dataset
 Correct: Remove hard cap when requirement is full-base scrolling
 Rule:    Scroll behavior depends on rendered content exceeding the viewport; avoid client-side caps when full list navigation is expected.
 Layer:   frontend
+
+## Lesson AR - Constrain list height inside the card to avoid row blowout
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Letting the Base list grow freely, making the whole row height explode
+Correct: Use `grid-template-rows: auto auto minmax(0, 1fr)` on the Base card and scroll the list area
+Rule:    When a sibling card should set row height, constrain list overflow inside its own card layout.
+Layer:   frontend

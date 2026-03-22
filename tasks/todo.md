@@ -336,6 +336,10 @@ Notes
       - Eliminar corte em 10 itens para permitir scroll real com toda a base
       commit: `fix(frontend-admin): remove user list cap in admin base`
 
+- [x] T13: Fixar base pela altura do editar com scroll interno
+      - Base de usuarios passa a rolar apenas na lista, sem ditar a altura do card
+      commit: `fix(frontend-admin): constrain base list height to edit card`
+
 ## Acceptance tests
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards de criacao/base/edicao sem alongamento e no padrao da referencia

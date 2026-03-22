@@ -185,3 +185,10 @@ Wrong:   `AdminCenterView.module.css` applied `width` and `margin: 0 auto` on th
 Correct: Inner shells handle layout gaps only; outer workspace frame owns page width and horizontal rhythm
 Rule:    Do not center an inner content shell when the shared workspace frame already defines the page container.
 Layer:   frontend
+
+## Lesson AB - CSS edits must preserve valid block structure
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Extra closing brace in `AdminCenterView.module.css` causing Vite CSS parse error
+Correct: Keep selector blocks balanced; remove stray brace before next selector
+Rule:    Every CSS block must have balanced braces to avoid build-time parsing errors.
+Layer:   frontend

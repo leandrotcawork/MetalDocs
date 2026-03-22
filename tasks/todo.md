@@ -113,16 +113,16 @@ Notes
 - Keep diffs per task; one commit per task (Lesson H).
 
 ## Tasks
-- [ ] T1: Split "Salvar e ir" behavior by mode
+- [x] T1: Split "Salvar e ir" behavior by mode
       - Default path: button navigates to editor without persisting document until the user fills it
       - Exception: if user selects "Usar Template Word", it must save/prepare first
       commit: `fix(frontend-create): navigate-to-editor without save by default`
 
-- [ ] T2: Reuse progress sidebar on "preencher documento" screen
+- [x] T2: Reuse progress sidebar on "preencher documento" screen
       - Extract sidebar from create flow into a reusable component (used in Create + Fill/Edit)
       commit: `refactor(frontend-ui): extract progress sidebar component`
 
-- [ ] T3: Normalize Content Builder action buttons (size + color)
+- [x] T3: Normalize Content Builder action buttons (size + color)
       - Back / Save draft / Generate PDF match the Create flow visual standard
       commit: `fix(frontend-ui): normalize content builder buttons`
 

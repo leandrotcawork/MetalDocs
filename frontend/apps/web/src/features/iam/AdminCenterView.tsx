@@ -193,26 +193,33 @@ export function AdminCenterView() {
             )}
           </div>
 
-          <div className={styles.panel}>
+          <div className={`${styles.panel} ${styles.activityPanel}`}>
             <div className={styles.panelHeader}>
               <div>
                 <p className={styles.kicker}>Auditoria</p>
                 <h2 className={styles.panelTitle}>Ultimas atividades</h2>
               </div>
-              <span className={styles.panelBadge}>Ultimos 10</span>
+              <button className={styles.activityLink} type="button">
+                Audit trail →
+              </button>
             </div>
             {adminCenter.recentActivities.length === 0 ? (
               <p className={styles.empty}>Nenhuma atividade registrada.</p>
             ) : (
-              <ul className={styles.list}>
+              <ul className={styles.activityList}>
                 {adminCenter.recentActivities.map((item, index) => (
-                  <li key={item.id} className={styles.listItem} style={{ animationDelay: `${index * 0.06}s` }}>
+                  <li
+                    key={item.id}
+                    className={`${styles.listItem} ${styles.activityListItem}`}
+                    style={{ animationDelay: `${index * 0.06}s` }}
+                  >
                     <span className={activityDotClass(item.action)} />
                     <div className={styles.listMeta}>
                       <strong className={styles.listTitle}>{item.action}</strong>
-                      <small className={styles.listSub}>{item.actorId} • {item.resourceType}</small>
+                      <small className={styles.listSub}>
+                        {item.actorId} • {formatDate(item.occurredAt)}
+                      </small>
                     </div>
-                    <span className={styles.listTime}>{formatDate(item.occurredAt)}</span>
                     <span className={activityChipClass(item.action)}>{activityLabel(item.action)}</span>
                   </li>
                 ))}

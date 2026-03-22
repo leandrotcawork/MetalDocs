@@ -246,6 +246,10 @@ Notes
       - Separadores, "Ver todos", e indicador online animado
       commit: `fix(frontend-admin): align online users card to reference`
 
+- [x] T6: Ajustar card de atividades conforme referencia
+      - Separadores, link "Audit trail" e layout de lista
+      commit: `fix(frontend-admin): align activity card to reference`
+
 ## Acceptance tests
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards compactos, hierarquia clara e sem “cards gigantes”

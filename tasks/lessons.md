@@ -74,3 +74,10 @@ Wrong:   Removing all height constraints caused `Base de usuarios` to grow with 
 Correct: Constrain only `Base de usuarios` to the measured height of `Editar usuario` (with a minimum floor), keeping list scroll inside the card
 Rule:    When one panel must track another, scope synchronization to that panel and preserve overflow behavior.
 Layer:   frontend
+
+## Lesson J - Never conditionally skip React hooks
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Returning early before calling all hooks caused "Rendered more hooks than during the previous render"
+Correct: Ensure every render executes the same hooks in the same order; move early-return UI below hook declarations or split into wrapper components
+Rule:    React hooks must be called unconditionally and in a stable order across renders.
+Layer:   frontend

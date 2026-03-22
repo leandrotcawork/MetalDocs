@@ -138,28 +138,6 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
     </header>
   );
 
-  if (props.loadState === "loading") {
-    return (
-      <div className={styles.page}>
-        {headerShell}
-        <section className={styles.hub}>
-          <div className={styles.state}>Carregando acervo...</div>
-        </section>
-      </div>
-    );
-  }
-
-  if (props.loadState === "error") {
-    return (
-      <div className={styles.page}>
-        {headerShell}
-        <section className={styles.hub}>
-          <div className={styles.state}>Falha ao carregar os documentos.</div>
-        </section>
-      </div>
-    );
-  }
-
   const scopedDocuments = useMemo(() => {
     if (scope === "mine") {
       return props.documents.filter((item) => item.ownerId === props.currentUserId);
@@ -319,6 +297,28 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
     }
     return headerTitle;
   }, [documentsHubArea, documentsHubProfile, headerTitle, props.documentProfiles, props.processAreas]);
+
+  if (props.loadState === "loading") {
+    return (
+      <div className={styles.page}>
+        {headerShell}
+        <section className={styles.hub}>
+          <div className={styles.state}>Carregando acervo...</div>
+        </section>
+      </div>
+    );
+  }
+
+  if (props.loadState === "error") {
+    return (
+      <div className={styles.page}>
+        {headerShell}
+        <section className={styles.hub}>
+          <div className={styles.state}>Falha ao carregar os documentos.</div>
+        </section>
+      </div>
+    );
+  }
 
   const handleRecentOpen = (item: SearchDocumentItem) => {
     const nextItems: RecentDocumentItem[] = [

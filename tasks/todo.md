@@ -212,3 +212,33 @@ Notes
 - [ ] Admin ve: lista de usuarios, ultimo login, online, ultimas atividades
 - [ ] Nenhum erro de console ao navegar para Admin Center
 
+---
+
+## Feature: Admin Center UI (HTML ref: metaldocs-admin-sample2)
+Area: `frontend/apps/web/src/features/iam/` + `frontend/apps/web/src/components/ManagedUsersPanel.tsx`  |  Risk: low (UI/CSS only)  |  Goal: aplicar layout e hierarquia do HTML de referencia
+
+Notes
+- Somente front-end e CSS Modules, sem alterar dados/fluxo.
+- Seguir tokens (`var(--...)`) e evitar estilos inline.
+
+## Tasks
+- [x] T1: Mapear estrutura do HTML no AdminCenterView
+      - Header do workspace (kicker/title/description) alinhado ao layout
+      - KPI row com cards compactos e subtitulos
+      - Cards de Online e Atividades com badge no header
+      commit: `refactor(frontend-admin): align admin center layout to html`
+
+- [ ] T2: Refatorar ManagedUsersPanel para layout de 3 colunas do HTML
+      - Criar estrutura de sections e headers equivalentes
+      - Ajustar tipografia, chips e ações
+      commit: `refactor(frontend-admin): align managed users layout to html`
+
+- [ ] T3: CSS Modules e tokens
+      - Consolidar estilos no `AdminCenterView.module.css` e `ManagedUsersPanel.module.css`
+      - Remover dependência de classes globais (catalog-*)
+      commit: `refactor(frontend-admin): consolidate admin center styles`
+
+## Acceptance tests
+- [ ] `cd frontend/apps/web; npm.cmd run build`
+- [ ] Visual: cards compactos, hierarquia clara e sem “cards gigantes”
+

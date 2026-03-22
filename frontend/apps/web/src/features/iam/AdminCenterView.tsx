@@ -44,6 +44,7 @@ export function AdminCenterView() {
 
   const onlineCount = adminCenter.onlineUsers.length;
   const latestActivity = adminCenter.recentActivities[0]?.occurredAt;
+  const latestActivityLabel = latestActivity ? formatDate(latestActivity) : "Sem atividade recente";
 
   return (
     <WorkspaceViewFrame
@@ -62,18 +63,56 @@ export function AdminCenterView() {
           onRetry={adminCenter.refresh}
         />
 
+        <section className={styles.headerRow}>
+          <div className={styles.liveBadge}>
+            <span className={styles.liveDot} />
+            Sistema ativo
+          </div>
+          <span className={styles.headerMeta}>Atualizado {latestActivityLabel}</span>
+        </section>
+
         <section className={styles.summary}>
           <div className={styles.summaryCard}>
-            <span>Usuarios online</span>
-            <strong>{onlineCount}</strong>
+            <div className={styles.summaryTop}>
+              <div className={`${styles.kpiIcon} ${styles.kpiIconGreen}`}>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <circle cx="8" cy="5" r="3" />
+                  <path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6" />
+                </svg>
+              </div>
+              <span className={styles.kpiTrend}>{onlineCount} ativos</span>
+            </div>
+            <span className={styles.kpiLabel}>Usuarios online agora</span>
+            <strong className={styles.kpiValue}>{onlineCount}</strong>
+            <span className={styles.kpiSub}>de {adminCenter.users.length} usuarios</span>
           </div>
           <div className={styles.summaryCard}>
-            <span>Ultima atividade</span>
-            <strong>{formatDate(latestActivity)}</strong>
+            <div className={styles.summaryTop}>
+              <div className={`${styles.kpiIcon} ${styles.kpiIconAmber}`}>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <circle cx="8" cy="8" r="6.5" />
+                  <path d="M8 4v4l3 2" />
+                </svg>
+              </div>
+              <span className={styles.kpiTrend}>hoje</span>
+            </div>
+            <span className={styles.kpiLabel}>Ultima atividade</span>
+            <strong className={styles.kpiValueSmall}>{latestActivityLabel}</strong>
+            <span className={styles.kpiSub}>auditoria recente</span>
           </div>
           <div className={styles.summaryCard}>
-            <span>Total usuarios</span>
-            <strong>{adminCenter.users.length}</strong>
+            <div className={styles.summaryTop}>
+              <div className={`${styles.kpiIcon} ${styles.kpiIconRed}`}>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <rect x="1" y="3" width="14" height="10" rx="1.5" />
+                  <path d="M5 3V2M11 3V2M1 7h14" />
+                </svg>
+              </div>
+              <span className={styles.kpiTrend}>{adminCenter.users.length} total</span>
+            </div>
+            <span className={styles.kpiLabel}>Total de usuarios</span>
+            <strong className={styles.kpiValue}>{adminCenter.users.length}</strong>
+            <span className={styles.kpiSub}>base completa</span>
           </div>
         </section>
 

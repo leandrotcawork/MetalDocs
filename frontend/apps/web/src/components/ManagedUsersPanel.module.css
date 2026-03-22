@@ -138,6 +138,7 @@
   min-height: 0;
   overflow-y: auto;
   scrollbar-gutter: stable;
+  padding: 0.5rem 0.9rem 0.8rem;
 }
 
 .baseCard .userList::-webkit-scrollbar-corner {

@@ -372,6 +372,10 @@ Notes
       - Definir altura fixa para ambos e rolagem interna das listas, mantendo itens ancorados no topo
       commit: `fix(frontend-admin): fix panel height and scroll for online and activity`
 
+- [x] T22: Adicionar padding na lista da Base de usuarios
+      - Aplicar padding interno no `ul` para manter o mesmo respiro visual dos demais paines
+      commit: `fix(frontend-admin): add inner padding to base users list`
+
 ## Acceptance tests
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards de criacao/base/edicao sem alongamento e no padrao da referencia

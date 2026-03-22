@@ -21,3 +21,7 @@ Decision: Removed padding from `AdminCenterView` grid wrapper (`.grid`) to match
 Date: 2026-03-22
 Context: Admin Center panels (Usuarios online / Ultimas atividades)
 Decision: Left-aligned item text by removing `space-between` behavior for panel rows and pushing the right column via `margin-left: auto`.
+
+Date: 2026-03-22
+Context: Documents Hub overview
+Decision: Increased hub padding and redesigned area cards with left color stripe + progress bar tied to area share.

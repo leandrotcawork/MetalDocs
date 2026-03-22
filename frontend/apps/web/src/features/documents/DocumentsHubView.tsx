@@ -134,12 +134,15 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
     return counts;
   }, [scopedDocuments]);
 
+  const totalDocuments = scopedDocuments.length;
+  const areaColors = ["#9D2335", "#1F5A3F", "#6B3A9C", "#B4541A", "#2B5C8A", "#A32B6B"];
   const areaCards = useMemo(() => {
     const cards = props.processAreas.map((area) => ({
       code: area.code,
       label: area.name,
       count: areaCounts[area.code] ?? 0,
       hint: metalNobreProcessAreaHint(area.code),
+      color: areaColors[props.processAreas.findIndex((item) => item.code === area.code) % areaColors.length],
     }));
     if (areaCounts["sem-area"]) {
       cards.unshift({
@@ -147,6 +150,7 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
         label: "Sem area",
         count: areaCounts["sem-area"] ?? 0,
         hint: "Sem classificacao",
+        color: areaColors[0],
       });
     }
     return cards.filter((item) => item.count > 0);
@@ -483,10 +487,18 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
                   setDocumentsHubStatus("all");
                   setDocumentsHubView("collection");
                 }}
+                style={{ ["--area-color" as string]: area.color } as React.CSSProperties}
               >
-                <div>
+                <span className={styles.areaStripe} />
+                <div className={styles.areaMeta}>
                   <strong>{area.label}</strong>
                   <small>{area.count} documentos</small>
+                  <div className={styles.areaBar}>
+                    <span
+                      className={styles.areaBarFill}
+                      style={{ width: totalDocuments > 0 ? `${Math.round((area.count / totalDocuments) * 100)}%` : "0%" }}
+                    />
+                  </div>
                 </div>
                 <span className={styles.areaHint}>{area.hint}</span>
               </button>

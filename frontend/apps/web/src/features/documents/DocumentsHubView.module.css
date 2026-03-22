@@ -1,7 +1,7 @@
 .hub {
   display: grid;
   gap: 2rem;
-  padding: 2.5rem 2.8rem 3rem;
+  padding: 3rem 3.4rem 3.6rem;
   color: var(--text);
 }
 
@@ -137,6 +137,32 @@
   color: inherit;
 }
 
+.areaStripe {
+  width: 6px;
+  align-self: stretch;
+  border-radius: 999px;
+  background: var(--area-color, var(--vinho));
+}
+
+.areaMeta {
+  flex: 1;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.areaBar {
+  height: 6px;
+  background: var(--surface-2);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.areaBarFill {
+  display: block;
+  height: 100%;
+  background: var(--area-color, var(--vinho));
+}
+
 .areaButton strong,
 .typeButton strong {
   display: block;
@@ -154,6 +180,8 @@
 .areaHint {
   font-size: 0.7rem;
   color: var(--muted);
+  min-width: 90px;
+  text-align: right;
 }
 
 .typeBadge {
@@ -611,7 +639,7 @@
 
 @media (max-width: 720px) {
   .hub {
-    padding: 1.6rem 1.2rem 2rem;
+    padding: 2rem 1.4rem 2.2rem;
   }
 
   .kpiGrid,

@@ -228,7 +228,7 @@ Notes
       - Cards de Online e Atividades com badge no header
       commit: `refactor(frontend-admin): align admin center layout to html`
 
-- [ ] T2: Refatorar ManagedUsersPanel para layout de 3 colunas do HTML
+- [x] T2: Refatorar ManagedUsersPanel para layout de 3 colunas do HTML
       - Criar estrutura de sections e headers equivalentes
       - Ajustar tipografia, chips e ações
       commit: `refactor(frontend-admin): align managed users layout to html`

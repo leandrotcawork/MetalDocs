@@ -4,6 +4,23 @@
   gap: 0.85rem;
 }
 
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 0.9rem;
+}
+
+.sectionTitle::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
 .panel {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -35,9 +52,26 @@
   color: var(--text);
 }
 
+.panelMeta {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
 .stack {
   display: grid;
   gap: 0.65rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.fieldLabel {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
 }
 
 .hint {
@@ -69,6 +103,20 @@
   border-color: var(--border-strong);
 }
 
+.avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--vinho-soft);
+  color: var(--vinho);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
 .listMeta {
   display: grid;
   gap: 0.2rem;
@@ -96,6 +144,93 @@
   white-space: nowrap;
 }
 
+.roleChip {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.2rem 0.45rem;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-soft);
+}
+
+.roleAdmin {
+  background: var(--vinho-soft);
+  color: var(--vinho);
+  border-color: var(--vinho-muted);
+}
+
+.roleEditor {
+  background: var(--info-bg);
+  color: var(--info-fg);
+  border-color: #cbd7f0;
+}
+
+.roleViewer {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+.editHero {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 0.9rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.editAvatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: var(--vinho);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.editMeta {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.editName {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.editSub {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.statusTag {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.7rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  background: var(--success-bg);
+  color: var(--success);
+  border: 1px solid #c8e6d4;
+  white-space: nowrap;
+}
+
+.statusDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--success);
+}
+
 .detailSummary {
   display: flex;
   flex-wrap: wrap;
@@ -110,7 +245,17 @@
   flex-wrap: wrap;
 }
 
-.secondaryButton {
+.buttonPrimary {
+  background: var(--vinho);
+  color: #fff;
+  border: 1px solid var(--vinho-d);
+  padding: 0.6rem 0.85rem;
+  border-radius: 0.7rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.buttonOutline {
   background: var(--surface);
   color: var(--text);
   border: 1px solid var(--border);
@@ -120,7 +265,30 @@
   font-weight: 600;
 }
 
-.secondaryButton:hover {
+.buttonWarn {
+  background: var(--warning-bg);
+  color: var(--warning);
+  border: 1px solid #e8d5a0;
+  padding: 0.6rem 0.85rem;
+  border-radius: 0.7rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.buttonDanger {
+  background: #fdf0f0;
+  color: #b52020;
+  border: 1px solid #e8c0c0;
+  padding: 0.6rem 0.85rem;
+  border-radius: 0.7rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.buttonOutline:hover,
+.buttonPrimary:hover,
+.buttonWarn:hover,
+.buttonDanger:hover {
   border-color: var(--border-strong);
 }
 

@@ -144,6 +144,10 @@ Notes
       - Preview toggle on the left with arrow icons and smaller size
       commit: `fix(frontend-content-builder): refine docbar and preview controls`
 
+- [x] T8: Align collapsed preview toggle to top
+      - Avoid centered placement when collapsed
+      commit: `fix(frontend-content-builder): align collapsed preview toggle`
+
 ## Acceptance tests (run after each task)
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Manual: Create doc -> reach editor via both paths (no-template vs Word template)

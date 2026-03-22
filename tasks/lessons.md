@@ -122,3 +122,10 @@ Wrong:   Preview toggle labeled "Recolher" on the right and oversized
 Correct: Compact wine toggle on the left with arrow icons (right = recolher, left = expandir)
 Rule:    Preview controls follow the interaction spec and sizing.
 Layer:   frontend
+
+## Lesson S — Preview expand button aligns to top when collapsed
+Date: 2026-03-21 | Trigger: correction
+Wrong:   Collapsed preview shows expand button centered
+Correct: Collapsed preview aligns expand button to the top
+Rule:    Collapsed controls should follow top alignment for visibility.
+Layer:   frontend

@@ -240,14 +240,18 @@ export function ManagedUsersSection(props: ManagedUsersPanelProps) {
           </div>
         </article>
 
-        <article
+        <div
           className={`${styles.card} ${styles.baseCard}`}
           style={syncedCardHeight ? { height: `${syncedCardHeight}px` } : undefined}
         >
-          <header className={styles.cardHeader}>
-            <h3 className={styles.cardTitle}>Base de usuarios</h3>
-            <span className={styles.cardMeta}>{props.managedUsers.length} total</span>
-          </header>
+          <div className={`${styles.cardHeader} ${styles.baseHeader}`}>
+            <div className={styles.baseHeaderText}>
+              <h3 className={styles.cardTitle}>Base de usuarios</h3>
+            </div>
+            <div className={styles.baseHeaderActions}>
+              <span className={styles.cardMeta}>{props.managedUsers.length} total</span>
+            </div>
+          </div>
           <div className={styles.searchWrap}>
             <TextFieldBox
               id="users-search"
@@ -270,7 +274,7 @@ export function ManagedUsersSection(props: ManagedUsersPanelProps) {
               </li>
             ))}
           </ul>
-        </article>
+        </div>
 
         <article ref={editCardRef} className={`${styles.card} ${styles.editCard}`}>
           <header className={styles.cardHeader}>

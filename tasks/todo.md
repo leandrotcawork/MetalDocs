@@ -376,6 +376,10 @@ Notes
       - Aplicar padding interno no `ul` para manter o mesmo respiro visual dos demais paines
       commit: `fix(frontend-admin): add inner padding to base users list`
 
+- [x] T23: Padronizar Base de usuarios com estrutura de painel
+      - Trocar `article` por `div` e separar header, actions e lista no mesmo shape dos cards de auditoria
+      commit: `refactor(frontend-admin): align base users card structure with audit panel`
+
 ## Acceptance tests
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards de criacao/base/edicao sem alongamento e no padrao da referencia

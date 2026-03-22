@@ -353,3 +353,10 @@ Wrong:   Action row sits too close to the password field, breaking spacing rhyth
 Correct: Add explicit margin above the action row to match surrounding gaps
 Rule:    Action groups should follow the same vertical rhythm as the form fields.
 Layer:   frontend
+
+## Lesson AZ - Avoid blocking UI with loading placeholder panels during inline updates
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Showing the workspace loading placeholder over the management form during save/refresh
+Correct: Skip the loading placeholder while keeping empty and error states visible
+Rule:    Inline updates should not replace active forms with blocking placeholders.
+Layer:   frontend

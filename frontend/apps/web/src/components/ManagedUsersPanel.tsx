@@ -159,14 +159,16 @@ export function ManagedUsersSection(props: ManagedUsersPanelProps) {
 
   return (
     <>
-      <WorkspaceDataState
-        loadState={props.loadState}
-        isEmpty={props.managedUsers.length === 0}
-        emptyTitle="Nenhum usuario interno cadastrado"
-        emptyDescription="Crie o primeiro usuario para iniciar a administracao de acesso."
-        loadingLabel="Atualizando base de usuarios"
-        onRetry={props.onRefreshWorkspace}
-      />
+      {props.loadState !== "loading" && (
+        <WorkspaceDataState
+          loadState={props.loadState}
+          isEmpty={props.managedUsers.length === 0}
+          emptyTitle="Nenhum usuario interno cadastrado"
+          emptyDescription="Crie o primeiro usuario para iniciar a administracao de acesso."
+          loadingLabel="Atualizando base de usuarios"
+          onRetry={props.onRefreshWorkspace}
+        />
+      )}
 
       <div className={styles.sectionTitle}>Gestao de Usuarios</div>
 

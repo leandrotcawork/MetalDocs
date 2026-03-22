@@ -364,6 +364,10 @@ Notes
       - Aumentar espaco entre "Nova senha temporaria" e a linha de botoes de acoes
       commit: `fix(frontend-admin): increase spacing before edit actions`
 
+- [x] T20: Ocultar estado de loading na gestao de usuarios
+      - Remover o card "Atualizando base de usuarios" durante atualizacoes
+      commit: `fix(frontend-admin): hide managed users loading panel`
+
 ## Acceptance tests
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards de criacao/base/edicao sem alongamento e no padrao da referencia

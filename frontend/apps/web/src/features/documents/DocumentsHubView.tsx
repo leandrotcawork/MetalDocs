@@ -3,7 +3,7 @@ import { buildDocumentProfileCountMap } from "./adapters/catalogSummary";
 import { metalNobreProcessAreaHint } from "./adapters/metalNobreExperience";
 import { formatDocumentDisplayName } from "../shared/documentDisplay";
 import { type RecentDocumentItem, useDocumentsStore } from "../../store/documents.store";
-import { SearchBar } from "../../components/ui/SearchBar";
+import { DocumentsHubHeader } from "./DocumentsHubHeader";
 import styles from "./DocumentsHubView.module.css";
 import type { DocumentListItem, DocumentProfileGovernanceItem, DocumentProfileItem, ProcessAreaItem, SearchDocumentItem } from "../../lib.types";
 
@@ -125,17 +125,11 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
 
   const headerTitle = scope === "mine" ? "Meus documentos" : scope === "recent" ? "Recentes" : "Todos documentos";
   const headerShell = (
-    <header className={styles.pageHeader}>
-      <div className={styles.hero}>
-        <h1 className={styles.title}>{headerTitle}</h1>
-        <p className={styles.subtitle}>
-          Acervo organizado por areas, tipos e status. Navegue pelos documentos mais relevantes.
-        </p>
-        <div className={styles.headerSearch}>
-          <SearchBar value={props.searchQuery} onChange={props.onSearchQueryChange} />
-        </div>
-      </div>
-    </header>
+    <DocumentsHubHeader
+      title={headerTitle}
+      searchQuery={props.searchQuery}
+      onSearchQueryChange={props.onSearchQueryChange}
+    />
   );
 
   const scopedDocuments = useMemo(() => {

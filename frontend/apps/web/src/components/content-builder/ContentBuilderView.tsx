@@ -113,9 +113,34 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
 
   useEffect(() => {
     if (!documentId) {
-      dispatch({ type: "set_status", payload: { status: "idle" } });
-      dispatch({ type: "set_draft", payload: { contentDraft: {} } });
-      return;
+      const profileCode = props.document?.documentProfile;
+      if (!profileCode) {
+        dispatch({ type: "set_status", payload: { status: "idle" } });
+        dispatch({ type: "set_draft", payload: { contentDraft: {} } });
+        return;
+      }
+      const resolvedProfileCode = profileCode;
+      let isActive = true;
+      async function loadDraftSchema() {
+        dispatch({ type: "load_start" });
+        try {
+          const schemasResponse = await api.listDocumentProfileSchemas(resolvedProfileCode);
+          if (!isActive) return;
+          const items = Array.isArray(schemasResponse.items) ? schemasResponse.items : [];
+          const activeSchema = items.find((item) => item.isActive) ?? items[0] ?? null;
+          dispatch({
+            type: "load_success",
+            payload: { contentDraft: {}, schema: activeSchema, version: null, pdfUrl: "" },
+          });
+        } catch {
+          if (!isActive) return;
+          dispatch({ type: "load_error", payload: { message: "Falha ao carregar o schema." } });
+        }
+      }
+      void loadDraftSchema();
+      return () => {
+        isActive = false;
+      };
     }
     let isActive = true;
     async function loadContent() {

@@ -41,11 +41,6 @@ type ManagedUsersPanelProps = {
 };
 
 export function ManagedUsersPanel(props: ManagedUsersPanelProps) {
-  const roleOptions: SelectMenuOption[] = ["admin", "editor", "reviewer", "viewer"].map((role) => ({
-    value: role,
-    label: role,
-  }));
-
   return (
     <WorkspaceViewFrame
       testId="managed-users-panel"
@@ -53,6 +48,19 @@ export function ManagedUsersPanel(props: ManagedUsersPanelProps) {
       title="Usuarios internos"
       description="Administracao operacional de identidades internas, roles, estado de acesso e recuperacao de senha."
     >
+      <ManagedUsersSection {...props} />
+    </WorkspaceViewFrame>
+  );
+}
+
+export function ManagedUsersSection(props: ManagedUsersPanelProps) {
+  const roleOptions: SelectMenuOption[] = ["admin", "editor", "reviewer", "viewer"].map((role) => ({
+    value: role,
+    label: role,
+  }));
+
+  return (
+    <>
       <WorkspaceDataState
         loadState={props.loadState}
         isEmpty={props.managedUsers.length === 0}
@@ -130,6 +138,6 @@ export function ManagedUsersPanel(props: ManagedUsersPanelProps) {
           )}
         </section>
       </div>
-    </WorkspaceViewFrame>
+    </>
   );
 }

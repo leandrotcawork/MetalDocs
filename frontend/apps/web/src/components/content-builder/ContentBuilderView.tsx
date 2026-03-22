@@ -317,11 +317,10 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
         <div className="content-builder-docbar-center">
           <div className="content-builder-title">
             <strong className="content-builder-doccode">PO-XX-{props.document.title}</strong>
-            <span className="content-builder-docname">{props.document.title}</span>
           </div>
         </div>
         <div className="content-builder-docbar-right">
-          <button type="button" className="content-builder-btn ghost" onClick={props.onBack}>
+          <button type="button" className="content-builder-btn primary" onClick={props.onBack}>
             Voltar
           </button>
         </div>
@@ -366,13 +365,20 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
           {!previewCollapsed && (
             <div className="content-builder-preview-inner">
               <div className="content-builder-preview-header">
+                <button
+                  type="button"
+                  className="content-builder-preview-toggle"
+                  onClick={() => dispatch({ type: "set_preview", payload: { collapsed: true } })}
+                  aria-label="Recolher preview"
+                >
+                  <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M7 5l6 5-6 5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
                 <div className="content-builder-preview-title">
                   <strong>Preview do PDF</strong>
                   <small>Atualize para refletir as ultimas edicoes.</small>
                 </div>
-                <button type="button" className="ghost-button" onClick={() => dispatch({ type: "set_preview", payload: { collapsed: true } })}>
-                  Recolher
-                </button>
               </div>
               <div className="content-builder-preview-body">
                 {pdfUrl ? (
@@ -399,8 +405,15 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
             </div>
           )}
           {previewCollapsed && (
-            <button type="button" className="content-builder-preview-collapsed" onClick={() => dispatch({ type: "set_preview", payload: { collapsed: false } })}>
-              Preview PDF
+            <button
+              type="button"
+              className="content-builder-preview-toggle is-collapsed"
+              onClick={() => dispatch({ type: "set_preview", payload: { collapsed: false } })}
+              aria-label="Expandir preview"
+            >
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M13 5l-6 5 6 5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </button>
           )}
         </aside>

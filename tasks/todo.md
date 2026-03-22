@@ -185,7 +185,7 @@ Notes
       - Definir endpoint(s) para: usuarios online, ultima atividade, ultimo login
       commit: `docs(api): add admin center contracts`
 
-- [ ] T2: Backend IAM (se necessario)
+- [x] T2: Backend IAM (se necessario)
       - Service + handler para overview/admin dashboard
       - Permission registrada em `permissions.go`
       commit: `feat(iam): add admin dashboard overview`

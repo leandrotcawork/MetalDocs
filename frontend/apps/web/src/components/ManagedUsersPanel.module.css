@@ -19,8 +19,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1.2fr);
   gap: 1rem;
-  align-items: stretch;
-  --user-card-height: 38rem;
+  align-items: start;
 }
 
 .card {
@@ -28,18 +27,12 @@
   border: 1px solid var(--border);
   border-radius: 0.95rem;
   box-shadow: var(--shadow);
-  height: 100%;
+  height: auto;
   display: flex;
   flex-direction: column;
   min-width: 0;
   max-width: 100%;
   box-sizing: border-box;
-}
-
-.createCard,
-.baseCard,
-.editCard {
-  height: var(--user-card-height);
 }
 
 .cardHeader {
@@ -122,8 +115,10 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  flex: 1;
-  min-height: 0;
+}
+
+.baseCard .userList {
+  max-height: 28rem;
   overflow-y: auto;
 }
 

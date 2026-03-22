@@ -316,6 +316,14 @@ Notes
       - Base fica scrollavel e altura segue o editar_usuario sem estourar
       commit: `fix(frontend-admin): set user card fixed height`
 
+- [x] T8: Deixar editar_usuario ditar altura
+      - Remover altura fixa e evitar overflow no card de edicao
+      commit: `fix(frontend-admin): let edit card drive height`
+
+- [x] T9: Base scrollavel sem altura fixa de card
+      - Remover altura compartilhada dos cards; manter scroll apenas na lista da Base de usuarios
+      commit: `fix(frontend-admin): make base list scrollable with auto card heights`
+
 ## Acceptance tests
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards de criacao/base/edicao sem alongamento e no padrao da referencia

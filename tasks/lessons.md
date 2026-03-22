@@ -269,3 +269,10 @@ Wrong:   Card heights drifted because the tallest column dictated the row
 Correct: Use a shared CSS variable for card height so base/edit/create stay aligned
 Rule:    For sibling cards that must match height, set a single shared height token.
 Layer:   frontend
+
+## Lesson AN - Scroll only where needed, not on the whole card
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Forcing fixed height on all user cards to make Base de usuarios scroll
+Correct: Keep cards with auto height; apply scroll constraint only to the Base list container
+Rule:    When one panel needs scrolling, constrain that panel's list area instead of hard-fixing sibling card heights.
+Layer:   frontend

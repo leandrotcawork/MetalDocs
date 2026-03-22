@@ -3,6 +3,13 @@
   gap: 1rem;
 }
 
+.container {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  display: grid;
+  gap: 1rem;
+}
+
 .headerRow {
   display: flex;
   align-items: center;

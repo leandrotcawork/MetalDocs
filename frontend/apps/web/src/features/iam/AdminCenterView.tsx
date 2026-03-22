@@ -94,141 +94,143 @@ export function AdminCenterView() {
       description="Controle de usuarios, presenca online e ultimas atividades do sistema."
     >
       <div className={styles.shell}>
-        <WorkspaceDataState
-          loadState={adminCenter.loadState}
-          isEmpty={adminCenter.users.length === 0}
-          emptyTitle="Nenhum usuario interno cadastrado"
-          emptyDescription="Crie o primeiro usuario para iniciar a administracao de acesso."
-          loadingLabel="Atualizando base administrativa"
-          onRetry={adminCenter.refresh}
-        />
+        <div className={styles.container}>
+          <WorkspaceDataState
+            loadState={adminCenter.loadState}
+            isEmpty={adminCenter.users.length === 0}
+            emptyTitle="Nenhum usuario interno cadastrado"
+            emptyDescription="Crie o primeiro usuario para iniciar a administracao de acesso."
+            loadingLabel="Atualizando base administrativa"
+            onRetry={adminCenter.refresh}
+          />
 
-        <section className={styles.headerRow}>
-          <div className={styles.liveBadge}>
-            <span className={styles.liveDot} />
-            Sistema ativo
-          </div>
-          <span className={styles.headerMeta}>Atualizado {latestActivityLabel}</span>
-        </section>
+          <section className={styles.headerRow}>
+            <div className={styles.liveBadge}>
+              <span className={styles.liveDot} />
+              Sistema ativo
+            </div>
+            <span className={styles.headerMeta}>Atualizado {latestActivityLabel}</span>
+          </section>
 
-        <section className={styles.summary}>
-          <div className={styles.summaryCard}>
-            <div className={styles.summaryTop}>
-              <div className={`${styles.kpiIcon} ${styles.kpiIconGreen}`}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <circle cx="8" cy="5" r="3" />
-                  <path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6" />
-                </svg>
+          <section className={styles.summary}>
+            <div className={styles.summaryCard}>
+              <div className={styles.summaryTop}>
+                <div className={`${styles.kpiIcon} ${styles.kpiIconGreen}`}>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <circle cx="8" cy="5" r="3" />
+                    <path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6" />
+                  </svg>
+                </div>
+                <span className={styles.kpiTrend}>{onlineCount} ativos</span>
               </div>
-              <span className={styles.kpiTrend}>{onlineCount} ativos</span>
+              <span className={styles.kpiLabel}>Usuarios online agora</span>
+              <strong className={styles.kpiValue}>{onlineCount}</strong>
+              <span className={styles.kpiSub}>de {adminCenter.users.length} usuarios</span>
             </div>
-            <span className={styles.kpiLabel}>Usuarios online agora</span>
-            <strong className={styles.kpiValue}>{onlineCount}</strong>
-            <span className={styles.kpiSub}>de {adminCenter.users.length} usuarios</span>
-          </div>
-          <div className={styles.summaryCard}>
-            <div className={styles.summaryTop}>
-              <div className={`${styles.kpiIcon} ${styles.kpiIconAmber}`}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <circle cx="8" cy="8" r="6.5" />
-                  <path d="M8 4v4l3 2" />
-                </svg>
+            <div className={styles.summaryCard}>
+              <div className={styles.summaryTop}>
+                <div className={`${styles.kpiIcon} ${styles.kpiIconAmber}`}>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <circle cx="8" cy="8" r="6.5" />
+                    <path d="M8 4v4l3 2" />
+                  </svg>
+                </div>
+                <span className={styles.kpiTrend}>hoje</span>
               </div>
-              <span className={styles.kpiTrend}>hoje</span>
+              <span className={styles.kpiLabel}>Ultima atividade</span>
+              <strong className={styles.kpiValueSmall}>{latestActivityLabel}</strong>
+              <span className={styles.kpiSub}>auditoria recente</span>
             </div>
-            <span className={styles.kpiLabel}>Ultima atividade</span>
-            <strong className={styles.kpiValueSmall}>{latestActivityLabel}</strong>
-            <span className={styles.kpiSub}>auditoria recente</span>
-          </div>
-          <div className={styles.summaryCard}>
-            <div className={styles.summaryTop}>
-              <div className={`${styles.kpiIcon} ${styles.kpiIconRed}`}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <rect x="1" y="3" width="14" height="10" rx="1.5" />
-                  <path d="M5 3V2M11 3V2M1 7h14" />
-                </svg>
+            <div className={styles.summaryCard}>
+              <div className={styles.summaryTop}>
+                <div className={`${styles.kpiIcon} ${styles.kpiIconRed}`}>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <rect x="1" y="3" width="14" height="10" rx="1.5" />
+                    <path d="M5 3V2M11 3V2M1 7h14" />
+                  </svg>
+                </div>
+                <span className={styles.kpiTrend}>{adminCenter.users.length} total</span>
               </div>
-              <span className={styles.kpiTrend}>{adminCenter.users.length} total</span>
+              <span className={styles.kpiLabel}>Total de usuarios</span>
+              <strong className={styles.kpiValue}>{adminCenter.users.length}</strong>
+              <span className={styles.kpiSub}>base completa</span>
             </div>
-            <span className={styles.kpiLabel}>Total de usuarios</span>
-            <strong className={styles.kpiValue}>{adminCenter.users.length}</strong>
-            <span className={styles.kpiSub}>base completa</span>
-          </div>
-        </section>
+          </section>
 
-        <section className={styles.grid}>
-          <div className={styles.panel}>
-            <div className={styles.panelHeader}>
-              <div>
-                <p className={styles.kicker}>Presenca</p>
-                <h2 className={styles.panelTitle}>Usuarios online</h2>
+          <section className={styles.grid}>
+            <div className={styles.panel}>
+              <div className={styles.panelHeader}>
+                <div>
+                  <p className={styles.kicker}>Presenca</p>
+                  <h2 className={styles.panelTitle}>Usuarios online</h2>
+                </div>
+                <span className={styles.panelBadge}>{onlineCount} ativos</span>
               </div>
-              <span className={styles.panelBadge}>{onlineCount} ativos</span>
+              {onlineCount === 0 ? (
+                <p className={styles.empty}>Nenhum usuario online agora.</p>
+              ) : (
+                <ul className={styles.list}>
+                  {adminCenter.onlineUsers.map((item, index) => (
+                    <li key={item.userId} className={styles.listItem} style={{ animationDelay: `${index * 0.06}s` }}>
+                      <span className={styles.avatar}>{toInitials(item.displayName)}</span>
+                      <div className={styles.listMeta}>
+                        <strong className={styles.listTitle}>{item.displayName}</strong>
+                        <small className={styles.listSub}>{item.username}</small>
+                      </div>
+                      <span className={styles.listTime}>{formatDate(item.lastSeenAt)}</span>
+                      <span className={styles.onlinePip} />
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
-            {onlineCount === 0 ? (
-              <p className={styles.empty}>Nenhum usuario online agora.</p>
-            ) : (
-              <ul className={styles.list}>
-                {adminCenter.onlineUsers.map((item, index) => (
-                  <li key={item.userId} className={styles.listItem} style={{ animationDelay: `${index * 0.06}s` }}>
-                    <span className={styles.avatar}>{toInitials(item.displayName)}</span>
-                    <div className={styles.listMeta}>
-                      <strong className={styles.listTitle}>{item.displayName}</strong>
-                      <small className={styles.listSub}>{item.username}</small>
-                    </div>
-                    <span className={styles.listTime}>{formatDate(item.lastSeenAt)}</span>
-                    <span className={styles.onlinePip} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
 
-          <div className={styles.panel}>
-            <div className={styles.panelHeader}>
-              <div>
-                <p className={styles.kicker}>Auditoria</p>
-                <h2 className={styles.panelTitle}>Ultimas atividades</h2>
+            <div className={styles.panel}>
+              <div className={styles.panelHeader}>
+                <div>
+                  <p className={styles.kicker}>Auditoria</p>
+                  <h2 className={styles.panelTitle}>Ultimas atividades</h2>
+                </div>
+                <span className={styles.panelBadge}>Ultimos 10</span>
               </div>
-              <span className={styles.panelBadge}>Ultimos 10</span>
+              {adminCenter.recentActivities.length === 0 ? (
+                <p className={styles.empty}>Nenhuma atividade registrada.</p>
+              ) : (
+                <ul className={styles.list}>
+                  {adminCenter.recentActivities.map((item, index) => (
+                    <li key={item.id} className={styles.listItem} style={{ animationDelay: `${index * 0.06}s` }}>
+                      <span className={activityDotClass(item.action)} />
+                      <div className={styles.listMeta}>
+                        <strong className={styles.listTitle}>{item.action}</strong>
+                        <small className={styles.listSub}>{item.actorId} • {item.resourceType}</small>
+                      </div>
+                      <span className={styles.listTime}>{formatDate(item.occurredAt)}</span>
+                      <span className={activityChipClass(item.action)}>{activityLabel(item.action)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
-            {adminCenter.recentActivities.length === 0 ? (
-              <p className={styles.empty}>Nenhuma atividade registrada.</p>
-            ) : (
-              <ul className={styles.list}>
-                {adminCenter.recentActivities.map((item, index) => (
-                  <li key={item.id} className={styles.listItem} style={{ animationDelay: `${index * 0.06}s` }}>
-                    <span className={activityDotClass(item.action)} />
-                    <div className={styles.listMeta}>
-                      <strong className={styles.listTitle}>{item.action}</strong>
-                      <small className={styles.listSub}>{item.actorId} • {item.resourceType}</small>
-                    </div>
-                    <span className={styles.listTime}>{formatDate(item.occurredAt)}</span>
-                    <span className={activityChipClass(item.action)}>{activityLabel(item.action)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </section>
+          </section>
 
-        <ManagedUsersSection
-          loadState={adminCenter.loadState}
-          userForm={managedUsersApi.userForm}
-          managedUserForm={managedUsersApi.managedUserForm}
-          managedUsers={managedUsersApi.managedUsers}
-          selectedManagedUser={selectedManagedUser}
-          formatDate={formatDate}
-          onRefreshWorkspace={adminCenter.refresh}
-          onUserFormChange={managedUsersApi.setUserForm}
-          onManagedUserFormChange={managedUsersApi.setManagedUserForm}
-          onCreateUser={managedUsersApi.handleCreateUser}
-          onSelectManagedUser={managedUsersApi.selectManagedUser}
-          onToggleRole={managedUsersApi.toggleManagedUserRole}
-          onSaveManagedUser={managedUsersApi.handleSaveManagedUser}
-          onAdminResetPassword={managedUsersApi.handleAdminResetPassword}
-          onUnlockManagedUser={managedUsersApi.handleUnlockManagedUser}
-        />
+          <ManagedUsersSection
+            loadState={adminCenter.loadState}
+            userForm={managedUsersApi.userForm}
+            managedUserForm={managedUsersApi.managedUserForm}
+            managedUsers={managedUsersApi.managedUsers}
+            selectedManagedUser={selectedManagedUser}
+            formatDate={formatDate}
+            onRefreshWorkspace={adminCenter.refresh}
+            onUserFormChange={managedUsersApi.setUserForm}
+            onManagedUserFormChange={managedUsersApi.setManagedUserForm}
+            onCreateUser={managedUsersApi.handleCreateUser}
+            onSelectManagedUser={managedUsersApi.selectManagedUser}
+            onToggleRole={managedUsersApi.toggleManagedUserRole}
+            onSaveManagedUser={managedUsersApi.handleSaveManagedUser}
+            onAdminResetPassword={managedUsersApi.handleAdminResetPassword}
+            onUnlockManagedUser={managedUsersApi.handleUnlockManagedUser}
+          />
+        </div>
       </div>
     </WorkspaceViewFrame>
   );

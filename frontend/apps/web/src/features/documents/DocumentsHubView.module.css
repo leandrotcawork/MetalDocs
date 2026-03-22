@@ -265,7 +265,8 @@
   grid-template-columns: 34px minmax(0, 1fr) auto;
   align-items: center;
   gap: 0.9rem;
-  padding: 0.65rem 0.9rem;
+  min-height: 72px;
+  padding: 0.85rem 1rem;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 0.9rem;
@@ -288,7 +289,8 @@
 
 .recentMeta strong {
   display: block;
-  font-size: 0.9rem;
+  font-size: 1.05rem;
+  line-height: 1.2;
   color: var(--text);
 }
 

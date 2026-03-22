@@ -341,15 +341,17 @@ export function ManagedUsersSection(props: ManagedUsersPanelProps) {
                   value={props.managedUserForm.resetPassword}
                   onChange={(value) => props.onManagedUserFormChange({ ...props.managedUserForm, resetPassword: value })}
                 />
-                <button type="button" className={`${styles.button} ${styles.buttonWarn}`} onClick={() => void props.onAdminResetPassword()}>
-                  Resetar senha
-                </button>
-                <button type="button" className={`${styles.button} ${styles.buttonOutline}`} onClick={() => void props.onUnlockManagedUser()}>
-                  Desbloquear acesso
-                </button>
-                <button type="button" className={`${styles.button} ${styles.buttonDanger}`} onClick={() => void handleDeactivateUser()}>
-                  Desativar usuario
-                </button>
+                <div className={styles.actionsRow}>
+                  <button type="button" className={`${styles.button} ${styles.buttonWarn}`} onClick={() => void props.onAdminResetPassword()}>
+                    Resetar senha
+                  </button>
+                  <button type="button" className={`${styles.button} ${styles.buttonOutline}`} onClick={() => void props.onUnlockManagedUser()}>
+                    Desbloquear acesso
+                  </button>
+                  <button type="button" className={`${styles.button} ${styles.buttonDanger}`} onClick={() => void handleDeactivateUser()}>
+                    Desativar usuario
+                  </button>
+                </div>
               </div>
             </>
           )}

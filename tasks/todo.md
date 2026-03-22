@@ -356,6 +356,10 @@ Notes
       - Remover `+` do label e usar o espaco livre para manter o botao no rodape do card Criar
       commit: `fix(frontend-admin): anchor create user action to card footer`
 
+- [x] T18: Acoes de edicao na mesma linha
+      - Resetar, Desbloquear e Desativar ficam alinhados horizontalmente no card Editar
+      commit: `fix(frontend-admin): align edit actions on one row`
+
 ## Acceptance tests
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards de criacao/base/edicao sem alongamento e no padrao da referencia

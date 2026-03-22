@@ -339,3 +339,10 @@ Wrong:   Leaving the primary action inside the normal field flow, creating a lar
 Correct: Make the create form body a column layout and push the primary action to the bottom with `margin-top: auto`
 Rule:    In fixed-height form cards, the primary CTA should anchor to the footer rather than float above leftover space.
 Layer:   frontend
+
+## Lesson AX - Edit actions should align in a single row
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Stacking Resetar, Desbloquear e Desativar vertically, consuming too much height
+Correct: Use a three-column row in the actions area so all three sit on one line
+Rule:    Related edit actions should be grouped horizontally when space allows.
+Layer:   frontend

@@ -309,6 +309,12 @@
   gap: 0.4rem;
 }
 
+.actionsRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
 .divider {
   height: 1px;
   background: var(--border);
@@ -332,6 +338,10 @@
 
   .taxonomyFields,
   .editMetaFields {
+    grid-template-columns: 1fr;
+  }
+
+  .actionsRow {
     grid-template-columns: 1fr;
   }
 }

@@ -2,7 +2,7 @@ import { Component, useCallback, useEffect } from "react";
 import { api } from "./lib.api";
 import { AuthShell } from "./components/AuthShell";
 import { DocumentCreateView } from "./components/DocumentCreateView";
-import { ManagedUsersPanel } from "./components/ManagedUsersPanel";
+import { AdminCenterView } from "./features/iam/AdminCenterView";
 import { NotificationsPanel } from "./components/NotificationsPanel";
 import { OperationsCenter } from "./components/OperationsCenter";
 import { PasswordChangePanel } from "./components/PasswordChangePanel";
@@ -14,7 +14,6 @@ import { useAuthSession } from "./features/auth/useAuthSession";
 import { useDocumentsWorkspace } from "./features/documents/useDocumentsWorkspace";
 import { useRegistryExplorer } from "./features/registry/useRegistryExplorer";
 import { useNotifications } from "./features/notifications/useNotifications";
-import { useManagedUsers } from "./features/iam/useManagedUsers";
 import { statusOf } from "./features/shared/errors";
 import { DocumentsWorkspaceView } from "./features/documents/DocumentsWorkspaceView";
 import { RegistryExplorerView } from "./features/registry/RegistryExplorerView";
@@ -88,7 +87,6 @@ function AppContent() {
 
   const { authState, user, loginForm, passwordForm, setLoginForm, setPasswordForm, bootstrap, handleLogin, handleLogout, handleChangePassword } = authSession;
   const refreshWorkspace = useCallback(() => documentsWorkspace.refreshWorkspace(user), [documentsWorkspace, user]);
-  const managedUsersApi = useManagedUsers(refreshWorkspace);
   const {
     loadState,
     documentForm,
@@ -174,25 +172,11 @@ function AppContent() {
     selectedProfileGovernance,
   } = registry;
   const { notifications, handleMarkNotificationRead, subscribeOperations } = notificationsApi;
-  const {
-    userForm,
-    managedUserForm,
-    managedUsers,
-    setUserForm,
-    setManagedUserForm,
-    handleCreateUser,
-    selectManagedUser,
-    toggleManagedUserRole,
-    handleSaveManagedUser,
-    handleAdminResetPassword,
-    handleUnlockManagedUser,
-  } = managedUsersApi;
   const policyScope: PolicyScope = "document";
 
   const currentUserRoles = Array.isArray(user?.roles) ? user.roles : [];
   const isAdmin = currentUserRoles.includes("admin");
   const userRoleLabel = roleLabelFromRoles(currentUserRoles);
-  const selectedManagedUser = managedUsers.find((item) => item.userId === managedUserForm.userId) ?? null;
   const visibleDocuments = activeView === "my-docs"
     ? documents.filter((item) => item.ownerId === user?.userId)
     : activeView === "recent"
@@ -425,23 +409,7 @@ function AppContent() {
 
     if (activeView === "admin" && isAdmin) {
       return (
-        <ManagedUsersPanel
-          loadState={loadState}
-          userForm={userForm}
-          managedUserForm={managedUserForm}
-          managedUsers={managedUsers}
-          selectedManagedUser={selectedManagedUser}
-          formatDate={formatDate}
-          onRefreshWorkspace={refreshWorkspace}
-          onUserFormChange={setUserForm}
-          onManagedUserFormChange={setManagedUserForm}
-          onSubmitCreateUser={handleCreateUser}
-          onSelectManagedUser={selectManagedUser}
-          onToggleRole={toggleManagedUserRole}
-          onSaveManagedUser={handleSaveManagedUser}
-          onAdminResetPassword={handleAdminResetPassword}
-          onUnlockManagedUser={handleUnlockManagedUser}
-        />
+        <AdminCenterView />
       );
     }
 

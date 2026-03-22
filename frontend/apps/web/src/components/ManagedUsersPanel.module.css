@@ -19,7 +19,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1.2fr);
   gap: 1rem;
-  align-items: stretch;
+  align-items: start;
 }
 
 .card {

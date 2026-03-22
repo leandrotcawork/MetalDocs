@@ -67,3 +67,10 @@ Wrong:   Using `ResizeObserver` + inline heights to keep sibling cards the same 
 Correct: Use CSS Grid `align-items: stretch` and let the layout engine equalize card heights; keep internal scroll areas with `minmax(0,1fr)` and `overflow-y: auto`
 Rule:    UI layout consistency should be solved in CSS first; JS measurement is a last resort.
 Layer:   frontend
+
+## Lesson I - Sync only the constrained panel, not all siblings
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Removing all height constraints caused `Base de usuarios` to grow with content and lose internal scroll
+Correct: Constrain only `Base de usuarios` to the measured height of `Editar usuario` (with a minimum floor), keeping list scroll inside the card
+Rule:    When one panel must track another, scope synchronization to that panel and preserve overflow behavior.
+Layer:   frontend

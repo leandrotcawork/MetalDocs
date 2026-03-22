@@ -54,6 +54,10 @@ function documentScope(view: DocumentsHubViewProps["view"]): HubScope {
   return "all";
 }
 
+function normalizeAreaCode(value?: string): string {
+  return (value ?? "sem-area").trim().toLowerCase();
+}
+
 function statusLabel(status: string): string {
   switch (status) {
     case "IN_REVIEW":
@@ -128,7 +132,7 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
   const areaCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const document of scopedDocuments) {
-      const key = (document.processArea ?? "sem-area").trim().toLowerCase();
+      const key = normalizeAreaCode(document.processArea);
       counts[key] = (counts[key] ?? 0) + 1;
     }
     return counts;
@@ -138,17 +142,17 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
   const areaColors = ["#9D2335", "#1F5A3F", "#6B3A9C", "#B4541A", "#2B5C8A", "#A32B6B"];
   const areaCards = useMemo(() => {
     const cards = props.processAreas.map((area, index) => ({
-      code: area.code,
+      code: normalizeAreaCode(area.code),
       label: area.name,
-      count: areaCounts[area.code] ?? 0,
-      hint: metalNobreProcessAreaHint(area.code),
+      count: areaCounts[normalizeAreaCode(area.code)] ?? 0,
+      description: metalNobreProcessAreaHint(area.code),
       color: areaColors[index % areaColors.length],
     }));
     cards.unshift({
       code: "sem-area",
       label: "Sem area",
       count: areaCounts["sem-area"] ?? 0,
-      hint: "Sem classificacao",
+      description: "Sem classificacao atribuida.",
       color: areaColors[0],
     });
     return cards;
@@ -181,7 +185,7 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
   const baseFilteredDocuments = useMemo(() => {
     return scopedDocuments.filter((item) => {
       if (documentsHubArea !== "all") {
-        const area = item.processArea ?? "sem-area";
+        const area = normalizeAreaCode(item.processArea);
         if (area !== documentsHubArea) return false;
       }
       if (documentsHubProfile !== "all" && item.documentProfile !== documentsHubProfile) return false;
@@ -223,7 +227,7 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
     }
     if (documentsHubArea !== "all") {
       if (documentsHubArea === "sem-area") return "Sem area";
-      return props.processAreas.find((item) => item.code === documentsHubArea)?.name ?? documentsHubArea;
+      return props.processAreas.find((item) => normalizeAreaCode(item.code) === documentsHubArea)?.name ?? documentsHubArea;
     }
     return headerTitle;
   }, [documentsHubArea, documentsHubProfile, headerTitle, props.documentProfiles, props.processAreas]);
@@ -499,7 +503,7 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
                     />
                   </div>
                 </div>
-                <span className={styles.areaDescription}>{area.hint}</span>
+                <span className={styles.areaDescription}>{area.description}</span>
               </button>
             </article>
           ))}

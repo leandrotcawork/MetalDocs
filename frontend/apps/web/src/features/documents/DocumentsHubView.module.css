@@ -118,6 +118,12 @@
   box-shadow: var(--shadow-soft);
 }
 
+.areaCard,
+.typeCard {
+  padding: 0;
+  overflow: hidden;
+}
+
 .emptyCard {
   color: var(--muted);
 }
@@ -127,18 +133,26 @@
   width: 100%;
   border: 0;
   background: transparent;
-  padding: 0;
-  display: flex;
+  padding: 1rem 1.2rem;
+  display: grid;
   align-items: center;
   justify-content: space-between;
-  gap: 0.9rem;
+  gap: 1rem;
   cursor: pointer;
   text-align: left;
   color: inherit;
 }
 
+.areaButton {
+  grid-template-columns: 6px minmax(0, 1fr) minmax(0, 1.1fr);
+}
+
+.typeButton {
+  grid-template-columns: 6px auto minmax(0, 1fr);
+}
+
 .areaStripe {
-  width: 4px;
+  width: 6px;
   align-self: stretch;
   border-radius: 999px;
   background: var(--area-color, var(--vinho));
@@ -147,14 +161,16 @@
 .areaMeta {
   flex: 1;
   display: grid;
-  gap: 0.25rem;
+  gap: 0.3rem;
+  min-width: 0;
 }
 
 .areaBar {
-  height: 4px;
+  height: 3px;
   background: var(--surface-2);
   border-radius: 999px;
   overflow: hidden;
+  margin-top: 0.4rem;
 }
 
 .areaBarFill {
@@ -178,9 +194,10 @@
 }
 
 .areaDescription {
-  font-size: 0.72rem;
+  font-size: 0.78rem;
   color: var(--muted);
-  max-width: 220px;
+  line-height: 1.25;
+  max-width: none;
   text-align: left;
 }
 
@@ -653,6 +670,15 @@
   .areaGrid,
   .typeGrid {
     grid-template-columns: 1fr;
+  }
+
+  .areaButton {
+    grid-template-columns: 6px minmax(0, 1fr);
+    grid-auto-rows: auto;
+  }
+
+  .areaDescription {
+    grid-column: 2 / -1;
   }
 
   .recentRow {

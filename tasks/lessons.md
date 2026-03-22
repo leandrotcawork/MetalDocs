@@ -346,3 +346,10 @@ Wrong:   Stacking Resetar, Desbloquear e Desativar vertically, consuming too muc
 Correct: Use a three-column row in the actions area so all three sit on one line
 Rule:    Related edit actions should be grouped horizontally when space allows.
 Layer:   frontend
+
+## Lesson AY - Keep edit action spacing consistent with form fields
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Action row sits too close to the password field, breaking spacing rhythm
+Correct: Add explicit margin above the action row to match surrounding gaps
+Rule:    Action groups should follow the same vertical rhythm as the form fields.
+Layer:   frontend

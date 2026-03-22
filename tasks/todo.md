@@ -360,6 +360,10 @@ Notes
       - Resetar, Desbloquear e Desativar ficam alinhados horizontalmente no card Editar
       commit: `fix(frontend-admin): align edit actions on one row`
 
+- [x] T19: Aumentar gap entre senha e botoes
+      - Aumentar espaco entre "Nova senha temporaria" e a linha de botoes de acoes
+      commit: `fix(frontend-admin): increase spacing before edit actions`
+
 ## Acceptance tests
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards de criacao/base/edicao sem alongamento e no padrao da referencia

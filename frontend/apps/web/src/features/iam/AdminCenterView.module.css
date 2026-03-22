@@ -17,7 +17,7 @@
   gap: 0.45rem;
   background: var(--success-bg);
   color: var(--success);
-  border: 1px solid #c8e6d4;
+  border: 1px solid var(--border-2);
   padding: 0.3rem 0.7rem;
   border-radius: 999px;
   font-size: 0.7rem;
@@ -173,12 +173,14 @@
 
 .listItem {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
   padding: 0.65rem 0.8rem;
   border-radius: 0.9rem;
   background: var(--surface-2);
   border: 1px solid var(--border);
+  animation: fadeInUp var(--duration-enter) var(--ease-out) both;
 }
 
 .listItem strong {
@@ -210,6 +212,90 @@
   font-size: 0.75rem;
   color: var(--text-soft);
   white-space: nowrap;
+}
+
+.avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: var(--vinho-soft);
+  border: 1px solid var(--vinho-muted);
+  color: var(--vinho);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.onlinePip {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--success);
+  border: 2px solid var(--surface);
+  box-shadow: 0 0 0 1px var(--success-bg);
+}
+
+.activityDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--vinho);
+  flex-shrink: 0;
+}
+
+.activityDotSuccess {
+  background: var(--success);
+}
+
+.activityDotWarning {
+  background: var(--warning);
+}
+
+.activityDotInfo {
+  background: var(--accent);
+}
+
+.activityDotCrimson {
+  background: var(--vinho);
+}
+
+.activityChip {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.4rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-soft);
+  white-space: nowrap;
+}
+
+.activityChipSuccess {
+  background: var(--success-bg);
+  color: var(--success);
+  border-color: var(--border-2);
+}
+
+.activityChipWarning {
+  background: var(--warning-bg);
+  color: var(--warning);
+  border-color: var(--border-2);
+}
+
+.activityChipInfo {
+  background: var(--info-bg);
+  color: var(--info-fg);
+  border-color: var(--border-2);
+}
+
+.activityChipCrimson {
+  background: var(--vinho-soft);
+  color: var(--vinho);
+  border-color: var(--vinho-muted);
 }
 
 .empty {

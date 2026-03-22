@@ -45,6 +45,46 @@ export function AdminCenterView() {
   const onlineCount = adminCenter.onlineUsers.length;
   const latestActivity = adminCenter.recentActivities[0]?.occurredAt;
   const latestActivityLabel = latestActivity ? formatDate(latestActivity) : "Sem atividade recente";
+  const toInitials = (value: string) => {
+    const [first, second] = value.trim().split(/\s+/);
+    return [first?.[0], second?.[0]].filter(Boolean).join("").toUpperCase();
+  };
+
+  const activityLabel = (action: string) => {
+    const lower = action.toLowerCase();
+    if (lower.includes("login")) return "LOGIN";
+    if (lower.includes("create") || lower.includes("criad")) return "CRIAR";
+    if (lower.includes("approve") || lower.includes("aprov")) return "APROVAR";
+    if (lower.includes("edit") || lower.includes("update") || lower.includes("atual")) return "EDICAO";
+    return "ACAO";
+  };
+
+  const activityVariant = (action: string) => {
+    const lower = action.toLowerCase();
+    if (lower.includes("login")) return "login";
+    if (lower.includes("create") || lower.includes("criad")) return "create";
+    if (lower.includes("approve") || lower.includes("aprov")) return "approve";
+    if (lower.includes("edit") || lower.includes("update") || lower.includes("atual")) return "edit";
+    return "default";
+  };
+
+  const activityDotClass = (action: string) => {
+    const variant = activityVariant(action);
+    if (variant === "login") return `${styles.activityDot} ${styles.activityDotWarning}`;
+    if (variant === "create") return `${styles.activityDot} ${styles.activityDotSuccess}`;
+    if (variant === "approve") return `${styles.activityDot} ${styles.activityDotInfo}`;
+    if (variant === "edit") return `${styles.activityDot} ${styles.activityDotCrimson}`;
+    return styles.activityDot;
+  };
+
+  const activityChipClass = (action: string) => {
+    const variant = activityVariant(action);
+    if (variant === "login") return `${styles.activityChip} ${styles.activityChipWarning}`;
+    if (variant === "create") return `${styles.activityChip} ${styles.activityChipSuccess}`;
+    if (variant === "approve") return `${styles.activityChip} ${styles.activityChipInfo}`;
+    if (variant === "edit") return `${styles.activityChip} ${styles.activityChipCrimson}`;
+    return styles.activityChip;
+  };
 
   return (
     <WorkspaceViewFrame
@@ -129,13 +169,15 @@ export function AdminCenterView() {
               <p className={styles.empty}>Nenhum usuario online agora.</p>
             ) : (
               <ul className={styles.list}>
-                {adminCenter.onlineUsers.map((item) => (
-                  <li key={item.userId} className={styles.listItem}>
+                {adminCenter.onlineUsers.map((item, index) => (
+                  <li key={item.userId} className={styles.listItem} style={{ animationDelay: `${index * 0.06}s` }}>
+                    <span className={styles.avatar}>{toInitials(item.displayName)}</span>
                     <div className={styles.listMeta}>
                       <strong className={styles.listTitle}>{item.displayName}</strong>
                       <small className={styles.listSub}>{item.username}</small>
                     </div>
                     <span className={styles.listTime}>{formatDate(item.lastSeenAt)}</span>
+                    <span className={styles.onlinePip} />
                   </li>
                 ))}
               </ul>
@@ -154,13 +196,15 @@ export function AdminCenterView() {
               <p className={styles.empty}>Nenhuma atividade registrada.</p>
             ) : (
               <ul className={styles.list}>
-                {adminCenter.recentActivities.map((item) => (
-                  <li key={item.id} className={styles.listItem}>
+                {adminCenter.recentActivities.map((item, index) => (
+                  <li key={item.id} className={styles.listItem} style={{ animationDelay: `${index * 0.06}s` }}>
+                    <span className={activityDotClass(item.action)} />
                     <div className={styles.listMeta}>
                       <strong className={styles.listTitle}>{item.action}</strong>
                       <small className={styles.listSub}>{item.actorId} • {item.resourceType}</small>
                     </div>
                     <span className={styles.listTime}>{formatDate(item.occurredAt)}</span>
+                    <span className={activityChipClass(item.action)}>{activityLabel(item.action)}</span>
                   </li>
                 ))}
               </ul>
@@ -178,7 +222,7 @@ export function AdminCenterView() {
           onRefreshWorkspace={adminCenter.refresh}
           onUserFormChange={managedUsersApi.setUserForm}
           onManagedUserFormChange={managedUsersApi.setManagedUserForm}
-          onSubmitCreateUser={managedUsersApi.handleCreateUser}
+          onCreateUser={managedUsersApi.handleCreateUser}
           onSelectManagedUser={managedUsersApi.selectManagedUser}
           onToggleRole={managedUsersApi.toggleManagedUserRole}
           onSaveManagedUser={managedUsersApi.handleSaveManagedUser}
@@ -189,3 +233,5 @@ export function AdminCenterView() {
     </WorkspaceViewFrame>
   );
 }
+
+export default AdminCenterView;

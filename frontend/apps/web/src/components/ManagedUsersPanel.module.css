@@ -164,7 +164,7 @@
 .roleEditor {
   background: var(--info-bg);
   color: var(--info-fg);
-  border-color: #cbd7f0;
+  border-color: var(--border);
 }
 
 .roleViewer {
@@ -220,7 +220,7 @@
   border-radius: 999px;
   background: var(--success-bg);
   color: var(--success);
-  border: 1px solid #c8e6d4;
+  border: 1px solid var(--border-2);
   white-space: nowrap;
 }
 
@@ -268,7 +268,7 @@
 .buttonWarn {
   background: var(--warning-bg);
   color: var(--warning);
-  border: 1px solid #e8d5a0;
+  border: 1px solid var(--border-2);
   padding: 0.6rem 0.85rem;
   border-radius: 0.7rem;
   font-size: 0.85rem;
@@ -276,9 +276,9 @@
 }
 
 .buttonDanger {
-  background: #fdf0f0;
-  color: #b52020;
-  border: 1px solid #e8c0c0;
+  background: var(--vinho-soft);
+  color: var(--danger);
+  border: 1px solid var(--vinho-muted);
   padding: 0.6rem 0.85rem;
   border-radius: 0.7rem;
   font-size: 0.85rem;

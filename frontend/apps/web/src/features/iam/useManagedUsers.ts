@@ -30,8 +30,11 @@ export function useManagedUsers(onRefresh: () => Promise<void>) {
     });
   }, [setManagedUserForm]);
 
-  const handleCreateUser = useCallback(async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleCreateUser = useCallback(async () => {
+    if (!userForm.username.trim() || !userForm.displayName.trim() || !userForm.password.trim()) {
+      setError("Preencha username, display name e senha inicial.");
+      return;
+    }
     setError("");
     setMessage("");
     try {

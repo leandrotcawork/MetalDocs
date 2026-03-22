@@ -23,7 +23,7 @@ type ManagedUserForm = {
   resetPassword: string;
 };
 
-type ManagedUsersPanelProps = {
+interface ManagedUsersPanelProps {
   loadState: "idle" | "loading" | "ready" | "error";
   userForm: CreateUserForm;
   managedUserForm: ManagedUserForm;
@@ -33,13 +33,13 @@ type ManagedUsersPanelProps = {
   onRefreshWorkspace: () => void | Promise<void>;
   onUserFormChange: (next: CreateUserForm) => void;
   onManagedUserFormChange: (next: ManagedUserForm) => void;
-  onSubmitCreateUser: (event: React.FormEvent<HTMLFormElement>) => void | Promise<void>;
+  onCreateUser: () => void | Promise<void>;
   onSelectManagedUser: (item: ManagedUserItem) => void;
   onToggleRole: (role: UserRole) => void;
   onSaveManagedUser: () => void | Promise<void>;
   onAdminResetPassword: () => void | Promise<void>;
   onUnlockManagedUser: () => void | Promise<void>;
-};
+}
 
 export function ManagedUsersPanel(props: ManagedUsersPanelProps) {
   return (
@@ -86,7 +86,7 @@ export function ManagedUsersSection(props: ManagedUsersPanelProps) {
 
       <div className={styles.sectionTitle}>Gestao de usuarios</div>
       <div className={styles.panelGrid}>
-        <form data-testid="user-create-form" className={`${styles.panel} ${styles.stack}`} onSubmit={props.onSubmitCreateUser}>
+        <div data-testid="user-create-form" className={`${styles.panel} ${styles.stack}`}>
           <div className={styles.panelHeader}>
             <div>
               <p className={styles.kicker}>Provisioning</p>
@@ -122,8 +122,8 @@ export function ManagedUsersSection(props: ManagedUsersPanelProps) {
               onSelect={(value) => props.onUserFormChange({ ...props.userForm, roles: [value as UserRole] })}
             />
           </label>
-          <button data-testid="user-submit" type="submit">Criar usuario</button>
-        </form>
+          <button data-testid="user-submit" type="button" onClick={() => void props.onCreateUser()}>Criar usuario</button>
+        </div>
         <section className={styles.panel}>
           <div className={styles.panelHeader}>
             <div>
@@ -199,3 +199,5 @@ export function ManagedUsersSection(props: ManagedUsersPanelProps) {
     </>
   );
 }
+
+export default ManagedUsersPanel;

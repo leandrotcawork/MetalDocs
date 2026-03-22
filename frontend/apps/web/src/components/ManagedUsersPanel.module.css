@@ -19,6 +19,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1.2fr);
   gap: 1rem;
+  align-items: stretch;
 }
 
 .card {
@@ -26,10 +27,15 @@
   border: 1px solid var(--border);
   border-radius: 0.95rem;
   box-shadow: var(--shadow);
-  overflow: hidden;
-  height: 36rem;
-  display: grid;
-  align-content: start;
+  min-height: 43rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.createCard,
+.baseCard,
+.editCard {
+  height: 43rem;
 }
 
 .cardHeader {
@@ -146,6 +152,8 @@
   list-style: none;
   margin: 0;
   padding: 0;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
 }
 
@@ -289,6 +297,7 @@
   padding: 0 1.2rem 1.1rem;
   display: grid;
   gap: 0.56rem;
+  margin-top: auto;
 }
 
 .divider {
@@ -310,5 +319,6 @@
 
   .card {
     height: auto;
+    min-height: 0;
   }
 }

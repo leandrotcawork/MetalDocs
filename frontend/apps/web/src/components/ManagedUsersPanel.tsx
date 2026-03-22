@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { ManagedUserItem, UserRole } from "../lib.types";
 import { WorkspaceDataState } from "./WorkspaceDataState";
+import { FilterDropdown, type SelectMenuOption } from "./ui/FilterDropdown";
 import styles from "./ManagedUsersPanel.module.css";
 
 type CreateUserForm = {
@@ -47,6 +48,20 @@ const PROFILE_OPTIONS: Array<{ value: UserRole; label: string }> = [
   { value: "viewer", label: "Viewer" },
 ];
 
+const DEPARTMENT_OPTIONS: SelectMenuOption[] = [
+  { value: "Operacoes", label: "Operacoes" },
+  { value: "Qualidade", label: "Qualidade" },
+  { value: "Engenharia", label: "Engenharia" },
+  { value: "Administrativo", label: "Administrativo" },
+];
+
+const PROCESS_AREA_OPTIONS: SelectMenuOption[] = [
+  { value: "Administrativo", label: "Administrativo" },
+  { value: "Producao", label: "Producao" },
+  { value: "Logistica", label: "Logistica" },
+  { value: "Suprimentos", label: "Suprimentos" },
+];
+
 function toInitials(value: string) {
   const [first, second] = value.trim().split(/\s+/);
   return [first?.[0], second?.[0]].filter(Boolean).join("").toUpperCase();
@@ -83,8 +98,9 @@ export function ManagedUsersSection(props: ManagedUsersPanelProps) {
 
   const filteredUsers = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return props.managedUsers;
-    const matches = props.managedUsers.filter((item) => item.displayName.toLowerCase().includes(query) || item.username.toLowerCase().includes(query));
+    const matches = !query
+      ? props.managedUsers
+      : props.managedUsers.filter((item) => item.displayName.toLowerCase().includes(query) || item.username.toLowerCase().includes(query));
     return matches.slice(0, 10);
   }, [props.managedUsers, search]);
 
@@ -124,7 +140,7 @@ export function ManagedUsersSection(props: ManagedUsersPanelProps) {
       <div className={styles.sectionTitle}>Gestao de Usuarios</div>
 
       <section className={styles.grid}>
-        <article className={styles.card}>
+        <article className={`${styles.card} ${styles.createCard}`}>
           <header className={styles.cardHeader}>
             <h3 className={styles.cardTitle}>Criar usuario</h3>
           </header>
@@ -156,24 +172,26 @@ export function ManagedUsersSection(props: ManagedUsersPanelProps) {
                 onChange={(event) => props.onUserFormChange({ ...props.userForm, email: event.target.value })}
               />
             </label>
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>Departamento</span>
-              <select value={department} onChange={(event) => setDepartment(event.target.value)}>
-                <option value="Operacoes">Operacoes</option>
-                <option value="Qualidade">Qualidade</option>
-                <option value="Engenharia">Engenharia</option>
-                <option value="Administrativo">Administrativo</option>
-              </select>
-            </label>
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>Area de processo</span>
-              <select value={processArea} onChange={(event) => setProcessArea(event.target.value)}>
-                <option value="Administrativo">Administrativo</option>
-                <option value="Producao">Producao</option>
-                <option value="Logistica">Logistica</option>
-                <option value="Suprimentos">Suprimentos</option>
-              </select>
-            </label>
+            <div className={styles.inlineFields}>
+              <label className={styles.field}>
+                <span className={styles.fieldLabel}>Departamento</span>
+                <FilterDropdown
+                  id="create-department"
+                  value={department}
+                  options={DEPARTMENT_OPTIONS}
+                  onSelect={(value) => setDepartment(value)}
+                />
+              </label>
+              <label className={styles.field}>
+                <span className={styles.fieldLabel}>Area de processo</span>
+                <FilterDropdown
+                  id="create-process-area"
+                  value={processArea}
+                  options={PROCESS_AREA_OPTIONS}
+                  onSelect={(value) => setProcessArea(value)}
+                />
+              </label>
+            </div>
             <label className={styles.field}>
               <span className={styles.fieldLabel}>Senha inicial</span>
               <input
@@ -199,7 +217,7 @@ export function ManagedUsersSection(props: ManagedUsersPanelProps) {
           </div>
         </article>
 
-        <article className={styles.card}>
+        <article className={`${styles.card} ${styles.baseCard}`}>
           <header className={styles.cardHeader}>
             <h3 className={styles.cardTitle}>Base de usuarios</h3>
             <span className={styles.cardMeta}>{props.managedUsers.length} total</span>
@@ -225,7 +243,7 @@ export function ManagedUsersSection(props: ManagedUsersPanelProps) {
           </footer>
         </article>
 
-        <article className={styles.card}>
+        <article className={`${styles.card} ${styles.editCard}`}>
           <header className={styles.cardHeader}>
             <h3 className={styles.cardTitle}>Editar usuario</h3>
           </header>

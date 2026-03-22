@@ -296,6 +296,14 @@ Notes
       - Exibir no maximo 10 usuarios, manter os 3 cards com mesma altura e incluir Departamento/Area de processo no criar usuario
       commit: `feat(frontend-admin): cap user list and add taxonomy fields`
 
+- [x] T3: Usar spotlight + linha unica para Departamento/Area
+      - Trocar selects nativos por `FilterDropdown` e alinhar ambos na mesma linha
+      commit: `refactor(frontend-admin): use spotlight dropdowns in create form`
+
+- [x] T4: Corrigir altura para nao cortar Criar/Editar
+      - Igualar altura dos 3 cards sem truncar o conteudo de Criar e Editar
+      commit: `fix(frontend-admin): normalize user cards full height`
+
 ## Acceptance tests
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards de criacao/base/edicao sem alongamento e no padrao da referencia

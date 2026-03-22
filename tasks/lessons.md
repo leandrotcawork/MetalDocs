@@ -234,3 +234,10 @@ Wrong:   Expanding create form by changing API payload shape without backend sup
 Correct: Keep new UX fields local to UI when contract is unchanged, preserve existing create payload
 Rule:    Frontend form redesign must preserve stable API contracts unless backend changes are planned.
 Layer:   frontend
+
+## Lesson AI - List limits must apply to both filtered and unfiltered states
+Date: 2026-03-22 | Trigger: correction
+Wrong:   User list cap applied only when search had query, showing full list otherwise
+Correct: Apply `slice(0, limit)` after filtering logic in every state
+Rule:    UI limits should be enforced consistently regardless of filter input.
+Layer:   frontend

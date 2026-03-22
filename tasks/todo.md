@@ -139,6 +139,11 @@ Notes
       - Version and Status become clearer and consistent with typography
       commit: `fix(frontend-content-builder): improve document bar hierarchy`
 
+- [x] T7: Refine docbar + preview controls
+      - Remove document subtitle, make back button vinho
+      - Preview toggle on the left with arrow icons and smaller size
+      commit: `fix(frontend-content-builder): refine docbar and preview controls`
+
 ## Acceptance tests (run after each task)
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Manual: Create doc -> reach editor via both paths (no-template vs Word template)

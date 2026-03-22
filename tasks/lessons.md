@@ -115,3 +115,10 @@ Wrong:   Docbar left-aligned title and missing right-side back button
 Correct: Tags on the left, title centered and larger, back button on the right
 Rule:    Docbar layout follows UI spec before marking T6 complete.
 Layer:   frontend
+
+## Lesson R — Preview toggle uses arrows, compact and vinho
+Date: 2026-03-21 | Trigger: correction
+Wrong:   Preview toggle labeled "Recolher" on the right and oversized
+Correct: Compact wine toggle on the left with arrow icons (right = recolher, left = expandir)
+Rule:    Preview controls follow the interaction spec and sizing.
+Layer:   frontend

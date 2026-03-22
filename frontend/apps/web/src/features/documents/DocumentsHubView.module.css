@@ -1,0 +1,243 @@
+.hub {
+  display: grid;
+  gap: 2rem;
+  padding: 2.5rem 2.8rem 3rem;
+  color: var(--text);
+}
+
+.state {
+  padding: 2rem;
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.hero {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.eyebrow {
+  font-size: 0.7rem;
+  letter-spacing: 0.25rem;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 600;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.kpiCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 1.1rem 1.2rem;
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 0.3rem;
+}
+
+.kpiCard span {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16rem;
+  color: var(--muted);
+}
+
+.kpiCard strong {
+  font-size: 1.4rem;
+  color: var(--text);
+}
+
+.kpiCard small {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.section {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.sectionHeader h2 {
+  margin: 0;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18rem;
+  color: var(--muted);
+}
+
+.linkButton {
+  border: 0;
+  background: transparent;
+  color: var(--vinho);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.areaGrid,
+.typeGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.areaCard,
+.typeCard,
+.emptyCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 0.8rem 1rem;
+  box-shadow: var(--shadow-soft);
+}
+
+.emptyCard {
+  color: var(--muted);
+}
+
+.areaButton,
+.typeButton {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+}
+
+.areaButton strong,
+.typeButton strong {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.areaButton small,
+.typeButton small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.areaHint {
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.typeBadge {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--vinho);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.recentList {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.recentRow {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.65rem 0.9rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.recentBadge {
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--vinho);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.recentMeta strong {
+  display: block;
+  font-size: 0.9rem;
+}
+
+.recentMeta small {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.recentStatus {
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+@media (max-width: 1100px) {
+  .kpiGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .areaGrid,
+  .typeGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .hub {
+    padding: 1.6rem 1.2rem 2rem;
+  }
+
+  .kpiGrid,
+  .areaGrid,
+  .typeGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .recentRow {
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+}

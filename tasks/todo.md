@@ -438,7 +438,7 @@ Notes
       - Definir chaves de navegacao para: `DocumentsHub` (overview), `DocumentsCollection` (list), `DocumentOverview` (detalhe)
       commit: `chore(frontend-docs): define documents hub navigation model`
 
-- [ ] T2: Tela 1 (Overview) "Todos documentos"
+- [x] T2: Tela 1 (Overview) "Todos documentos"
       - KPIs: total, vigentes, em revisao, atencao (placeholder se nao houver dado)
       - Grid de Areas (cards)
       - Grid de Tipos de documento (cards)

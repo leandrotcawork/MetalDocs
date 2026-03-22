@@ -1,4 +1,4 @@
-import { DocumentsWorkspace } from "../../components/DocumentsWorkspace";
+import { DocumentsHubView } from "./DocumentsHubView";
 import type {
   AccessPolicyItem,
   AttachmentItem,
@@ -35,14 +35,29 @@ type DocumentsWorkspaceViewProps = {
   policyScope: "document" | "document_type" | "area";
   policyResourceId: string;
   searchQuery: string;
+  currentUserId?: string;
   formatDate: (value?: string) => string;
   onRefreshWorkspace: () => void | Promise<void>;
-  onOpenDocument: (documentId: string) => void | Promise<void>;
+  onOpenDocument: (documentId: string, nextView?: "library" | "content-builder") => void | Promise<void>;
+  onOpenDocumentForHub: (documentId: string) => void | Promise<void>;
   onFileChange: (file: File | null) => void;
   onUploadAttachment: (event: React.FormEvent<HTMLFormElement>) => void | Promise<void>;
 };
 
 export function DocumentsWorkspaceView(props: DocumentsWorkspaceViewProps) {
-  return <DocumentsWorkspace {...props} />;
+  return (
+    <DocumentsHubView
+      view={props.view}
+      loadState={props.loadState}
+      currentUserId={props.currentUserId}
+      documents={props.documents}
+      documentProfiles={props.documentProfiles}
+      processAreas={props.processAreas}
+      selectedDocument={props.selectedDocument}
+      selectedProfileGovernance={props.selectedProfileGovernance}
+      formatDate={props.formatDate}
+      onOpenDocument={props.onOpenDocument}
+      onOpenDocumentForHub={props.onOpenDocumentForHub}
+    />
+  );
 }
-

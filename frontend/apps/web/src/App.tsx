@@ -113,6 +113,7 @@ function AppContent() {
     setDocumentEditLock,
     setSelectedFile,
     openDocument,
+    openDocumentForHub,
     refreshOperationalSignals,
     handleCreateDocument: handleCreateDocumentInternal,
     createDocumentFromDraft,
@@ -300,9 +301,11 @@ function AppContent() {
           policyScope={policyScope}
           policyResourceId={policyResourceId}
           searchQuery={searchQuery}
+          currentUserId={user?.userId}
           formatDate={formatDate}
           onRefreshWorkspace={refreshWorkspace}
           onOpenDocument={openDocument}
+          onOpenDocumentForHub={openDocumentForHub}
           onFileChange={setSelectedFile}
           onUploadAttachment={handleUploadAttachment}
         />

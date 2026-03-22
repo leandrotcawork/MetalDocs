@@ -461,7 +461,7 @@ Notes
       - Reutilizar componentes de badge/chip existentes quando possivel
       commit: `refactor(frontend-docs): unify collection item primitives`
 
-- [ ] T6: Tela 3 (Document overview)
+- [x] T6: Tela 3 (Document overview)
       - Card principal com header + status + meta (area/processo/versao/owner/proxima revisao)
       - Secoes: Classificacao, Governanca, Colaboracao, Diff (placeholders se nao houver dado)
       - Acoes: Abrir documento, Enviar para revisao, Duplicar, Historico de versoes (wire onde existir; desabilitar onde nao existir)

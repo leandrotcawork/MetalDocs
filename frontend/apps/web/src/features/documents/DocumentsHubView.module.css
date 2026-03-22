@@ -411,6 +411,163 @@
   color: var(--muted);
 }
 
+.detail {
+  display: grid;
+  gap: 1.4rem;
+  padding: 2.5rem 2.8rem 3rem;
+}
+
+.detailHero {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1.2rem;
+  padding: 1.4rem 1.6rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.detailHeroHeader {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+}
+
+.detailHeroHeader h2 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.detailHeroHeader small {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.detailHeroBadge {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  color: var(--vinho);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+.detailMeta {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 1rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.detailMeta strong {
+  display: block;
+  color: var(--text);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08rem;
+  margin-bottom: 0.2rem;
+}
+
+.detailActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.primaryButton {
+  border: 0;
+  background: var(--vinho);
+  color: #fff;
+  padding: 0.6rem 1rem;
+  border-radius: 0.8rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.ghostButton {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  padding: 0.6rem 1rem;
+  border-radius: 0.8rem;
+  cursor: pointer;
+}
+
+.ghostButton:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.detailCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 1rem 1.2rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.detailCard h3 {
+  margin: 0;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12rem;
+  color: var(--muted);
+}
+
+.detailRows {
+  display: grid;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.detailRows strong {
+  display: block;
+  color: var(--text);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08rem;
+  margin-bottom: 0.1rem;
+}
+
+.detailMuted {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+@media (max-width: 1100px) {
+  .detailMeta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .detailGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .detail {
+    padding: 1.6rem 1.2rem 2rem;
+  }
+
+  .detailHeroHeader {
+    grid-template-columns: 1fr;
+    justify-items: start;
+  }
+}
+
 @media (max-width: 1100px) {
   .cardGrid {
     grid-template-columns: 1fr;

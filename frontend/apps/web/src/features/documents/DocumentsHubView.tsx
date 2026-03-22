@@ -229,6 +229,97 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
     setDocumentsHubView("detail");
   };
 
+  if (documentsHubView === "detail") {
+    if (!props.selectedDocument) {
+      return <section className={styles.state}>Selecione um documento para ver os detalhes.</section>;
+    }
+
+    const doc = props.selectedDocument;
+    const profileLabel = props.documentProfiles.find((item) => item.code === doc.documentProfile)?.name ?? doc.documentProfile;
+    const areaLabel = doc.processArea
+      ? props.processAreas.find((item) => item.code === doc.processArea)?.name ?? doc.processArea
+      : "Sem area";
+    const governance = props.selectedProfileGovernance?.profileCode === doc.documentProfile
+      ? props.selectedProfileGovernance
+      : null;
+
+    return (
+      <section className={styles.detail}>
+        <div className={styles.breadcrumb}>
+          <button type="button" onClick={() => setDocumentsHubView("overview")}>Inicio</button>
+          <span>/</span>
+          <button type="button" onClick={() => setDocumentsHubView("collection")}>{collectionTitle}</button>
+          <span>/</span>
+          <span>{doc.title || "Documento"}</span>
+        </div>
+
+        <article className={styles.detailHero}>
+          <div className={styles.detailHeroHeader}>
+            <div className={styles.detailHeroBadge}>{doc.documentProfile.toUpperCase()}</div>
+            <div>
+              <h2>{doc.title || "Documento sem titulo"}</h2>
+              <small>{doc.documentId}</small>
+            </div>
+            <span className={styles.statusChip}>{statusLabel(doc.status)}</span>
+          </div>
+          <div className={styles.detailMeta}>
+            <span><strong>Area</strong>{areaLabel}</span>
+            <span><strong>Processo</strong>{doc.businessUnit || "-"}</span>
+            <span><strong>Versao</strong>{doc.profileSchemaVersion ?? "-"}</span>
+            <span><strong>Owner</strong>{doc.ownerId}</span>
+            <span><strong>Prox. revisao</strong>{doc.expiryAt ? props.formatDate(doc.expiryAt) : "-"}</span>
+          </div>
+          <div className={styles.detailActions}>
+            <button type="button" className={styles.primaryButton} onClick={() => props.onOpenDocument(doc.documentId, "content-builder")}>
+              Abrir documento
+            </button>
+            <button type="button" className={styles.ghostButton} disabled>
+              Enviar para revisao
+            </button>
+            <button type="button" className={styles.ghostButton} disabled>
+              Duplicar
+            </button>
+            <button type="button" className={styles.ghostButton} disabled>
+              Historico de versoes
+            </button>
+          </div>
+        </article>
+
+        <div className={styles.detailGrid}>
+          <article className={styles.detailCard}>
+            <h3>Classificacao</h3>
+            <div className={styles.detailRows}>
+              <span><strong>Familia</strong>{doc.documentFamily}</span>
+              <span><strong>Profile</strong>{profileLabel}</span>
+              <span><strong>Departamento</strong>{doc.department}</span>
+              <span><strong>Subject</strong>{doc.subject ?? "-"}</span>
+            </div>
+          </article>
+          <article className={styles.detailCard}>
+            <h3>Governanca</h3>
+            <div className={styles.detailRows}>
+              <span><strong>Workflow</strong>{governance?.workflowProfile ?? "-"}</span>
+              <span><strong>Revisao</strong>{governance ? `${governance.reviewIntervalDays} dias` : "-"}</span>
+              <span><strong>Aprovacao</strong>{governance ? (governance.approvalRequired ? "Obrigatoria" : "Opcional") : "-"}</span>
+              <span><strong>Validade</strong>{governance ? `${governance.validityDays} dias` : "-"}</span>
+            </div>
+          </article>
+          <article className={styles.detailCard}>
+            <h3>Colaboracao</h3>
+            <div className={styles.detailRows}>
+              <span><strong>Lock de edicao</strong>Sem lock ativo</span>
+              <span><strong>Ativo</strong>{props.formatDate(new Date().toISOString())}</span>
+            </div>
+          </article>
+          <article className={styles.detailCard}>
+            <h3>Diff da versao atual</h3>
+            <p className={styles.detailMuted}>Nenhuma alteracao registrada nesta versao.</p>
+          </article>
+        </div>
+      </section>
+    );
+  }
+
   if (documentsHubView === "collection") {
     return (
       <section className={styles.collection}>

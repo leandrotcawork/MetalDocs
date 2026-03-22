@@ -2197,7 +2197,7 @@ td small {
 
 .content-builder-preview.is-collapsed {
   width: 44px;
-  align-items: flex-start;
+  align-items: center;
   justify-content: flex-start;
   padding: 12px 0;
 }

@@ -14,3 +14,6 @@
 # Decision: <what changed and why>
 # Follow-up: <optional>
 
+Date: 2026-03-22
+Context: Admin Center layout
+Decision: Removed padding from `AdminCenterView` grid wrapper (`.grid`) to match desired spacing from parent shell/card.

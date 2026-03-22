@@ -156,6 +156,11 @@ Notes
       - Replace library navigation with create flow
       commit: `fix(frontend-content-builder): route back to create`
 
+- [x] T11: Defer document creation until editor PDF
+      - Back restores form fields from the edited document
+      - "Ir para editor" opens draft; create on "Gerar PDF"
+      commit: `fix(frontend-content-builder): defer create to editor`
+
 ## Acceptance tests (run after each task)
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Manual: Create doc -> reach editor via both paths (no-template vs Word template)

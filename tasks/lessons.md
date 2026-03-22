@@ -143,3 +143,10 @@ Wrong:   Back from content builder navigates to library
 Correct: Back from content builder navigates to create view
 Rule:    Back navigation must return to the originating create flow.
 Layer:   frontend
+
+## Lesson V — Document creation deferred until editor PDF
+Date: 2026-03-21 | Trigger: correction
+Wrong:   "Ir para editor" creates the document immediately
+Correct: Create only when the user generates PDF in the editor
+Rule:    Draft editor must not create documents prematurely.
+Layer:   frontend

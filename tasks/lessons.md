@@ -220,3 +220,10 @@ Wrong:   Online and activity rows used different effective heights, making cards
 Correct: Use one shared `min-height` for list rows and center empty-state row content
 Rule:    Sibling cards in the same grid row should share row metrics to keep visual balance.
 Layer:   frontend
+
+## Lesson AG - Empty row can be vertically centered and left aligned
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Empty activity row centered both axes, drifting away from left margin rhythm
+Correct: Keep `align-items: center` and use `justify-content: flex-start` for left start alignment
+Rule:    In list panels, empty-state content should follow the same left edge rhythm as filled rows.
+Layer:   frontend

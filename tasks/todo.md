@@ -270,6 +270,10 @@ Notes
       - Equalizar altura visual do conteudo dos dois cards na mesma linha
       commit: `fix(frontend-admin): align activity body height with users`
 
+- [x] T12: Ajustar empty state para inicio a esquerda
+      - Manter centralizacao vertical e alinhar inicio horizontal na margem esquerda
+      commit: `fix(frontend-admin): left-align activity empty row`
+
 ## Acceptance tests
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards compactos, hierarquia clara e sem “cards gigantes”

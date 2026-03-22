@@ -274,7 +274,7 @@
 }
 
 .activityEmptyItem {
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
   gap: 0.6rem;
 }

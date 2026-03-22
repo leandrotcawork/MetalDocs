@@ -340,6 +340,10 @@ Notes
       - Base de usuarios passa a rolar apenas na lista, sem ditar a altura do card
       commit: `fix(frontend-admin): constrain base list height to edit card`
 
+- [x] T14: Vincular altura da Base ao card de Edicao
+      - Medir `Editar usuario` em runtime e aplicar a mesma altura no card Base com scroll interno
+      commit: `fix(frontend-admin): sync base card height with edit card`
+
 ## Acceptance tests
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards de criacao/base/edicao sem alongamento e no padrao da referencia

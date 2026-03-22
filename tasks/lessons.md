@@ -304,3 +304,10 @@ Wrong:   Letting the Base list grow freely, making the whole row height explode
 Correct: Use `grid-template-rows: auto auto minmax(0, 1fr)` on the Base card and scroll the list area
 Rule:    When a sibling card should set row height, constrain list overflow inside its own card layout.
 Layer:   frontend
+
+## Lesson AS - Dynamic sibling height may require runtime measurement
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Expecting CSS grid alone to keep Base exactly equal to Editar while Base has much more content
+Correct: Observe the Editar card height and apply it directly to the Base card, then scroll only the list region
+Rule:    When one panel must exactly mirror another panel's auto height, use runtime measurement instead of CSS guesswork.
+Layer:   frontend

@@ -590,26 +590,28 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
             Ver todos →
           </button>
         </div>
-        <div className={styles.recentList}>
-          {recentItems.length === 0 ? (
-            <div className={styles.emptyCard}>Nenhum documento recente.</div>
-          ) : (
-            recentItems.map((item) => (
-              <button
-                key={item.documentId}
-                type="button"
-                className={styles.recentRow}
-                onClick={() => handleRecentOpen(item)}
-              >
-                <span className={styles.recentBadge}>{item.documentProfile.toUpperCase()}</span>
-                <div className={styles.recentMeta}>
-                  <strong>{item.title || "Documento sem titulo"}</strong>
-                  <small>{item.processArea ?? "Sem area"} · {props.formatDate(item.openedAt ?? item.createdAt)}</small>
-                </div>
-                <span className={styles.recentStatus}>{statusLabel(item.status)}</span>
-              </button>
-            ))
-          )}
+        <div className={styles.recentPanel}>
+          <div className={styles.recentList}>
+            {recentItems.length === 0 ? (
+              <div className={styles.emptyCard}>Nenhum documento recente.</div>
+            ) : (
+              recentItems.map((item) => (
+                <button
+                  key={item.documentId}
+                  type="button"
+                  className={styles.recentRow}
+                  onClick={() => handleRecentOpen(item)}
+                >
+                  <span className={styles.recentBadge}>{item.documentProfile.toUpperCase()}</span>
+                  <div className={styles.recentMeta}>
+                    <strong>{item.title || "Documento sem titulo"}</strong>
+                    <small>{item.processArea ?? "Sem area"} · {props.formatDate(item.openedAt ?? item.createdAt)}</small>
+                  </div>
+                  <span className={styles.recentStatus}>{statusLabel(item.status)}</span>
+                </button>
+              ))
+            )}
+          </div>
         </div>
       </section>
     </section>

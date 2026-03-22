@@ -53,3 +53,7 @@ Decision: Centered profile title text vertically inside the fixed title slot so 
 Date: 2026-03-22
 Context: Documents Hub overview (Areas)
 Decision: Applied the same fixed title slot and vertical centering model used in type cards to keep one-line and two-line area names visually aligned.
+
+Date: 2026-03-22
+Context: Documents Hub overview (Abertos recentemente)
+Decision: Wrapped recent rows in a single container card for clearer grouping and cleaner presentation.

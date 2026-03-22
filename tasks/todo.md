@@ -368,6 +368,10 @@ Notes
       - Remover o card "Atualizando base de usuarios" durante atualizacoes
       commit: `fix(frontend-admin): hide managed users loading panel`
 
+- [x] T21: Fixar altura dos cards de Online e Auditoria com scroll
+      - Definir altura fixa para ambos e rolagem interna das listas, mantendo itens ancorados no topo
+      commit: `fix(frontend-admin): fix panel height and scroll for online and activity`
+
 ## Acceptance tests
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards de criacao/base/edicao sem alongamento e no padrao da referencia

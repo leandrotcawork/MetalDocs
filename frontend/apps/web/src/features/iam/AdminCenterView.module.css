@@ -153,7 +153,14 @@
   padding: 0.9rem;
   box-shadow: var(--shadow);
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 0.6rem;
+  min-height: 0;
+}
+
+.onlinePanel,
+.activityPanel {
+  height: 21rem;
 }
 
 .panelHeader {
@@ -252,6 +259,10 @@
   padding: 0;
   display: grid;
   gap: 0;
+  min-height: 0;
+  align-content: start;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .panelListItem {
@@ -275,7 +286,7 @@
 
 .activityEmptyItem {
   justify-content: flex-start;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.6rem;
 }
 
@@ -442,5 +453,10 @@
   .summary,
   .grid {
     grid-template-columns: 1fr;
+  }
+
+  .onlinePanel,
+  .activityPanel {
+    height: auto;
   }
 }

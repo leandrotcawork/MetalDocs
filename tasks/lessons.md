@@ -360,3 +360,10 @@ Wrong:   Showing the workspace loading placeholder over the management form duri
 Correct: Skip the loading placeholder while keeping empty and error states visible
 Rule:    Inline updates should not replace active forms with blocking placeholders.
 Layer:   frontend
+
+## Lesson BA - Peer dashboard panels need fixed list regions
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Letting Online and Auditoria cards grow with item count, causing uneven layout and drifting content
+Correct: Give both panels fixed heights and make only their list regions scrollable
+Rule:    In side-by-side dashboard cards, growth should happen inside list containers, not at panel level.
+Layer:   frontend

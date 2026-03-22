@@ -7,7 +7,7 @@
 .pageHeader {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  padding: 2rem 3.4rem;
+  padding: 1.4rem 3.4rem;
 }
 
 .hub {
@@ -742,7 +742,7 @@
 
 @media (max-width: 720px) {
   .pageHeader {
-    padding: 1.6rem 1.4rem;
+    padding: 1.1rem 1.4rem;
   }
 
   .hub {

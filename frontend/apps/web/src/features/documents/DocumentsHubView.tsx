@@ -58,6 +58,13 @@ function normalizeAreaCode(value?: string): string {
   return (value ?? "sem-area").trim().toLowerCase();
 }
 
+function profileBadgeText(profile: DocumentProfileItem): string {
+  const source = (profile.alias || profile.code || profile.name).trim().toUpperCase();
+  const letters = source.replace(/[^A-Z0-9]/g, "");
+  if (letters.length >= 2) return letters.slice(0, 2);
+  return source.slice(0, 2);
+}
+
 function statusLabel(status: string): string {
   switch (status) {
     case "IN_REVIEW":
@@ -163,7 +170,7 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
       .map((profile) => ({
         code: profile.code,
         label: profile.name,
-        alias: profile.alias ?? profile.code.toUpperCase(),
+        badge: profileBadgeText(profile),
         count: profileCounts[profile.code] ?? 0,
         color: areaColors[props.documentProfiles.findIndex((item) => item.code === profile.code) % areaColors.length],
       }))
@@ -534,7 +541,7 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
                 style={{ ["--type-color" as string]: profile.color } as React.CSSProperties}
               >
                 <span className={styles.typeStripe} />
-                <span className={styles.typeBadge}>{profile.alias}</span>
+                <span className={styles.typeBadge}>{profile.badge}</span>
                 <div className={styles.typeMeta}>
                   <strong>{profile.label}</strong>
                   <small>{profile.count} documentos</small>

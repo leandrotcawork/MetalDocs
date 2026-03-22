@@ -33,3 +33,7 @@ Decision: Applied the same stripe + progress pattern to document type cards.
 Date: 2026-03-22
 Context: Documents Hub overview (Areas)
 Decision: Show all areas regardless of count, align card layout with left stripe + compact progress bar, and surface area descriptions alongside the meta.
+
+Date: 2026-03-22
+Context: Documents Hub overview (Tipos de documento)
+Decision: Use dynamic profile initials (alias/code) for the badge, not full names, to keep cards compact as new profiles are added.

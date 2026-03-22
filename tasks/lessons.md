@@ -150,3 +150,10 @@ Wrong:   "Ir para editor" creates the document immediately
 Correct: Create only when the user generates PDF in the editor
 Rule:    Draft editor must not create documents prematurely.
 Layer:   frontend
+
+## Lesson W — Draft editor must still load schema
+Date: 2026-03-21 | Trigger: correction
+Wrong:   Editor without documentId skips schema and renders no sections
+Correct: Editor loads profile schema for draft documents
+Rule:    Draft mode must show sections and schema.
+Layer:   frontend

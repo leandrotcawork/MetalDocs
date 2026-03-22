@@ -161,6 +161,10 @@ Notes
       - "Ir para editor" opens draft; create on "Gerar PDF"
       commit: `fix(frontend-content-builder): defer create to editor`
 
+- [x] T12: Load schema in editor for draft documents
+      - Draft editor loads profile schema even before documentId exists
+      commit: `fix(frontend-content-builder): load draft schema`
+
 ## Acceptance tests (run after each task)
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Manual: Create doc -> reach editor via both paths (no-template vs Word template)

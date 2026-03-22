@@ -190,7 +190,7 @@ Notes
       - Permission registrada em `permissions.go`
       commit: `feat(iam): add admin dashboard overview`
 
-- [ ] T3: Store de admin dashboard
+- [x] T3: Store de admin dashboard
       - `frontend/apps/web/src/store/admin.store.ts` com estado de online/atividade
       commit: `feat(frontend-admin): add admin dashboard store`
 

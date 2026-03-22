@@ -83,6 +83,9 @@ func newPermissionResolver() iamdelivery.PermissionResolver {
 		if method == http.MethodPost && strings.HasPrefix(path, "/api/v1/iam/users/") && strings.HasSuffix(path, "/unlock") {
 			return iamdomain.PermIAMManageRoles, true
 		}
+		if method == http.MethodGet && path == "/api/v1/iam/admin/overview" {
+			return iamdomain.PermIAMManageRoles, true
+		}
 
 		return "", false
 	}

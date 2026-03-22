@@ -212,6 +212,43 @@ ORDER BY i.created_at DESC
 	return items, nil
 }
 
+func (r *Repository) ListOnlineUsers(ctx context.Context, activeSince time.Time) ([]authdomain.OnlineUser, error) {
+	const q = `
+SELECT s.user_id, i.username, i.display_name, MAX(s.last_seen_at)
+FROM metaldocs.auth_sessions s
+JOIN metaldocs.auth_identities i ON i.user_id = s.user_id
+WHERE s.revoked_at IS NULL
+  AND s.expires_at > NOW()
+  AND s.last_seen_at >= $1
+  AND i.is_active = true
+GROUP BY s.user_id, i.username, i.display_name
+ORDER BY MAX(s.last_seen_at) DESC
+`
+	rows, err := r.db.QueryContext(ctx, q, activeSince.UTC())
+	if err != nil {
+		return nil, fmt.Errorf("list online users: %w", err)
+	}
+	defer rows.Close()
+
+	items := make([]authdomain.OnlineUser, 0)
+	for rows.Next() {
+		var item authdomain.OnlineUser
+		if err := rows.Scan(
+			&item.UserID,
+			&item.Username,
+			&item.DisplayName,
+			&item.LastSeenAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan online user: %w", err)
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate online users: %w", err)
+	}
+	return items, nil
+}
+
 func (r *Repository) UpdateUser(ctx context.Context, params authdomain.UpdateUserParams) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {

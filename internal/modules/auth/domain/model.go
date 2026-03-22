@@ -34,6 +34,13 @@ type Session struct {
 	LastSeenAt time.Time
 }
 
+type OnlineUser struct {
+	UserID     string
+	Username   string
+	DisplayName string
+	LastSeenAt time.Time
+}
+
 type ManagedUser struct {
 	UserID              string
 	Username            string

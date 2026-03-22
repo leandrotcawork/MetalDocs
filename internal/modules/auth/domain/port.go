@@ -18,5 +18,6 @@ type Repository interface {
 	CreateUser(ctx context.Context, params CreateUserParams) error
 	ListUsers(ctx context.Context) ([]ManagedUser, error)
 	UpdateUser(ctx context.Context, params UpdateUserParams) error
+	ListOnlineUsers(ctx context.Context, activeSince time.Time) ([]OnlineUser, error)
 	BootstrapAdmin(ctx context.Context, params BootstrapAdminParams) (bool, error)
 }

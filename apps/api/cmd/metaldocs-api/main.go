@@ -93,7 +93,8 @@ func main() {
 	})
 
 	iamAdminService := iamapp.NewAdminService(deps.RoleAdminRepo, cachedProvider)
-	iamAdminHandler := iamdelivery.NewAdminHandler(iamAdminService, authService, deps.AuditWriter)
+	iamAdminHandler := iamdelivery.NewAdminHandler(iamAdminService, authService, deps.AuditWriter).
+		WithAuditReader(deps.AuditReader)
 	httpObs := observability.NewHTTPObservability(deps.StatusProvider)
 	rateLimiter := security.NewRateLimiter(rateCfg)
 	cors := security.NewCORS(corsCfg)

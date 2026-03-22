@@ -262,6 +262,13 @@ func (s *Service) ListUsers(ctx context.Context) ([]authdomain.ManagedUser, erro
 	return items, nil
 }
 
+func (s *Service) ListOnlineUsers(ctx context.Context, activeSince time.Time) ([]authdomain.OnlineUser, error) {
+	if s == nil {
+		return nil, nil
+	}
+	return s.repo.ListOnlineUsers(ctx, activeSince)
+}
+
 func (s *Service) CreateUser(ctx context.Context, userID, username, email, displayName, password string, roles []iamdomain.Role, createdBy string) error {
 	userID = strings.TrimSpace(userID)
 	username = strings.TrimSpace(username)

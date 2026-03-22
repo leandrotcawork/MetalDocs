@@ -18,6 +18,7 @@ import (
 
 type UserAdminService interface {
 	ListUsers(ctx context.Context) ([]authdomain.ManagedUser, error)
+	ListOnlineUsers(ctx context.Context, activeSince time.Time) ([]authdomain.OnlineUser, error)
 	CreateUser(ctx context.Context, userID, username, email, displayName, password string, roles []iamdomain.Role, createdBy string) error
 	UpdateUser(ctx context.Context, params authdomain.UpdateUserParams, newPassword string) error
 	AdminResetPassword(ctx context.Context, userID, newPassword string) error
@@ -28,6 +29,7 @@ type AdminHandler struct {
 	service     *iamapp.AdminService
 	authService UserAdminService
 	audit       auditdomain.Writer
+	auditReader auditdomain.Reader
 }
 
 type UpsertUserRoleRequest struct {
@@ -71,9 +73,15 @@ func NewAdminHandler(service *iamapp.AdminService, authService UserAdminService,
 	return &AdminHandler{service: service, authService: authService, audit: writer}
 }
 
+func (h *AdminHandler) WithAuditReader(reader auditdomain.Reader) *AdminHandler {
+	h.auditReader = reader
+	return h
+}
+
 func (h *AdminHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/iam/users", h.handleUsers)
 	mux.HandleFunc("/api/v1/iam/users/", h.handleUserRoute)
+	mux.HandleFunc("/api/v1/iam/admin/overview", h.handleAdminOverview)
 }
 
 func (h *AdminHandler) handleUsers(w http.ResponseWriter, r *http.Request) {
@@ -87,6 +95,92 @@ func (h *AdminHandler) handleUsers(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h *AdminHandler) handleAdminOverview(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	traceID := requestTraceID(r)
+	if h.authService == nil {
+		writeAPIError(w, http.StatusNotImplemented, "INTERNAL_ERROR", "User management service is not configured", traceID)
+		return
+	}
+	activeSince := time.Now().UTC().Add(-10 * time.Minute)
+	users, err := h.authService.ListUsers(r.Context())
+	if err != nil {
+		log.Printf("iam admin: list users failed: %v", err)
+		writeAPIError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to list users", traceID)
+		return
+	}
+	onlineUsers, err := h.authService.ListOnlineUsers(r.Context(), activeSince)
+	if err != nil {
+		log.Printf("iam admin: list online users failed: %v", err)
+		writeAPIError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to list online users", traceID)
+		return
+	}
+	recentEvents := []auditdomain.Event{}
+	if h.auditReader != nil {
+		events, err := h.auditReader.ListEvents(r.Context(), auditdomain.ListEventsQuery{Limit: 25})
+		if err != nil {
+			log.Printf("iam admin: list audit events failed: %v", err)
+			writeAPIError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to list audit events", traceID)
+			return
+		}
+		recentEvents = events
+	}
+	userOut := make([]map[string]any, 0, len(users))
+	for _, item := range users {
+		roles := make([]string, 0, len(item.Roles))
+		for _, role := range item.Roles {
+			roles = append(roles, string(role))
+		}
+		userOut = append(userOut, map[string]any{
+			"userId":              item.UserID,
+			"username":            item.Username,
+			"email":               item.Email,
+			"displayName":         item.DisplayName,
+			"isActive":            item.IsActive,
+			"mustChangePassword":  item.MustChangePassword,
+			"failedLoginAttempts": item.FailedLoginAttempts,
+			"roles":               roles,
+			"lastLoginAt":         formatOptionalTime(item.LastLoginAt),
+			"lockedUntil":         formatOptionalTime(item.LockedUntil),
+			"createdAt":           item.CreatedAt.UTC().Format(time.RFC3339),
+			"updatedAt":           item.UpdatedAt.UTC().Format(time.RFC3339),
+		})
+	}
+	onlineOut := make([]map[string]any, 0, len(onlineUsers))
+	for _, item := range onlineUsers {
+		onlineOut = append(onlineOut, map[string]any{
+			"userId":     item.UserID,
+			"username":   item.Username,
+			"displayName": item.DisplayName,
+			"lastSeenAt": item.LastSeenAt.UTC().Format(time.RFC3339),
+		})
+	}
+	eventOut := make([]map[string]any, 0, len(recentEvents))
+	for _, item := range recentEvents {
+		payload := map[string]any{}
+		if strings.TrimSpace(item.PayloadJSON) != "" {
+			_ = json.Unmarshal([]byte(item.PayloadJSON), &payload)
+		}
+		eventOut = append(eventOut, map[string]any{
+			"id":           item.ID,
+			"occurredAt":   item.OccurredAt.UTC().Format(time.RFC3339),
+			"actorId":      item.ActorID,
+			"action":       item.Action,
+			"resourceType": item.ResourceType,
+			"resourceId":   item.ResourceID,
+			"payload":      payload,
+			"traceId":      item.TraceID,
+		})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"users":            userOut,
+		"onlineUsers":      onlineOut,
+		"recentActivities": eventOut,
+	})
+}
 func (h *AdminHandler) handleUserRoute(w http.ResponseWriter, r *http.Request) {
 	traceID := requestTraceID(r)
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/iam/users/")

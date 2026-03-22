@@ -202,6 +202,44 @@ func (r *Repository) ListUsers(_ context.Context) ([]authdomain.ManagedUser, err
 	return out, nil
 }
 
+func (r *Repository) ListOnlineUsers(_ context.Context, activeSince time.Time) ([]authdomain.OnlineUser, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	cutoff := activeSince.UTC()
+	latestByUser := map[string]time.Time{}
+	for _, session := range r.sessions {
+		if session.RevokedAt != nil {
+			continue
+		}
+		if session.ExpiresAt.Before(time.Now().UTC()) {
+			continue
+		}
+		if session.LastSeenAt.Before(cutoff) {
+			continue
+		}
+		current, ok := latestByUser[session.UserID]
+		if !ok || session.LastSeenAt.After(current) {
+			latestByUser[session.UserID] = session.LastSeenAt
+		}
+	}
+
+	out := make([]authdomain.OnlineUser, 0, len(latestByUser))
+	for userID, lastSeenAt := range latestByUser {
+		identity, ok := r.users[userID]
+		if !ok || !identity.IsActive {
+			continue
+		}
+		out = append(out, authdomain.OnlineUser{
+			UserID:     identity.UserID,
+			Username:   identity.Username,
+			DisplayName: identity.DisplayName,
+			LastSeenAt: lastSeenAt,
+		})
+	}
+	return out, nil
+}
+
 func (r *Repository) UpdateUser(_ context.Context, params authdomain.UpdateUserParams) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

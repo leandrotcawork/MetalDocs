@@ -123,6 +123,21 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
     setRecentDocuments,
   } = useDocumentsStore();
 
+  const headerTitle = scope === "mine" ? "Meus documentos" : scope === "recent" ? "Recentes" : "Todos documentos";
+  const headerShell = (
+    <header className={styles.pageHeader}>
+      <div className={styles.hero}>
+        <h1 className={styles.title}>{headerTitle}</h1>
+        <p className={styles.subtitle}>
+          Acervo organizado por areas, tipos e status. Navegue pelos documentos mais relevantes.
+        </p>
+        <div className={styles.headerSearch}>
+          <SearchBar value={props.searchQuery} onChange={props.onSearchQueryChange} />
+        </div>
+      </div>
+    </header>
+  );
+
   if (props.loadState === "loading") {
     return (
       <div className={styles.page}>
@@ -253,20 +268,6 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
     return expiry - Date.now() <= thirtyDays && expiry > Date.now();
   }).length;
 
-  const headerTitle = scope === "mine" ? "Meus documentos" : scope === "recent" ? "Recentes" : "Todos documentos";
-  const headerShell = (
-    <header className={styles.pageHeader}>
-      <div className={styles.hero}>
-        <h1 className={styles.title}>{headerTitle}</h1>
-        <p className={styles.subtitle}>
-          Acervo organizado por areas, tipos e status. Navegue pelos documentos mais relevantes.
-        </p>
-        <div className={styles.headerSearch}>
-          <SearchBar value={props.searchQuery} onChange={props.onSearchQueryChange} />
-        </div>
-      </div>
-    </header>
-  );
 
   const normalizedQuery = props.searchQuery.trim().toLowerCase();
   const baseFilteredDocuments = useMemo(() => {

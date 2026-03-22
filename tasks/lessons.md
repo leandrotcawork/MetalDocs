@@ -262,3 +262,10 @@ Wrong:   Grid/card content overflowed when zooming out because min-width and wid
 Correct: Add `min-width: 0` and `width: 100%` guards on cards and spotlight dropdowns
 Rule:    Ensure grid children can shrink without overflow by enforcing min-width and width constraints.
 Layer:   frontend
+
+## Lesson AM - Set shared card height from a single source
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Card heights drifted because the tallest column dictated the row
+Correct: Use a shared CSS variable for card height so base/edit/create stay aligned
+Rule:    For sibling cards that must match height, set a single shared height token.
+Layer:   frontend

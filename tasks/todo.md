@@ -312,6 +312,10 @@ Notes
       - Departamento + Area na mesma linha; Perfil abaixo; reduzir gap do stack
       commit: `fix(frontend-admin): adjust edit fields layout and actions spacing`
 
+- [x] T7: Ajustar altura fixa dos 3 cards
+      - Base fica scrollavel e altura segue o editar_usuario sem estourar
+      commit: `fix(frontend-admin): set user card fixed height`
+
 ## Acceptance tests
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards de criacao/base/edicao sem alongamento e no padrao da referencia

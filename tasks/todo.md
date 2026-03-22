@@ -348,6 +348,10 @@ Notes
       - Eliminar `height: 100%` global para o Editar ditar sua propria altura e a Base espelhar essa medida
       commit: `fix(frontend-admin): remove residual card stretch in user admin`
 
+- [x] T16: Sincronizar Criar e corrigir canto da scrollbar da Base
+      - Aplicar a altura do Editar tambem no card Criar e clipar a Base para respeitar a curvatura do card
+      commit: `fix(frontend-admin): sync create card height and clip base scrollbar corner`
+
 ## Acceptance tests
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards de criacao/base/edicao sem alongamento e no padrao da referencia

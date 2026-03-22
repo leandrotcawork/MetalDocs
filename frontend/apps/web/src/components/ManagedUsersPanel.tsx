@@ -97,7 +97,7 @@ export function ManagedUsersSection(props: ManagedUsersPanelProps) {
   const [processArea, setProcessArea] = useState("Administrativo");
   const [editDepartment, setEditDepartment] = useState("Operacoes");
   const [editProcessArea, setEditProcessArea] = useState("Administrativo");
-  const [baseCardHeight, setBaseCardHeight] = useState<number | null>(null);
+  const [syncedCardHeight, setSyncedCardHeight] = useState<number | null>(null);
   const editCardRef = useRef<HTMLElement | null>(null);
   const selectedRole = props.managedUserForm.roles[0] ?? "viewer";
 
@@ -142,7 +142,7 @@ export function ManagedUsersSection(props: ManagedUsersPanelProps) {
     if (!editCard) return;
 
     const updateHeight = () => {
-      setBaseCardHeight(Math.ceil(editCard.getBoundingClientRect().height));
+      setSyncedCardHeight(Math.ceil(editCard.getBoundingClientRect().height));
     };
 
     updateHeight();
@@ -171,7 +171,10 @@ export function ManagedUsersSection(props: ManagedUsersPanelProps) {
       <div className={styles.sectionTitle}>Gestao de Usuarios</div>
 
       <section className={styles.grid}>
-        <article className={`${styles.card} ${styles.createCard}`}>
+        <article
+          className={`${styles.card} ${styles.createCard}`}
+          style={syncedCardHeight ? { height: `${syncedCardHeight}px` } : undefined}
+        >
           <header className={styles.cardHeader}>
             <h3 className={styles.cardTitle}>Criar usuario</h3>
           </header>
@@ -237,7 +240,7 @@ export function ManagedUsersSection(props: ManagedUsersPanelProps) {
 
         <article
           className={`${styles.card} ${styles.baseCard}`}
-          style={baseCardHeight ? { height: `${baseCardHeight}px` } : undefined}
+          style={syncedCardHeight ? { height: `${syncedCardHeight}px` } : undefined}
         >
           <header className={styles.cardHeader}>
             <h3 className={styles.cardTitle}>Base de usuarios</h3>

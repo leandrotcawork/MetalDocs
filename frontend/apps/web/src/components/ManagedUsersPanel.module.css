@@ -121,12 +121,17 @@
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
   min-height: 0;
+  overflow: hidden;
 }
 
 .baseCard .userList {
   min-height: 0;
   overflow-y: auto;
   scrollbar-gutter: stable;
+}
+
+.baseCard .userList::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 .userRow {

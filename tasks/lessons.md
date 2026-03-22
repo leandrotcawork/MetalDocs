@@ -318,3 +318,17 @@ Wrong:   Measuring one card while a common `.card { height: 100%; }` still force
 Correct: Keep common cards at `height: auto` when one sibling's intrinsic height is the source of truth
 Rule:    Runtime height sync only works if generic stretch rules are removed from the measured elements.
 Layer:   frontend
+
+## Lesson AU - Shared measured height should cover all sibling cards
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Syncing only `Base de usuarios` to `Editar usuario` and leaving `Criar usuario` unsynchronized
+Correct: Reuse the measured edit height across every sibling card that must visually match
+Rule:    When one card defines the canonical height of a row, every peer card in that row should consume the same measured value.
+Layer:   frontend
+
+## Lesson AV - Scroll containers inside rounded cards must be clipped by the parent
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Letting the list scrollbar render outside the rounded clipping area, creating a visual step in the bottom corner
+Correct: Apply `overflow: hidden` on the rounded card and keep the inner list scrollable
+Rule:    Rounded cards with internal scroll regions must clip overflow at the card boundary to preserve corner curvature.
+Layer:   frontend

@@ -157,20 +157,29 @@ export function AdminCenterView() {
         </section>
 
         <section className={styles.grid}>
-          <div className={styles.panel}>
+          <div className={`${styles.panel} ${styles.onlinePanel}`}>
             <div className={styles.panelHeader}>
               <div>
                 <p className={styles.kicker}>Presenca</p>
                 <h2 className={styles.panelTitle}>Usuarios online</h2>
               </div>
-              <span className={styles.panelBadge}>{onlineCount} ativos</span>
+              <div className={styles.onlineHeaderActions}>
+                <span className={styles.panelBadge}>{onlineCount} online</span>
+                <button className={styles.onlineLink} type="button">
+                  Ver todos →
+                </button>
+              </div>
             </div>
             {onlineCount === 0 ? (
               <p className={styles.empty}>Nenhum usuario online agora.</p>
             ) : (
-              <ul className={styles.list}>
+              <ul className={styles.onlineList}>
                 {adminCenter.onlineUsers.map((item, index) => (
-                  <li key={item.userId} className={styles.listItem} style={{ animationDelay: `${index * 0.06}s` }}>
+                  <li
+                    key={item.userId}
+                    className={`${styles.listItem} ${styles.onlineListItem}`}
+                    style={{ animationDelay: `${index * 0.06}s` }}
+                  >
                     <span className={styles.avatar}>{toInitials(item.displayName)}</span>
                     <div className={styles.listMeta}>
                       <strong className={styles.listTitle}>{item.displayName}</strong>

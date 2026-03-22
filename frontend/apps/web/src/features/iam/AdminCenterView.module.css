@@ -163,6 +163,27 @@
   gap: 1rem;
 }
 
+.onlinePanel .panelHeader {
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.onlineHeaderActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.onlineLink {
+  border: 0;
+  background: transparent;
+  color: var(--vinho);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
 .kicker {
   font-size: 0.65rem;
   text-transform: uppercase;
@@ -205,6 +226,26 @@
   background: var(--surface-2);
   border: 1px solid var(--border);
   animation: fadeInUp var(--duration-enter) var(--ease-out) both;
+}
+
+.onlineList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+}
+
+.onlineListItem {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.onlineListItem:last-child {
+  border-bottom: 0;
 }
 
 .listItem strong {
@@ -260,6 +301,18 @@
   background: var(--success);
   border: 2px solid var(--surface);
   box-shadow: 0 0 0 1px var(--success-bg);
+  position: relative;
+}
+
+.onlinePip::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 999px;
+  border: 1px solid var(--success);
+  opacity: 0.5;
+  animation: pulse 1.6s ease-in-out infinite;
+}
 }
 
 .activityDot {
@@ -326,6 +379,21 @@
   color: var(--muted);
   font-size: 0.75rem;
   margin: 0;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.6;
+  }
+  70% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
 }
 
 @media (max-width: 980px) {

@@ -242,6 +242,10 @@ Notes
       - Aplicar barra inferior colorida conforme referencia HTML
       commit: `fix(frontend-admin): add summary card accent bars`
 
+- [x] T5: Ajustar card de usuarios online conforme referencia
+      - Separadores, "Ver todos", e indicador online animado
+      commit: `fix(frontend-admin): align online users card to reference`
+
 ## Acceptance tests
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards compactos, hierarquia clara e sem “cards gigantes”

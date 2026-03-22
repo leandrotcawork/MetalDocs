@@ -159,7 +159,7 @@ export function AdminCenterView() {
         <section className={styles.grid}>
           <div className={`${styles.panel} ${styles.onlinePanel}`}>
             <div className={`${styles.panelHeader} ${styles.panelHeaderRow}`}>
-              <div>
+              <div className={styles.panelHeaderText}>
                 <p className={styles.kicker}>Presenca</p>
                 <h2 className={styles.panelTitle}>Usuarios online</h2>
               </div>
@@ -195,7 +195,7 @@ export function AdminCenterView() {
 
           <div className={`${styles.panel} ${styles.activityPanel}`}>
             <div className={`${styles.panelHeader} ${styles.panelHeaderRow}`}>
-              <div>
+              <div className={styles.panelHeaderText}>
                 <p className={styles.kicker}>Auditoria</p>
                 <h2 className={styles.panelTitle}>Ultimas atividades</h2>
               </div>

@@ -262,6 +262,10 @@ Notes
       - Mesmo wrapper de acoes e mesma altura minima para alinhar a divisoria
       commit: `fix(frontend-admin): align card header dividers`
 
+- [x] T10: Alinhar barras horizontais entre cards
+      - Fixar altura do header e baseline da divisoria nos dois cards
+      commit: `fix(frontend-admin): align horizontal divider baselines`
+
 ## Acceptance tests
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards compactos, hierarquia clara e sem “cards gigantes”

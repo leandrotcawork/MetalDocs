@@ -206,3 +206,10 @@ Wrong:   Similar cards used different header content structures, so the divider 
 Correct: Cards that share a visual pattern use the same action wrapper and a fixed minimum header height
 Rule:    When the divider belongs to the header container, equalize header structure and height across sibling cards.
 Layer:   frontend
+
+## Lesson AE - Divider baseline needs fixed header height
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Header used only `min-height`, allowing content-driven height drift and misaligned horizontal dividers
+Correct: Shared cards use explicit header `height` + identical title wrapper structure
+Rule:    For pixel-aligned dividers across sibling cards, use fixed header height, not only minimum height.
+Layer:   frontend

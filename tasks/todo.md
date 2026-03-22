@@ -194,12 +194,12 @@ Notes
       - `frontend/apps/web/src/store/admin.store.ts` com estado de online/atividade
       commit: `feat(frontend-admin): add admin dashboard store`
 
-- [ ] T4: Feature view + CSS Modules
+- [x] T4: Feature view + CSS Modules
       - `frontend/apps/web/src/features/iam/AdminCenterView.tsx`
       - `frontend/apps/web/src/features/iam/AdminCenterView.module.css`
       commit: `feat(frontend-admin): add admin center view`
 
-- [ ] T5: Integracao no App + navegacao
+- [x] T5: Integracao no App + navegacao
       - Novo `activeView` ou substituicao do painel admin atual
       commit: `feat(frontend-admin): wire admin center navigation`
 

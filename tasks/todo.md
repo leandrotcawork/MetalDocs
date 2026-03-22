@@ -208,7 +208,7 @@ Notes
       commit: `fix(frontend-admin): sync managed user form`
 
 ## Acceptance tests
-- [ ] `cd frontend/apps/web; npm.cmd run build`
+- [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Admin ve: lista de usuarios, ultimo login, online, ultimas atividades
 - [ ] Nenhum erro de console ao navegar para Admin Center
 
@@ -239,6 +239,6 @@ Notes
       commit: `refactor(frontend-admin): consolidate admin center styles`
 
 ## Acceptance tests
-- [ ] `cd frontend/apps/web; npm.cmd run build`
+- [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards compactos, hierarquia clara e sem “cards gigantes”
 

@@ -161,7 +161,9 @@
 .areaMeta {
   flex: 1;
   display: grid;
+  grid-template-rows: minmax(2.4rem, auto) auto auto;
   gap: 0.3rem;
+  align-content: center;
   min-width: 0;
 }
 
@@ -199,6 +201,14 @@
   line-height: 1.25;
   max-width: none;
   text-align: left;
+}
+
+.areaMeta strong {
+  min-height: 2.4rem;
+  line-height: 1.2;
+  display: flex;
+  align-items: center;
+  overflow-wrap: anywhere;
 }
 
 .typeStripe {

@@ -49,3 +49,7 @@ Decision: Unified type progress bar thickness with Areas and fixed vertical alig
 Date: 2026-03-22
 Context: Documents Hub overview (Tipos de documento)
 Decision: Centered profile title text vertically inside the fixed title slot so one-line and two-line titles align consistently.
+
+Date: 2026-03-22
+Context: Documents Hub overview (Areas)
+Decision: Applied the same fixed title slot and vertical centering model used in type cards to keep one-line and two-line area names visually aligned.

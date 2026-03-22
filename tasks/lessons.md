@@ -241,3 +241,10 @@ Wrong:   User list cap applied only when search had query, showing full list oth
 Correct: Apply `slice(0, limit)` after filtering logic in every state
 Rule:    UI limits should be enforced consistently regardless of filter input.
 Layer:   frontend
+
+## Lesson AJ - Equal card height works better at grid level than fixed per card
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Fixed heights per card class caused visual mismatch and clipping risk
+Correct: Equalize heights using grid row sizing (`grid-auto-rows`) and `height: 100%` on cards
+Rule:    For sibling card parity, prefer layout-level equalization over per-card hardcoded heights.
+Layer:   frontend

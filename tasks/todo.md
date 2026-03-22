@@ -304,6 +304,10 @@ Notes
       - Igualar altura dos 3 cards sem truncar o conteudo de Criar e Editar
       commit: `fix(frontend-admin): normalize user cards full height`
 
+- [x] T5: Equalizar altura pela grid sem altura rigida por coluna
+      - Cards iguais via `grid-auto-rows` + `height: 100%`, sem clipping
+      commit: `fix(frontend-admin): equalize user cards by grid row height`
+
 ## Acceptance tests
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards de criacao/base/edicao sem alongamento e no padrao da referencia

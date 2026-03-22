@@ -136,3 +136,10 @@ Wrong:   Collapsed preview button is horizontally offset
 Correct: Collapsed preview button is horizontally centered
 Rule:    Collapsed controls must be centered horizontally.
 Layer:   frontend
+
+## Lesson U — Content builder back route returns to create
+Date: 2026-03-21 | Trigger: correction
+Wrong:   Back from content builder navigates to library
+Correct: Back from content builder navigates to create view
+Rule:    Back navigation must return to the originating create flow.
+Layer:   frontend

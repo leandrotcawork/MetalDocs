@@ -152,6 +152,10 @@ Notes
       - Keep top alignment while centering horizontally
       commit: `fix(frontend-content-builder): center collapsed preview toggle`
 
+- [x] T10: Back from content builder returns to create
+      - Replace library navigation with create flow
+      commit: `fix(frontend-content-builder): route back to create`
+
 ## Acceptance tests (run after each task)
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Manual: Create doc -> reach editor via both paths (no-template vs Word template)

@@ -171,3 +171,10 @@ Wrong:   Removed toolbar markup but kept `grid-template-rows: 44px minmax(0, 1fr
 Correct: `grid-template-rows: minmax(0, 1fr)` when toolbar is removed
 Rule:    When removing structural rows, update the grid template to avoid zero-visibility content.
 Layer:   frontend
+
+## Lesson Z - WorkspaceViewFrame must stay the single frame
+Date: 2026-03-22 | Trigger: correction
+Wrong:   `AdminCenterView` added extra `container/card` wrappers inside `WorkspaceViewFrame`, duplicating padding and card boundaries
+Correct: `WorkspaceViewFrame` provides the outer frame; the feature view adds only one inner shell for max-width and content gap
+Rule:    Workspace views should not nest a second page frame inside the shared frame component.
+Layer:   frontend

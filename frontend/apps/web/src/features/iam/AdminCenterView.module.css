@@ -1,23 +1,8 @@
 .shell {
   display: grid;
   gap: 0.6rem;
-}
-
-.container {
   width: min(1120px, 100%);
   margin: 0 auto;
-  display: grid;
-  gap: 0.6rem;
-}
-
-.card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 1.25rem;
-  box-shadow: var(--shadow);
-  padding: 1.25rem;
-  display: grid;
-  gap: 0.6rem;
 }
 
 .headerRow {

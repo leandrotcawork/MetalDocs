@@ -311,3 +311,10 @@ Wrong:   Expecting CSS grid alone to keep Base exactly equal to Editar while Bas
 Correct: Observe the Editar card height and apply it directly to the Base card, then scroll only the list region
 Rule:    When one panel must exactly mirror another panel's auto height, use runtime measurement instead of CSS guesswork.
 Layer:   frontend
+
+## Lesson AT - A shared `height: 100%` can invalidate measured auto-height layouts
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Measuring one card while a common `.card { height: 100%; }` still forces all cards to fill the grid row
+Correct: Keep common cards at `height: auto` when one sibling's intrinsic height is the source of truth
+Rule:    Runtime height sync only works if generic stretch rules are removed from the measured elements.
+Layer:   frontend

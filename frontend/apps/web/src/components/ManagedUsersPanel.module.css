@@ -27,7 +27,7 @@
   border: 1px solid var(--border);
   border-radius: 0.95rem;
   box-shadow: var(--shadow);
-  height: 100%;
+  height: auto;
   display: flex;
   flex-direction: column;
   min-width: 0;

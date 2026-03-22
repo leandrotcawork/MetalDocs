@@ -344,6 +344,10 @@ Notes
       - Medir `Editar usuario` em runtime e aplicar a mesma altura no card Base com scroll interno
       commit: `fix(frontend-admin): sync base card height with edit card`
 
+- [x] T15: Remover stretch residual dos cards de usuarios
+      - Eliminar `height: 100%` global para o Editar ditar sua propria altura e a Base espelhar essa medida
+      commit: `fix(frontend-admin): remove residual card stretch in user admin`
+
 ## Acceptance tests
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards de criacao/base/edicao sem alongamento e no padrao da referencia

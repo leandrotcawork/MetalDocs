@@ -5,6 +5,71 @@
   color: var(--text);
 }
 
+.headerBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1.2rem;
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.headerMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.timeBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 0.7rem;
+  letter-spacing: 0.08rem;
+  text-transform: uppercase;
+  padding: 0.35rem 0.75rem;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.searchGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 0.35rem 0.75rem;
+}
+
+.searchIcon {
+  color: var(--muted);
+}
+
+.searchInput {
+  border: 0;
+  background: transparent;
+  outline: none;
+  color: var(--text);
+  font-size: 0.8rem;
+  width: 220px;
+}
+
+.searchInput::placeholder {
+  color: var(--muted);
+}
+
 .state {
   padding: 2rem;
   border-radius: 1rem;
@@ -731,6 +796,27 @@
 @media (max-width: 720px) {
   .hub {
     padding: 2rem 1.4rem 2.2rem;
+  }
+
+  .headerBar {
+    align-items: stretch;
+  }
+
+  .headerActions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .headerActions .primaryButton {
+    width: 100%;
+  }
+
+  .searchGroup {
+    width: 100%;
+  }
+
+  .searchInput {
+    width: 100%;
   }
 
   .kpiGrid,

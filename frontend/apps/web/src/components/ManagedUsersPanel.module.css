@@ -61,36 +61,6 @@
   padding: 1.1rem 1.2rem;
 }
 
-.field {
-  display: grid;
-  gap: 0.3rem;
-}
-
-.fieldLabel {
-  font-size: 0.74rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--muted);
-}
-
-.field input,
-.field select {
-  width: 100%;
-  border: 1px solid var(--border-strong);
-  background: var(--surface-2);
-  color: var(--text);
-  border-radius: 0.5rem;
-  font-size: 0.92rem;
-  padding: 0.62rem 0.72rem;
-  outline: none;
-}
-
-.field input:focus,
-.field select:focus {
-  border-color: var(--vinho);
-  box-shadow: 0 0 0 3px var(--vinho-soft);
-}
-
 .button {
   width: 100%;
   display: inline-flex;
@@ -133,15 +103,9 @@
   border-bottom: 1px solid var(--border);
 }
 
-.searchWrap input {
+.searchWrap :global(.spotlight-select-trigger),
+.searchWrap :global(input) {
   width: 100%;
-  border: 1px solid var(--border-strong);
-  background: var(--surface-2);
-  color: var(--text);
-  border-radius: 0.5rem;
-  font-size: 0.92rem;
-  padding: 0.62rem 0.72rem;
-  outline: none;
 }
 
 .userList {
@@ -290,6 +254,18 @@
   align-items: end;
 }
 
+.taxonomyFields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.7rem;
+}
+
+.editMetaFields {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.7rem;
+}
+
 .actionsStack {
   padding: 0 1.2rem 1.1rem;
   display: grid;
@@ -317,5 +293,10 @@
   .card {
     height: auto;
     min-height: 0;
+  }
+
+  .taxonomyFields,
+  .editMetaFields {
+    grid-template-columns: 1fr;
   }
 }

@@ -312,3 +312,25 @@ Notes
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards de criacao/base/edicao sem alongamento e no padrao da referencia
 
+---
+
+## Feature: Frontend UI Standardization
+Area: `frontend/apps/web/src/components/ui/*` + `frontend/apps/web/src/components/ManagedUsersPanel.*`  |  Risk: low  |  Goal: padronizar fields e dropdowns repetidos
+
+## Tasks
+- [x] T1: Criar componentes unificados de campo
+      - `TextFieldBox` e `DropdownFieldBox` como base de boxes de entrada/seleção
+      commit: `refactor(frontend-ui): standardize form fields and dropdown usage`
+
+- [x] T2: Migrar Gestao de Usuarios para os componentes padrao
+      - Criar/Base/Editar com os mesmos componentes de input/dropdown
+      commit: `refactor(frontend-admin): standardize user management fields`
+
+- [x] T3: Documentar padrão de componente reutilizado
+      - Documento em `docs/standards/FRONTEND_COMPONENT_STANDARDIZATION.md`
+      commit: `docs(frontend): add component standardization guide`
+
+## Acceptance tests
+- [x] `cd frontend/apps/web; npm.cmd run build`
+- [ ] Visual: campos e dropdowns do Admin Center sem variacao de estilo
+

@@ -248,3 +248,10 @@ Wrong:   Fixed heights per card class caused visual mismatch and clipping risk
 Correct: Equalize heights using grid row sizing (`grid-auto-rows`) and `height: 100%` on cards
 Rule:    For sibling card parity, prefer layout-level equalization over per-card hardcoded heights.
 Layer:   frontend
+
+## Lesson AK - Repeated form controls must use shared components
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Same screen mixing native inputs/selects and spotlight dropdown variants
+Correct: Use `TextFieldBox` and `DropdownFieldBox` for repeated fields in the same flow
+Rule:    Repeated controls should be composed from shared components to prevent style drift.
+Layer:   frontend

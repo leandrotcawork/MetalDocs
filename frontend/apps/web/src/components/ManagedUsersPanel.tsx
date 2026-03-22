@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ManagedUserItem, UserRole } from "../lib.types";
 import { WorkspaceDataState } from "./WorkspaceDataState";
-import { FilterDropdown, type SelectMenuOption } from "./ui/FilterDropdown";
+import type { SelectMenuOption } from "./ui/FilterDropdown";
+import { DropdownFieldBox, TextFieldBox } from "./ui/FormFieldBox";
 import styles from "./ManagedUsersPanel.module.css";
 
 type CreateUserForm = {
@@ -94,6 +95,8 @@ export function ManagedUsersSection(props: ManagedUsersPanelProps) {
   const [search, setSearch] = useState("");
   const [department, setDepartment] = useState("Operacoes");
   const [processArea, setProcessArea] = useState("Administrativo");
+  const [editDepartment, setEditDepartment] = useState("Operacoes");
+  const [editProcessArea, setEditProcessArea] = useState("Administrativo");
   const selectedRole = props.managedUserForm.roles[0] ?? "viewer";
 
   const filteredUsers = useMemo(() => {
@@ -126,6 +129,13 @@ export function ManagedUsersSection(props: ManagedUsersPanelProps) {
     await props.onSaveManagedUser();
   };
 
+  useEffect(() => {
+    if (!props.selectedManagedUser) return;
+    const roleDepartment = departmentFromRole(props.selectedManagedUser.roles?.[0]);
+    setEditDepartment(roleDepartment);
+    setEditProcessArea(roleDepartment);
+  }, [props.selectedManagedUser]);
+
   return (
     <>
       <WorkspaceDataState
@@ -145,72 +155,59 @@ export function ManagedUsersSection(props: ManagedUsersPanelProps) {
             <h3 className={styles.cardTitle}>Criar usuario</h3>
           </header>
           <div className={styles.cardBody}>
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>Nome completo</span>
-              <input
-                type="text"
-                placeholder="ex: Joao da Silva"
-                value={props.userForm.displayName}
-                onChange={(event) => props.onUserFormChange({ ...props.userForm, displayName: event.target.value })}
+            <TextFieldBox
+              id="create-full-name"
+              label="Nome completo"
+              placeholder="ex: Joao da Silva"
+              value={props.userForm.displayName}
+              onChange={(value) => props.onUserFormChange({ ...props.userForm, displayName: value })}
+            />
+            <TextFieldBox
+              id="create-username"
+              label="Username"
+              placeholder="ex: joao_silva"
+              value={props.userForm.username}
+              onChange={(value) => props.onUserFormChange({ ...props.userForm, username: value })}
+            />
+            <TextFieldBox
+              id="create-email"
+              label="E-mail"
+              type="email"
+              placeholder="email@metalnobre.com"
+              value={props.userForm.email}
+              onChange={(value) => props.onUserFormChange({ ...props.userForm, email: value })}
+            />
+            <div className={styles.taxonomyFields}>
+              <DropdownFieldBox
+                id="create-department"
+                label="Departamento"
+                value={department}
+                options={DEPARTMENT_OPTIONS}
+                onSelect={(value) => setDepartment(value)}
               />
-            </label>
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>Username</span>
-              <input
-                type="text"
-                placeholder="ex: joao_silva"
-                value={props.userForm.username}
-                onChange={(event) => props.onUserFormChange({ ...props.userForm, username: event.target.value })}
+              <DropdownFieldBox
+                id="create-process-area"
+                label="Area de processo"
+                value={processArea}
+                options={PROCESS_AREA_OPTIONS}
+                onSelect={(value) => setProcessArea(value)}
               />
-            </label>
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>E-mail</span>
-              <input
-                type="email"
-                placeholder="email@metalnobre.com"
-                value={props.userForm.email}
-                onChange={(event) => props.onUserFormChange({ ...props.userForm, email: event.target.value })}
-              />
-            </label>
-            <div className={styles.inlineFields}>
-              <label className={styles.field}>
-                <span className={styles.fieldLabel}>Departamento</span>
-                <FilterDropdown
-                  id="create-department"
-                  value={department}
-                  options={DEPARTMENT_OPTIONS}
-                  onSelect={(value) => setDepartment(value)}
-                />
-              </label>
-              <label className={styles.field}>
-                <span className={styles.fieldLabel}>Area de processo</span>
-                <FilterDropdown
-                  id="create-process-area"
-                  value={processArea}
-                  options={PROCESS_AREA_OPTIONS}
-                  onSelect={(value) => setProcessArea(value)}
-                />
-              </label>
             </div>
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>Senha inicial</span>
-              <input
-                type="password"
-                placeholder="senha temporaria"
-                value={props.userForm.password}
-                onChange={(event) => props.onUserFormChange({ ...props.userForm, password: event.target.value })}
-              />
-            </label>
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>Perfil</span>
-              <select value={props.userForm.roles[0] ?? "viewer"} onChange={(event) => handleCreateRoleChange(event.target.value)}>
-                {PROFILE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <TextFieldBox
+              id="create-password"
+              label="Senha inicial"
+              type="password"
+              placeholder="senha temporaria"
+              value={props.userForm.password}
+              onChange={(value) => props.onUserFormChange({ ...props.userForm, password: value })}
+            />
+            <DropdownFieldBox
+              id="create-profile"
+              label="Perfil"
+              value={props.userForm.roles[0] ?? "viewer"}
+              options={PROFILE_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
+              onSelect={handleCreateRoleChange}
+            />
             <button type="button" className={`${styles.button} ${styles.buttonPrimary}`} onClick={() => void props.onCreateUser()}>
               + Criar usuario
             </button>
@@ -223,7 +220,13 @@ export function ManagedUsersSection(props: ManagedUsersPanelProps) {
             <span className={styles.cardMeta}>{props.managedUsers.length} total</span>
           </header>
           <div className={styles.searchWrap}>
-            <input type="text" placeholder="Buscar usuario..." value={search} onChange={(event) => setSearch(event.target.value)} />
+            <TextFieldBox
+              id="users-search"
+              placeholder="Buscar usuario..."
+              type="search"
+              value={search}
+              onChange={setSearch}
+            />
           </div>
           <ul className={styles.userList}>
             {filteredUsers.map((item) => (
@@ -267,30 +270,35 @@ export function ManagedUsersSection(props: ManagedUsersPanelProps) {
               </div>
 
               <div className={styles.cardBody}>
-                <label className={styles.field}>
-                  <span className={styles.fieldLabel}>Nome completo</span>
-                  <input
-                    type="text"
-                    value={props.managedUserForm.displayName}
-                    onChange={(event) => props.onManagedUserFormChange({ ...props.managedUserForm, displayName: event.target.value })}
-                  />
-                </label>
+                <TextFieldBox
+                  id="edit-full-name"
+                  label="Nome completo"
+                  value={props.managedUserForm.displayName}
+                  onChange={(value) => props.onManagedUserFormChange({ ...props.managedUserForm, displayName: value })}
+                />
 
-                <div className={styles.inlineFields}>
-                  <label className={styles.field}>
-                    <span className={styles.fieldLabel}>Departamento</span>
-                    <input type="text" value={departmentFromRole(selectedRole)} readOnly />
-                  </label>
-                  <label className={styles.field}>
-                    <span className={styles.fieldLabel}>Perfil</span>
-                    <select value={selectedRole} onChange={(event) => handleManagedRoleChange(event.target.value)}>
-                      {PROFILE_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                <div className={styles.editMetaFields}>
+                  <DropdownFieldBox
+                    id="edit-department"
+                    label="Departamento"
+                    value={editDepartment}
+                    options={DEPARTMENT_OPTIONS}
+                    onSelect={setEditDepartment}
+                  />
+                  <DropdownFieldBox
+                    id="edit-process-area"
+                    label="Area de operacoes"
+                    value={editProcessArea}
+                    options={PROCESS_AREA_OPTIONS}
+                    onSelect={setEditProcessArea}
+                  />
+                  <DropdownFieldBox
+                    id="edit-profile"
+                    label="Perfil"
+                    value={selectedRole}
+                    options={PROFILE_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
+                    onSelect={handleManagedRoleChange}
+                  />
                 </div>
               </div>
 
@@ -299,15 +307,14 @@ export function ManagedUsersSection(props: ManagedUsersPanelProps) {
                   Salvar usuario
                 </button>
                 <div className={styles.divider} />
-                <label className={styles.field}>
-                  <span className={styles.fieldLabel}>Nova senha temporaria</span>
-                  <input
-                    type="password"
-                    placeholder="digite para resetar"
-                    value={props.managedUserForm.resetPassword}
-                    onChange={(event) => props.onManagedUserFormChange({ ...props.managedUserForm, resetPassword: event.target.value })}
-                  />
-                </label>
+                <TextFieldBox
+                  id="edit-reset-password"
+                  label="Nova senha temporaria"
+                  type="password"
+                  placeholder="digite para resetar"
+                  value={props.managedUserForm.resetPassword}
+                  onChange={(value) => props.onManagedUserFormChange({ ...props.managedUserForm, resetPassword: value })}
+                />
                 <button type="button" className={`${styles.button} ${styles.buttonWarn}`} onClick={() => void props.onAdminResetPassword()}>
                   Resetar senha
                 </button>

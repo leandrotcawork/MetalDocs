@@ -171,4 +171,40 @@ Notes
 - [ ] Manual: In editor, verify buttons are consistent + PDF preview toggles cleanly
 - [ ] No console errors in browser during the flows above
 
+---
+
+## Feature: Admin Center (usuarios + online + atividade)
+Area: `frontend/apps/web/src/features/iam/` + `internal/modules/iam/`  |  Risk: medium (new data surface)  |  Goal: admin view com cadastro, presenca e atividade recente
+
+Notes
+- Reusar CRUD de usuarios existente (ManagedUsersPanel) dentro do Admin Center.
+- Dados de online/atividade dependem de endpoint backend; se nao existir, adicionar.
+
+## Tasks
+- [ ] T1: Contrato de dados (OpenAPI)
+      - Definir endpoint(s) para: usuarios online, ultima atividade, ultimo login
+      commit: `docs(api): add admin center contracts`
+
+- [ ] T2: Backend IAM (se necessario)
+      - Service + handler para overview/admin dashboard
+      - Permission registrada em `permissions.go`
+      commit: `feat(iam): add admin dashboard overview`
+
+- [ ] T3: Store de admin dashboard
+      - `frontend/apps/web/src/store/admin.store.ts` com estado de online/atividade
+      commit: `feat(frontend-admin): add admin dashboard store`
+
+- [ ] T4: Feature view + CSS Modules
+      - `frontend/apps/web/src/features/iam/AdminCenterView.tsx`
+      - `frontend/apps/web/src/features/iam/AdminCenterView.module.css`
+      commit: `feat(frontend-admin): add admin center view`
+
+- [ ] T5: Integracao no App + navegacao
+      - Novo `activeView` ou substituicao do painel admin atual
+      commit: `feat(frontend-admin): wire admin center navigation`
+
+## Acceptance tests
+- [ ] `cd frontend/apps/web; npm.cmd run build`
+- [ ] Admin ve: lista de usuarios, ultimo login, online, ultimas atividades
+- [ ] Nenhum erro de console ao navegar para Admin Center
 

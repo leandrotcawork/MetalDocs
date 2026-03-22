@@ -137,23 +137,21 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
   const totalDocuments = scopedDocuments.length;
   const areaColors = ["#9D2335", "#1F5A3F", "#6B3A9C", "#B4541A", "#2B5C8A", "#A32B6B"];
   const areaCards = useMemo(() => {
-    const cards = props.processAreas.map((area) => ({
+    const cards = props.processAreas.map((area, index) => ({
       code: area.code,
       label: area.name,
       count: areaCounts[area.code] ?? 0,
       hint: metalNobreProcessAreaHint(area.code),
-      color: areaColors[props.processAreas.findIndex((item) => item.code === area.code) % areaColors.length],
+      color: areaColors[index % areaColors.length],
     }));
-    if (areaCounts["sem-area"]) {
-      cards.unshift({
-        code: "sem-area",
-        label: "Sem area",
-        count: areaCounts["sem-area"] ?? 0,
-        hint: "Sem classificacao",
-        color: areaColors[0],
-      });
-    }
-    return cards.filter((item) => item.count > 0);
+    cards.unshift({
+      code: "sem-area",
+      label: "Sem area",
+      count: areaCounts["sem-area"] ?? 0,
+      hint: "Sem classificacao",
+      color: areaColors[0],
+    });
+    return cards;
   }, [areaCounts, props.processAreas]);
 
   const profileCards = useMemo(() => {
@@ -501,7 +499,7 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
                     />
                   </div>
                 </div>
-                <span className={styles.areaHint}>{area.hint}</span>
+                <span className={styles.areaDescription}>{area.hint}</span>
               </button>
             </article>
           ))}

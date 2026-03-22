@@ -29,3 +29,7 @@ Decision: Increased hub padding and redesigned area cards with left color stripe
 Date: 2026-03-22
 Context: Documents Hub overview
 Decision: Applied the same stripe + progress pattern to document type cards.
+
+Date: 2026-03-22
+Context: Documents Hub overview (Areas)
+Decision: Show all areas, reduce stripe/bar sizes, and add visible area description text.

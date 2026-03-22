@@ -233,7 +233,7 @@ Notes
       - Ajustar tipografia, chips e ações
       commit: `refactor(frontend-admin): align managed users layout to html`
 
-- [ ] T3: CSS Modules e tokens
+- [x] T3: CSS Modules e tokens
       - Consolidar estilos no `AdminCenterView.module.css` e `ManagedUsersPanel.module.css`
       - Remover dependência de classes globais (catalog-*)
       commit: `refactor(frontend-admin): consolidate admin center styles`

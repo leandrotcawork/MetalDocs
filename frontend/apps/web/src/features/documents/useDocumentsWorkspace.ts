@@ -217,6 +217,28 @@ export function useDocumentsWorkspace(applyDocumentProfile: (profileCode: string
       if (shouldOpenEditor) {
         setIsCreateSubmitting(true);
       }
+      if (contentMode === "native") {
+        setSelectedDocument({
+          documentId: "",
+          title: documentForm.title,
+          documentType: documentForm.documentProfile,
+          documentProfile: documentForm.documentProfile,
+          documentFamily: documentForm.documentProfile,
+          processArea: documentForm.processArea || undefined,
+          subject: documentForm.subject || undefined,
+          ownerId: currentUser?.userId ?? documentForm.ownerId,
+          businessUnit: documentForm.businessUnit,
+          department: documentForm.department,
+          classification: documentForm.classification as DocumentListItem["classification"],
+          status: "DRAFT",
+          tags: documentForm.tags.split(",").map((item) => item.trim()).filter(Boolean),
+          effectiveAt: documentForm.effectiveAt || undefined,
+          expiryAt: documentForm.expiryAt || undefined,
+        });
+        setActiveView("content-builder");
+        setIsCreateSubmitting(false);
+        return;
+      }
       try {
         startApiTrace("create-document");
         const needsAudience = ["CONFIDENTIAL", "RESTRICTED"].includes(documentForm.classification);
@@ -269,13 +291,10 @@ export function useDocumentsWorkspace(applyDocumentProfile: (profileCode: string
           setContentError("");
         }
         setMessage(handledContent ? "Documento criado e conteudo processado." : "Documento criado com sucesso.");
-        if (contentMode === "native") {
-          await openDocument(created.documentId, "content-builder");
-          setIsCreateSubmitting(false);
-        } else if (!handledContent) {
+        if (!handledContent) {
           setActiveView("library");
-          setIsCreateSubmitting(false);
         }
+        setIsCreateSubmitting(false);
         if (currentUser) await loadWorkspace(currentUser);
         stopApiTrace();
       } catch (err) {
@@ -286,7 +305,55 @@ export function useDocumentsWorkspace(applyDocumentProfile: (profileCode: string
         stopApiTrace();
       }
     },
-    [contentFile, contentMode, documentForm, loadWorkspace, openDocument, setActiveView, setContentDocxUrl, setContentError, setContentFile, setContentMode, setContentPdfUrl, setContentStatus, setDocumentForm, setError, setIsCreateSubmitting, setMessage],
+    [contentFile, contentMode, documentForm, loadWorkspace, openDocument, setActiveView, setContentDocxUrl, setContentError, setContentFile, setContentMode, setContentPdfUrl, setContentStatus, setDocumentForm, setError, setIsCreateSubmitting, setMessage, setSelectedDocument],
+  );
+
+  const createDocumentFromDraft = useCallback(
+    async (contentDraft: Record<string, unknown>, currentUser: CurrentUser | null) => {
+      setError("");
+      setMessage("");
+      setContentStatus("saving");
+      try {
+        startApiTrace("create-document-from-editor");
+        const needsAudience = ["CONFIDENTIAL", "RESTRICTED"].includes(documentForm.classification);
+        const audienceMode = documentForm.audienceMode || "DEPARTMENT";
+        const audienceDepartments = documentForm.classification === "CONFIDENTIAL"
+          ? documentForm.audienceDepartments
+          : [documentForm.audienceDepartment || documentForm.department].filter(Boolean);
+        const audience = needsAudience ? {
+          mode: audienceMode,
+          departmentCodes: audienceDepartments,
+          processAreaCodes: audienceMode === "AREAS"
+            ? [documentForm.audienceProcessArea || documentForm.processArea].filter(Boolean)
+            : undefined,
+        } : undefined;
+        const created = await api.createDocument({
+          ...documentForm,
+          documentType: documentForm.documentProfile,
+          documentProfile: documentForm.documentProfile,
+          tags: documentForm.tags.split(",").map((item) => item.trim()).filter(Boolean),
+          effectiveAt: documentForm.effectiveAt ? new Date(documentForm.effectiveAt).toISOString() : undefined,
+          expiryAt: documentForm.expiryAt ? new Date(documentForm.expiryAt).toISOString() : undefined,
+          metadata: documentForm.metadata.trim() ? JSON.parse(documentForm.metadata) : {},
+          audience,
+        });
+        const response = await api.saveDocumentContentNative(created.documentId, { content: contentDraft ?? {} });
+        setContentPdfUrl(response.pdfUrl);
+        setContentStatus("ready");
+        setMessage("Documento criado e PDF gerado.");
+        await openDocument(created.documentId, "content-builder");
+        if (currentUser) await loadWorkspace(currentUser);
+        stopApiTrace();
+        return { documentId: created.documentId, pdfUrl: response.pdfUrl, version: response.version ?? null };
+      } catch (err) {
+        setContentStatus("error");
+        setContentError("Falha ao gerar o PDF. O documento nao foi criado.");
+        setError(asMessage(err));
+        stopApiTrace();
+        throw err;
+      }
+    },
+    [documentForm, loadWorkspace, openDocument, setContentError, setContentPdfUrl, setContentStatus, setError, setMessage],
   );
 
   const handleContentModeChange = useCallback((mode: ContentMode) => {
@@ -357,6 +424,7 @@ export function useDocumentsWorkspace(applyDocumentProfile: (profileCode: string
     openDocument,
     handleUploadAttachment,
     handleCreateDocument,
+    createDocumentFromDraft,
     handleContentModeChange,
     handleContentFileChange,
     handleDownloadTemplate,

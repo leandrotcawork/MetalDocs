@@ -117,6 +117,7 @@ function AppContent() {
     openDocument,
     refreshOperationalSignals,
     handleCreateDocument: handleCreateDocumentInternal,
+    createDocumentFromDraft,
     handleContentModeChange,
     handleContentFileChange,
     handleDownloadTemplate,
@@ -125,6 +126,30 @@ function AppContent() {
   const handleCreateDocument = useCallback(
     (event: React.FormEvent<HTMLFormElement>) => handleCreateDocumentInternal(event, user),
     [handleCreateDocumentInternal, user],
+  );
+  const handleBackToCreate = useCallback(() => {
+    if (selectedDocument) {
+      setDocumentForm((current) => ({
+        ...current,
+        title: selectedDocument.title,
+        documentType: selectedDocument.documentType,
+        documentProfile: selectedDocument.documentProfile,
+        processArea: selectedDocument.processArea ?? "",
+        subject: selectedDocument.subject ?? "",
+        ownerId: selectedDocument.ownerId,
+        businessUnit: selectedDocument.businessUnit,
+        department: selectedDocument.department,
+        classification: selectedDocument.classification,
+        tags: selectedDocument.tags.join(", "),
+        effectiveAt: selectedDocument.effectiveAt ?? "",
+        expiryAt: selectedDocument.expiryAt ?? "",
+      }));
+    }
+    setActiveView("create");
+  }, [selectedDocument, setActiveView, setDocumentForm]);
+  const handleCreateFromDraft = useCallback(
+    (contentDraft: Record<string, unknown>) => createDocumentFromDraft(contentDraft, user),
+    [createDocumentFromDraft, user],
   );
   const {
     applyDocumentProfile,
@@ -350,7 +375,8 @@ function AppContent() {
       return (
         <ContentBuilderView
           document={selectedDocument}
-          onBack={() => setActiveView("create")}
+          onBack={handleBackToCreate}
+          onCreateFromDraft={handleCreateFromDraft}
         />
       );
     }

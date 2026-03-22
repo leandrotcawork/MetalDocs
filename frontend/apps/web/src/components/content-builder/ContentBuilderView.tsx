@@ -11,6 +11,7 @@ import { hasAnyValue, isFieldComplete, sectionAnchorId } from "./contentBuilderU
 type ContentBuilderViewProps = {
   document: DocumentListItem | null;
   onBack: () => void;
+  onCreateFromDraft?: (contentDraft: Record<string, unknown>) => Promise<{ documentId: string; pdfUrl: string; version: number | null }>;
 };
 
 type BuilderStatus = "loading" | "idle" | "dirty" | "saving" | "rendering" | "error";
@@ -223,7 +224,23 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
   }
 
   async function handleRenderPdf() {
-    if (!documentId) return;
+    const parsedContent: Record<string, unknown> = contentDraft ?? {};
+    if (!documentId) {
+      if (!props.onCreateFromDraft) return;
+      dispatch({ type: "set_error", payload: { message: "" } });
+      dispatch({ type: "set_status", payload: { status: "rendering" } });
+      try {
+        const created = await props.onCreateFromDraft(parsedContent);
+        dispatch({
+          type: "load_success",
+          payload: { contentDraft: parsedContent, schema, version: created.version ?? null, pdfUrl: created.pdfUrl },
+        });
+        setLastSavedAt(new Date());
+      } catch {
+        dispatch({ type: "load_error", payload: { message: "Falha ao criar o documento." } });
+      }
+      return;
+    }
     if (status === "dirty") {
       await handleSave();
       return;

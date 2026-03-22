@@ -826,6 +826,11 @@ td small {
 }
 
 .catalog-header {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  border-radius: 16px;
+  padding: 1rem 1.1rem;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
   margin-bottom: 1rem;

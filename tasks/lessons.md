@@ -46,3 +46,10 @@ Wrong:   UI inferred document codes from `documentId` or metadata and drifted ac
 Correct: Backend generates and returns `document_code` and the frontend formats labels from it
 Rule:    Stable identifiers must be generated on the server and treated as source-of-truth in the UI.
 Layer:   process
+
+## Lesson F - Do not rely on initdb for ongoing migrations
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Assuming `docker-entrypoint-initdb.d` will apply new migrations on every startup
+Correct: Provide an explicit migration runner for dev/prod; initdb only runs on first volume initialization
+Rule:    Postgres init scripts are not a migration system; always have an incremental apply path.
+Layer:   process

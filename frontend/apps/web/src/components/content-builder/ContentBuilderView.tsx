@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { api } from "../../lib.api";
 import type { DocumentListItem, DocumentProfileSchemaItem } from "../../lib.types";
+import { ProgressSidebar } from "../create/widgets/ProgressSidebar";
+import type { StepStatus } from "../create/documentCreateTypes";
 import { PdfPreview } from "../create/widgets/PdfPreview";
 import { ContentSchemaForm } from "./ContentSchemaForm";
 import type { SchemaSection } from "./contentSchemaTypes";
@@ -92,6 +94,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
     const raw = schema?.contentSchema as { sections?: SchemaSection[] } | undefined;
     return Array.isArray(raw?.sections) ? raw?.sections : [];
   }, [schema]);
+  const currentSectionKey = activeSectionKey ?? sections[0]?.key ?? null;
 
   const sectionCompletion = useMemo(() => {
     const completion: Record<string, boolean> = {};
@@ -324,24 +327,22 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
 
       <div className="content-builder-layout">
         <aside className="content-builder-sections-nav">
-          <div className="content-builder-sections-title">Secoes</div>
-          <div className="content-builder-sections-list">
-            {sections.map((section, index) => {
-              const isActive = activeSectionKey === section.key;
+          <ProgressSidebar
+            title="Secoes"
+            items={sections.map((section, index) => {
+              const isActive = currentSectionKey === section.key;
               const isComplete = sectionCompletion[section.key] ?? false;
-              return (
-                <button
-                  key={section.key}
-                  type="button"
-                  className={`content-builder-section-link ${isActive ? "is-active" : ""} ${isComplete ? "is-complete" : ""}`}
-                  onClick={() => handleSectionNav(section.key)}
-                >
-                  <span className="content-builder-section-num">{index + 1}</span>
-                  <span>{section.title ?? section.key}</span>
-                </button>
-              );
+              const status: StepStatus = isActive ? "active" : isComplete ? "done" : "pending";
+              return {
+                key: section.key,
+                label: section.title ?? section.key,
+                description: section.description ?? `Secao ${index + 1}`,
+                status,
+                isCurrent: isActive,
+                onSelect: () => handleSectionNav(section.key),
+              };
             })}
-          </div>
+          />
         </aside>
 
         <main className="content-builder-editor" ref={editorRef}>

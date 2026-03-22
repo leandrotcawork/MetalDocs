@@ -111,6 +111,13 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
     setRecentDocuments(loadRecentDocuments(props.currentUserId));
   }, [props.currentUserId, setRecentDocuments]);
 
+  useEffect(() => {
+    setDocumentsHubView("overview");
+    setDocumentsHubStatus("all");
+    setDocumentsHubArea("all");
+    setDocumentsHubProfile("all");
+  }, [props.view, setDocumentsHubArea, setDocumentsHubProfile, setDocumentsHubStatus, setDocumentsHubView]);
+
   const recentFallback = useMemo(
     () => scopedDocuments.slice(0, 8).map((item) => ({ ...item, openedAt: item.createdAt })),
     [scopedDocuments],

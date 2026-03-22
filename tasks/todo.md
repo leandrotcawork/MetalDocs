@@ -467,7 +467,7 @@ Notes
       - Acoes: Abrir documento, Enviar para revisao, Duplicar, Historico de versoes (wire onde existir; desabilitar onde nao existir)
       commit: `feat(frontend-docs): add document overview screen`
 
-- [ ] T7: Substituir a tela atual por este fluxo
+- [x] T7: Substituir a tela atual por este fluxo
       - "Todos documentos" passa a abrir a Tela 1
       - Navegacao entre as 3 telas sem reload e sem regressao no fluxo principal
       commit: `feat(frontend-docs): replace all-documents flow with hub`

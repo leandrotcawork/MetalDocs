@@ -178,3 +178,10 @@ Wrong:   `AdminCenterView` added extra `container/card` wrappers inside `Workspa
 Correct: `WorkspaceViewFrame` provides the outer frame; the feature view adds only one inner shell for max-width and content gap
 Rule:    Workspace views should not nest a second page frame inside the shared frame component.
 Layer:   frontend
+
+## Lesson AA - Inner shells must not recentralize workspace content
+Date: 2026-03-22 | Trigger: correction
+Wrong:   `AdminCenterView.module.css` applied `width` and `margin: 0 auto` on the inner `.shell`, shifting only the content block
+Correct: Inner shells handle layout gaps only; outer workspace frame owns page width and horizontal rhythm
+Rule:    Do not center an inner content shell when the shared workspace frame already defines the page container.
+Layer:   frontend

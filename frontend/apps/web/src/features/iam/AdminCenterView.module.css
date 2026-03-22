@@ -1,8 +1,6 @@
 .shell {
   display: grid;
   gap: 0.6rem;
-  width: min(1120px, 100%);
-  margin: 0 auto;
 }
 
 .headerRow {

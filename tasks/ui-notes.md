@@ -36,4 +36,4 @@ Decision: Show all areas regardless of count, align card layout with left stripe
 
 Date: 2026-03-22
 Context: Documents Hub overview (Tipos de documento)
-Decision: Use dynamic profile initials (alias/code) for the badge, not full names, to keep cards compact as new profiles are added.
+Decision: Badge prefers short alias (<=3), then short code (<=3); otherwise falls back to initials from name for future dynamic profiles.

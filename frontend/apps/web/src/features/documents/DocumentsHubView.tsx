@@ -59,10 +59,21 @@ function normalizeAreaCode(value?: string): string {
 }
 
 function profileBadgeText(profile: DocumentProfileItem): string {
-  const source = (profile.alias || profile.code || profile.name).trim().toUpperCase();
-  const letters = source.replace(/[^A-Z0-9]/g, "");
-  if (letters.length >= 2) return letters.slice(0, 2);
-  return source.slice(0, 2);
+  const alias = profile.alias?.trim?.();
+  const code = profile.code?.trim?.();
+  const name = profile.name?.trim?.();
+
+  const shortAlias = alias && alias.length <= 3 ? alias.toUpperCase() : "";
+  if (shortAlias) return shortAlias;
+
+  const shortCode = code && code.length <= 3 ? code.toUpperCase() : "";
+  if (shortCode) return shortCode;
+
+  const source = (alias || code || name || "").toUpperCase();
+  const words = source.split(/[^A-Z0-9]+/).filter(Boolean);
+  if (words.length >= 2) return `${words[0][0]}${words[1][0]}`;
+  if (words.length === 1 && words[0].length >= 2) return words[0].slice(0, 2);
+  return source.slice(0, 2) || "--";
 }
 
 function statusLabel(status: string): string {

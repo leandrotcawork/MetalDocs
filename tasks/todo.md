@@ -474,8 +474,8 @@ Notes
 
 ## Acceptance tests
 - [ ] `cd frontend/apps/web; npm.cmd run build`
-- [ ] Manual: abrir "Todos documentos" -> ver overview com Areas/Tipos/Recentes
-- [ ] Manual: clicar em Area/Tipo -> ver listagem + filtros + toggle card/list
-- [ ] Manual: clicar em documento -> ver overview do documento + acoes principais
-- [ ] No console errors durante o fluxo acima
+- [x] Manual: abrir "Todos documentos" -> ver overview com Areas/Tipos/Recentes
+- [x] Manual: clicar em Area/Tipo -> ver listagem + filtros + toggle card/list
+- [x] Manual: clicar em documento -> ver overview do documento + acoes principais
+- [x] No console errors durante o fluxo acima
 

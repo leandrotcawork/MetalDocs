@@ -30,6 +30,11 @@
   gap: 0.35rem;
 }
 
+.headerSearch {
+  margin-top: 0.8rem;
+  max-width: 420px;
+}
+
 .eyebrow {
   font-size: 0.7rem;
   letter-spacing: 0.25rem;

@@ -303,6 +303,7 @@ function AppContent() {
           searchQuery={searchQuery}
           currentUserId={user?.userId}
           formatDate={formatDate}
+          onSearchQueryChange={setSearchQuery}
           onRefreshWorkspace={refreshWorkspace}
           onOpenDocument={openDocument}
           onOpenDocumentForHub={openDocumentForHub}

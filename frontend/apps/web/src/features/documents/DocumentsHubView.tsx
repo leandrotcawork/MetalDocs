@@ -3,6 +3,7 @@ import { buildDocumentProfileCountMap } from "./adapters/catalogSummary";
 import { metalNobreProcessAreaHint } from "./adapters/metalNobreExperience";
 import { formatDocumentDisplayName } from "../shared/documentDisplay";
 import { type RecentDocumentItem, useDocumentsStore } from "../../store/documents.store";
+import { SearchBar } from "../../components/ui/SearchBar";
 import styles from "./DocumentsHubView.module.css";
 import type { DocumentListItem, DocumentProfileGovernanceItem, DocumentProfileItem, ProcessAreaItem, SearchDocumentItem } from "../../lib.types";
 
@@ -17,6 +18,7 @@ type DocumentsHubViewProps = {
   selectedProfileGovernance: DocumentProfileGovernanceItem | null;
   searchQuery: string;
   formatDate: (value?: string) => string;
+  onSearchQueryChange: (value: string) => void;
   onOpenDocument: (documentId: string, nextView?: "library" | "content-builder") => void | Promise<void>;
   onOpenDocumentForHub: (documentId: string) => void | Promise<void>;
 };
@@ -259,6 +261,9 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
         <p className={styles.subtitle}>
           Acervo organizado por areas, tipos e status. Navegue pelos documentos mais relevantes.
         </p>
+        <div className={styles.headerSearch}>
+          <SearchBar value={props.searchQuery} onChange={props.onSearchQueryChange} />
+        </div>
       </div>
     </header>
   );

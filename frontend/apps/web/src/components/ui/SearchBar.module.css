@@ -1,0 +1,30 @@
+.root {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 0.45rem 0.85rem;
+  min-width: 240px;
+  max-width: 420px;
+  width: 100%;
+}
+
+.icon {
+  color: var(--muted);
+  display: inline-flex;
+}
+
+.input {
+  border: 0;
+  background: transparent;
+  outline: none;
+  color: var(--text);
+  font-size: 0.85rem;
+  width: 100%;
+}
+
+.input::placeholder {
+  color: var(--muted);
+}

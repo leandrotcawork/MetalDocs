@@ -303,7 +303,6 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
         </div>
         <div className="content-builder-topbar-actions">
           <span className={`content-builder-status ${status === "dirty" ? "is-warning" : ""}`}>{statusLabel}</span>
-          <button type="button" className="content-builder-btn ghost" onClick={props.onBack}>Voltar</button>
         </div>
       </header>
 

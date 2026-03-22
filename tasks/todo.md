@@ -388,6 +388,10 @@ Notes
       - Mover o espacamento para o container principal da Base e ajustar paddings internos
       commit: `fix(frontend-admin): move base users spacing to root container`
 
+- [x] T26: Aplicar estrutura de padding no Criar e Editar
+      - Adotar padding no root dos cards Criar/Editar e simplificar paddings internos
+      commit: `refactor(frontend-admin): align create and edit card spacing model`
+
 ## Acceptance tests
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards de criacao/base/edicao sem alongamento e no padrao da referencia

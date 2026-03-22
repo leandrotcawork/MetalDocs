@@ -177,7 +177,7 @@ export function ManagedUsersSection(props: ManagedUsersPanelProps) {
           className={`${styles.card} ${styles.createCard}`}
           style={syncedCardHeight ? { height: `${syncedCardHeight}px` } : undefined}
         >
-          <header className={styles.cardHeader}>
+          <header className={`${styles.cardHeader} ${styles.createHeader}`}>
             <h3 className={styles.cardTitle}>Criar usuario</h3>
           </header>
           <div className={styles.cardBody}>
@@ -277,7 +277,7 @@ export function ManagedUsersSection(props: ManagedUsersPanelProps) {
         </div>
 
         <article ref={editCardRef} className={`${styles.card} ${styles.editCard}`}>
-          <header className={styles.cardHeader}>
+          <header className={`${styles.cardHeader} ${styles.editHeader}`}>
             <h3 className={styles.cardTitle}>Editar usuario</h3>
           </header>
 

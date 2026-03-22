@@ -31,3 +31,10 @@ Wrong:   Applying padding only to inner rows (`header/search/list`) while the ca
 Correct: Place spacing on the card root and reduce inner paddings to keep a single spacing source
 Rule:    When matching panel primitives, keep padding ownership at the container level.
 Layer:   frontend
+
+## Lesson BF - Use one spacing model across sibling cards
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Base card uses root-level padding while Create/Edit still rely on mixed inner paddings
+Correct: Apply the same root-level spacing model to Create, Base and Edit cards
+Rule:    Sibling cards in the same section should share the same spacing ownership model.
+Layer:   frontend

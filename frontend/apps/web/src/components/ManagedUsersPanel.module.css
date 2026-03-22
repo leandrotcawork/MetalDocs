@@ -63,10 +63,24 @@
   min-width: 0;
 }
 
+.createCard,
+.editCard {
+  padding: 0.9rem;
+}
+
+.createHeader,
+.editHeader {
+  height: 3.6rem;
+  box-sizing: border-box;
+  padding: 0 0 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+
 .createCard .cardBody {
   display: flex;
   flex-direction: column;
   flex: 1;
+  padding: 0.65rem 0 0;
 }
 
 .createButton {
@@ -241,7 +255,7 @@
   display: flex;
   align-items: center;
   gap: 0.8rem;
-  padding: 1.2rem;
+  padding: 0.65rem 0;
   border-bottom: 1px solid var(--border);
 }
 
@@ -329,9 +343,13 @@
 }
 
 .actionsStack {
-  padding: 0 1.2rem 1.1rem;
+  padding: 0 0 0.2rem;
   display: grid;
   gap: 0.4rem;
+}
+
+.editCard .cardBody {
+  padding: 0.8rem 0;
 }
 
 .actionsRow {

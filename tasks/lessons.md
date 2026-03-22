@@ -1,6 +1,14 @@
 # tasks/lessons.md
 # Read at the start of EVERY session before touching any code.
-# Add new lessons after every correction. Never delete existing lessons.
+#
+# Scope:
+# - This file is for durable engineering lessons: architecture, boundaries, correctness, reliability, and repeatable frontend patterns.
+# - Avoid logging pure preference ("make it prettier", pixel nudges) unless it reveals a reusable rule.
+# - UI taste/polish notes go to `tasks/ui-notes.md` (editable/overwrite OK).
+#
+# Hygiene:
+# - Prefer 1 lesson per reusable pattern; do not spam per micro-change.
+# - When in doubt: can this prevent a future regression? If no, it is a UI note.
 
 ---
 

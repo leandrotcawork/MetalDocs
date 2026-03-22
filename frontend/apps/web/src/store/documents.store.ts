@@ -15,6 +15,9 @@ import type { ContentMode } from "../components/create/documentCreateTypes";
 import type { LoadState } from "./auth.store";
 
 type ContentStatus = "idle" | "saving" | "ready" | "error";
+type DocumentsHubView = "overview" | "collection" | "detail";
+type DocumentsHubMode = "card" | "list";
+type DocumentsHubStatus = "all" | "draft" | "review" | "approved";
 
 type DocumentFormState = {
   title: string;
@@ -62,6 +65,11 @@ interface DocumentsStore {
   loadState: LoadState;
   documents: SearchDocumentItem[];
   selectedDocument: DocumentListItem | null;
+  documentsHubView: DocumentsHubView;
+  documentsHubMode: DocumentsHubMode;
+  documentsHubStatus: DocumentsHubStatus;
+  documentsHubArea: string;
+  documentsHubProfile: string;
   versions: VersionListItem[];
   versionDiff: VersionDiffResponse | null;
   approvals: WorkflowApprovalItem[];
@@ -82,6 +90,11 @@ interface DocumentsStore {
   setLoadState: (loadState: LoadState) => void;
   setDocuments: (documents: SearchDocumentItem[]) => void;
   setSelectedDocument: (selectedDocument: DocumentListItem | null) => void;
+  setDocumentsHubView: (documentsHubView: DocumentsHubView) => void;
+  setDocumentsHubMode: (documentsHubMode: DocumentsHubMode) => void;
+  setDocumentsHubStatus: (documentsHubStatus: DocumentsHubStatus) => void;
+  setDocumentsHubArea: (documentsHubArea: string) => void;
+  setDocumentsHubProfile: (documentsHubProfile: string) => void;
   setVersions: (versions: VersionListItem[]) => void;
   setVersionDiff: (versionDiff: VersionDiffResponse | null) => void;
   setApprovals: (approvals: WorkflowApprovalItem[]) => void;
@@ -105,6 +118,11 @@ export const useDocumentsStore = create<DocumentsStore>((set) => ({
   loadState: "idle",
   documents: [],
   selectedDocument: null,
+  documentsHubView: "overview",
+  documentsHubMode: "card",
+  documentsHubStatus: "all",
+  documentsHubArea: "all",
+  documentsHubProfile: "all",
   versions: [],
   versionDiff: null,
   approvals: [],
@@ -125,6 +143,11 @@ export const useDocumentsStore = create<DocumentsStore>((set) => ({
   setLoadState: (loadState) => set({ loadState }),
   setDocuments: (documents) => set({ documents }),
   setSelectedDocument: (selectedDocument) => set({ selectedDocument }),
+  setDocumentsHubView: (documentsHubView) => set({ documentsHubView }),
+  setDocumentsHubMode: (documentsHubMode) => set({ documentsHubMode }),
+  setDocumentsHubStatus: (documentsHubStatus) => set({ documentsHubStatus }),
+  setDocumentsHubArea: (documentsHubArea) => set({ documentsHubArea }),
+  setDocumentsHubProfile: (documentsHubProfile) => set({ documentsHubProfile }),
   setVersions: (versions) => set({ versions }),
   setVersionDiff: (versionDiff) => set({ versionDiff }),
   setApprovals: (approvals) => set({ approvals }),
@@ -147,4 +170,4 @@ export const useDocumentsStore = create<DocumentsStore>((set) => ({
   setPolicyResourceId: (policyResourceId) => set({ policyResourceId }),
 }));
 
-export type { DocumentFormState };
+export type { DocumentFormState, DocumentsHubMode, DocumentsHubStatus, DocumentsHubView };

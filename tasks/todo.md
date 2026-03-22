@@ -422,3 +422,60 @@ Area: `frontend/apps/web/src/components/ui/*` + `frontend/apps/web/src/component
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: campos e dropdowns do Admin Center sem variacao de estilo
 
+---
+
+## Feature: Documents Hub (Todos documentos redesign)
+Area: `frontend/apps/web/src/features/documents/` + `frontend/apps/web/src/store/documents.store.ts`  |  Risk: medium  |  Goal: substituir a tela "Todos documentos" por um fluxo em 3 telas (overview -> listagem -> detalhe) mantendo o tema MetalDocs
+
+Notes
+- Frontend-first: reutilizar endpoints existentes (`search/documents`, `process-areas`, `document-profiles`) sempre que possivel.
+- Se faltar dado (ex: "abertos recentemente"): implementar via store + `localStorage` (sem mudar backend).
+- Se em algum ponto for necessario mudar contrato/endpoints: parar e adicionar T1 (OpenAPI) com `$metaldocs-openapi`.
+
+## Tasks
+- [x] T1: Mapear fluxo atual e pontos de entrada
+      - Identificar onde "Todos documentos" e renderizado hoje (view/state)
+      - Definir chaves de navegacao para: `DocumentsHub` (overview), `DocumentsCollection` (list), `DocumentOverview` (detalhe)
+      commit: `chore(frontend-docs): define documents hub navigation model`
+
+- [ ] T2: Tela 1 (Overview) "Todos documentos"
+      - KPIs: total, vigentes, em revisao, atencao (placeholder se nao houver dado)
+      - Grid de Areas (cards)
+      - Grid de Tipos de documento (cards)
+      - Lista "Abertos recentemente" (persistido no client)
+      commit: `feat(frontend-docs): add documents hub overview screen`
+
+- [ ] T3: Persistir "Abertos recentemente"
+      - Registrar documento ao abrir/entrar no detalhe
+      - Persistir lista curta no `localStorage` e hidratar no load
+      commit: `feat(frontend-docs): persist recently opened documents`
+
+- [ ] T4: Tela 2 (Collection) por Area/Tipo
+      - Header com breadcrumb + titulo + contagem
+      - Tabs: Todos, Draft, Em revisao, Aprovados
+      - Toggle Card/List + busca/ordenacao basica
+      commit: `feat(frontend-docs): add documents collection screen`
+
+- [ ] T5: Padrao de item (Card e Row)
+      - Mesma informacao nos dois modos: codigo/titulo, tipo, area, owner, status, proxima revisao
+      - Reutilizar componentes de badge/chip existentes quando possivel
+      commit: `refactor(frontend-docs): unify collection item primitives`
+
+- [ ] T6: Tela 3 (Document overview)
+      - Card principal com header + status + meta (area/processo/versao/owner/proxima revisao)
+      - Secoes: Classificacao, Governanca, Colaboracao, Diff (placeholders se nao houver dado)
+      - Acoes: Abrir documento, Enviar para revisao, Duplicar, Historico de versoes (wire onde existir; desabilitar onde nao existir)
+      commit: `feat(frontend-docs): add document overview screen`
+
+- [ ] T7: Substituir a tela atual por este fluxo
+      - "Todos documentos" passa a abrir a Tela 1
+      - Navegacao entre as 3 telas sem reload e sem regressao no fluxo principal
+      commit: `feat(frontend-docs): replace all-documents flow with hub`
+
+## Acceptance tests
+- [ ] `cd frontend/apps/web; npm.cmd run build`
+- [ ] Manual: abrir "Todos documentos" -> ver overview com Areas/Tipos/Recentes
+- [ ] Manual: clicar em Area/Tipo -> ver listagem + filtros + toggle card/list
+- [ ] Manual: clicar em documento -> ver overview do documento + acoes principais
+- [ ] No console errors durante o fluxo acima
+

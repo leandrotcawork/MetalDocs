@@ -149,8 +149,8 @@ export function useDocumentsWorkspace(applyDocumentProfile: (profileCode: string
     [loadWorkspace],
   );
 
-  const openDocument = useCallback(
-    async (documentId: string, nextView: "library" | "content-builder" = "library") => {
+  const loadDocumentDetails = useCallback(
+    async (documentId: string) => {
       startApiTrace(`open-document:${documentId}`);
       markUx(`open-document-start:${documentId}`);
       try {
@@ -181,15 +181,33 @@ export function useDocumentsWorkspace(applyDocumentProfile: (profileCode: string
           : null;
         setPolicies(policyResponse.items);
         setVersionDiff(nextDiff);
-        setActiveView(nextView);
         markUx(`open-document-ready:${documentId}`);
         stopApiTrace();
+        return true;
       } catch (err) {
         setError(asMessage(err));
         stopApiTrace();
+        return false;
       }
     },
-    [setActiveView, setApprovals, setAttachments, setAuditEvents, setCollaborationPresence, setDocumentEditLock, setError, setPolicies, setPolicyResourceId, setSelectedDocument, setVersionDiff, setVersions],
+    [setApprovals, setAttachments, setAuditEvents, setCollaborationPresence, setDocumentEditLock, setError, setPolicies, setPolicyResourceId, setSelectedDocument, setVersionDiff, setVersions],
+  );
+
+  const openDocument = useCallback(
+    async (documentId: string, nextView: "library" | "content-builder" = "library") => {
+      const ok = await loadDocumentDetails(documentId);
+      if (ok) {
+        setActiveView(nextView);
+      }
+    },
+    [loadDocumentDetails, setActiveView],
+  );
+
+  const openDocumentForHub = useCallback(
+    async (documentId: string) => {
+      await loadDocumentDetails(documentId);
+    },
+    [loadDocumentDetails],
   );
 
   const handleUploadAttachment = useCallback(
@@ -422,6 +440,7 @@ export function useDocumentsWorkspace(applyDocumentProfile: (profileCode: string
     refreshWorkspace,
     refreshOperationalSignals,
     openDocument,
+    openDocumentForHub,
     handleUploadAttachment,
     handleCreateDocument,
     createDocumentFromDraft,

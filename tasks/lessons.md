@@ -129,3 +129,10 @@ Wrong:   Collapsed preview shows expand button centered
 Correct: Collapsed preview aligns expand button to the top
 Rule:    Collapsed controls should follow top alignment for visibility.
 Layer:   frontend
+
+## Lesson T — Collapsed preview aligns horizontally centered
+Date: 2026-03-21 | Trigger: correction
+Wrong:   Collapsed preview button is horizontally offset
+Correct: Collapsed preview button is horizontally centered
+Rule:    Collapsed controls must be centered horizontally.
+Layer:   frontend

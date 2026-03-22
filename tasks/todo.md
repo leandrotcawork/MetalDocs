@@ -148,6 +148,10 @@ Notes
       - Avoid centered placement when collapsed
       commit: `fix(frontend-content-builder): align collapsed preview toggle`
 
+- [x] T9: Center collapsed preview toggle horizontally
+      - Keep top alignment while centering horizontally
+      commit: `fix(frontend-content-builder): center collapsed preview toggle`
+
 ## Acceptance tests (run after each task)
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Manual: Create doc -> reach editor via both paths (no-template vs Word template)

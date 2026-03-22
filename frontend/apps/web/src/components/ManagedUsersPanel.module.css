@@ -63,6 +63,16 @@
   min-width: 0;
 }
 
+.createCard .cardBody {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.createButton {
+  margin-top: auto;
+}
+
 .button {
   width: 100%;
   display: inline-flex;

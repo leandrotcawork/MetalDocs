@@ -352,6 +352,10 @@ Notes
       - Aplicar a altura do Editar tambem no card Criar e clipar a Base para respeitar a curvatura do card
       commit: `fix(frontend-admin): sync create card height and clip base scrollbar corner`
 
+- [x] T17: Ancorar acao de criar na base do card
+      - Remover `+` do label e usar o espaco livre para manter o botao no rodape do card Criar
+      commit: `fix(frontend-admin): anchor create user action to card footer`
+
 ## Acceptance tests
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards de criacao/base/edicao sem alongamento e no padrao da referencia

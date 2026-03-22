@@ -332,3 +332,10 @@ Wrong:   Letting the list scrollbar render outside the rounded clipping area, cr
 Correct: Apply `overflow: hidden` on the rounded card and keep the inner list scrollable
 Rule:    Rounded cards with internal scroll regions must clip overflow at the card boundary to preserve corner curvature.
 Layer:   frontend
+
+## Lesson AW - Footer actions in equal-height cards should consume spare space
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Leaving the primary action inside the normal field flow, creating a large dead gap under it
+Correct: Make the create form body a column layout and push the primary action to the bottom with `margin-top: auto`
+Rule:    In fixed-height form cards, the primary CTA should anchor to the footer rather than float above leftover space.
+Layer:   frontend

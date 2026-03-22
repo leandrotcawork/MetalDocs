@@ -232,8 +232,8 @@ export function ManagedUsersSection(props: ManagedUsersPanelProps) {
               options={PROFILE_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
               onSelect={handleCreateRoleChange}
             />
-            <button type="button" className={`${styles.button} ${styles.buttonPrimary}`} onClick={() => void props.onCreateUser()}>
-              + Criar usuario
+            <button type="button" className={`${styles.button} ${styles.buttonPrimary} ${styles.createButton}`} onClick={() => void props.onCreateUser()}>
+              Criar usuario
             </button>
           </div>
         </article>

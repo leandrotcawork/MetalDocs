@@ -605,9 +605,16 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
                   <span className={styles.recentBadge}>{item.documentProfile.toUpperCase()}</span>
                   <div className={styles.recentMeta}>
                     <strong>{item.title || "Documento sem titulo"}</strong>
-                    <small>{item.processArea ?? "Sem area"} · {props.formatDate(item.openedAt ?? item.createdAt)}</small>
+                    <div className={styles.recentSubline}>
+                      <span>{item.processArea ?? "Sem area"}</span>
+                      <span>Aberto por {item.ownerId}</span>
+                      <span>{props.formatDate(item.openedAt ?? item.createdAt)}</span>
+                    </div>
                   </div>
-                  <span className={styles.recentStatus}>{statusLabel(item.status)}</span>
+                  <div className={styles.recentAside}>
+                    <span className={styles.recentStatus}>{statusLabel(item.status)}</span>
+                    <small className={styles.recentCode}>{item.documentId}</small>
+                  </div>
                 </button>
               ))
             )}

@@ -291,9 +291,39 @@
   font-size: 0.9rem;
 }
 
-.recentMeta small {
+.recentSubline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.8rem;
+  font-size: 0.72rem;
   color: var(--muted);
-  font-size: 0.75rem;
+}
+
+.recentSubline span {
+  white-space: nowrap;
+}
+
+.recentSubline span::after {
+  content: "•";
+  margin-left: 0.6rem;
+  color: var(--border);
+}
+
+.recentSubline span:last-child::after {
+  content: "";
+  margin: 0;
+}
+
+.recentAside {
+  display: grid;
+  justify-items: end;
+  gap: 0.25rem;
+  color: var(--muted);
+}
+
+.recentCode {
+  font-size: 0.7rem;
+  font-family: "DM Mono", Consolas, monospace;
 }
 
 .recentStatus {
@@ -726,6 +756,18 @@
 
   .recentRow {
     grid-template-columns: 28px minmax(0, 1fr);
+  }
+
+  .recentAside {
+    justify-items: start;
+  }
+
+  .recentSubline span {
+    white-space: normal;
+  }
+
+  .recentSubline span::after {
+    display: none;
   }
 }
 .typeMeta {

@@ -61,3 +61,7 @@ Decision: Wrapped recent rows in a single container card for clearer grouping an
 Date: 2026-03-22
 Context: Documents Hub overview (Abertos recentemente)
 Decision: Moved the title and "Ver todos" link inside the recent container for a unified block.
+
+Date: 2026-03-22
+Context: Documents Hub overview (Abertos recentemente)
+Decision: Enriched recent rows with owner, area, opened date, and status in a two-column layout for better visual density.

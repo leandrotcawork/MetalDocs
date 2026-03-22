@@ -456,7 +456,7 @@ Notes
       - Toggle Card/List + busca/ordenacao basica
       commit: `feat(frontend-docs): add documents collection screen`
 
-- [ ] T5: Padrao de item (Card e Row)
+- [x] T5: Padrao de item (Card e Row)
       - Mesma informacao nos dois modos: codigo/titulo, tipo, area, owner, status, proxima revisao
       - Reutilizar componentes de badge/chip existentes quando possivel
       commit: `refactor(frontend-docs): unify collection item primitives`

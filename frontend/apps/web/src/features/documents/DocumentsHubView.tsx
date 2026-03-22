@@ -294,6 +294,7 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
                   <span>{item.documentProfile.toUpperCase()}</span>
                   <span>{item.processArea ?? "Sem area"}</span>
                 </div>
+                <span className={styles.docCardId}>{item.documentId}</span>
                 <div className={styles.docCardFooter}>
                   <span>{item.ownerId}</span>
                   <span>{item.expiryAt ? `Revisao: ${props.formatDate(item.expiryAt)}` : "-"}</span>
@@ -320,7 +321,7 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
               >
                 <span className={styles.listTitle}>
                   <strong>{item.title || "Documento sem titulo"}</strong>
-                  <small>{item.documentId}</small>
+                  <small>{item.documentId} · {item.processArea ?? "Sem area"}</small>
                 </span>
                 <span>{item.documentProfile.toUpperCase()}</span>
                 <span>{statusLabel(item.status)}</span>

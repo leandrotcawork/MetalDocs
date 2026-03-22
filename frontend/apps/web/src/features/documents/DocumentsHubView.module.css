@@ -352,6 +352,12 @@
   color: var(--muted);
 }
 
+.docCardId {
+  font-size: 0.7rem;
+  color: var(--muted);
+  font-family: "DM Mono", Consolas, monospace;
+}
+
 .docCardFooter {
   display: flex;
   justify-content: space-between;

@@ -833,7 +833,7 @@ td small {
   padding: 1rem 1.1rem;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
-  margin-bottom: 1rem;
+  margin-bottom: 0.6rem;
 }
 
 .catalog-header h1,

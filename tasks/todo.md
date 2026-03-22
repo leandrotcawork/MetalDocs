@@ -380,6 +380,10 @@ Notes
       - Trocar `article` por `div` e separar header, actions e lista no mesmo shape dos cards de auditoria
       commit: `refactor(frontend-admin): align base users card structure with audit panel`
 
+- [x] T24: Adicionar padding no grid do Admin Center
+      - Aplicar padding ao container do grid para manter respiro externo
+      commit: `fix(frontend-admin): add padding to admin grid container`
+
 ## Acceptance tests
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards de criacao/base/edicao sem alongamento e no padrao da referencia

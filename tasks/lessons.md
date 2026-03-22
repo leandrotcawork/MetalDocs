@@ -17,3 +17,10 @@ Wrong:   Keeping `Base de usuarios` as an `article` with ad-hoc sections while s
 Correct: Rebuild the card with the same header/actions/list container pattern as the audit and online panels
 Rule:    When cards are meant to share a UI pattern, align both CSS and DOM structure instead of styling around mismatched markup.
 Layer:   frontend
+
+## Lesson BD - Apply spacing at the grid container, not each panel
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Relying on per-panel padding alone, leaving the grid edges flush to the parent
+Correct: Add padding to the grid wrapper so all child panels inherit the same outer breathing room
+Rule:    Use container padding for consistent outer spacing across a grid of panels.
+Layer:   frontend

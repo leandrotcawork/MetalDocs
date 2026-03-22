@@ -308,6 +308,10 @@ Notes
       - Cards iguais via `grid-auto-rows` + `height: 100%`, sem clipping
       commit: `fix(frontend-admin): equalize user cards by grid row height`
 
+- [x] T6: Reordenar campos de Editar e ajustar spacing do action stack
+      - Departamento + Area na mesma linha; Perfil abaixo; reduzir gap do stack
+      commit: `fix(frontend-admin): adjust edit fields layout and actions spacing`
+
 ## Acceptance tests
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards de criacao/base/edicao sem alongamento e no padrao da referencia

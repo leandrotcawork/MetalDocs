@@ -255,3 +255,10 @@ Wrong:   Same screen mixing native inputs/selects and spotlight dropdown variant
 Correct: Use `TextFieldBox` and `DropdownFieldBox` for repeated fields in the same flow
 Rule:    Repeated controls should be composed from shared components to prevent style drift.
 Layer:   frontend
+
+## Lesson AL - Card layout must guard against overflow at smaller zooms
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Grid/card content overflowed when zooming out because min-width and width constraints were missing
+Correct: Add `min-width: 0` and `width: 100%` guards on cards and spotlight dropdowns
+Rule:    Ensure grid children can shrink without overflow by enforcing min-width and width constraints.
+Layer:   frontend

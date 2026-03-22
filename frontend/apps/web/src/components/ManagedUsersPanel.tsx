@@ -278,20 +278,22 @@ export function ManagedUsersSection(props: ManagedUsersPanelProps) {
                 />
 
                 <div className={styles.editMetaFields}>
-                  <DropdownFieldBox
-                    id="edit-department"
-                    label="Departamento"
-                    value={editDepartment}
-                    options={DEPARTMENT_OPTIONS}
-                    onSelect={setEditDepartment}
-                  />
-                  <DropdownFieldBox
-                    id="edit-process-area"
-                    label="Area de operacoes"
-                    value={editProcessArea}
-                    options={PROCESS_AREA_OPTIONS}
-                    onSelect={setEditProcessArea}
-                  />
+                  <div className={styles.editMetaRow}>
+                    <DropdownFieldBox
+                      id="edit-department"
+                      label="Departamento"
+                      value={editDepartment}
+                      options={DEPARTMENT_OPTIONS}
+                      onSelect={setEditDepartment}
+                    />
+                    <DropdownFieldBox
+                      id="edit-process-area"
+                      label="Area de operacoes"
+                      value={editProcessArea}
+                      options={PROCESS_AREA_OPTIONS}
+                      onSelect={setEditProcessArea}
+                    />
+                  </div>
                   <DropdownFieldBox
                     id="edit-profile"
                     label="Perfil"

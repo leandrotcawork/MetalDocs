@@ -216,11 +216,12 @@ export function AdminCenterView() {
                     <span className={activityDotClass(item.action)} />
                     <div className={styles.listMeta}>
                       <strong className={styles.listTitle}>{item.action}</strong>
-                      <small className={styles.listSub}>
-                        {item.actorId} • {formatDate(item.occurredAt)}
-                      </small>
+                      <small className={styles.listSub}>{item.actorId}</small>
                     </div>
-                    <span className={activityChipClass(item.action)}>{activityLabel(item.action)}</span>
+                    <div className={styles.activityRight}>
+                      <span className={styles.listTime}>{formatDate(item.occurredAt)}</span>
+                      <span className={activityChipClass(item.action)}>{activityLabel(item.action)}</span>
+                    </div>
                   </li>
                 ))}
               </ul>

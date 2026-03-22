@@ -250,6 +250,10 @@ Notes
       - Separadores, link "Audit trail" e layout de lista
       commit: `fix(frontend-admin): align activity card to reference`
 
+- [x] T7: Alinhar card de atividades ao padrao do online
+      - Titulos, separadores e colunas alinhadas
+      commit: `fix(frontend-admin): align activity card spacing to online`
+
 ## Acceptance tests
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards compactos, hierarquia clara e sem “cards gigantes”

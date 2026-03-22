@@ -199,9 +199,11 @@ export function AdminCenterView() {
                 <p className={styles.kicker}>Auditoria</p>
                 <h2 className={styles.panelTitle}>Ultimas atividades</h2>
               </div>
-              <button className={styles.activityLink} type="button">
-                Audit trail →
-              </button>
+              <div className={styles.panelHeaderActions}>
+                <button className={styles.activityLink} type="button">
+                  Audit trail →
+                </button>
+              </div>
             </div>
             <ul className={styles.panelList}>
               {adminCenter.recentActivities.length === 0 ? (

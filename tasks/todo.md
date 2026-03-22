@@ -258,6 +258,10 @@ Notes
       - Mesmo header, separadores e estrutura; variacoes só no conteudo
       commit: `refactor(frontend-admin): unify list card pattern`
 
+- [x] T9: Equalizar altura dos headers dos cards
+      - Mesmo wrapper de acoes e mesma altura minima para alinhar a divisoria
+      commit: `fix(frontend-admin): align card header dividers`
+
 ## Acceptance tests
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards compactos, hierarquia clara e sem “cards gigantes”

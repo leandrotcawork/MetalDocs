@@ -199,3 +199,10 @@ Wrong:   Activity empty state rendered as a plain paragraph, breaking header/row
 Correct: Render empty state within the list layout to keep row spacing and separators aligned
 Rule:    Empty states inside list panels must reuse list layout structure for visual consistency.
 Layer:   frontend
+
+## Lesson AD - Shared dividers require equal header height
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Similar cards used different header content structures, so the divider line sat at different vertical positions
+Correct: Cards that share a visual pattern use the same action wrapper and a fixed minimum header height
+Rule:    When the divider belongs to the header container, equalize header structure and height across sibling cards.
+Layer:   frontend

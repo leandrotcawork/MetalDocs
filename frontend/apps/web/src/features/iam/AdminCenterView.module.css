@@ -158,19 +158,20 @@
 
 .panelHeader {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
 }
 
 .panelHeaderRow {
+  min-height: 3.2rem;
   padding-bottom: 0.6rem;
   border-bottom: 1px solid var(--border);
 }
 
 .panelHeaderActions {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.6rem;
 }
 

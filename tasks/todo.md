@@ -126,7 +126,7 @@ Notes
       - Back / Save draft / Generate PDF match the Create flow visual standard
       commit: `fix(frontend-ui): normalize content builder buttons`
 
-- [ ] T4: Make PDF preview collapsible/expandable
+- [x] T4: Make PDF preview collapsible/expandable
       - Persist state in UI store if it’s shared; otherwise local state in feature
       commit: `feat(frontend-content-builder): add collapsible pdf preview`
 

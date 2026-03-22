@@ -132,12 +132,14 @@
   grid-template-rows: auto auto minmax(0, 1fr);
   min-height: 0;
   overflow: hidden;
+  padding: 0.9rem;
 }
 
 .baseHeader {
   height: 3.6rem;
   box-sizing: border-box;
-  padding-bottom: 0.6rem;
+  padding: 0 0 0.6rem;
+  border-bottom: 1px solid var(--border);
 }
 
 .baseHeaderText {
@@ -152,11 +154,15 @@
   gap: 0.6rem;
 }
 
+.baseCard .searchWrap {
+  padding: 0.65rem 0;
+}
+
 .baseCard .userList {
   min-height: 0;
   overflow-y: auto;
   scrollbar-gutter: stable;
-  padding: 0.5rem 0.9rem 0.8rem;
+  padding: 0.5rem 0 0;
 }
 
 .baseCard .userList::-webkit-scrollbar-corner {

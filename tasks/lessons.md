@@ -24,3 +24,10 @@ Wrong:   Relying on per-panel padding alone, leaving the grid edges flush to the
 Correct: Add padding to the grid wrapper so all child panels inherit the same outer breathing room
 Rule:    Use container padding for consistent outer spacing across a grid of panels.
 Layer:   frontend
+
+## Lesson BE - Matching panel padding requires root-level spacing
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Applying padding only to inner rows (`header/search/list`) while the card root remains unpadded
+Correct: Place spacing on the card root and reduce inner paddings to keep a single spacing source
+Rule:    When matching panel primitives, keep padding ownership at the container level.
+Layer:   frontend

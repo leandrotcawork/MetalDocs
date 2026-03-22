@@ -384,6 +384,10 @@ Notes
       - Aplicar padding ao container do grid para manter respiro externo
       commit: `fix(frontend-admin): add padding to admin grid container`
 
+- [x] T25: Aplicar padding no root da Base de usuarios
+      - Mover o espacamento para o container principal da Base e ajustar paddings internos
+      commit: `fix(frontend-admin): move base users spacing to root container`
+
 ## Acceptance tests
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards de criacao/base/edicao sem alongamento e no padrao da referencia

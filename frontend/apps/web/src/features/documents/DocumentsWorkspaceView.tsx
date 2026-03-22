@@ -55,6 +55,7 @@ export function DocumentsWorkspaceView(props: DocumentsWorkspaceViewProps) {
       processAreas={props.processAreas}
       selectedDocument={props.selectedDocument}
       selectedProfileGovernance={props.selectedProfileGovernance}
+      searchQuery={props.searchQuery}
       formatDate={props.formatDate}
       onOpenDocument={props.onOpenDocument}
       onOpenDocumentForHub={props.onOpenDocumentForHub}

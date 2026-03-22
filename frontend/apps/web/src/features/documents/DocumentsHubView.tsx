@@ -14,6 +14,7 @@ type DocumentsHubViewProps = {
   processAreas: ProcessAreaItem[];
   selectedDocument: DocumentListItem | null;
   selectedProfileGovernance: DocumentProfileGovernanceItem | null;
+  searchQuery: string;
   formatDate: (value?: string) => string;
   onOpenDocument: (documentId: string, nextView?: "library" | "content-builder") => void | Promise<void>;
   onOpenDocumentForHub: (documentId: string) => void | Promise<void>;
@@ -70,7 +71,13 @@ function statusLabel(status: string): string {
 export function DocumentsHubView(props: DocumentsHubViewProps) {
   const scope = documentScope(props.view);
   const {
+    documentsHubView,
+    documentsHubMode,
+    documentsHubStatus,
+    documentsHubArea,
+    documentsHubProfile,
     setDocumentsHubView,
+    setDocumentsHubMode,
     setDocumentsHubStatus,
     setDocumentsHubArea,
     setDocumentsHubProfile,
@@ -160,6 +167,57 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
 
   const headerTitle = scope === "mine" ? "Meus documentos" : scope === "recent" ? "Recentes" : "Todos documentos";
 
+  const normalizedQuery = props.searchQuery.trim().toLowerCase();
+  const baseFilteredDocuments = useMemo(() => {
+    return scopedDocuments.filter((item) => {
+      if (documentsHubArea !== "all") {
+        const area = item.processArea ?? "sem-area";
+        if (area !== documentsHubArea) return false;
+      }
+      if (documentsHubProfile !== "all" && item.documentProfile !== documentsHubProfile) return false;
+      if (!normalizedQuery) return true;
+      const haystack = [
+        item.title,
+        item.documentId,
+        item.documentProfile,
+        item.processArea,
+        item.ownerId,
+      ].join(" ").toLowerCase();
+      return haystack.includes(normalizedQuery);
+    });
+  }, [documentsHubArea, documentsHubProfile, normalizedQuery, scopedDocuments]);
+
+  const tabCounts = useMemo(() => ({
+    all: baseFilteredDocuments.length,
+    draft: baseFilteredDocuments.filter((item) => item.status === "DRAFT").length,
+    review: baseFilteredDocuments.filter((item) => item.status === "IN_REVIEW").length,
+    approved: baseFilteredDocuments.filter((item) => item.status === "APPROVED" || item.status === "PUBLISHED").length,
+  }), [baseFilteredDocuments]);
+
+  const collectionDocuments = useMemo(() => {
+    if (documentsHubStatus === "draft") {
+      return baseFilteredDocuments.filter((item) => item.status === "DRAFT");
+    }
+    if (documentsHubStatus === "review") {
+      return baseFilteredDocuments.filter((item) => item.status === "IN_REVIEW");
+    }
+    if (documentsHubStatus === "approved") {
+      return baseFilteredDocuments.filter((item) => item.status === "APPROVED" || item.status === "PUBLISHED");
+    }
+    return baseFilteredDocuments;
+  }, [baseFilteredDocuments, documentsHubStatus]);
+
+  const collectionTitle = useMemo(() => {
+    if (documentsHubProfile !== "all") {
+      return props.documentProfiles.find((item) => item.code === documentsHubProfile)?.name ?? documentsHubProfile;
+    }
+    if (documentsHubArea !== "all") {
+      if (documentsHubArea === "sem-area") return "Sem area";
+      return props.processAreas.find((item) => item.code === documentsHubArea)?.name ?? documentsHubArea;
+    }
+    return headerTitle;
+  }, [documentsHubArea, documentsHubProfile, headerTitle, props.documentProfiles, props.processAreas]);
+
   const handleRecentOpen = (item: SearchDocumentItem) => {
     const nextItems: RecentDocumentItem[] = [
       { ...item, openedAt: new Date().toISOString() },
@@ -170,6 +228,112 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
     void props.onOpenDocumentForHub(item.documentId);
     setDocumentsHubView("detail");
   };
+
+  if (documentsHubView === "collection") {
+    return (
+      <section className={styles.collection}>
+        <div className={styles.collectionHeader}>
+          <div>
+            <div className={styles.breadcrumb}>
+              <button type="button" onClick={() => setDocumentsHubView("overview")}>Inicio</button>
+              <span>/</span>
+              <span>{collectionTitle}</span>
+            </div>
+            <h2>{collectionTitle} <span>({tabCounts.all})</span></h2>
+          </div>
+          <div className={styles.collectionActions}>
+            <div className={styles.viewToggle}>
+              <button
+                type="button"
+                className={documentsHubMode === "card" ? styles.isActive : ""}
+                onClick={() => setDocumentsHubMode("card")}
+                title="Exibir em cards"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+                  <rect x="1" y="1" width="6" height="6" rx="1.5" />
+                  <rect x="9" y="1" width="6" height="6" rx="1.5" />
+                  <rect x="1" y="9" width="6" height="6" rx="1.5" />
+                  <rect x="9" y="9" width="6" height="6" rx="1.5" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                className={documentsHubMode === "list" ? styles.isActive : ""}
+                onClick={() => setDocumentsHubMode("list")}
+                title="Exibir em lista"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+                  <path d="M3 4h10M3 8h10M3 12h10" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className={styles.tabRow}>
+          <button type="button" className={documentsHubStatus === "all" ? styles.tabActive : styles.tab} onClick={() => setDocumentsHubStatus("all")}>Todos ({tabCounts.all})</button>
+          <button type="button" className={documentsHubStatus === "draft" ? styles.tabActive : styles.tab} onClick={() => setDocumentsHubStatus("draft")}>Draft ({tabCounts.draft})</button>
+          <button type="button" className={documentsHubStatus === "review" ? styles.tabActive : styles.tab} onClick={() => setDocumentsHubStatus("review")}>Em revisao ({tabCounts.review})</button>
+          <button type="button" className={documentsHubStatus === "approved" ? styles.tabActive : styles.tab} onClick={() => setDocumentsHubStatus("approved")}>Aprovados ({tabCounts.approved})</button>
+        </div>
+
+        {documentsHubMode === "card" ? (
+          <div className={styles.cardGrid}>
+            {collectionDocuments.map((item) => (
+              <button
+                key={item.documentId}
+                type="button"
+                className={styles.docCard}
+                onClick={() => handleRecentOpen(item)}
+              >
+                <div className={styles.docCardHeader}>
+                  <strong>{item.title || "Documento sem titulo"}</strong>
+                  <span className={styles.statusChip}>{statusLabel(item.status)}</span>
+                </div>
+                <div className={styles.docCardMeta}>
+                  <span>{item.documentProfile.toUpperCase()}</span>
+                  <span>{item.processArea ?? "Sem area"}</span>
+                </div>
+                <div className={styles.docCardFooter}>
+                  <span>{item.ownerId}</span>
+                  <span>{item.expiryAt ? `Revisao: ${props.formatDate(item.expiryAt)}` : "-"}</span>
+                </div>
+              </button>
+            ))}
+            {collectionDocuments.length === 0 && <div className={styles.emptyCard}>Nenhum documento encontrado.</div>}
+          </div>
+        ) : (
+          <div className={styles.listTable}>
+            <div className={styles.listHeader}>
+              <span>Documento</span>
+              <span>Tipo</span>
+              <span>Status</span>
+              <span>Owner</span>
+              <span>Prox. revisao</span>
+            </div>
+            {collectionDocuments.map((item) => (
+              <button
+                key={item.documentId}
+                type="button"
+                className={styles.listRow}
+                onClick={() => handleRecentOpen(item)}
+              >
+                <span className={styles.listTitle}>
+                  <strong>{item.title || "Documento sem titulo"}</strong>
+                  <small>{item.documentId}</small>
+                </span>
+                <span>{item.documentProfile.toUpperCase()}</span>
+                <span>{statusLabel(item.status)}</span>
+                <span>{item.ownerId}</span>
+                <span>{item.expiryAt ? props.formatDate(item.expiryAt) : "-"}</span>
+              </button>
+            ))}
+            {collectionDocuments.length === 0 && <div className={styles.emptyCard}>Nenhum documento encontrado.</div>}
+          </div>
+        )}
+      </section>
+    );
+  }
 
   return (
     <section className={styles.hub}>

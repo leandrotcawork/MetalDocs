@@ -450,7 +450,7 @@ Notes
       - Persistir lista curta no `localStorage` e hidratar no load
       commit: `feat(frontend-docs): persist recently opened documents`
 
-- [ ] T4: Tela 2 (Collection) por Area/Tipo
+- [x] T4: Tela 2 (Collection) por Area/Tipo
       - Header com breadcrumb + titulo + contagem
       - Tabs: Todos, Draft, Em revisao, Aprovados
       - Toggle Card/List + busca/ordenacao basica

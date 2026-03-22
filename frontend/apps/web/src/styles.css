@@ -368,12 +368,15 @@ td small {
   letter-spacing: 0.04em;
 }
 
-.catalog-kicker,
 .catalog-muted,
 .workspace-breadcrumb span,
 .wizard-step-card small,
 .metadata-rule-card small {
   color: var(--muted);
+}
+
+.catalog-kicker {
+  display: none;
 }
 
 .catalog-detail-stack,
@@ -425,6 +428,10 @@ td small {
 .metadata-rule-grid {
   display: grid;
   gap: 1rem;
+}
+
+.catalog-shell {
+  padding: 1.5rem;
 }
 
 .catalog-shell-dense {

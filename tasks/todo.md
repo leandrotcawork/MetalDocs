@@ -332,6 +332,10 @@ Notes
       - Manter estrutura/altura atual e ajustar apenas overflow da lista para scroll
       commit: `fix(frontend-admin): restore base users list scroll behavior`
 
+- [x] T12: Remover limite artificial da Base de usuarios
+      - Eliminar corte em 10 itens para permitir scroll real com toda a base
+      commit: `fix(frontend-admin): remove user list cap in admin base`
+
 ## Acceptance tests
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards de criacao/base/edicao sem alongamento e no padrao da referencia

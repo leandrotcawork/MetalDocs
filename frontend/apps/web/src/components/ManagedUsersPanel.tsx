@@ -101,10 +101,9 @@ export function ManagedUsersSection(props: ManagedUsersPanelProps) {
 
   const filteredUsers = useMemo(() => {
     const query = search.trim().toLowerCase();
-    const matches = !query
+    return !query
       ? props.managedUsers
       : props.managedUsers.filter((item) => item.displayName.toLowerCase().includes(query) || item.username.toLowerCase().includes(query));
-    return matches.slice(0, 10);
   }, [props.managedUsers, search]);
 
   const handleCreateRoleChange = (value: string) => {

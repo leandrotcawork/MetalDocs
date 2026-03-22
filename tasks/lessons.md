@@ -290,3 +290,10 @@ Wrong:   Reworking card structure when only scroll feedback was requested
 Correct: Keep existing card sizing and change only list overflow mode in Base de usuarios
 Rule:    For UI corrections scoped to scroll behavior, apply the smallest CSS-only diff possible.
 Layer:   frontend
+
+## Lesson AQ - Visible scroll requires real overflow data
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Keeping `slice(0, 10)` while expecting a scroll bar with larger datasets
+Correct: Remove hard cap when requirement is full-base scrolling
+Rule:    Scroll behavior depends on rendered content exceeding the viewport; avoid client-side caps when full list navigation is expected.
+Layer:   frontend

@@ -95,6 +95,7 @@ export function AdminCenterView() {
     >
       <div className={styles.shell}>
         <div className={styles.container}>
+          <div className={styles.card}>
           <WorkspaceDataState
             loadState={adminCenter.loadState}
             isEmpty={adminCenter.users.length === 0}
@@ -230,6 +231,7 @@ export function AdminCenterView() {
             onAdminResetPassword={managedUsersApi.handleAdminResetPassword}
             onUnlockManagedUser={managedUsersApi.handleUnlockManagedUser}
           />
+          </div>
         </div>
       </div>
     </WorkspaceViewFrame>

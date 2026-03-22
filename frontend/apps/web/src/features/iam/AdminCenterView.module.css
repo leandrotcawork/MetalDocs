@@ -10,6 +10,16 @@
   gap: 0.75rem;
 }
 
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1.25rem;
+  box-shadow: var(--shadow);
+  padding: 1.25rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
 .headerRow {
   display: flex;
   align-items: center;

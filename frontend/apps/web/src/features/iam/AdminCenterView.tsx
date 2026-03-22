@@ -1,10 +1,11 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ManagedUsersSection } from "../../components/ManagedUsersPanel";
 import { WorkspaceDataState } from "../../components/WorkspaceDataState";
 import { WorkspaceViewFrame } from "../../components/WorkspaceViewFrame";
 import { useManagedUsers } from "./useManagedUsers";
 import { useAdminCenter } from "./useAdminCenter";
 import styles from "./AdminCenterView.module.css";
+import { useUiStore } from "../../store/ui.store";
 
 function formatDate(value?: string): string {
   if (!value) return "-";
@@ -14,14 +15,21 @@ function formatDate(value?: string): string {
 export function AdminCenterView() {
   const adminCenter = useAdminCenter();
   const managedUsersApi = useManagedUsers(adminCenter.refresh);
+  const { searchQuery, setSearchQuery, setActiveView } = useUiStore();
   const selectedManagedUser = useMemo(
     () => managedUsersApi.managedUsers.find((item) => item.userId === managedUsersApi.managedUserForm.userId) ?? null,
     [managedUsersApi.managedUserForm.userId, managedUsersApi.managedUsers],
   );
+  const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
     void adminCenter.refresh();
   }, [adminCenter.refresh]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 30000);
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     if (!managedUsersApi.managedUserForm.userId) {
@@ -45,6 +53,7 @@ export function AdminCenterView() {
   const onlineCount = adminCenter.onlineUsers.length;
   const latestActivity = adminCenter.recentActivities[0]?.occurredAt;
   const latestActivityLabel = latestActivity ? formatDate(latestActivity) : "Sem atividade recente";
+  const nowLabel = new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium", timeStyle: "short" }).format(now);
   const toInitials = (value: string) => {
     const [first, second] = value.trim().split(/\s+/);
     return [first?.[0], second?.[0]].filter(Boolean).join("").toUpperCase();
@@ -92,6 +101,33 @@ export function AdminCenterView() {
       kicker="IAM + Observabilidade"
       title="Central do Admin"
       description="Controle de usuarios, presenca online e ultimas atividades do sistema."
+      actions={(
+        <div className={styles.headerActions}>
+          <div className={styles.searchGroup}>
+            <span className={styles.searchIcon} aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4">
+                <circle cx="6" cy="6" r="4.5" />
+                <path d="M10 10l3 3" strokeLinecap="round" />
+              </svg>
+            </span>
+            <input
+              className={styles.searchInput}
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  setActiveView("library");
+                }
+              }}
+              placeholder="Pesquisar documentos"
+            />
+          </div>
+          <span className={styles.timeBadge}>{nowLabel}</span>
+          <button type="button" className={styles.primaryButton} onClick={() => setActiveView("create")}>
+            Novo documento
+          </button>
+        </div>
+      )}
     >
       <div className={styles.shell}>
         <WorkspaceDataState

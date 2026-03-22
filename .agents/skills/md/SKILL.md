@@ -237,7 +237,8 @@ Run `$metaldocs-review` for full review.
 ---
 
 ## After any correction
-Write lesson to `tasks/lessons.md` immediately.
+- If it produces a **durable engineering rule/pattern** (architecture, boundaries, correctness, reliability, repeatable frontend patterns): write a lesson in `tasks/lessons.md` immediately.
+- If it is **UI taste/polish** (alignment, spacing nudges, “make it prettier”): write/update `tasks/ui-notes.md` instead (allowed to reorganize/overwrite).
 
 ## References
 - `references/folder-patterns.md` — module structure variants

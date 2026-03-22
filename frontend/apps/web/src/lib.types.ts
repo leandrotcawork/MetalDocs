@@ -28,6 +28,19 @@ export interface ManagedUserItem {
   roles: UserRole[];
 }
 
+export interface OnlineUserItem {
+  userId: string;
+  username: string;
+  displayName: string;
+  lastSeenAt: string;
+}
+
+export interface AdminOverviewResponse {
+  users: ManagedUserItem[];
+  onlineUsers: OnlineUserItem[];
+  recentActivities: AuditEventItem[];
+}
+
 export interface DocumentTypeItem {
   code: string;
   name: string;

@@ -76,6 +76,48 @@ func TestCreateDocumentCreatesVersionAndEvents(t *testing.T) {
 	}
 }
 
+func TestCreateDocumentAssignsSequentialCodeByProfile(t *testing.T) {
+	repo := memory.NewRepository()
+	svc := application.NewService(repo, nil, fixedClock{now: time.Date(2026, 3, 16, 10, 0, 0, 0, time.UTC)})
+
+	first, err := svc.CreateDocument(context.Background(), domain.CreateDocumentCommand{
+		DocumentID:   "doc-seq-1",
+		Title:        "Primeiro PO",
+		DocumentType: "po",
+		OwnerID:      "user-1",
+		BusinessUnit: "quality",
+		Department:   "qa",
+		MetadataJSON: map[string]any{
+			"procedure_code": "PO-001",
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected create error: %v", err)
+	}
+
+	second, err := svc.CreateDocument(context.Background(), domain.CreateDocumentCommand{
+		DocumentID:   "doc-seq-2",
+		Title:        "Segundo PO",
+		DocumentType: "po",
+		OwnerID:      "user-1",
+		BusinessUnit: "quality",
+		Department:   "qa",
+		MetadataJSON: map[string]any{
+			"procedure_code": "PO-002",
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected create error: %v", err)
+	}
+
+	if first.DocumentCode != "PO-001" {
+		t.Fatalf("expected first code PO-001, got %s", first.DocumentCode)
+	}
+	if second.DocumentCode != "PO-002" {
+		t.Fatalf("expected second code PO-002, got %s", second.DocumentCode)
+	}
+}
+
 func TestAddVersionIncrementsVersionNumber(t *testing.T) {
 	repo := memory.NewRepository()
 	pub := &capturePublisher{}

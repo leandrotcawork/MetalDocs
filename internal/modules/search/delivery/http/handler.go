@@ -16,22 +16,24 @@ type Handler struct {
 }
 
 type SearchDocumentResponse struct {
-	DocumentID      string   `json:"documentId"`
-	Title           string   `json:"title"`
-	DocumentType    string   `json:"documentType"`
-	DocumentProfile string   `json:"documentProfile"`
-	DocumentFamily  string   `json:"documentFamily"`
-	ProcessArea     string   `json:"processArea,omitempty"`
-	Subject         string   `json:"subject,omitempty"`
-	OwnerID         string   `json:"ownerId"`
-	BusinessUnit    string   `json:"businessUnit"`
-	Department      string   `json:"department"`
-	Classification  string   `json:"classification"`
-	Status          string   `json:"status"`
-	Tags            []string `json:"tags"`
-	EffectiveAt     string   `json:"effectiveAt,omitempty"`
-	ExpiryAt        string   `json:"expiryAt,omitempty"`
-	CreatedAt       string   `json:"createdAt"`
+	DocumentID       string   `json:"documentId"`
+	Title            string   `json:"title"`
+	DocumentType     string   `json:"documentType"`
+	DocumentProfile  string   `json:"documentProfile"`
+	DocumentFamily   string   `json:"documentFamily"`
+	DocumentSequence int      `json:"documentSequence"`
+	DocumentCode     string   `json:"documentCode"`
+	ProcessArea      string   `json:"processArea,omitempty"`
+	Subject          string   `json:"subject,omitempty"`
+	OwnerID          string   `json:"ownerId"`
+	BusinessUnit     string   `json:"businessUnit"`
+	Department       string   `json:"department"`
+	Classification   string   `json:"classification"`
+	Status           string   `json:"status"`
+	Tags             []string `json:"tags"`
+	EffectiveAt      string   `json:"effectiveAt,omitempty"`
+	ExpiryAt         string   `json:"expiryAt,omitempty"`
+	CreatedAt        string   `json:"createdAt"`
 }
 
 func NewHandler(service *searchapp.Service) *Handler {
@@ -94,22 +96,24 @@ func (h *Handler) handleSearchDocuments(w http.ResponseWriter, r *http.Request) 
 	out := make([]SearchDocumentResponse, 0, len(items))
 	for _, item := range items {
 		out = append(out, SearchDocumentResponse{
-			DocumentID:      item.ID,
-			Title:           item.Title,
-			DocumentType:    item.DocumentType,
-			DocumentProfile: item.DocumentProfile,
-			DocumentFamily:  item.DocumentFamily,
-			ProcessArea:     item.ProcessArea,
-			Subject:         item.Subject,
-			OwnerID:         item.OwnerID,
-			BusinessUnit:    item.BusinessUnit,
-			Department:      item.Department,
-			Classification:  item.Classification,
-			Status:          item.Status,
-			Tags:            append([]string(nil), item.Tags...),
-			EffectiveAt:     formatOptionalTime(item.EffectiveAt),
-			ExpiryAt:        formatOptionalTime(item.ExpiryAt),
-			CreatedAt:       item.CreatedAt.Format(time.RFC3339),
+			DocumentID:       item.ID,
+			Title:            item.Title,
+			DocumentType:     item.DocumentType,
+			DocumentProfile:  item.DocumentProfile,
+			DocumentFamily:   item.DocumentFamily,
+			DocumentSequence: item.DocumentSequence,
+			DocumentCode:     item.DocumentCode,
+			ProcessArea:      item.ProcessArea,
+			Subject:          item.Subject,
+			OwnerID:          item.OwnerID,
+			BusinessUnit:     item.BusinessUnit,
+			Department:       item.Department,
+			Classification:   item.Classification,
+			Status:           item.Status,
+			Tags:             append([]string(nil), item.Tags...),
+			EffectiveAt:      formatOptionalTime(item.EffectiveAt),
+			ExpiryAt:         formatOptionalTime(item.ExpiryAt),
+			CreatedAt:        item.CreatedAt.Format(time.RFC3339),
 		})
 	}
 

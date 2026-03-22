@@ -58,6 +58,8 @@ function normalizeDocumentListItem<T extends DocumentListItem>(value: T): T {
     documentType: value?.documentType ?? "",
     documentProfile: value?.documentProfile ?? value?.documentType ?? "",
     documentFamily: value?.documentFamily ?? "",
+    documentSequence: Number(value?.documentSequence ?? 0),
+    documentCode: value?.documentCode ?? "",
     profileSchemaVersion: Number(value?.profileSchemaVersion ?? 0),
     processArea: value?.processArea ?? "",
     subject: value?.subject ?? "",
@@ -184,6 +186,8 @@ export function createDocument(body: Record<string, unknown>) {
     documentType: string;
     documentProfile: string;
     documentFamily: string;
+    documentSequence: number;
+    documentCode: string;
     profileSchemaVersion: number;
     processArea?: string;
     subject?: string;

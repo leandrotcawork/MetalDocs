@@ -31,6 +31,7 @@ type Repository interface {
 	UpsertSubject(ctx context.Context, item Subject) error
 	DeactivateSubject(ctx context.Context, code string) error
 	ListDocumentTypes(ctx context.Context) ([]DocumentType, error)
+	ReserveNextDocumentSequence(ctx context.Context, profileCode string) (int, error)
 	ListAccessPolicies(ctx context.Context, resourceScope, resourceID string) ([]AccessPolicy, error)
 	ReplaceAccessPolicies(ctx context.Context, resourceScope, resourceID string, policies []AccessPolicy) error
 	UpdateDocumentStatus(ctx context.Context, documentID, status string) error

@@ -59,6 +59,14 @@ func normalizeMetadata(metadata map[string]any) map[string]any {
 	return out
 }
 
+func formatDocumentCode(profileCode string, sequence int) string {
+	trimmed := strings.TrimSpace(profileCode)
+	if trimmed == "" || sequence <= 0 {
+		return ""
+	}
+	return fmt.Sprintf("%s-%03d", strings.ToUpper(trimmed), sequence)
+}
+
 func validateMetadata(rules []domain.MetadataFieldRule, metadata map[string]any) error {
 	if len(rules) == 0 {
 		return nil

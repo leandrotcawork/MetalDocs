@@ -1,6 +1,6 @@
 import type { DocumentListItem, DocumentProfileItem } from "../../lib.types";
 
-type DocumentIdentity = Pick<DocumentListItem, "documentId" | "title" | "documentProfile">;
+type DocumentIdentity = Pick<DocumentListItem, "documentId" | "title" | "documentProfile" | "documentCode">;
 
 function normalizeToken(value?: string): string {
   return (value ?? "").trim();
@@ -45,9 +45,11 @@ export function formatDocumentDisplayName(doc: DocumentIdentity, profiles?: Docu
   const title = normalizeToken(doc.title) || "Documento";
   if (alreadyStandardized(title)) return title;
 
+  const canonicalCode = normalizeToken(doc.documentCode);
+  if (canonicalCode) return `${canonicalCode}-${title}`;
+
   const prefix = profileShortCode(doc.documentProfile, profiles);
   const seq = extractSequenceFromId(doc.documentId, prefix);
   if (!seq) return `${prefix}-${title}`;
   return `${prefix}-${seq}-${title}`;
 }
-

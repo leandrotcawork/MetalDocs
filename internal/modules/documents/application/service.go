@@ -67,6 +67,14 @@ func (s *Service) CreateDocument(ctx context.Context, cmd domain.CreateDocumentC
 	if err != nil {
 		return domain.Document{}, domain.ErrInvalidDocumentType
 	}
+	sequence, err := s.repo.ReserveNextDocumentSequence(ctx, profile.Code)
+	if err != nil {
+		return domain.Document{}, err
+	}
+	documentCode := formatDocumentCode(profile.Code, sequence)
+	if documentCode == "" {
+		return domain.Document{}, domain.ErrInvalidCommand
+	}
 	activeSchema, err := s.resolveActiveProfileSchema(ctx, profile.Code)
 	if err != nil {
 		return domain.Document{}, domain.ErrInvalidCommand
@@ -96,6 +104,8 @@ func (s *Service) CreateDocument(ctx context.Context, cmd domain.CreateDocumentC
 		DocumentType:         profile.Code,
 		DocumentProfile:      profile.Code,
 		DocumentFamily:       profile.FamilyCode,
+		DocumentSequence:     sequence,
+		DocumentCode:         documentCode,
 		ProfileSchemaVersion: activeSchema.Version,
 		ProcessArea:          processArea,
 		Subject:              subject,
@@ -165,15 +175,17 @@ func (s *Service) CreateDocument(ctx context.Context, cmd domain.CreateDocumentC
 			Producer:          "documents",
 			TraceID:           cmd.TraceID,
 			Payload: map[string]any{
-				"document_id":      doc.ID,
-				"title":            doc.Title,
-				"document_type":    doc.DocumentType,
-				"document_profile": doc.DocumentProfile,
-				"document_family":  doc.DocumentFamily,
-				"process_area":     doc.ProcessArea,
-				"subject":          doc.Subject,
-				"business_unit":    doc.BusinessUnit,
-				"department":       doc.Department,
+				"document_id":       doc.ID,
+				"title":             doc.Title,
+				"document_type":     doc.DocumentType,
+				"document_profile":  doc.DocumentProfile,
+				"document_family":   doc.DocumentFamily,
+				"document_code":     doc.DocumentCode,
+				"document_sequence": doc.DocumentSequence,
+				"process_area":      doc.ProcessArea,
+				"subject":           doc.Subject,
+				"business_unit":     doc.BusinessUnit,
+				"department":        doc.Department,
 			},
 		})
 

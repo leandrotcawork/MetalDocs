@@ -22,10 +22,10 @@ func NewRepository(db *sql.DB) *Repository {
 func (r *Repository) CreateDocument(ctx context.Context, document domain.Document) error {
 	const q = `
 INSERT INTO metaldocs.documents (
-  id, title, document_type_code, document_profile_code, document_family_code, process_area_code, subject_code,
+  id, title, document_type_code, document_profile_code, document_family_code, document_sequence, document_code, process_area_code, subject_code,
   profile_schema_version, owner_id, business_unit, department, classification, status, tags, effective_at, expiry_at, metadata_json, created_at, updated_at
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15, $16, $17::jsonb, $18, $19)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17::jsonb, $18, $19, $20::jsonb, $21, $22)
 `
 	tagsJSON, metadataJSON, effectiveAt, expiryAt := serializeDocument(document)
 	_, err := r.db.ExecContext(ctx, q,
@@ -34,6 +34,8 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15,
 		document.DocumentType,
 		document.DocumentProfile,
 		document.DocumentFamily,
+		document.DocumentSequence,
+		document.DocumentCode,
 		nullIfEmpty(document.ProcessArea),
 		nullIfEmpty(document.Subject),
 		document.ProfileSchemaVersion,
@@ -66,10 +68,10 @@ func (r *Repository) CreateDocumentWithInitialVersion(ctx context.Context, docum
 
 	const insertDoc = `
 INSERT INTO metaldocs.documents (
-  id, title, document_type_code, document_profile_code, document_family_code, process_area_code, subject_code,
+  id, title, document_type_code, document_profile_code, document_family_code, document_sequence, document_code, process_area_code, subject_code,
   profile_schema_version, owner_id, business_unit, department, classification, status, tags, effective_at, expiry_at, metadata_json, created_at, updated_at
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15, $16, $17::jsonb, $18, $19)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17::jsonb, $18, $19, $20::jsonb, $21, $22)
 `
 	tagsJSON, metadataJSON, effectiveAt, expiryAt := serializeDocument(document)
 	if _, err := tx.ExecContext(ctx, insertDoc,
@@ -78,6 +80,8 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15,
 		document.DocumentType,
 		document.DocumentProfile,
 		document.DocumentFamily,
+		document.DocumentSequence,
+		document.DocumentCode,
 		nullIfEmpty(document.ProcessArea),
 		nullIfEmpty(document.Subject),
 		document.ProfileSchemaVersion,
@@ -141,10 +145,10 @@ func (r *Repository) CreateDocumentWithInitialVersionAndPolicies(ctx context.Con
 
 	const insertDoc = `
 INSERT INTO metaldocs.documents (
-  id, title, document_type_code, document_profile_code, document_family_code, process_area_code, subject_code,
+  id, title, document_type_code, document_profile_code, document_family_code, document_sequence, document_code, process_area_code, subject_code,
   profile_schema_version, owner_id, business_unit, department, classification, status, tags, effective_at, expiry_at, metadata_json, created_at, updated_at
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15, $16, $17::jsonb, $18, $19)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17::jsonb, $18, $19, $20::jsonb, $21, $22)
 `
 	tagsJSON, metadataJSON, effectiveAt, expiryAt := serializeDocument(document)
 	if _, err := tx.ExecContext(ctx, insertDoc,
@@ -153,6 +157,8 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15,
 		document.DocumentType,
 		document.DocumentProfile,
 		document.DocumentFamily,
+		document.DocumentSequence,
+		document.DocumentCode,
 		nullIfEmpty(document.ProcessArea),
 		nullIfEmpty(document.Subject),
 		document.ProfileSchemaVersion,
@@ -228,7 +234,7 @@ VALUES ($1, $2, $3, $4, $5, $6, NOW())
 
 func (r *Repository) GetDocument(ctx context.Context, documentID string) (domain.Document, error) {
 	const q = `
-SELECT id, title, document_type_code, document_profile_code, document_family_code, process_area_code, subject_code, profile_schema_version,
+SELECT id, title, document_type_code, document_profile_code, document_family_code, document_sequence, document_code, process_area_code, subject_code, profile_schema_version,
        owner_id, business_unit, department, classification, status, tags, effective_at, expiry_at, metadata_json, created_at, updated_at
 FROM metaldocs.documents
 WHERE id = $1
@@ -246,6 +252,8 @@ WHERE id = $1
 		&doc.DocumentType,
 		&doc.DocumentProfile,
 		&doc.DocumentFamily,
+		&doc.DocumentSequence,
+		&doc.DocumentCode,
 		&processArea,
 		&subject,
 		&doc.ProfileSchemaVersion,
@@ -275,7 +283,7 @@ WHERE id = $1
 
 func (r *Repository) ListDocuments(ctx context.Context) ([]domain.Document, error) {
 	const q = `
-SELECT id, title, document_type_code, document_profile_code, document_family_code, process_area_code, subject_code, profile_schema_version,
+SELECT id, title, document_type_code, document_profile_code, document_family_code, document_sequence, document_code, process_area_code, subject_code, profile_schema_version,
        owner_id, business_unit, department, classification, status, tags, effective_at, expiry_at, metadata_json, created_at, updated_at
 FROM metaldocs.documents
 ORDER BY created_at ASC
@@ -301,6 +309,8 @@ ORDER BY created_at ASC
 			&doc.DocumentType,
 			&doc.DocumentProfile,
 			&doc.DocumentFamily,
+			&doc.DocumentSequence,
+			&doc.DocumentCode,
 			&processArea,
 			&subject,
 			&doc.ProfileSchemaVersion,
@@ -332,7 +342,7 @@ ORDER BY created_at ASC
 
 func (r *Repository) ListDocumentsForReviewReminder(ctx context.Context, fromInclusive, toInclusive time.Time) ([]domain.Document, error) {
 	const q = `
-SELECT id, title, document_type_code, document_profile_code, document_family_code, process_area_code, subject_code, profile_schema_version,
+SELECT id, title, document_type_code, document_profile_code, document_family_code, document_sequence, document_code, process_area_code, subject_code, profile_schema_version,
        owner_id, business_unit, department, classification, status, tags, effective_at, expiry_at, metadata_json, created_at, updated_at
 FROM metaldocs.documents
 WHERE expiry_at IS NOT NULL
@@ -362,6 +372,8 @@ ORDER BY expiry_at ASC, created_at ASC
 			&doc.DocumentType,
 			&doc.DocumentProfile,
 			&doc.DocumentFamily,
+			&doc.DocumentSequence,
+			&doc.DocumentCode,
 			&processArea,
 			&subject,
 			&doc.ProfileSchemaVersion,
@@ -389,6 +401,26 @@ ORDER BY expiry_at ASC, created_at ASC
 	}
 
 	return out, nil
+}
+
+func (r *Repository) ReserveNextDocumentSequence(ctx context.Context, profileCode string) (int, error) {
+	code := strings.TrimSpace(profileCode)
+	if code == "" {
+		return 0, domain.ErrInvalidCommand
+	}
+
+	const q = `
+INSERT INTO metaldocs.document_sequences (profile_code, next_value)
+VALUES ($1, 2)
+ON CONFLICT (profile_code)
+DO UPDATE SET next_value = metaldocs.document_sequences.next_value + 1
+RETURNING next_value - 1
+`
+	var seq int
+	if err := r.db.QueryRowContext(ctx, q, code).Scan(&seq); err != nil {
+		return 0, fmt.Errorf("reserve document sequence: %w", err)
+	}
+	return seq, nil
 }
 
 func (r *Repository) ListDocumentTypes(ctx context.Context) ([]domain.DocumentType, error) {

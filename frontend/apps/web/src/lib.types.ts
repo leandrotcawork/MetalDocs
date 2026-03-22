@@ -129,6 +129,8 @@ export interface DocumentListItem {
   documentType: string;
   documentProfile: string;
   documentFamily: string;
+  documentSequence?: number;
+  documentCode?: string;
   profileSchemaVersion?: number;
   processArea?: string;
   subject?: string;

@@ -38,6 +38,8 @@ type Document struct {
 	DocumentType         string
 	DocumentProfile      string
 	DocumentFamily       string
+	DocumentSequence     int
+	DocumentCode         string
 	ProfileSchemaVersion int
 	ProcessArea          string
 	Subject              string

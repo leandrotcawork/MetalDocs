@@ -14,6 +14,7 @@ type atomicRepoSpy struct {
 	saveCalled   bool
 	atomicCalled bool
 	versions     map[int]domain.Version
+	sequence     int
 }
 
 func (r *atomicRepoSpy) CreateDocument(context.Context, domain.Document) error {
@@ -40,6 +41,15 @@ func (r *atomicRepoSpy) ListDocumentsForReviewReminder(context.Context, time.Tim
 
 func (r *atomicRepoSpy) ListDocumentTypes(context.Context) ([]domain.DocumentType, error) {
 	return domain.DefaultDocumentTypes(), nil
+}
+
+func (r *atomicRepoSpy) ReserveNextDocumentSequence(_ context.Context, profileCode string) (int, error) {
+	if r.sequence <= 0 {
+		r.sequence = 1
+	}
+	seq := r.sequence
+	r.sequence++
+	return seq, nil
 }
 
 func (r *atomicRepoSpy) ListDocumentFamilies(context.Context) ([]domain.DocumentFamily, error) {

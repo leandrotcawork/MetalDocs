@@ -56,6 +56,8 @@ type DocumentResponse struct {
 	DocumentType         string   `json:"documentType"`
 	DocumentProfile      string   `json:"documentProfile"`
 	DocumentFamily       string   `json:"documentFamily"`
+	DocumentSequence     int      `json:"documentSequence"`
+	DocumentCode         string   `json:"documentCode"`
 	ProfileSchemaVersion int      `json:"profileSchemaVersion"`
 	ProcessArea          string   `json:"processArea,omitempty"`
 	Subject              string   `json:"subject,omitempty"`
@@ -76,6 +78,8 @@ type DocumentCreatedResponse struct {
 	DocumentType         string `json:"documentType"`
 	DocumentProfile      string `json:"documentProfile"`
 	DocumentFamily       string `json:"documentFamily"`
+	DocumentSequence     int    `json:"documentSequence"`
+	DocumentCode         string `json:"documentCode"`
 	ProfileSchemaVersion int    `json:"profileSchemaVersion"`
 	ProcessArea          string `json:"processArea,omitempty"`
 	Subject              string `json:"subject,omitempty"`
@@ -90,12 +94,12 @@ type VersionResponse struct {
 }
 
 type DocumentEditorBundleResponse struct {
-	Document   DocumentResponse               `json:"document"`
-	Versions   []VersionResponse              `json:"versions"`
-	Schema     DocumentProfileSchemaResponse  `json:"schema"`
+	Document   DocumentResponse                  `json:"document"`
+	Versions   []VersionResponse                 `json:"versions"`
+	Schema     DocumentProfileSchemaResponse     `json:"schema"`
 	Governance DocumentProfileGovernanceResponse `json:"governance"`
-	Presence   []CollaborationPresenceResponse `json:"presence"`
-	EditLock   *DocumentEditLockResponse       `json:"editLock,omitempty"`
+	Presence   []CollaborationPresenceResponse   `json:"presence"`
+	EditLock   *DocumentEditLockResponse         `json:"editLock,omitempty"`
 }
 
 type DocumentContentNativeRequest struct {
@@ -216,9 +220,9 @@ type DocumentProfileBundleTaxonomyResponse struct {
 }
 
 type DocumentProfileBundleResponse struct {
-	Profile    DocumentProfileResponse             `json:"profile"`
-	Schema     DocumentProfileSchemaResponse       `json:"schema"`
-	Governance DocumentProfileGovernanceResponse   `json:"governance"`
+	Profile    DocumentProfileResponse               `json:"profile"`
+	Schema     DocumentProfileSchemaResponse         `json:"schema"`
+	Governance DocumentProfileGovernanceResponse     `json:"governance"`
 	Taxonomy   DocumentProfileBundleTaxonomyResponse `json:"taxonomy"`
 }
 
@@ -1267,6 +1271,8 @@ func (h *Handler) handleCreateDocument(w http.ResponseWriter, r *http.Request) {
 		DocumentType:         doc.DocumentType,
 		DocumentProfile:      doc.DocumentProfile,
 		DocumentFamily:       doc.DocumentFamily,
+		DocumentSequence:     doc.DocumentSequence,
+		DocumentCode:         doc.DocumentCode,
 		ProfileSchemaVersion: doc.ProfileSchemaVersion,
 		ProcessArea:          doc.ProcessArea,
 		Subject:              doc.Subject,
@@ -1290,6 +1296,8 @@ func (h *Handler) handleListDocuments(w http.ResponseWriter, r *http.Request) {
 			DocumentType:         doc.DocumentType,
 			DocumentProfile:      doc.DocumentProfile,
 			DocumentFamily:       doc.DocumentFamily,
+			DocumentSequence:     doc.DocumentSequence,
+			DocumentCode:         doc.DocumentCode,
 			ProfileSchemaVersion: doc.ProfileSchemaVersion,
 			ProcessArea:          doc.ProcessArea,
 			Subject:              doc.Subject,
@@ -1423,6 +1431,8 @@ func (h *Handler) handleGetDocument(w http.ResponseWriter, r *http.Request, docu
 		DocumentType:         doc.DocumentType,
 		DocumentProfile:      doc.DocumentProfile,
 		DocumentFamily:       doc.DocumentFamily,
+		DocumentSequence:     doc.DocumentSequence,
+		DocumentCode:         doc.DocumentCode,
 		ProfileSchemaVersion: doc.ProfileSchemaVersion,
 		ProcessArea:          doc.ProcessArea,
 		Subject:              doc.Subject,
@@ -1494,6 +1504,8 @@ func (h *Handler) handleDocumentEditorBundle(w http.ResponseWriter, r *http.Requ
 			DocumentType:         bundle.Document.DocumentType,
 			DocumentProfile:      bundle.Document.DocumentProfile,
 			DocumentFamily:       bundle.Document.DocumentFamily,
+			DocumentSequence:     bundle.Document.DocumentSequence,
+			DocumentCode:         bundle.Document.DocumentCode,
 			ProfileSchemaVersion: bundle.Document.ProfileSchemaVersion,
 			ProcessArea:          bundle.Document.ProcessArea,
 			Subject:              bundle.Document.Subject,
@@ -1679,14 +1691,6 @@ func (h *Handler) handleAddVersion(w http.ResponseWriter, r *http.Request, docum
 	})
 }
 
-
-
-
-
-
-
-
-
 func (h *Handler) handleDiffVersions(w http.ResponseWriter, r *http.Request, documentID string) {
 	traceID := requestTraceID(r)
 
@@ -1718,10 +1722,6 @@ func (h *Handler) handleDiffVersions(w http.ResponseWriter, r *http.Request, doc
 		ExpiryAtChanged:       diff.ExpiryAtChanged,
 	})
 }
-
-
-
-
 
 func isRegistryAdmin(ctx context.Context) bool {
 	roles := iamdomain.RolesFromContext(ctx)
@@ -1850,4 +1850,3 @@ func mapAttachmentResponse(item domain.Attachment) AttachmentResponse {
 		CreatedAt:    item.CreatedAt.UTC().Format(time.RFC3339),
 	}
 }
-

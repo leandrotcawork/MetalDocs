@@ -27,6 +27,7 @@ type Repository struct {
 	policies            map[string][]domain.AccessPolicy
 	collabPresence      map[string]map[string]domain.CollaborationPresence
 	editLocks           map[string]domain.DocumentEditLock
+	documentSequences   map[string]int
 }
 
 func NewRepository() *Repository {
@@ -46,6 +47,7 @@ func NewRepository() *Repository {
 		policies:            map[string][]domain.AccessPolicy{},
 		collabPresence:      map[string]map[string]domain.CollaborationPresence{},
 		editLocks:           map[string]domain.DocumentEditLock{},
+		documentSequences:   map[string]int{},
 	}
 }
 
@@ -158,6 +160,23 @@ func (r *Repository) ListDocumentsForReviewReminder(_ context.Context, fromInclu
 	})
 
 	return docs, nil
+}
+
+func (r *Repository) ReserveNextDocumentSequence(_ context.Context, profileCode string) (int, error) {
+	code := strings.TrimSpace(profileCode)
+	if code == "" {
+		return 0, domain.ErrInvalidCommand
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	next := r.documentSequences[code]
+	if next <= 0 {
+		next = 1
+	}
+	r.documentSequences[code] = next + 1
+	return next, nil
 }
 
 func (r *Repository) ListDocumentTypes(_ context.Context) ([]domain.DocumentType, error) {

@@ -89,8 +89,8 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
 
   const documentCode = useMemo(() => {
     if (!props.document?.documentId) return "--";
-    return props.document.documentId.slice(0, 8).toUpperCase();
-  }, [props.document?.documentId]);
+    return props.document.documentCode ?? formatDocumentDisplayName(props.document);
+  }, [props.document]);
 
   const sections = useMemo(() => {
     const raw = schema?.contentSchema as { sections?: SchemaSection[] } | undefined;

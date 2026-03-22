@@ -38,3 +38,10 @@ Wrong:   Base card uses root-level padding while Create/Edit still rely on mixed
 Correct: Apply the same root-level spacing model to Create, Base and Edit cards
 Rule:    Sibling cards in the same section should share the same spacing ownership model.
 Layer:   frontend
+
+## Lesson BG - Sibling cards should share semantic element type
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Mixing `div` and `article` for cards with the same role in one section
+Correct: Use a single semantic tag across sibling cards (`article` in this case)
+Rule:    Keep semantic structure consistent when components represent the same UI primitive.
+Layer:   frontend

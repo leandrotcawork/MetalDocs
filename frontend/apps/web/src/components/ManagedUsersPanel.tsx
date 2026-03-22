@@ -240,7 +240,7 @@ export function ManagedUsersSection(props: ManagedUsersPanelProps) {
           </div>
         </article>
 
-        <div
+        <article
           className={`${styles.card} ${styles.baseCard}`}
           style={syncedCardHeight ? { height: `${syncedCardHeight}px` } : undefined}
         >
@@ -274,7 +274,7 @@ export function ManagedUsersSection(props: ManagedUsersPanelProps) {
               </li>
             ))}
           </ul>
-        </div>
+        </article>
 
         <article ref={editCardRef} className={`${styles.card} ${styles.editCard}`}>
           <header className={`${styles.cardHeader} ${styles.editHeader}`}>

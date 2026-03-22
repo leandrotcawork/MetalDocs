@@ -392,6 +392,10 @@ Notes
       - Adotar padding no root dos cards Criar/Editar e simplificar paddings internos
       commit: `refactor(frontend-admin): align create and edit card spacing model`
 
+- [x] T27: Padronizar semantica dos 3 cards como article
+      - Converter Base de usuarios para `article` para unificar semantica com Criar e Editar
+      commit: `refactor(frontend-admin): standardize managed user cards as article`
+
 ## Acceptance tests
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards de criacao/base/edicao sem alongamento e no padrao da referencia

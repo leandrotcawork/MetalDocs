@@ -18,6 +18,7 @@ type ContentStatus = "idle" | "saving" | "ready" | "error";
 type DocumentsHubView = "overview" | "collection" | "detail";
 type DocumentsHubMode = "card" | "list";
 type DocumentsHubStatus = "all" | "draft" | "review" | "approved";
+type RecentDocumentItem = SearchDocumentItem & { openedAt: string };
 
 type DocumentFormState = {
   title: string;
@@ -70,6 +71,7 @@ interface DocumentsStore {
   documentsHubStatus: DocumentsHubStatus;
   documentsHubArea: string;
   documentsHubProfile: string;
+  recentDocuments: RecentDocumentItem[];
   versions: VersionListItem[];
   versionDiff: VersionDiffResponse | null;
   approvals: WorkflowApprovalItem[];
@@ -95,6 +97,7 @@ interface DocumentsStore {
   setDocumentsHubStatus: (documentsHubStatus: DocumentsHubStatus) => void;
   setDocumentsHubArea: (documentsHubArea: string) => void;
   setDocumentsHubProfile: (documentsHubProfile: string) => void;
+  setRecentDocuments: (recentDocuments: RecentDocumentItem[]) => void;
   setVersions: (versions: VersionListItem[]) => void;
   setVersionDiff: (versionDiff: VersionDiffResponse | null) => void;
   setApprovals: (approvals: WorkflowApprovalItem[]) => void;
@@ -123,6 +126,7 @@ export const useDocumentsStore = create<DocumentsStore>((set) => ({
   documentsHubStatus: "all",
   documentsHubArea: "all",
   documentsHubProfile: "all",
+  recentDocuments: [],
   versions: [],
   versionDiff: null,
   approvals: [],
@@ -148,6 +152,7 @@ export const useDocumentsStore = create<DocumentsStore>((set) => ({
   setDocumentsHubStatus: (documentsHubStatus) => set({ documentsHubStatus }),
   setDocumentsHubArea: (documentsHubArea) => set({ documentsHubArea }),
   setDocumentsHubProfile: (documentsHubProfile) => set({ documentsHubProfile }),
+  setRecentDocuments: (recentDocuments) => set({ recentDocuments }),
   setVersions: (versions) => set({ versions }),
   setVersionDiff: (versionDiff) => set({ versionDiff }),
   setApprovals: (approvals) => set({ approvals }),
@@ -170,4 +175,4 @@ export const useDocumentsStore = create<DocumentsStore>((set) => ({
   setPolicyResourceId: (policyResourceId) => set({ policyResourceId }),
 }));
 
-export type { DocumentFormState, DocumentsHubMode, DocumentsHubStatus, DocumentsHubView };
+export type { DocumentFormState, DocumentsHubMode, DocumentsHubStatus, DocumentsHubView, RecentDocumentItem };

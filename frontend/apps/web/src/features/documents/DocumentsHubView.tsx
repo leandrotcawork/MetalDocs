@@ -1,7 +1,7 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { buildDocumentProfileCountMap } from "./adapters/catalogSummary";
 import { metalNobreProcessAreaHint } from "./adapters/metalNobreExperience";
-import { useDocumentsStore } from "../../store/documents.store";
+import { type RecentDocumentItem, useDocumentsStore } from "../../store/documents.store";
 import styles from "./DocumentsHubView.module.css";
 import type { DocumentListItem, DocumentProfileGovernanceItem, DocumentProfileItem, ProcessAreaItem, SearchDocumentItem } from "../../lib.types";
 
@@ -20,6 +20,32 @@ type DocumentsHubViewProps = {
 };
 
 type HubScope = "all" | "mine" | "recent";
+const recentKeyPrefix = "metaldocs.recentDocuments";
+
+function recentStorageKey(userId?: string) {
+  if (!userId) return null;
+  return `${recentKeyPrefix}.${userId}`;
+}
+
+function loadRecentDocuments(userId?: string): RecentDocumentItem[] {
+  const key = recentStorageKey(userId);
+  if (!key) return [];
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item) => item && typeof item.documentId === "string");
+  } catch {
+    return [];
+  }
+}
+
+function storeRecentDocuments(userId: string | undefined, items: RecentDocumentItem[]) {
+  const key = recentStorageKey(userId);
+  if (!key) return;
+  window.localStorage.setItem(key, JSON.stringify(items));
+}
 
 function documentScope(view: DocumentsHubViewProps["view"]): HubScope {
   if (view === "my-docs") return "mine";
@@ -48,6 +74,8 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
     setDocumentsHubStatus,
     setDocumentsHubArea,
     setDocumentsHubProfile,
+    recentDocuments,
+    setRecentDocuments,
   } = useDocumentsStore();
 
   if (props.loadState === "loading") {
@@ -63,12 +91,24 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
       return props.documents.filter((item) => item.ownerId === props.currentUserId);
     }
     if (scope === "recent") {
+      if (recentDocuments.length > 0) {
+        return recentDocuments;
+      }
       return [...props.documents].sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime());
     }
     return props.documents;
-  }, [props.currentUserId, props.documents, scope]);
+  }, [props.currentUserId, props.documents, recentDocuments, scope]);
 
-  const recentDocuments = useMemo(() => scopedDocuments.slice(0, 8), [scopedDocuments]);
+  useEffect(() => {
+    if (!props.currentUserId) return;
+    setRecentDocuments(loadRecentDocuments(props.currentUserId));
+  }, [props.currentUserId, setRecentDocuments]);
+
+  const recentFallback = useMemo(
+    () => scopedDocuments.slice(0, 8).map((item) => ({ ...item, openedAt: item.createdAt })),
+    [scopedDocuments],
+  );
+  const recentItems = recentDocuments.length > 0 ? recentDocuments : recentFallback;
   const profileCounts = useMemo(() => buildDocumentProfileCountMap(scopedDocuments), [scopedDocuments]);
 
   const areaCounts = useMemo(() => {
@@ -119,6 +159,17 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
   }).length;
 
   const headerTitle = scope === "mine" ? "Meus documentos" : scope === "recent" ? "Recentes" : "Todos documentos";
+
+  const handleRecentOpen = (item: SearchDocumentItem) => {
+    const nextItems: RecentDocumentItem[] = [
+      { ...item, openedAt: new Date().toISOString() },
+      ...recentItems.filter((recent) => recent.documentId !== item.documentId),
+    ].slice(0, 8);
+    setRecentDocuments(nextItems);
+    storeRecentDocuments(props.currentUserId, nextItems);
+    void props.onOpenDocumentForHub(item.documentId);
+    setDocumentsHubView("detail");
+  };
 
   return (
     <section className={styles.hub}>
@@ -234,23 +285,20 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
           </button>
         </div>
         <div className={styles.recentList}>
-          {recentDocuments.length === 0 ? (
+          {recentItems.length === 0 ? (
             <div className={styles.emptyCard}>Nenhum documento recente.</div>
           ) : (
-            recentDocuments.map((item) => (
+            recentItems.map((item) => (
               <button
                 key={item.documentId}
                 type="button"
                 className={styles.recentRow}
-                onClick={() => {
-                  void props.onOpenDocumentForHub(item.documentId);
-                  setDocumentsHubView("detail");
-                }}
+                onClick={() => handleRecentOpen(item)}
               >
                 <span className={styles.recentBadge}>{item.documentProfile.toUpperCase()}</span>
                 <div className={styles.recentMeta}>
                   <strong>{item.title || "Documento sem titulo"}</strong>
-                  <small>{item.processArea ?? "Sem area"} · {props.formatDate(item.createdAt)}</small>
+                  <small>{item.processArea ?? "Sem area"} · {props.formatDate(item.openedAt ?? item.createdAt)}</small>
                 </div>
                 <span className={styles.recentStatus}>{statusLabel(item.status)}</span>
               </button>

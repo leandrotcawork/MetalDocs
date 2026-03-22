@@ -445,7 +445,7 @@ Notes
       - Lista "Abertos recentemente" (persistido no client)
       commit: `feat(frontend-docs): add documents hub overview screen`
 
-- [ ] T3: Persistir "Abertos recentemente"
+- [x] T3: Persistir "Abertos recentemente"
       - Registrar documento ao abrir/entrar no detalhe
       - Persistir lista curta no `localStorage` e hidratar no load
       commit: `feat(frontend-docs): persist recently opened documents`

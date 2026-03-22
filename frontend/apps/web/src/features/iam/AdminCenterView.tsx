@@ -78,12 +78,13 @@ export function AdminCenterView() {
         </section>
 
         <section className={styles.grid}>
-          <div className="catalog-panel">
-            <div className="catalog-panel-head">
+          <div className={styles.panel}>
+            <div className={styles.panelHeader}>
               <div>
-                <p className="catalog-kicker">Presenca</p>
-                <h2>Usuarios online</h2>
+                <p className={styles.kicker}>Presenca</p>
+                <h2 className={styles.panelTitle}>Usuarios online</h2>
               </div>
+              <span className={styles.panelBadge}>{onlineCount} ativos</span>
             </div>
             {onlineCount === 0 ? (
               <p className={styles.empty}>Nenhum usuario online agora.</p>
@@ -91,23 +92,24 @@ export function AdminCenterView() {
               <ul className={styles.list}>
                 {adminCenter.onlineUsers.map((item) => (
                   <li key={item.userId} className={styles.listItem}>
-                    <div>
-                      <strong>{item.displayName}</strong>
-                      <small>{item.username}</small>
+                    <div className={styles.listMeta}>
+                      <strong className={styles.listTitle}>{item.displayName}</strong>
+                      <small className={styles.listSub}>{item.username}</small>
                     </div>
-                    <span>{formatDate(item.lastSeenAt)}</span>
+                    <span className={styles.listTime}>{formatDate(item.lastSeenAt)}</span>
                   </li>
                 ))}
               </ul>
             )}
           </div>
 
-          <div className="catalog-panel">
-            <div className="catalog-panel-head">
+          <div className={styles.panel}>
+            <div className={styles.panelHeader}>
               <div>
-                <p className="catalog-kicker">Auditoria</p>
-                <h2>Ultimas atividades</h2>
+                <p className={styles.kicker}>Auditoria</p>
+                <h2 className={styles.panelTitle}>Ultimas atividades</h2>
               </div>
+              <span className={styles.panelBadge}>Ultimos 10</span>
             </div>
             {adminCenter.recentActivities.length === 0 ? (
               <p className={styles.empty}>Nenhuma atividade registrada.</p>
@@ -115,11 +117,11 @@ export function AdminCenterView() {
               <ul className={styles.list}>
                 {adminCenter.recentActivities.map((item) => (
                   <li key={item.id} className={styles.listItem}>
-                    <div>
-                      <strong>{item.action}</strong>
-                      <small>{item.actorId} • {item.resourceType}</small>
+                    <div className={styles.listMeta}>
+                      <strong className={styles.listTitle}>{item.action}</strong>
+                      <small className={styles.listSub}>{item.actorId} • {item.resourceType}</small>
                     </div>
-                    <span>{formatDate(item.occurredAt)}</span>
+                    <span className={styles.listTime}>{formatDate(item.occurredAt)}</span>
                   </li>
                 ))}
               </ul>

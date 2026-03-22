@@ -1,0 +1,131 @@
+.panelGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.1fr) minmax(0, 1.05fr);
+  gap: 0.85rem;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 1rem;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 0.85rem;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.kicker {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  margin: 0;
+}
+
+.panelTitle {
+  margin: 0.2rem 0 0;
+  font-size: 1.05rem;
+  color: var(--text);
+}
+
+.stack {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.listItem {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.9rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.listItem:hover {
+  border-color: var(--border-strong);
+}
+
+.listMeta {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.listTitle {
+  font-weight: 600;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.listSub {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.listTag {
+  font-size: 0.7rem;
+  color: var(--text-soft);
+  background: var(--vinho-pale);
+  border: 1px solid var(--vinho-muted);
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  align-self: start;
+  white-space: nowrap;
+}
+
+.detailSummary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.actionRow {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.secondaryButton {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 0.6rem 0.85rem;
+  border-radius: 0.7rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.secondaryButton:hover {
+  border-color: var(--border-strong);
+}
+
+@media (max-width: 1100px) {
+  .panelGrid {
+    grid-template-columns: 1fr;
+  }
+}

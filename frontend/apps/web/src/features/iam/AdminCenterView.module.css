@@ -5,20 +5,21 @@
 
 .summary {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.75rem;
 }
 
 .summaryCard {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 12px 14px;
+  border-radius: 0.9rem;
+  padding: 0.75rem 0.9rem;
+  box-shadow: var(--shadow);
 }
 
 .summaryCard span {
   display: block;
-  font-size: 10px;
+  font-size: 0.65rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-soft);
@@ -26,14 +27,56 @@
 
 .summaryCard strong {
   display: block;
-  font-size: 1.05rem;
-  margin-top: 6px;
+  font-size: 1.25rem;
+  margin-top: 0.35rem;
+  color: var(--text);
 }
 
 .grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 12px;
+  gap: 0.75rem;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 0.9rem;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 0.75rem;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.kicker {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  margin: 0;
+}
+
+.panelTitle {
+  margin: 0.2rem 0 0;
+  font-size: 1.05rem;
+  color: var(--text);
+}
+
+.panelBadge {
+  background: var(--vinho-soft);
+  color: var(--vinho);
+  border: 1px solid var(--vinho-muted);
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.7rem;
+  font-weight: 600;
 }
 
 .list {
@@ -41,30 +84,54 @@
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.75rem;
+  gap: 0.6rem;
 }
 
 .listItem {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.85rem 0.95rem;
-  border-radius: 16px;
+  padding: 0.65rem 0.8rem;
+  border-radius: 0.9rem;
   background: var(--surface-2);
   border: 1px solid var(--border);
 }
 
 .listItem strong {
   display: block;
+  font-size: 0.95rem;
 }
 
 .listItem small {
   color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.listMeta {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.listTitle {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.listSub {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.listTime {
+  font-size: 0.75rem;
+  color: var(--text-soft);
+  white-space: nowrap;
 }
 
 .empty {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 0.75rem;
+  margin: 0;
 }
 
 @media (max-width: 980px) {

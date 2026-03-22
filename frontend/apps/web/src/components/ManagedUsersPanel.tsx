@@ -2,6 +2,7 @@ import type { ManagedUserItem, UserRole } from "../lib.types";
 import { WorkspaceViewFrame } from "./WorkspaceViewFrame";
 import { WorkspaceDataState } from "./WorkspaceDataState";
 import { FilterDropdown, type SelectMenuOption } from "./ui/FilterDropdown";
+import styles from "./ManagedUsersPanel.module.css";
 
 type CreateUserForm = {
   userId: string;
@@ -70,12 +71,12 @@ export function ManagedUsersSection(props: ManagedUsersPanelProps) {
         onRetry={props.onRefreshWorkspace}
       />
 
-      <div className="catalog-grid">
-        <form data-testid="user-create-form" className="catalog-panel stack" onSubmit={props.onSubmitCreateUser}>
-          <div className="catalog-panel-head">
+      <div className={styles.panelGrid}>
+        <form data-testid="user-create-form" className={`${styles.panel} ${styles.stack}`} onSubmit={props.onSubmitCreateUser}>
+          <div className={styles.panelHeader}>
             <div>
-              <p className="catalog-kicker">Provisioning</p>
-              <h2>Criar usuario</h2>
+              <p className={styles.kicker}>Provisioning</p>
+              <h2 className={styles.panelTitle}>Criar usuario</h2>
             </div>
           </div>
           <input data-testid="user-id" placeholder="userId opcional" value={props.userForm.userId} onChange={(event) => props.onUserFormChange({ ...props.userForm, userId: event.target.value })} />
@@ -91,48 +92,52 @@ export function ManagedUsersSection(props: ManagedUsersPanelProps) {
           />
           <button data-testid="user-submit" type="submit">Criar usuario</button>
         </form>
-        <section className="catalog-panel catalog-list-panel">
-          <div className="catalog-panel-head">
+        <section className={styles.panel}>
+          <div className={styles.panelHeader}>
             <div>
-              <p className="catalog-kicker">Directory</p>
-              <h2>Base de usuarios</h2>
+              <p className={styles.kicker}>Directory</p>
+              <h2 className={styles.panelTitle}>Base de usuarios</h2>
             </div>
           </div>
-          <ul className="catalog-mini-list">
+          <ul className={styles.list}>
             {props.managedUsers.map((item) => (
-              <li key={item.userId} onClick={() => props.onSelectManagedUser(item)}>
-                <div>
-                  <strong>{item.displayName}</strong>
-                  <p>{item.username} - {(Array.isArray(item.roles) ? item.roles : []).join(", ") || "sem role"}</p>
-                  <small>{item.isActive ? "Ativo" : "Inativo"} / {item.mustChangePassword ? "troca obrigatoria" : "senha OK"} / falhas: {item.failedLoginAttempts}{item.lockedUntil ? ` / lock: ${props.formatDate(item.lockedUntil)}` : ""}{item.lastLoginAt ? ` / ultimo login: ${props.formatDate(item.lastLoginAt)}` : ""}</small>
+              <li key={item.userId} className={styles.listItem} onClick={() => props.onSelectManagedUser(item)}>
+                <div className={styles.listMeta}>
+                  <strong className={styles.listTitle}>{item.displayName}</strong>
+                  <p className={styles.listSub}>{item.username} - {(Array.isArray(item.roles) ? item.roles : []).join(", ") || "sem role"}</p>
+                  <small className={styles.listSub}>
+                    {item.isActive ? "Ativo" : "Inativo"} / {item.mustChangePassword ? "troca obrigatoria" : "senha OK"} / falhas: {item.failedLoginAttempts}
+                    {item.lockedUntil ? ` / lock: ${props.formatDate(item.lockedUntil)}` : ""}
+                    {item.lastLoginAt ? ` / ultimo login: ${props.formatDate(item.lastLoginAt)}` : ""}
+                  </small>
                 </div>
-                <span>{item.userId}</span>
+                <span className={styles.listTag}>{item.userId}</span>
               </li>
             ))}
           </ul>
         </section>
-        <section className="catalog-panel stack">
-          <div className="catalog-panel-head">
+        <section className={`${styles.panel} ${styles.stack}`}>
+          <div className={styles.panelHeader}>
             <div>
-              <p className="catalog-kicker">Lifecycle</p>
-              <h2>Editar usuario</h2>
+              <p className={styles.kicker}>Lifecycle</p>
+              <h2 className={styles.panelTitle}>Editar usuario</h2>
             </div>
           </div>
-          {!props.selectedManagedUser ? <p className="hint">Selecione um usuario da lista para editar estado operacional e roles.</p> : (
+          {!props.selectedManagedUser ? <p className={styles.hint}>Selecione um usuario da lista para editar estado operacional e roles.</p> : (
             <>
-              <p className="hint">Auth state atual: {props.selectedManagedUser.isActive ? "ativo" : "inativo"} / {props.selectedManagedUser.mustChangePassword ? "troca obrigatoria" : "senha estabilizada"} / falhas: {props.selectedManagedUser.failedLoginAttempts}</p>
+              <p className={styles.hint}>Auth state atual: {props.selectedManagedUser.isActive ? "ativo" : "inativo"} / {props.selectedManagedUser.mustChangePassword ? "troca obrigatoria" : "senha estabilizada"} / falhas: {props.selectedManagedUser.failedLoginAttempts}</p>
               <input value={props.managedUserForm.displayName} onChange={(event) => props.onManagedUserFormChange({ ...props.managedUserForm, displayName: event.target.value })} placeholder="Display name" />
               <input value={props.managedUserForm.email} onChange={(event) => props.onManagedUserFormChange({ ...props.managedUserForm, email: event.target.value })} placeholder="Email" />
               <label><input type="checkbox" checked={props.managedUserForm.isActive} onChange={(event) => props.onManagedUserFormChange({ ...props.managedUserForm, isActive: event.target.checked })} /> Usuario ativo</label>
               <label><input type="checkbox" checked={props.managedUserForm.mustChangePassword} onChange={(event) => props.onManagedUserFormChange({ ...props.managedUserForm, mustChangePassword: event.target.checked })} /> Exigir troca de senha</label>
-              <div className="detail-summary">
+              <div className={styles.detailSummary}>
                 {(["admin", "editor", "reviewer", "viewer"] as UserRole[]).map((role) => <label key={role}><input type="checkbox" checked={props.managedUserForm.roles.includes(role)} onChange={() => props.onToggleRole(role)} /> {role}</label>)}
               </div>
-              <button type="button" className="ghost-button" onClick={() => void props.onSaveManagedUser()}>Salvar usuario</button>
+              <button type="button" className={styles.secondaryButton} onClick={() => void props.onSaveManagedUser()}>Salvar usuario</button>
               <input type="password" value={props.managedUserForm.resetPassword} onChange={(event) => props.onManagedUserFormChange({ ...props.managedUserForm, resetPassword: event.target.value })} placeholder="Nova senha temporaria" />
-              <div className="detail-summary">
-                <button type="button" className="ghost-button" onClick={() => void props.onAdminResetPassword()}>Resetar senha</button>
-                <button type="button" className="ghost-button" onClick={() => void props.onUnlockManagedUser()}>Desbloquear acesso</button>
+              <div className={styles.actionRow}>
+                <button type="button" className={styles.secondaryButton} onClick={() => void props.onAdminResetPassword()}>Resetar senha</button>
+                <button type="button" className={styles.secondaryButton} onClick={() => void props.onUnlockManagedUser()}>Desbloquear acesso</button>
               </div>
             </>
           )}

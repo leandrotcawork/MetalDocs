@@ -213,3 +213,10 @@ Wrong:   Header used only `min-height`, allowing content-driven height drift and
 Correct: Shared cards use explicit header `height` + identical title wrapper structure
 Rule:    For pixel-aligned dividers across sibling cards, use fixed header height, not only minimum height.
 Layer:   frontend
+
+## Lesson AF - Shared cards need shared row height
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Online and activity rows used different effective heights, making cards look vertically unbalanced
+Correct: Use one shared `min-height` for list rows and center empty-state row content
+Rule:    Sibling cards in the same grid row should share row metrics to keep visual balance.
+Layer:   frontend

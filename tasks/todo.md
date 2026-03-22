@@ -266,6 +266,10 @@ Notes
       - Fixar altura do header e baseline da divisoria nos dois cards
       commit: `fix(frontend-admin): align horizontal divider baselines`
 
+- [x] T11: Centralizar corpo de atividades com usuarios
+      - Equalizar altura visual do conteudo dos dois cards na mesma linha
+      commit: `fix(frontend-admin): align activity body height with users`
+
 ## Acceptance tests
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards compactos, hierarquia clara e sem “cards gigantes”

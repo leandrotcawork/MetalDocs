@@ -23,6 +23,25 @@ export function AdminCenterView() {
     void adminCenter.refresh();
   }, [adminCenter.refresh]);
 
+  useEffect(() => {
+    if (!managedUsersApi.managedUserForm.userId) {
+      return;
+    }
+    const current = managedUsersApi.managedUsers.find((item) => item.userId === managedUsersApi.managedUserForm.userId);
+    if (!current) {
+      return;
+    }
+    managedUsersApi.setManagedUserForm((previous) => ({
+      ...previous,
+      displayName: current.displayName,
+      email: current.email ?? "",
+      isActive: current.isActive,
+      mustChangePassword: current.mustChangePassword,
+      roles: Array.isArray(current.roles) && current.roles.length > 0 ? current.roles : previous.roles,
+      resetPassword: "",
+    }));
+  }, [managedUsersApi.managedUserForm.userId, managedUsersApi.managedUsers, managedUsersApi.setManagedUserForm]);
+
   const onlineCount = adminCenter.onlineUsers.length;
   const latestActivity = adminCenter.recentActivities[0]?.occurredAt;
 

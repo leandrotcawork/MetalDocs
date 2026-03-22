@@ -181,7 +181,7 @@ Notes
 - Dados de online/atividade dependem de endpoint backend; se nao existir, adicionar.
 
 ## Tasks
-- [ ] T1: Contrato de dados (OpenAPI)
+- [x] T1: Contrato de dados (OpenAPI)
       - Definir endpoint(s) para: usuarios online, ultima atividade, ultimo login
       commit: `docs(api): add admin center contracts`
 
@@ -202,6 +202,10 @@ Notes
 - [x] T5: Integracao no App + navegacao
       - Novo `activeView` ou substituicao do painel admin atual
       commit: `feat(frontend-admin): wire admin center navigation`
+      
+- [x] T6: Sincronizar formulario de usuario no Admin Center
+      - Evita acoplamento com App e corrige build
+      commit: `fix(frontend-admin): sync managed user form`
 
 ## Acceptance tests
 - [ ] `cd frontend/apps/web; npm.cmd run build`

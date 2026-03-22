@@ -157,3 +157,10 @@ Wrong:   Editor without documentId skips schema and renders no sections
 Correct: Editor loads profile schema for draft documents
 Rule:    Draft mode must show sections and schema.
 Layer:   frontend
+
+## Lesson X — Admin form sync lives with admin view
+Date: 2026-03-21 | Trigger: correction
+Wrong:   App-level effect referenced removed managed user state, breaking build
+Correct: AdminCenterView syncs managed user form when the list refreshes
+Rule:    View-specific state sync stays inside the view.
+Layer:   frontend

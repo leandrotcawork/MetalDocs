@@ -188,25 +188,6 @@ function AppContent() {
   }, [bootstrap]);
 
   useEffect(() => {
-    if (!managedUserForm.userId) {
-      return;
-    }
-    const current = managedUsers.find((item) => item.userId === managedUserForm.userId);
-    if (!current) {
-      return;
-    }
-    setManagedUserForm((previous) => ({
-      ...previous,
-      displayName: current.displayName,
-      email: current.email ?? "",
-      isActive: current.isActive,
-      mustChangePassword: current.mustChangePassword,
-      roles: Array.isArray(current.roles) && current.roles.length > 0 ? current.roles : previous.roles,
-      resetPassword: "",
-    }));
-  }, [managedUsers, managedUserForm.userId]);
-
-  useEffect(() => {
     if (authState !== "ready" || !user || user.mustChangePassword) {
       return;
     }

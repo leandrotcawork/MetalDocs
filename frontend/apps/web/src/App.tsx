@@ -350,7 +350,7 @@ function AppContent() {
       return (
         <ContentBuilderView
           document={selectedDocument}
-          onBack={() => setActiveView("library")}
+          onBack={() => setActiveView("create")}
         />
       );
     }

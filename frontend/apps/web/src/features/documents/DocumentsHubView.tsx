@@ -123,17 +123,23 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
 
   if (props.loadState === "loading") {
     return (
-      <section className={styles.hub}>
-        <div className={styles.state}>Carregando acervo...</div>
-      </section>
+      <div className={styles.page}>
+        {headerShell}
+        <section className={styles.hub}>
+          <div className={styles.state}>Carregando acervo...</div>
+        </section>
+      </div>
     );
   }
 
   if (props.loadState === "error") {
     return (
-      <section className={styles.hub}>
-        <div className={styles.state}>Falha ao carregar os documentos.</div>
-      </section>
+      <div className={styles.page}>
+        {headerShell}
+        <section className={styles.hub}>
+          <div className={styles.state}>Falha ao carregar os documentos.</div>
+        </section>
+      </div>
     );
   }
 
@@ -246,6 +252,16 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
   }).length;
 
   const headerTitle = scope === "mine" ? "Meus documentos" : scope === "recent" ? "Recentes" : "Todos documentos";
+  const headerShell = (
+    <header className={styles.pageHeader}>
+      <div className={styles.hero}>
+        <h1 className={styles.title}>{headerTitle}</h1>
+        <p className={styles.subtitle}>
+          Acervo organizado por areas, tipos e status. Navegue pelos documentos mais relevantes.
+        </p>
+      </div>
+    </header>
+  );
 
   const normalizedQuery = props.searchQuery.trim().toLowerCase();
   const baseFilteredDocuments = useMemo(() => {
@@ -312,9 +328,12 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
   if (documentsHubView === "detail") {
     if (!props.selectedDocument) {
       return (
-        <section className={styles.hub}>
-          <div className={styles.state}>Selecione um documento para ver os detalhes.</div>
-        </section>
+        <div className={styles.page}>
+          {headerShell}
+          <section className={styles.hub}>
+            <div className={styles.state}>Selecione um documento para ver os detalhes.</div>
+          </section>
+        </div>
       );
     }
 
@@ -328,7 +347,9 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
       : null;
 
     return (
-      <section className={styles.detail}>
+      <div className={styles.page}>
+        {headerShell}
+        <section className={styles.detail}>
         <div className={styles.breadcrumb}>
           <button type="button" onClick={() => setDocumentsHubView("overview")}>Inicio</button>
           <span>/</span>
@@ -400,13 +421,16 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
             <p className={styles.detailMuted}>Nenhuma alteracao registrada nesta versao.</p>
           </article>
         </div>
-      </section>
+        </section>
+      </div>
     );
   }
 
   if (documentsHubView === "collection") {
     return (
-      <section className={styles.collection}>
+      <div className={styles.page}>
+        {headerShell}
+        <section className={styles.collection}>
         <div className={styles.collectionHeader}>
           <div>
             <div className={styles.breadcrumb}>
@@ -507,21 +531,14 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
             {collectionDocuments.length === 0 && <div className={styles.emptyCard}>Nenhum documento encontrado.</div>}
           </div>
         )}
-      </section>
+        </section>
+      </div>
     );
   }
 
   return (
     <div className={styles.page}>
-      <header className={styles.pageHeader}>
-        <div className={styles.hero}>
-          <p className={styles.eyebrow}>MetalDocs</p>
-          <h1 className={styles.title}>{headerTitle}</h1>
-          <p className={styles.subtitle}>
-            Acervo organizado por areas, tipos e status. Navegue pelos documentos mais relevantes.
-          </p>
-        </div>
-      </header>
+      {headerShell}
 
       <section className={styles.hub}>
 

@@ -489,9 +489,9 @@ export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
         </aside>
 
         <main className={`${styles["workspace-main"]} ${isCatalogView || isCreateView || isContentBuilder ? styles["is-toolbarless"] : ""} ${isCreateView ? styles["is-create-view"] : ""} ${isContentBuilder ? styles["is-content-builder-view"] : ""}`}>
-          {isCreateView || isContentBuilder
+          {isCreateView || isContentBuilder || isCatalogView
             ? props.children
-            : <div className={`${styles["workspace-content"]} ${isCatalogView ? styles["is-toolbarless"] : ""}`}>{props.children}</div>}
+            : <div className={styles["workspace-content"]}>{props.children}</div>}
         </main>
       </div>
     </div>

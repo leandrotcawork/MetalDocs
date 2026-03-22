@@ -278,3 +278,21 @@ Notes
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards compactos, hierarquia clara e sem “cards gigantes”
 
+---
+
+## Feature: Admin Center UI - Gestao de Usuarios v2
+Area: `frontend/apps/web/src/components/ManagedUsersPanel.*`  |  Risk: medium (UI full rewrite)  |  Goal: reconstruir Criar/Base/Editar conforme referencia HTML
+
+Notes
+- Reescrever markup e CSS mantendo handlers da store (`onCreateUser`, `onSaveManagedUser`, `onAdminResetPassword`, `onUnlockManagedUser`).
+- Manter fluxo funcional sem alterar contratos de API.
+
+## Tasks
+- [x] T1: Recriar estrutura dos 3 cards (Criar, Base, Editar)
+      - Substituir layout anterior e aplicar padrao da referencia
+      commit: `refactor(frontend-admin): rebuild user management cards`
+
+## Acceptance tests
+- [x] `cd frontend/apps/web; npm.cmd run build`
+- [ ] Visual: cards de criacao/base/edicao sem alongamento e no padrao da referencia
+

@@ -1,7 +1,6 @@
+import { useMemo, useState } from "react";
 import type { ManagedUserItem, UserRole } from "../lib.types";
-import { WorkspaceViewFrame } from "./WorkspaceViewFrame";
 import { WorkspaceDataState } from "./WorkspaceDataState";
-import { FilterDropdown, type SelectMenuOption } from "./ui/FilterDropdown";
 import styles from "./ManagedUsersPanel.module.css";
 
 type CreateUserForm = {
@@ -41,36 +40,71 @@ interface ManagedUsersPanelProps {
   onUnlockManagedUser: () => void | Promise<void>;
 }
 
+const PROFILE_OPTIONS: Array<{ value: UserRole; label: string }> = [
+  { value: "admin", label: "Administrador" },
+  { value: "editor", label: "Editor" },
+  { value: "reviewer", label: "Revisor" },
+  { value: "viewer", label: "Viewer" },
+];
+
+function toInitials(value: string) {
+  const [first, second] = value.trim().split(/\s+/);
+  return [first?.[0], second?.[0]].filter(Boolean).join("").toUpperCase();
+}
+
+function roleLabel(role?: UserRole) {
+  const match = PROFILE_OPTIONS.find((option) => option.value === role);
+  return match?.label ?? "Viewer";
+}
+
+function roleChipClass(role?: UserRole) {
+  if (role === "admin") return `${styles.roleChip} ${styles.roleChipAdmin}`;
+  if (role === "editor") return `${styles.roleChip} ${styles.roleChipEditor}`;
+  if (role === "reviewer") return `${styles.roleChip} ${styles.roleChipReviewer}`;
+  return `${styles.roleChip} ${styles.roleChipViewer}`;
+}
+
+function departmentFromRole(role?: UserRole) {
+  if (role === "admin") return "Operacoes";
+  if (role === "editor") return "Qualidade";
+  if (role === "reviewer") return "Engenharia";
+  return "Administrativo";
+}
+
 export function ManagedUsersPanel(props: ManagedUsersPanelProps) {
-  return (
-    <WorkspaceViewFrame
-      testId="managed-users-panel"
-      kicker="IAM + Auth"
-      title="Usuarios internos"
-      description="Administracao operacional de identidades internas, roles, estado de acesso e recuperacao de senha."
-    >
-      <ManagedUsersSection {...props} />
-    </WorkspaceViewFrame>
-  );
+  return <ManagedUsersSection {...props} />;
 }
 
 export function ManagedUsersSection(props: ManagedUsersPanelProps) {
-  const roleOptions: SelectMenuOption[] = ["admin", "editor", "reviewer", "viewer"].map((role) => ({
-    value: role,
-    label: role,
-  }));
-  const selectedRole = props.selectedManagedUser?.roles?.[0] ?? "";
+  const [search, setSearch] = useState("");
+  const selectedRole = props.managedUserForm.roles[0] ?? "viewer";
 
-  const toInitials = (value: string) => {
-    const [first, second] = value.trim().split(/\s+/);
-    return [first?.[0], second?.[0]].filter(Boolean).join("").toUpperCase();
+  const filteredUsers = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return props.managedUsers;
+    return props.managedUsers.filter((item) => item.displayName.toLowerCase().includes(query) || item.username.toLowerCase().includes(query));
+  }, [props.managedUsers, search]);
+
+  const handleCreateRoleChange = (value: string) => {
+    props.onUserFormChange({
+      ...props.userForm,
+      roles: [value as UserRole],
+    });
   };
 
-  const roleChipClass = (role?: string) => {
-    if (!role) return styles.roleChip;
-    if (role === "admin") return `${styles.roleChip} ${styles.roleAdmin}`;
-    if (role === "editor") return `${styles.roleChip} ${styles.roleEditor}`;
-    return `${styles.roleChip} ${styles.roleViewer}`;
+  const handleManagedRoleChange = (value: string) => {
+    props.onManagedUserFormChange({
+      ...props.managedUserForm,
+      roles: [value as UserRole],
+    });
+  };
+
+  const handleDeactivateUser = async () => {
+    props.onManagedUserFormChange({
+      ...props.managedUserForm,
+      isActive: false,
+    });
+    await props.onSaveManagedUser();
   };
 
   return (
@@ -84,118 +118,169 @@ export function ManagedUsersSection(props: ManagedUsersPanelProps) {
         onRetry={props.onRefreshWorkspace}
       />
 
-      <div className={styles.sectionTitle}>Gestao de usuarios</div>
-      <div className={styles.panelGrid}>
-        <div data-testid="user-create-form" className={`${styles.panel} ${styles.stack}`}>
-          <div className={styles.panelHeader}>
-            <div>
-              <p className={styles.kicker}>Provisioning</p>
-              <h2 className={styles.panelTitle}>Criar usuario</h2>
-            </div>
+      <div className={styles.sectionTitle}>Gestao de Usuarios</div>
+
+      <section className={styles.grid}>
+        <article className={styles.card}>
+          <header className={styles.cardHeader}>
+            <h3 className={styles.cardTitle}>Criar usuario</h3>
+          </header>
+          <div className={styles.cardBody}>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>Nome completo</span>
+              <input
+                type="text"
+                placeholder="ex: Joao da Silva"
+                value={props.userForm.displayName}
+                onChange={(event) => props.onUserFormChange({ ...props.userForm, displayName: event.target.value })}
+              />
+            </label>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>Username</span>
+              <input
+                type="text"
+                placeholder="ex: joao_silva"
+                value={props.userForm.username}
+                onChange={(event) => props.onUserFormChange({ ...props.userForm, username: event.target.value })}
+              />
+            </label>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>E-mail</span>
+              <input
+                type="email"
+                placeholder="email@metalnobre.com"
+                value={props.userForm.email}
+                onChange={(event) => props.onUserFormChange({ ...props.userForm, email: event.target.value })}
+              />
+            </label>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>Senha inicial</span>
+              <input
+                type="password"
+                placeholder="senha temporaria"
+                value={props.userForm.password}
+                onChange={(event) => props.onUserFormChange({ ...props.userForm, password: event.target.value })}
+              />
+            </label>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>Perfil</span>
+              <select value={props.userForm.roles[0] ?? "viewer"} onChange={(event) => handleCreateRoleChange(event.target.value)}>
+                {PROFILE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button type="button" className={`${styles.button} ${styles.buttonPrimary}`} onClick={() => void props.onCreateUser()}>
+              + Criar usuario
+            </button>
           </div>
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>userId opcional</span>
-            <input data-testid="user-id" placeholder="userId opcional" value={props.userForm.userId} onChange={(event) => props.onUserFormChange({ ...props.userForm, userId: event.target.value })} />
-          </label>
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>username</span>
-            <input data-testid="user-username" placeholder="username" value={props.userForm.username} onChange={(event) => props.onUserFormChange({ ...props.userForm, username: event.target.value })} required />
-          </label>
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>email</span>
-            <input data-testid="user-email" placeholder="email" value={props.userForm.email} onChange={(event) => props.onUserFormChange({ ...props.userForm, email: event.target.value })} />
-          </label>
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>display name</span>
-            <input data-testid="user-display-name" placeholder="display name" value={props.userForm.displayName} onChange={(event) => props.onUserFormChange({ ...props.userForm, displayName: event.target.value })} required />
-          </label>
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>senha inicial</span>
-            <input data-testid="user-password" type="password" placeholder="senha inicial" value={props.userForm.password} onChange={(event) => props.onUserFormChange({ ...props.userForm, password: event.target.value })} required />
-          </label>
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>role</span>
-            <FilterDropdown
-              id="user-role"
-              value={props.userForm.roles[0]}
-              options={roleOptions}
-              onSelect={(value) => props.onUserFormChange({ ...props.userForm, roles: [value as UserRole] })}
-            />
-          </label>
-          <button data-testid="user-submit" type="button" onClick={() => void props.onCreateUser()}>Criar usuario</button>
-        </div>
-        <section className={styles.panel}>
-          <div className={styles.panelHeader}>
-            <div>
-              <p className={styles.kicker}>Directory</p>
-              <h2 className={styles.panelTitle}>Base de usuarios</h2>
-            </div>
-            <span className={styles.panelMeta}>{props.managedUsers.length} total</span>
+        </article>
+
+        <article className={styles.card}>
+          <header className={styles.cardHeader}>
+            <h3 className={styles.cardTitle}>Base de usuarios</h3>
+            <span className={styles.cardMeta}>{props.managedUsers.length} total</span>
+          </header>
+          <div className={styles.searchWrap}>
+            <input type="text" placeholder="Buscar usuario..." value={search} onChange={(event) => setSearch(event.target.value)} />
           </div>
-          <ul className={styles.list}>
-            {props.managedUsers.map((item) => (
-              <li key={item.userId} className={styles.listItem} onClick={() => props.onSelectManagedUser(item)}>
-                <span className={styles.avatar}>{toInitials(item.displayName)}</span>
-                <div className={styles.listMeta}>
-                  <strong className={styles.listTitle}>{item.displayName}</strong>
-                  <p className={styles.listSub}>{item.username}</p>
-                  <small className={styles.listSub}>
-                    {item.isActive ? "Ativo" : "Inativo"} / {item.mustChangePassword ? "troca obrigatoria" : "senha OK"} / falhas: {item.failedLoginAttempts}
-                    {item.lastLoginAt ? ` / ultimo login: ${props.formatDate(item.lastLoginAt)}` : ""}
-                  </small>
-                </div>
-                <span className={roleChipClass(item.roles?.[0])}>{item.roles?.[0] ?? "viewer"}</span>
+          <ul className={styles.userList}>
+            {filteredUsers.map((item) => (
+              <li
+                key={item.userId}
+                className={`${styles.userRow} ${props.selectedManagedUser?.userId === item.userId ? styles.userRowSelected : ""}`}
+                onClick={() => props.onSelectManagedUser(item)}
+              >
+                <span className={`${styles.avatar} ${item.isActive ? "" : styles.avatarInactive}`}>{toInitials(item.displayName)}</span>
+                <span className={styles.userName}>{item.displayName}</span>
+                <span className={roleChipClass(item.roles?.[0])}>{roleLabel(item.roles?.[0])}</span>
               </li>
             ))}
           </ul>
-        </section>
-        <section className={`${styles.panel} ${styles.stack}`}>
-          <div className={styles.panelHeader}>
-            <div>
-              <p className={styles.kicker}>Lifecycle</p>
-              <h2 className={styles.panelTitle}>Editar usuario</h2>
-            </div>
-          </div>
-          {!props.selectedManagedUser ? <p className={styles.hint}>Selecione um usuario da lista para editar estado operacional e roles.</p> : (
+          <footer className={styles.listFooter}>Ver todos os {props.managedUsers.length} usuarios →</footer>
+        </article>
+
+        <article className={styles.card}>
+          <header className={styles.cardHeader}>
+            <h3 className={styles.cardTitle}>Editar usuario</h3>
+          </header>
+
+          {!props.selectedManagedUser ? (
+            <div className={styles.emptyState}>Selecione um usuario na base para editar.</div>
+          ) : (
             <>
               <div className={styles.editHero}>
-                <span className={styles.editAvatar}>{toInitials(props.selectedManagedUser.displayName)}</span>
-                <div className={styles.editMeta}>
-                  <span className={styles.editName}>{props.selectedManagedUser.displayName}</span>
-                  <span className={styles.editSub}>{props.selectedManagedUser.username} • {selectedRole || "viewer"}</span>
+                <span className={styles.heroAvatar}>{toInitials(props.selectedManagedUser.displayName).slice(0, 1)}</span>
+                <div>
+                  <p className={styles.heroName}>{props.selectedManagedUser.displayName}</p>
+                  <p className={styles.heroSub}>
+                    {props.selectedManagedUser.username} - {departmentFromRole(selectedRole)}
+                  </p>
                 </div>
                 <span className={styles.statusTag}>
                   <span className={styles.statusDot} />
-                  {props.selectedManagedUser.isActive ? "Ativo" : "Inativo"}
+                  {props.managedUserForm.isActive ? "Ativo" : "Inativo"}
                 </span>
               </div>
-              <p className={styles.hint}>Auth state atual: {props.selectedManagedUser.isActive ? "ativo" : "inativo"} / {props.selectedManagedUser.mustChangePassword ? "troca obrigatoria" : "senha estabilizada"} / falhas: {props.selectedManagedUser.failedLoginAttempts}</p>
-              <label className={styles.field}>
-                <span className={styles.fieldLabel}>display name</span>
-                <input value={props.managedUserForm.displayName} onChange={(event) => props.onManagedUserFormChange({ ...props.managedUserForm, displayName: event.target.value })} placeholder="Display name" />
-              </label>
-              <label className={styles.field}>
-                <span className={styles.fieldLabel}>email</span>
-                <input value={props.managedUserForm.email} onChange={(event) => props.onManagedUserFormChange({ ...props.managedUserForm, email: event.target.value })} placeholder="Email" />
-              </label>
-              <label><input type="checkbox" checked={props.managedUserForm.isActive} onChange={(event) => props.onManagedUserFormChange({ ...props.managedUserForm, isActive: event.target.checked })} /> Usuario ativo</label>
-              <label><input type="checkbox" checked={props.managedUserForm.mustChangePassword} onChange={(event) => props.onManagedUserFormChange({ ...props.managedUserForm, mustChangePassword: event.target.checked })} /> Exigir troca de senha</label>
-              <div className={styles.detailSummary}>
-                {(["admin", "editor", "reviewer", "viewer"] as UserRole[]).map((role) => <label key={role}><input type="checkbox" checked={props.managedUserForm.roles.includes(role)} onChange={() => props.onToggleRole(role)} /> {role}</label>)}
+
+              <div className={styles.cardBody}>
+                <label className={styles.field}>
+                  <span className={styles.fieldLabel}>Nome completo</span>
+                  <input
+                    type="text"
+                    value={props.managedUserForm.displayName}
+                    onChange={(event) => props.onManagedUserFormChange({ ...props.managedUserForm, displayName: event.target.value })}
+                  />
+                </label>
+
+                <div className={styles.inlineFields}>
+                  <label className={styles.field}>
+                    <span className={styles.fieldLabel}>Departamento</span>
+                    <input type="text" value={departmentFromRole(selectedRole)} readOnly />
+                  </label>
+                  <label className={styles.field}>
+                    <span className={styles.fieldLabel}>Perfil</span>
+                    <select value={selectedRole} onChange={(event) => handleManagedRoleChange(event.target.value)}>
+                      {PROFILE_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
               </div>
-              <button type="button" className={styles.buttonPrimary} onClick={() => void props.onSaveManagedUser()}>Salvar usuario</button>
-              <label className={styles.field}>
-                <span className={styles.fieldLabel}>nova senha temporaria</span>
-                <input type="password" value={props.managedUserForm.resetPassword} onChange={(event) => props.onManagedUserFormChange({ ...props.managedUserForm, resetPassword: event.target.value })} placeholder="Nova senha temporaria" />
-              </label>
-              <div className={styles.actionRow}>
-                <button type="button" className={styles.buttonWarn} onClick={() => void props.onAdminResetPassword()}>Resetar senha</button>
-                <button type="button" className={styles.buttonOutline} onClick={() => void props.onUnlockManagedUser()}>Desbloquear acesso</button>
+
+              <div className={styles.actionsStack}>
+                <button type="button" className={`${styles.button} ${styles.buttonPrimary}`} onClick={() => void props.onSaveManagedUser()}>
+                  Salvar usuario
+                </button>
+                <div className={styles.divider} />
+                <label className={styles.field}>
+                  <span className={styles.fieldLabel}>Nova senha temporaria</span>
+                  <input
+                    type="password"
+                    placeholder="digite para resetar"
+                    value={props.managedUserForm.resetPassword}
+                    onChange={(event) => props.onManagedUserFormChange({ ...props.managedUserForm, resetPassword: event.target.value })}
+                  />
+                </label>
+                <button type="button" className={`${styles.button} ${styles.buttonWarn}`} onClick={() => void props.onAdminResetPassword()}>
+                  Resetar senha
+                </button>
+                <button type="button" className={`${styles.button} ${styles.buttonOutline}`} onClick={() => void props.onUnlockManagedUser()}>
+                  Desbloquear acesso
+                </button>
+                <button type="button" className={`${styles.button} ${styles.buttonDanger}`} onClick={() => void handleDeactivateUser()}>
+                  Desativar usuario
+                </button>
               </div>
             </>
           )}
-        </section>
-      </div>
+        </article>
+      </section>
     </>
   );
 }

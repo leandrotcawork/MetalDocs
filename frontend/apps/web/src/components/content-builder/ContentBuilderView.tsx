@@ -303,9 +303,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
         </div>
         <div className="content-builder-topbar-actions">
           <span className={`content-builder-status ${status === "dirty" ? "is-warning" : ""}`}>{statusLabel}</span>
-          <button type="button" className="ghost-button" onClick={props.onBack}>
-            Voltar
-          </button>
+          <button type="button" className="content-builder-btn ghost" onClick={props.onBack}>Voltar</button>
         </div>
       </header>
 
@@ -319,9 +317,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
           </div>
         </div>
         <div className="content-builder-docbar-right">
-          <button type="button" className="ghost-button" onClick={props.onBack}>
-            Voltar
-          </button>
+          <button type="button" className="content-builder-btn ghost" onClick={props.onBack}>Voltar</button>
         </div>
       </section>
 
@@ -413,10 +409,20 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
           </div>
         </div>
         <div className="content-builder-footer-actions">
-          <button type="button" className="ghost-button" onClick={handleSave} disabled={status === "saving" || status === "loading" || status === "rendering"}>
+          <button
+            type="button"
+            className="content-builder-btn ghost"
+            onClick={handleSave}
+            disabled={status === "saving" || status === "loading" || status === "rendering"}
+          >
             Salvar rascunho
           </button>
-          <button type="button" onClick={handleRenderPdf} disabled={status === "saving" || status === "loading" || status === "rendering"}>
+          <button
+            type="button"
+            className="content-builder-btn primary"
+            onClick={handleRenderPdf}
+            disabled={status === "saving" || status === "loading" || status === "rendering"}
+          >
             Gerar PDF
           </button>
         </div>

@@ -2325,6 +2325,41 @@ td small {
   gap: 10px;
 }
 
+.content-builder-btn {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.content-builder-btn.primary {
+  background: var(--vinho);
+  color: #fff;
+  border-color: var(--vinho);
+  box-shadow: 0 8px 24px rgba(107, 31, 42, 0.18);
+}
+
+.content-builder-btn.primary:disabled {
+  opacity: 0.6;
+  box-shadow: none;
+}
+
+.content-builder-btn.ghost {
+  background: var(--surface);
+  color: var(--text-soft);
+  border-color: var(--border);
+}
+
+.content-builder-btn.ghost:hover:not(:disabled) {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--vinho) 20%, var(--border));
+}
+
 .content-builder-empty {
   display: grid;
   place-items: center;

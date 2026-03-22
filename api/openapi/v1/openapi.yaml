@@ -212,6 +212,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UnlockManagedUserResponse'
+  /iam/admin/overview:
+    get:
+      summary: Resumo administrativo de usuarios, presenca e atividades recentes
+      responses:
+        '200':
+          description: Resumo administrativo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOverviewResponse'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
   /document-types:
     get:
       summary: Lista os tipos documentais suportados
@@ -2448,6 +2470,35 @@ components:
         updatedAt:
           type: string
           format: date-time
+    AdminOnlineUserItem:
+      type: object
+      required: [userId, username, displayName, lastSeenAt]
+      properties:
+        userId:
+          type: string
+        username:
+          type: string
+        displayName:
+          type: string
+        lastSeenAt:
+          type: string
+          format: date-time
+    AdminOverviewResponse:
+      type: object
+      required: [users, onlineUsers, recentActivities]
+      properties:
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/ManagedUserItem'
+        onlineUsers:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminOnlineUserItem'
+        recentActivities:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditEventItem'
     ListManagedUsersResponse:
       type: object
       required: [items]

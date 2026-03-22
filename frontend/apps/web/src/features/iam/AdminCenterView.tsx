@@ -203,11 +203,14 @@ export function AdminCenterView() {
                 Audit trail →
               </button>
             </div>
-            {adminCenter.recentActivities.length === 0 ? (
-              <p className={styles.empty}>Nenhuma atividade registrada.</p>
-            ) : (
-              <ul className={styles.activityList}>
-                {adminCenter.recentActivities.map((item, index) => (
+            <ul className={styles.activityList}>
+              {adminCenter.recentActivities.length === 0 ? (
+                <li className={`${styles.listItem} ${styles.activityListItem} ${styles.activityEmptyItem}`}>
+                  <span className={styles.activityDotPlaceholder} />
+                  <span className={styles.listSub}>Nenhuma atividade registrada.</span>
+                </li>
+              ) : (
+                adminCenter.recentActivities.map((item, index) => (
                   <li
                     key={item.id}
                     className={`${styles.listItem} ${styles.activityListItem}`}
@@ -223,9 +226,9 @@ export function AdminCenterView() {
                       <span className={activityChipClass(item.action)}>{activityLabel(item.action)}</span>
                     </div>
                   </li>
-                ))}
-              </ul>
-            )}
+                ))
+              )}
+            </ul>
           </div>
         </section>
 

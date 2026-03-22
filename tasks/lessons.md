@@ -192,3 +192,10 @@ Wrong:   Extra closing brace in `AdminCenterView.module.css` causing Vite CSS pa
 Correct: Keep selector blocks balanced; remove stray brace before next selector
 Rule:    Every CSS block must have balanced braces to avoid build-time parsing errors.
 Layer:   frontend
+
+## Lesson AC - Empty states must respect list alignment
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Activity empty state rendered as a plain paragraph, breaking header/row alignment
+Correct: Render empty state within the list layout to keep row spacing and separators aligned
+Rule:    Empty states inside list panels must reuse list layout structure for visual consistency.
+Layer:   frontend

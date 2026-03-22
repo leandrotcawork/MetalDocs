@@ -184,6 +184,13 @@
   text-align: right;
 }
 
+.typeStripe {
+  width: 6px;
+  align-self: stretch;
+  border-radius: 999px;
+  background: var(--type-color, var(--vinho));
+}
+
 .typeBadge {
   width: 34px;
   height: 34px;
@@ -651,4 +658,22 @@
   .recentRow {
     grid-template-columns: 28px minmax(0, 1fr);
   }
+}
+.typeMeta {
+  flex: 1;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.typeBar {
+  height: 6px;
+  background: var(--surface-2);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.typeBarFill {
+  display: block;
+  height: 100%;
+  background: var(--type-color, var(--vinho));
 }

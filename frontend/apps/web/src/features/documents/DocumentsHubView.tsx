@@ -163,6 +163,7 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
         label: profile.name,
         alias: profile.alias ?? profile.code.toUpperCase(),
         count: profileCounts[profile.code] ?? 0,
+        color: areaColors[props.documentProfiles.findIndex((item) => item.code === profile.code) % areaColors.length],
       }))
       .filter((item) => item.count > 0);
   }, [profileCounts, props.documentProfiles]);
@@ -528,11 +529,19 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
                   setDocumentsHubStatus("all");
                   setDocumentsHubView("collection");
                 }}
+                style={{ ["--type-color" as string]: profile.color } as React.CSSProperties}
               >
+                <span className={styles.typeStripe} />
                 <span className={styles.typeBadge}>{profile.alias}</span>
-                <div>
+                <div className={styles.typeMeta}>
                   <strong>{profile.label}</strong>
                   <small>{profile.count} documentos</small>
+                  <div className={styles.typeBar}>
+                    <span
+                      className={styles.typeBarFill}
+                      style={{ width: totalDocuments > 0 ? `${Math.round((profile.count / totalDocuments) * 100)}%` : "0%" }}
+                    />
+                  </div>
                 </div>
               </button>
             </article>

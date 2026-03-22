@@ -25,3 +25,7 @@ Decision: Left-aligned item text by removing `space-between` behavior for panel 
 Date: 2026-03-22
 Context: Documents Hub overview
 Decision: Increased hub padding and redesigned area cards with left color stripe + progress bar tied to area share.
+
+Date: 2026-03-22
+Context: Documents Hub overview
+Decision: Applied the same stripe + progress pattern to document type cards.

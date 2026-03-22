@@ -697,14 +697,18 @@
 .typeMeta {
   flex: 1;
   display: grid;
+  grid-template-rows: minmax(2.4rem, auto) auto auto;
   gap: 0.3rem;
+  align-content: center;
+  min-width: 0;
 }
 
 .typeBar {
-  height: 6px;
+  height: 3px;
   background: var(--surface-2);
   border-radius: 999px;
   overflow: hidden;
+  margin-top: 0.4rem;
 }
 
 .typeBarFill {
@@ -718,4 +722,17 @@
   color: var(--muted);
   line-height: 1.25;
   text-align: left;
+}
+
+.typeMeta strong {
+  min-height: 2.4rem;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.typeBadge {
+  align-self: center;
 }

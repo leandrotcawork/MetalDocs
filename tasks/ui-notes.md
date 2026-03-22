@@ -41,3 +41,7 @@ Decision: Badge prefers short alias (<=3), then short code (<=3); otherwise fall
 Date: 2026-03-22
 Context: Documents Hub overview (Tipos de documento)
 Decision: Type cards now mirror the Areas card layout with stripe + progress bar + right-side description.
+
+Date: 2026-03-22
+Context: Documents Hub overview (Tipos de documento)
+Decision: Unified type progress bar thickness with Areas and fixed vertical alignment for badge/title/meta when titles wrap to one or two lines.

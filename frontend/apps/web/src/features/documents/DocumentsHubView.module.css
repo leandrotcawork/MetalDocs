@@ -240,8 +240,24 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 1rem;
-  padding: 0.6rem;
+  padding: 0.8rem 1rem 1rem;
   box-shadow: var(--shadow-soft);
+}
+
+.recentHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.8rem;
+}
+
+.recentHeader h2 {
+  margin: 0;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18rem;
+  color: var(--muted);
 }
 
 .recentRow {

@@ -57,3 +57,7 @@ Decision: Applied the same fixed title slot and vertical centering model used in
 Date: 2026-03-22
 Context: Documents Hub overview (Abertos recentemente)
 Decision: Wrapped recent rows in a single container card for clearer grouping and cleaner presentation.
+
+Date: 2026-03-22
+Context: Documents Hub overview (Abertos recentemente)
+Decision: Moved the title and "Ver todos" link inside the recent container for a unified block.

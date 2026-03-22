@@ -577,20 +577,20 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
       </section>
 
       <section className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <h2>Abertos recentemente</h2>
-          <button
-            type="button"
-            className={styles.linkButton}
-            onClick={() => {
-              setDocumentsHubView("collection");
-              setDocumentsHubStatus("all");
-            }}
-          >
-            Ver todos →
-          </button>
-        </div>
         <div className={styles.recentPanel}>
+          <div className={styles.recentHeader}>
+            <h2>Abertos recentemente</h2>
+            <button
+              type="button"
+              className={styles.linkButton}
+              onClick={() => {
+                setDocumentsHubView("collection");
+                setDocumentsHubStatus("all");
+              }}
+            >
+              Ver todos →
+            </button>
+          </div>
           <div className={styles.recentList}>
             {recentItems.length === 0 ? (
               <div className={styles.emptyCard}>Nenhum documento recente.</div>

@@ -108,3 +108,10 @@ Wrong:   Retrying Playwright after `spawn EPERM` inside sandbox
 Correct: Request escalated run when `EPERM` occurs during process spawn (outside sandbox permission required)
 Rule:    `EPERM` from child process spawn means permission denied; run with escalation.
 Layer:   process
+
+## Lesson Q — Content builder docbar layout must match spec
+Date: 2026-03-21 | Trigger: correction
+Wrong:   Docbar left-aligned title and missing right-side back button
+Correct: Tags on the left, title centered and larger, back button on the right
+Rule:    Docbar layout follows UI spec before marking T6 complete.
+Layer:   frontend

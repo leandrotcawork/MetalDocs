@@ -130,17 +130,17 @@ Notes
       - Persist state in UI store if it’s shared; otherwise local state in feature
       commit: `feat(frontend-content-builder): add collapsible pdf preview`
 
-- [ ] T5: Remove "Voltar" button from content builder topbar
+- [x] T5: Remove "Voltar" button from content builder topbar
       - Keep only the correct navigation affordance (per design decision)
       commit: `fix(frontend-content-builder): remove topbar back button`
 
-- [ ] T6: Improve document bar text hierarchy and format
+- [x] T6: Improve document bar text hierarchy and format
       - Title becomes `PO-XX-<Nome do Documento>`
       - Version and Status become clearer and consistent with typography
       commit: `fix(frontend-content-builder): improve document bar hierarchy`
 
 ## Acceptance tests (run after each task)
-- [ ] `cd frontend/apps/web; npm.cmd run build`
+- [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Manual: Create doc -> reach editor via both paths (no-template vs Word template)
 - [ ] Manual: In editor, verify buttons are consistent + PDF preview toggles cleanly
 - [ ] No console errors in browser during the flows above

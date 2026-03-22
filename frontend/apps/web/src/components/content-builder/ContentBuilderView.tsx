@@ -308,15 +308,22 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
 
       <section className="content-builder-docbar">
         <div className="content-builder-docbar-left">
+          <div className="content-builder-meta">
+            <span className="content-builder-pill">Profile / {props.document.documentProfile.toUpperCase()}</span>
+            <span className="content-builder-pill">Status / {props.document.status}</span>
+            <span className="content-builder-pill">Versao / {version ?? "-"}</span>
+          </div>
+        </div>
+        <div className="content-builder-docbar-center">
           <div className="content-builder-title">
             <strong className="content-builder-doccode">PO-XX-{props.document.title}</strong>
             <span className="content-builder-docname">{props.document.title}</span>
           </div>
-          <div className="content-builder-meta">
-            <span className="content-builder-pill">Profile · {props.document.documentProfile.toUpperCase()}</span>
-            <span className="content-builder-pill">Status · {props.document.status}</span>
-            <span className="content-builder-pill">Versão · {version ?? "-"}</span>
-          </div>
+        </div>
+        <div className="content-builder-docbar-right">
+          <button type="button" className="content-builder-btn ghost" onClick={props.onBack}>
+            Voltar
+          </button>
         </div>
       </section>
 

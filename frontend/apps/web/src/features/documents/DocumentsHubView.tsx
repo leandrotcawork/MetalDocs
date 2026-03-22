@@ -1,5 +1,4 @@
 ﻿import { useEffect, useMemo } from "react";
-import { useState } from "react";
 import { buildDocumentProfileCountMap } from "./adapters/catalogSummary";
 import { metalNobreProcessAreaHint } from "./adapters/metalNobreExperience";
 import { formatDocumentDisplayName } from "../shared/documentDisplay";
@@ -18,8 +17,6 @@ type DocumentsHubViewProps = {
   selectedProfileGovernance: DocumentProfileGovernanceItem | null;
   searchQuery: string;
   formatDate: (value?: string) => string;
-  onSearchQueryChange: (value: string) => void;
-  onCreateDocument: () => void;
   onOpenDocument: (documentId: string, nextView?: "library" | "content-builder") => void | Promise<void>;
   onOpenDocumentForHub: (documentId: string) => void | Promise<void>;
 };
@@ -109,7 +106,6 @@ function statusLabel(status: string): string {
 
 export function DocumentsHubView(props: DocumentsHubViewProps) {
   const scope = documentScope(props.view);
-  const [now, setNow] = useState(() => new Date());
   const {
     documentsHubView,
     documentsHubMode,
@@ -125,50 +121,9 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
     setRecentDocuments,
   } = useDocumentsStore();
 
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      setNow(new Date());
-    }, 30000);
-    return () => {
-      window.clearInterval(timer);
-    };
-  }, []);
-
-  const timeLabel = useMemo(
-    () => new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(now),
-    [now],
-  );
-
-  const headerActions = (
-    <div className={styles.headerBar}>
-      <div className={styles.headerMeta}>
-        <span className={styles.timeBadge}>Atualizado {timeLabel}</span>
-      </div>
-      <div className={styles.headerActions}>
-        <label className={styles.searchGroup}>
-          <svg className={styles.searchIcon} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-            <circle cx="11" cy="11" r="7" />
-            <path d="M20 20l-3.5-3.5" strokeLinecap="round" />
-          </svg>
-          <input
-            type="search"
-            value={props.searchQuery}
-            onChange={(event) => props.onSearchQueryChange(event.target.value)}
-            placeholder="Pesquisar documentos"
-            className={styles.searchInput}
-          />
-        </label>
-        <button type="button" className={styles.primaryButton} onClick={props.onCreateDocument}>
-          + Novo documento
-        </button>
-      </div>
-    </div>
-  );
-
   if (props.loadState === "loading") {
     return (
       <section className={styles.hub}>
-        {headerActions}
         <div className={styles.state}>Carregando acervo...</div>
       </section>
     );
@@ -177,7 +132,6 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
   if (props.loadState === "error") {
     return (
       <section className={styles.hub}>
-        {headerActions}
         <div className={styles.state}>Falha ao carregar os documentos.</div>
       </section>
     );
@@ -359,7 +313,6 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
     if (!props.selectedDocument) {
       return (
         <section className={styles.hub}>
-          {headerActions}
           <div className={styles.state}>Selecione um documento para ver os detalhes.</div>
         </section>
       );
@@ -376,7 +329,6 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
 
     return (
       <section className={styles.detail}>
-        {headerActions}
         <div className={styles.breadcrumb}>
           <button type="button" onClick={() => setDocumentsHubView("overview")}>Inicio</button>
           <span>/</span>
@@ -455,7 +407,6 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
   if (documentsHubView === "collection") {
     return (
       <section className={styles.collection}>
-        {headerActions}
         <div className={styles.collectionHeader}>
           <div>
             <div className={styles.breadcrumb}>
@@ -561,15 +512,18 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
   }
 
   return (
-    <section className={styles.hub}>
-      {headerActions}
-      <header className={styles.hero}>
-        <p className={styles.eyebrow}>MetalDocs</p>
-        <h1 className={styles.title}>{headerTitle}</h1>
-        <p className={styles.subtitle}>
-          Acervo organizado por areas, tipos e status. Navegue pelos documentos mais relevantes.
-        </p>
+    <div className={styles.page}>
+      <header className={styles.pageHeader}>
+        <div className={styles.hero}>
+          <p className={styles.eyebrow}>MetalDocs</p>
+          <h1 className={styles.title}>{headerTitle}</h1>
+          <p className={styles.subtitle}>
+            Acervo organizado por areas, tipos e status. Navegue pelos documentos mais relevantes.
+          </p>
+        </div>
       </header>
+
+      <section className={styles.hub}>
 
       <section className={styles.kpiGrid}>
         <article className={styles.kpiCard}>
@@ -722,7 +676,8 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
           </div>
         </div>
       </section>
-    </section>
+      </section>
+    </div>
   );
 }
 

@@ -37,8 +37,6 @@ type DocumentsWorkspaceViewProps = {
   searchQuery: string;
   currentUserId?: string;
   formatDate: (value?: string) => string;
-  onSearchQueryChange: (value: string) => void;
-  onCreateDocument: () => void;
   onRefreshWorkspace: () => void | Promise<void>;
   onOpenDocument: (documentId: string, nextView?: "library" | "content-builder") => void | Promise<void>;
   onOpenDocumentForHub: (documentId: string) => void | Promise<void>;
@@ -59,8 +57,6 @@ export function DocumentsWorkspaceView(props: DocumentsWorkspaceViewProps) {
       selectedProfileGovernance={props.selectedProfileGovernance}
       searchQuery={props.searchQuery}
       formatDate={props.formatDate}
-      onSearchQueryChange={props.onSearchQueryChange}
-      onCreateDocument={props.onCreateDocument}
       onOpenDocument={props.onOpenDocument}
       onOpenDocumentForHub={props.onOpenDocumentForHub}
     />

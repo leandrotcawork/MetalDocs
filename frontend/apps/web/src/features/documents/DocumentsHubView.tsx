@@ -181,6 +181,7 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
       .map((profile) => ({
         code: profile.code,
         label: profile.name,
+        description: profile.description || "Perfil documental configurado no registry.",
         badge: profileBadgeText(profile),
         count: profileCounts[profile.code] ?? 0,
         color: areaColors[props.documentProfiles.findIndex((item) => item.code === profile.code) % areaColors.length],
@@ -563,6 +564,7 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
                     />
                   </div>
                 </div>
+                <span className={styles.typeDescription}>{profile.description}</span>
               </button>
             </article>
           ))}

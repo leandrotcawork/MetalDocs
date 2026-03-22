@@ -37,3 +37,7 @@ Decision: Show all areas regardless of count, align card layout with left stripe
 Date: 2026-03-22
 Context: Documents Hub overview (Tipos de documento)
 Decision: Badge prefers short alias (<=3), then short code (<=3); otherwise falls back to initials from name for future dynamic profiles.
+
+Date: 2026-03-22
+Context: Documents Hub overview (Tipos de documento)
+Decision: Type cards now mirror the Areas card layout with stripe + progress bar + right-side description.

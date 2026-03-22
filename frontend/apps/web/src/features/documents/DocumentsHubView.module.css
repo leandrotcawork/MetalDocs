@@ -148,7 +148,7 @@
 }
 
 .typeButton {
-  grid-template-columns: 6px auto minmax(0, 1fr);
+  grid-template-columns: 6px auto minmax(0, 1fr) minmax(0, 1.1fr);
 }
 
 .areaStripe {
@@ -681,6 +681,15 @@
     grid-column: 2 / -1;
   }
 
+  .typeButton {
+    grid-template-columns: 6px auto minmax(0, 1fr);
+    grid-auto-rows: auto;
+  }
+
+  .typeDescription {
+    grid-column: 3 / -1;
+  }
+
   .recentRow {
     grid-template-columns: 28px minmax(0, 1fr);
   }
@@ -702,4 +711,11 @@
   display: block;
   height: 100%;
   background: var(--type-color, var(--vinho));
+}
+
+.typeDescription {
+  font-size: 0.78rem;
+  color: var(--muted);
+  line-height: 1.25;
+  text-align: left;
 }

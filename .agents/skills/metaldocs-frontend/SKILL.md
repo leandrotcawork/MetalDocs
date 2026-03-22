@@ -7,6 +7,15 @@ description: Implement any MetalDocs frontend feature following professional arc
 
 ## Before writing any code
 Read `tasks/lessons.md`. Apply every lesson in this task.
+Follow `$md` as the workflow owner for planning, approval, `tasks/todo.md`, lessons, and commit cadence.
+
+## Workflow fit
+
+- Small local UI fix or focused component correction → **Fast**
+- Medium frontend slice or local refactor → **Guided**
+- New page, full flow, large migration, or broad UI restructure → **Managed** via `$md`
+
+If the task is **Managed** and the session is not already in `/plan`, explicitly tell the user that `/plan` is recommended before continuing.
 
 ## Where does this code belong?
 
@@ -133,7 +142,7 @@ function App() {
 1. `tsc --noEmit` passes
 2. No console errors in browser
 3. Real data visible
-4. `git commit -m "feat(frontend): <what>"`
+4. Follow `$md` for `tasks/todo.md`, lessons vs `tasks/ui-notes.md`, review, and commit
 
 ## References
 - `references/css-tokens.md` — full design token list

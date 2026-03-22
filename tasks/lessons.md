@@ -53,3 +53,10 @@ Wrong:   Mixing `div` and `article` for cards with the same role in one section
 Correct: Use a single semantic tag across sibling cards (`article` in this case)
 Rule:    Keep semantic structure consistent when components represent the same UI primitive.
 Layer:   frontend
+
+## Lesson BH - Planning depth must match task size
+Date: 2026-03-22 | Trigger: process correction
+Wrong:   Forcing the same heavy planning flow for tiny fixes and full features alike
+Correct: Use lightweight execution for local fixes, guided planning for medium work, and managed planning with persistent todo/approval for complex features
+Rule:    Workflow overhead must scale with task complexity to preserve both control and speed.
+Layer:   process

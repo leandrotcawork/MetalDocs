@@ -5,6 +5,8 @@ description: "Full ADR lifecycle for MetalDocs. An ADR is DONE only when documen
 
 # MetalDocs ADR
 
+Use `$md` as the workflow owner when the ADR is part of a broader implementation. This skill owns the ADR lifecycle itself.
+
 ## When an ADR is required (from AGENTS.md)
 - Architecture, boundary, or public contract change
 - Security, auth, or authorization change

@@ -7,6 +7,8 @@ description: "Implement any MetalDocs Go module layer: domain, infrastructure (p
 
 ## Before writing code
 Read `tasks/lessons.md`. Apply every lesson in this task.
+Follow `$md` for planning mode, approval checkpoints, `tasks/todo.md`, lessons, and commit cadence.
+If this module task is part of a large feature or architectural change, `$md` should orchestrate it first.
 
 ## Domain layer (model.go, port.go, errors.go)
 ```go
@@ -175,8 +177,7 @@ func TestCreateDocument(t *testing.T) {
 ## After task
 1. `go build ./...` passes
 2. `go test ./internal/modules/<n>/...` passes
-3. Mark `[x]` in `tasks/todo.md`
-4. `git commit -m "feat(<m>): <what>"`
+3. Follow `$md` for `tasks/todo.md`, review, and commit
 
 ## References
 - `references/go-patterns.md` — error handling, ID generation, pagination

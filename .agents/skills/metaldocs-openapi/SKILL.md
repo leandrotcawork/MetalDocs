@@ -5,6 +5,8 @@ description: Create or update MetalDocs OpenAPI contract in api/openapi/v1/opena
 
 # MetalDocs OpenAPI
 
+Use `$md` as the workflow owner when this change is part of a larger implementation. This skill only owns the contract update itself.
+
 ## Workflow
 1. Read `docs/standards/ENGINEERING_STANDARDS.md` (API section)
 2. Open `api/openapi/v1/openapi.yaml`

@@ -5,6 +5,8 @@ description: "Architecture and implementation review for MetalDocs. Two levels: 
 
 # MetalDocs Review
 
+Use this skill as the quality gate. `$md` remains the workflow owner for planning, approval, and task sequencing.
+
 ## Two levels — always run both
 
 **Level 1 — Compliance:** does the code follow current repo patterns?

@@ -6,6 +6,15 @@ description: Converte HTML para o padrão React + CSS do projeto MetalDocs. Use 
 # MetalDocs Frontend — HTML → React + CSS
 
 Skill de conversão e criação de componentes React para o projeto MetalDocs (`frontend/apps/web`).
+Workflow, plano, commits e registro em `tasks/todo.md` seguem `$md`; este skill cuida da conversão estrutural/visual.
+
+## Quando usar
+
+- Converter HTML em React + CSS Modules
+- Criar componente, section, card ou layout seguindo o visual MetalDocs
+- Reescrever markup para o padrão do projeto
+
+Se o pedido for uma página/feature completa ou um fluxo grande, use `$md` como orquestrador e este skill como executor de frontend. Se a tarefa merecer `/plan`, avise o usuário.
 
 ## Antes de começar — leia os references
 
@@ -68,17 +77,6 @@ Variáveis e tokens estão em `references/design-tokens.md`.
 
 ---
 
-## Saída padrão
-
-Entregue sempre nesta ordem:
-1. Árvore de arquivos a serem criados
-2. Código completo de cada `.tsx`
-3. Código completo de cada `.module.css`
-4. Hook customizado separado (`use*.ts`) se houver lógica reutilizável
-5. Barrel export (`index.ts`) atualizado se for componente novo
-
----
-
 ## Regras invioláveis
 
 - **Nunca** Tailwind, styled-components ou CSS-in-JS
@@ -89,3 +87,4 @@ Entregue sempre nesta ordem:
 - **Sempre** `interface Props` (não `type`) para props de componente
 - **Sempre** prefixar callbacks com `on`: `onSave`, `onDelete`, `onToggle`
 - **Sempre** separar lógica de UI: hooks em arquivo `use*.ts` separado se > 20 linhas de lógica
+- **Sempre** editar o repositório real, não responder com “template solto”, salvo se o usuário pedir apenas um exemplo

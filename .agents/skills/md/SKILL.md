@@ -5,11 +5,37 @@ description: MetalDocs master orchestrator. Use for any implementation task. Ent
 
 # MetalDocs — Master Orchestrator
 
-**Never write code before Phase 1 and Phase 2 are complete and approved.**
+Use this skill as the workflow owner for implementation tasks.
+
+## Execution modes
+
+Choose one mode before coding:
+
+- **Fast** — local, low-risk work (small fix, small UI tweak, 1–2 files, no architecture impact)
+  - No full plan in `tasks/todo.md`
+  - No approval checkpoint required
+  - Use `update_plan` only if it adds clarity
+
+- **Guided** — medium work (small feature slice, local refactor, moderate regression risk)
+  - Do architectural thinking first
+  - Use `update_plan`
+  - Persist to `tasks/todo.md` only if the task is part of a larger tracked feature
+
+- **Managed** — complex work (new page/feature, multi-domain change, backend + frontend, architecture, migrations, likely multiple commits)
+  - Recommend the user switch to `/plan`
+  - If `/plan` is not active, explicitly warn that `/plan` is recommended and then continue with the same workflow in normal mode
+  - Write the plan to `tasks/todo.md`
+  - Wait for approval before implementation
+
+Rule of thumb:
+- If the request sounds like “build a complete page/feature/flow”, it is usually **Managed**
+- If it is a focused correction or polish item, it is usually **Fast** or **Guided**
 
 ---
 
-## Phase 1 — Architectural thinking (always before code)
+## Phase 1 — Architectural thinking
+
+Required for **Guided** and **Managed** work.
 
 Read first: `tasks/lessons.md` → `AGENTS.md` → `docs/architecture/ARCHITECTURE_GUARDRAILS.md`
 
@@ -60,7 +86,11 @@ State what is deferred.
 
 ---
 
-## Phase 2 — Plan (write tasks/todo.md, wait for approval)
+## Phase 2 — Plan
+
+- **Fast:** skip persistent plan
+- **Guided:** use `update_plan`; write `tasks/todo.md` only if this belongs to an ongoing tracked feature
+- **Managed:** write `tasks/todo.md`, present plan, wait for explicit approval
 
 ```markdown
 ## Feature: <n>

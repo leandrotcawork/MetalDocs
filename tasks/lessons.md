@@ -227,3 +227,10 @@ Wrong:   Empty activity row centered both axes, drifting away from left margin r
 Correct: Keep `align-items: center` and use `justify-content: flex-start` for left start alignment
 Rule:    In list panels, empty-state content should follow the same left edge rhythm as filled rows.
 Layer:   frontend
+
+## Lesson AH - UI-only fields should not break API contracts
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Expanding create form by changing API payload shape without backend support
+Correct: Keep new UX fields local to UI when contract is unchanged, preserve existing create payload
+Rule:    Frontend form redesign must preserve stable API contracts unless backend changes are planned.
+Layer:   frontend

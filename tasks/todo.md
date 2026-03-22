@@ -292,6 +292,10 @@ Notes
       - Substituir layout anterior e aplicar padrao da referencia
       commit: `refactor(frontend-admin): rebuild user management cards`
 
+- [x] T2: Limitar base e equalizar altura dos cards
+      - Exibir no maximo 10 usuarios, manter os 3 cards com mesma altura e incluir Departamento/Area de processo no criar usuario
+      commit: `feat(frontend-admin): cap user list and add taxonomy fields`
+
 ## Acceptance tests
 - [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] Visual: cards de criacao/base/edicao sem alongamento e no padrao da referencia

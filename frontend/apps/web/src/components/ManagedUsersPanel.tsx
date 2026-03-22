@@ -77,12 +77,15 @@ export function ManagedUsersPanel(props: ManagedUsersPanelProps) {
 
 export function ManagedUsersSection(props: ManagedUsersPanelProps) {
   const [search, setSearch] = useState("");
+  const [department, setDepartment] = useState("Operacoes");
+  const [processArea, setProcessArea] = useState("Administrativo");
   const selectedRole = props.managedUserForm.roles[0] ?? "viewer";
 
   const filteredUsers = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return props.managedUsers;
-    return props.managedUsers.filter((item) => item.displayName.toLowerCase().includes(query) || item.username.toLowerCase().includes(query));
+    const matches = props.managedUsers.filter((item) => item.displayName.toLowerCase().includes(query) || item.username.toLowerCase().includes(query));
+    return matches.slice(0, 10);
   }, [props.managedUsers, search]);
 
   const handleCreateRoleChange = (value: string) => {
@@ -154,6 +157,24 @@ export function ManagedUsersSection(props: ManagedUsersPanelProps) {
               />
             </label>
             <label className={styles.field}>
+              <span className={styles.fieldLabel}>Departamento</span>
+              <select value={department} onChange={(event) => setDepartment(event.target.value)}>
+                <option value="Operacoes">Operacoes</option>
+                <option value="Qualidade">Qualidade</option>
+                <option value="Engenharia">Engenharia</option>
+                <option value="Administrativo">Administrativo</option>
+              </select>
+            </label>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>Area de processo</span>
+              <select value={processArea} onChange={(event) => setProcessArea(event.target.value)}>
+                <option value="Administrativo">Administrativo</option>
+                <option value="Producao">Producao</option>
+                <option value="Logistica">Logistica</option>
+                <option value="Suprimentos">Suprimentos</option>
+              </select>
+            </label>
+            <label className={styles.field}>
               <span className={styles.fieldLabel}>Senha inicial</span>
               <input
                 type="password"
@@ -199,7 +220,9 @@ export function ManagedUsersSection(props: ManagedUsersPanelProps) {
               </li>
             ))}
           </ul>
-          <footer className={styles.listFooter}>Ver todos os {props.managedUsers.length} usuarios →</footer>
+          <footer className={styles.listFooter}>
+            Exibindo {filteredUsers.length} de {props.managedUsers.length} usuarios
+          </footer>
         </article>
 
         <article className={styles.card}>

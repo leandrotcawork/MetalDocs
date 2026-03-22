@@ -164,3 +164,10 @@ Wrong:   App-level effect referenced removed managed user state, breaking build
 Correct: AdminCenterView syncs managed user form when the list refreshes
 Rule:    View-specific state sync stays inside the view.
 Layer:   frontend
+
+## Lesson Y â€” Workspace main must not reserve removed toolbar row
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Removed toolbar markup but kept `grid-template-rows: 44px minmax(0, 1fr)` causing content to render in a 44px row
+Correct: `grid-template-rows: minmax(0, 1fr)` when toolbar is removed
+Rule:    When removing structural rows, update the grid template to avoid zero-visibility content.
+Layer:   frontend

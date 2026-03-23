@@ -434,14 +434,7 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
         <section className={styles.collection}>
           <div className={styles.collectionShell}>
             <div className={styles.collectionHeader}>
-              <div className={styles.collectionIntro}>
-                <div className={styles.breadcrumb}>
-                  <button type="button" onClick={() => setDocumentsHubView("overview")}>Inicio</button>
-                  <span>/</span>
-                  <span>{collectionTitle}</span>
-                </div>
-                <h2>{collectionTitle} <span>({tabCounts.all})</span></h2>
-              </div>
+              <h2>{collectionTitle} <span>({tabCounts.all})</span></h2>
               <div className={styles.collectionActions}>
                 <div className={styles.viewToggle}>
                   <button

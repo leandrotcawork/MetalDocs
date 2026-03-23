@@ -88,3 +88,10 @@ Wrong:   Rendering collection views directly on the full workspace canvas made h
 Correct: Use a centered collection shell with local header, tabs, actions, and dense cards inside the page body
 Rule:    Secondary catalog screens should own a constrained internal layout instead of relying on raw page padding.
 Layer:   frontend
+
+## Lesson L - Explicitly theme exceptional UI states
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Relying on inherited styles for a tab that must remain highlighted caused unreadable contrast
+Correct: Set an explicit background/border/text color override for the specific tab state in CSS Modules
+Rule:    When a UI element must have a non-default persistent style, declare it explicitly in its module to avoid drift.
+Layer:   frontend

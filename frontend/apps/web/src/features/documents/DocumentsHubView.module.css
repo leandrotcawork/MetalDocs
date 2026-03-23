@@ -23,6 +23,316 @@
   color: var(--text);
 }
 
+.dashboardHeaderRow {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.dashboardHeaderRow h1 {
+  margin: 0;
+  font-size: 2.15rem;
+  letter-spacing: -0.03em;
+}
+
+.dashboardBrandMark {
+  width: 46px;
+  height: 46px;
+  border-radius: 0.7rem;
+  background: linear-gradient(135deg, #113a73, #0e4d8e);
+  color: #d1e5ff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.55rem;
+  font-weight: 700;
+  box-shadow: 0 6px 12px rgba(18, 42, 82, 0.24);
+}
+
+.dashboardKpiStrip {
+  border: 1px solid #c9ced8;
+  border-radius: 1rem;
+  background: #f4f5f8;
+  box-shadow: 0 10px 18px rgba(31, 34, 43, 0.12);
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.dashboardKpiItem {
+  min-height: 102px;
+  padding: 0.85rem 1.1rem;
+  display: grid;
+  align-content: center;
+  gap: 0.2rem;
+  border-right: 1px solid #d4d8df;
+}
+
+.dashboardKpiItem:last-child {
+  border-right: 0;
+}
+
+.dashboardKpiItem strong {
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.dashboardKpiItem small {
+  font-size: 1rem;
+  color: #1f2430;
+  font-weight: 700;
+}
+
+.dashboardKpiItem:nth-child(1) strong {
+  color: #2d73c5;
+}
+
+.dashboardKpiItem:nth-child(2) strong {
+  color: #d28a1f;
+}
+
+.dashboardKpiItem:nth-child(3) strong {
+  color: #b7313c;
+}
+
+.dashboardKpiItem:nth-child(4) strong {
+  color: #2c915f;
+}
+
+.dashboardMainGrid {
+  display: grid;
+  grid-template-columns: 1.12fr 1fr;
+  gap: 1rem;
+}
+
+.dashboardRightStack {
+  display: grid;
+  gap: 1rem;
+}
+
+.dashboardCard {
+  border-radius: 0.95rem;
+  overflow: hidden;
+  border: 1px solid #c5cbd7;
+  background: #f3f4f7;
+  box-shadow: 0 8px 16px rgba(28, 32, 44, 0.12);
+}
+
+.dashboardCardHeader {
+  min-height: 52px;
+  padding: 0.55rem 1rem;
+  border-bottom: 1px solid #cdd3dd;
+  display: flex;
+  align-items: center;
+}
+
+.dashboardCardHeader h2 {
+  margin: 0;
+  font-size: 2rem;
+  letter-spacing: -0.02em;
+}
+
+.dashboardCardBlue .dashboardCardHeader {
+  border-top: 6px solid #2f82d9;
+}
+
+.dashboardCardOrange .dashboardCardHeader {
+  border-top: 6px solid #dd931f;
+}
+
+.dashboardCardRed .dashboardCardHeader {
+  border-top: 6px solid #bf3a45;
+}
+
+.dashboardCardGreen .dashboardCardHeader {
+  border-top: 6px solid #33ad6d;
+}
+
+.dashboardCardPurple .dashboardCardHeader {
+  border-top: 6px solid #8a4ed8;
+}
+
+.dashboardTimeline {
+  position: relative;
+  padding: 0.65rem 1rem 0.95rem;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.dashboardTimeline::before {
+  content: "";
+  position: absolute;
+  left: 1.83rem;
+  top: 0.9rem;
+  bottom: 1rem;
+  width: 2px;
+  background: #c2cbd7;
+}
+
+.dashboardTimelineItem {
+  border: 1px solid #c7cdda;
+  border-radius: 0.82rem;
+  background: #f9fafc;
+  min-height: 66px;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 6px 10px rgba(35, 40, 57, 0.08);
+}
+
+.dashboardTimelineDot {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #c0c7d3;
+  border: 1px solid #acb6c5;
+  margin-left: 0.4rem;
+  z-index: 1;
+}
+
+.dashboardTimelineDotActive {
+  background: #3f7cc1;
+  border-color: #295f9c;
+}
+
+.dashboardTimelineContent strong {
+  display: block;
+  font-size: 1.05rem;
+  line-height: 1.15;
+}
+
+.dashboardTimelineContent small {
+  display: block;
+  margin-top: 0.2rem;
+  color: #4f6178;
+  font-size: 0.85rem;
+}
+
+.dashboardTimelineType {
+  font-size: 0.92rem;
+  color: #1f2a3f;
+  white-space: nowrap;
+}
+
+.dashboardPendingTable {
+  margin: 0.7rem 0.9rem 0.9rem;
+  border: 1px solid #c5cddb;
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.dashboardPendingHead,
+.dashboardPendingRow {
+  min-height: 42px;
+  padding: 0 0.7rem;
+  display: grid;
+  grid-template-columns: 100px minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+  border-bottom: 1px solid #d0d6e0;
+}
+
+.dashboardPendingHead {
+  background: #e3e7ef;
+  font-weight: 700;
+}
+
+.dashboardPendingRow:last-child {
+  border-bottom: 0;
+}
+
+.dashboardPriorityTag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 26px;
+  border-radius: 999px;
+  padding: 0 0.6rem;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.dashboardPendingRow:nth-child(2) .dashboardPriorityTag {
+  background: #2f82d9;
+}
+
+.dashboardPendingRow:nth-child(3) .dashboardPriorityTag {
+  background: #de951c;
+}
+
+.dashboardPendingRow:nth-child(4) .dashboardPriorityTag {
+  background: #e06a36;
+}
+
+.dashboardPendingRow:nth-child(5) .dashboardPriorityTag {
+  background: #bb3842;
+}
+
+.dashboardExpiry {
+  min-height: 138px;
+  padding: 0.85rem 1rem;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 1.2rem;
+}
+
+.dashboardExpiryCount {
+  padding-right: 1rem;
+  border-right: 1px solid #cad1db;
+  display: grid;
+  gap: 0.1rem;
+}
+
+.dashboardExpiryCount strong {
+  font-size: 4.1rem;
+  line-height: 0.95;
+}
+
+.dashboardExpiryCount small {
+  font-size: 0.95rem;
+}
+
+.dashboardExpiry p {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.dashboardBottomGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.dashboardSnapshot,
+.dashboardFocus {
+  min-height: 94px;
+  padding: 0.8rem 1rem 1rem;
+}
+
+.dashboardSnapshot span,
+.dashboardFocus strong {
+  display: block;
+  border: 1px solid #c6ccd8;
+  border-radius: 0.72rem;
+  background: #e6eaf0;
+  min-height: 46px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.dashboardFocus span {
+  display: block;
+  margin-top: 0.55rem;
+  color: #2a3346;
+  font-size: 0.93rem;
+}
+
 .state {
   padding: 2rem;
   border-radius: 1rem;
@@ -1189,6 +1499,19 @@
 }
 
 @media (max-width: 1100px) {
+  .dashboardKpiStrip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboardMainGrid,
+  .dashboardBottomGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboardCardHeader h2 {
+    font-size: 1.6rem;
+  }
+
   .kpiGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1229,6 +1552,51 @@
 
   .hub {
     padding: 2rem 1.4rem 2.2rem;
+  }
+
+  .dashboardHeaderRow h1 {
+    font-size: 1.65rem;
+  }
+
+  .dashboardKpiStrip {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboardKpiItem {
+    border-right: 0;
+    border-bottom: 1px solid #d4d8df;
+  }
+
+  .dashboardKpiItem:last-child {
+    border-bottom: 0;
+  }
+
+  .dashboardTimelineItem {
+    grid-template-columns: 26px minmax(0, 1fr);
+    row-gap: 0.25rem;
+  }
+
+  .dashboardTimelineType {
+    grid-column: 2;
+    font-size: 0.84rem;
+  }
+
+  .dashboardPendingHead,
+  .dashboardPendingRow {
+    grid-template-columns: 1fr;
+    gap: 0.3rem;
+    padding: 0.45rem 0.7rem;
+  }
+
+  .dashboardExpiry {
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+  }
+
+  .dashboardExpiryCount {
+    border-right: 0;
+    border-bottom: 1px solid #cad1db;
+    padding: 0 0 0.55rem;
   }
 
   .kpiGrid,

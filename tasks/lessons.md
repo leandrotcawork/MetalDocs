@@ -368,3 +368,10 @@ Wrong:   Coupling watermark and metadata chip styles to hero layout can leave un
 Correct: Keep hero structure resilient so decorative and secondary metadata elements can be removed cleanly
 Rule:    Treat ornaments and helper metadata as optional layers, not layout anchors.
 Layer:   frontend
+
+## Lesson BA - Dashboard overview layouts need purpose-built sections
+Date: 2026-03-23 | Trigger: correction
+Wrong:   Reusing generic overview widgets makes it hard to match dashboard-first references
+Correct: Build dedicated dashboard sections (kpi strip, timeline, pending table, snapshot cards) with explicit semantics
+Rule:    For reference-driven dashboards, prefer section-specific layout primitives over generic catalog blocks.
+Layer:   frontend

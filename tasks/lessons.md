@@ -158,3 +158,10 @@ Wrong:   A page-level CSS grid with auto rows stretched to fill the viewport, cr
 Correct: Set `align-content: start` on page grids so rows keep intrinsic height and content starts directly below the topbar/header
 Rule:    When a grid container can stretch to viewport height, explicitly control `align-content` to prevent unintended vertical spacing.
 Layer:   frontend
+
+## Lesson V - Sidebar clicks must navigate URL directly
+Date: 2026-03-23 | Trigger: correction
+Wrong:   Sidebar updated only `activeView`; when clicking the same view key (e.g. `library`) from a nested URL, no route change happened
+Correct: Sidebar `onNavigate` must call router navigation (`navigate(pathFromView(view))`) instead of relying on store-only updates
+Rule:    In URL-driven apps, menu actions should be route-first so repeated clicks still normalize path and history.
+Layer:   frontend

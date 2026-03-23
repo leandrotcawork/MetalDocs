@@ -193,6 +193,20 @@ function AppContent() {
 
   const locationView = useMemo(() => viewFromPath(location.pathname), [location.pathname]);
 
+  const handleWorkspaceNavigate = useCallback((nextView: Parameters<typeof pathFromView>[0]) => {
+    if (nextView === "admin" && !isAdmin) {
+      navigate("/", { replace: true });
+      return;
+    }
+    navSourceRef.current = "store";
+    navigate(pathFromView(nextView));
+  }, [isAdmin, navigate]);
+
+  const handlePrimaryAction = useCallback(() => {
+    navSourceRef.current = "store";
+    navigate(pathFromView("create"));
+  }, [navigate]);
+
   useEffect(() => {
     if (locationView === "admin" && !isAdmin) {
       if (location.pathname !== "/") {
@@ -502,8 +516,8 @@ function AppContent() {
           processAreas={processAreas}
           documents={documents}
           onSearchChange={setSearchQuery}
-          onNavigate={setActiveView}
-          onPrimaryAction={() => setActiveView("create")}
+          onNavigate={handleWorkspaceNavigate}
+          onPrimaryAction={handlePrimaryAction}
           onRefreshWorkspace={refreshWorkspace}
           isRefreshing={loadState === "loading"}
           onLogout={handleLogout}

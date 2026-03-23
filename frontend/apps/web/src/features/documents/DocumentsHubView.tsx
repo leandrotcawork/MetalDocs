@@ -400,6 +400,34 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
     return headerTitle;
   }, [documentsHubArea, documentsHubProfile, headerTitle, props.documentProfiles, props.processAreas]);
 
+  const handleRecentOpen = useCallback((item: SearchDocumentItem) => {
+    const nextItems: RecentDocumentItem[] = [
+      { ...item, openedAt: new Date().toISOString() },
+      ...recentItems.filter((recent) => recent.documentId !== item.documentId),
+    ].slice(0, 8);
+    setRecentDocuments(nextItems);
+    storeRecentDocuments(props.currentUserId, nextItems);
+    navigateWithParams(buildDocumentsPath(props.view, { view: "detail", documentId: item.documentId }));
+  }, [navigateWithParams, props.currentUserId, props.view, recentItems, setRecentDocuments]);
+
+  const handleStatusChange = useCallback(
+    (status: HubStatus) => {
+      setDocumentsHubStatus(status);
+      const nextParams = buildHubParams({ status });
+      setSearchParams(nextParams, { replace: true });
+    },
+    [buildHubParams, setDocumentsHubStatus, setSearchParams],
+  );
+
+  const handleModeChange = useCallback(
+    (mode: HubMode) => {
+      setDocumentsHubMode(mode);
+      const nextParams = buildHubParams({ mode });
+      setSearchParams(nextParams, { replace: true });
+    },
+    [buildHubParams, setDocumentsHubMode, setSearchParams],
+  );
+
   if (props.loadState === "loading") {
     return (
       <div className={styles.page}>
@@ -421,34 +449,6 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
       </div>
     );
   }
-
-  const handleRecentOpen = (item: SearchDocumentItem) => {
-    const nextItems: RecentDocumentItem[] = [
-      { ...item, openedAt: new Date().toISOString() },
-      ...recentItems.filter((recent) => recent.documentId !== item.documentId),
-    ].slice(0, 8);
-    setRecentDocuments(nextItems);
-    storeRecentDocuments(props.currentUserId, nextItems);
-    navigateWithParams(buildDocumentsPath(props.view, { view: "detail", documentId: item.documentId }));
-  };
-
-  const handleStatusChange = useCallback(
-    (status: HubStatus) => {
-      setDocumentsHubStatus(status);
-      const nextParams = buildHubParams({ status });
-      setSearchParams(nextParams, { replace: true });
-    },
-    [buildHubParams, setDocumentsHubStatus, setSearchParams],
-  );
-
-  const handleModeChange = useCallback(
-    (mode: HubMode) => {
-      setDocumentsHubMode(mode);
-      const nextParams = buildHubParams({ mode });
-      setSearchParams(nextParams, { replace: true });
-    },
-    [buildHubParams, setDocumentsHubMode, setSearchParams],
-  );
 
   if (documentsHubView === "detail") {
     if (!props.selectedDocument) {

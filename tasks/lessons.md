@@ -214,3 +214,10 @@ Wrong:   Area and department were rendered as plain text fields inside the metad
 Correct: Short classification attributes such as area and department should be rendered as chips so the card keeps hierarchy: title first, facts second, classification tags third
 Rule:    Use chips for compact categorical metadata and reserve label/value rows for descriptive fields.
 Layer:   frontend
+
+## Lesson AD - Early returns cannot split hook execution
+Date: 2026-03-23 | Trigger: correction
+Wrong:   `DocumentsHubView` declared `useCallback` hooks after `loading` and `error` early returns, so some renders executed fewer hooks than others
+Correct: All hooks must be declared before any conditional return path; only rendered JSX may vary by state
+Rule:    In React components, never place hooks below an early return that can run on some renders but not others.
+Layer:   frontend

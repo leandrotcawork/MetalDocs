@@ -144,3 +144,10 @@ Wrong:   Compact header height still varied with content and felt too tall on sp
 Correct: Set a fixed height and vertical centering for compact headers
 Rule:    Compact variants should be height-stable regardless of content size.
 Layer:   frontend
+
+## Lesson T - Collection headers must be structurally isolated
+Date: 2026-03-23 | Trigger: correction
+Wrong:   Collection headers and tabs shared the same container as the list, so sparse datasets made the header feel "floating"
+Correct: Wrap header + tabs in a dedicated intro block and render the list in a separate body container
+Rule:    Collection screens should isolate their header region from the list to keep positioning stable across content sizes.
+Layer:   frontend

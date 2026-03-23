@@ -384,15 +384,28 @@
 .collectionShell {
   display: grid;
   gap: 0.75rem;
+  grid-template-rows: auto 1fr;
   max-width: 1120px;
   margin: 0 auto;
 }
 
+.collectionIntro {
+  display: grid;
+  gap: 0.65rem;
+  align-content: start;
+}
+
 .collectionHeader {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 1.5rem;
+  min-height: 56px;
+}
+
+.collectionBody {
+  display: grid;
+  min-height: 0;
 }
 
 .collectionHeader h2 {

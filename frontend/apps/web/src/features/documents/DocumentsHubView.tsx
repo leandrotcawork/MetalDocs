@@ -435,104 +435,108 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
         {headerShell}
         <section className={styles.collection}>
           <div className={styles.collectionShell}>
-            <div className={styles.collectionHeader}>
-              <h2>{collectionTitle} <span>({tabCounts.all})</span></h2>
-              <div className={styles.collectionActions}>
-                <div className={styles.viewToggle}>
-                  <button
-                    type="button"
-                    className={documentsHubMode === "card" ? styles.isActive : ""}
-                    onClick={() => setDocumentsHubMode("card")}
-                    title="Exibir em cards"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
-                      <rect x="1" y="1" width="6" height="6" rx="1.5" />
-                      <rect x="9" y="1" width="6" height="6" rx="1.5" />
-                      <rect x="1" y="9" width="6" height="6" rx="1.5" />
-                      <rect x="9" y="9" width="6" height="6" rx="1.5" />
-                    </svg>
-                  </button>
-                  <button
-                    type="button"
-                    className={documentsHubMode === "list" ? styles.isActive : ""}
-                    onClick={() => setDocumentsHubMode("list")}
-                    title="Exibir em lista"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
-                      <path d="M3 4h10M3 8h10M3 12h10" strokeLinecap="round" />
-                    </svg>
+            <div className={styles.collectionIntro}>
+              <div className={styles.collectionHeader}>
+                <h2>{collectionTitle} <span>({tabCounts.all})</span></h2>
+                <div className={styles.collectionActions}>
+                  <div className={styles.viewToggle}>
+                    <button
+                      type="button"
+                      className={documentsHubMode === "card" ? styles.isActive : ""}
+                      onClick={() => setDocumentsHubMode("card")}
+                      title="Exibir em cards"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+                        <rect x="1" y="1" width="6" height="6" rx="1.5" />
+                        <rect x="9" y="1" width="6" height="6" rx="1.5" />
+                        <rect x="1" y="9" width="6" height="6" rx="1.5" />
+                        <rect x="9" y="9" width="6" height="6" rx="1.5" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      className={documentsHubMode === "list" ? styles.isActive : ""}
+                      onClick={() => setDocumentsHubMode("list")}
+                      title="Exibir em lista"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+                        <path d="M3 4h10M3 8h10M3 12h10" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                  </div>
+                  <button type="button" className={styles.collectionCreateButton} onClick={props.onCreateDocument}>
+                    + Novo documento
                   </button>
                 </div>
-                <button type="button" className={styles.collectionCreateButton} onClick={props.onCreateDocument}>
-                  + Novo documento
-                </button>
+              </div>
+
+              <div className={styles.tabRow}>
+                <button type="button" className={documentsHubStatus === "all" ? styles.tabActive : styles.tab} onClick={() => setDocumentsHubStatus("all")}>Todos ({tabCounts.all})</button>
+                <button type="button" className={documentsHubStatus === "draft" ? styles.tabActive : styles.tab} onClick={() => setDocumentsHubStatus("draft")}>Draft ({tabCounts.draft})</button>
+                <button type="button" className={documentsHubStatus === "review" ? styles.tabActive : styles.tab} onClick={() => setDocumentsHubStatus("review")}>Em revisao ({tabCounts.review})</button>
+                <button type="button" className={documentsHubStatus === "approved" ? styles.tabActive : styles.tab} onClick={() => setDocumentsHubStatus("approved")}>Aprovados ({tabCounts.approved})</button>
               </div>
             </div>
 
-            <div className={styles.tabRow}>
-              <button type="button" className={documentsHubStatus === "all" ? styles.tabActive : styles.tab} onClick={() => setDocumentsHubStatus("all")}>Todos ({tabCounts.all})</button>
-              <button type="button" className={documentsHubStatus === "draft" ? styles.tabActive : styles.tab} onClick={() => setDocumentsHubStatus("draft")}>Draft ({tabCounts.draft})</button>
-              <button type="button" className={documentsHubStatus === "review" ? styles.tabActive : styles.tab} onClick={() => setDocumentsHubStatus("review")}>Em revisao ({tabCounts.review})</button>
-              <button type="button" className={documentsHubStatus === "approved" ? styles.tabActive : styles.tab} onClick={() => setDocumentsHubStatus("approved")}>Aprovados ({tabCounts.approved})</button>
-            </div>
-
-            {documentsHubMode === "card" ? (
-              <div className={styles.cardGrid}>
-                {collectionDocuments.map((item) => (
-                  <button
-                    key={item.documentId}
-                    type="button"
-                    className={styles.docCard}
-                    onClick={() => handleRecentOpen(item)}
-                  >
-                    <div className={styles.docCardHeader}>
-                      <div className={styles.docCardTitleBlock}>
-                        <strong>{formatDocumentDisplayName(item, props.documentProfiles)}</strong>
-                        <span className={styles.docCardId}>{item.documentId}</span>
+            <div className={styles.collectionBody}>
+              {documentsHubMode === "card" ? (
+                <div className={styles.cardGrid}>
+                  {collectionDocuments.map((item) => (
+                    <button
+                      key={item.documentId}
+                      type="button"
+                      className={styles.docCard}
+                      onClick={() => handleRecentOpen(item)}
+                    >
+                      <div className={styles.docCardHeader}>
+                        <div className={styles.docCardTitleBlock}>
+                          <strong>{formatDocumentDisplayName(item, props.documentProfiles)}</strong>
+                          <span className={styles.docCardId}>{item.documentId}</span>
+                        </div>
+                        <span className={styles.statusChip}>{statusLabel(item.status)}</span>
                       </div>
-                      <span className={styles.statusChip}>{statusLabel(item.status)}</span>
-                    </div>
-                    <div className={styles.docCardMeta}>
-                      <span className={styles.profilePill}>{item.documentProfile.toUpperCase()}</span>
-                      <span>{item.processArea ?? "Sem area"} · {item.ownerId}</span>
-                    </div>
-                    <div className={styles.docCardFooter}>
-                      <span>{item.businessUnit || item.department || "-"}</span>
-                      <span>{item.expiryAt ? `Revisao: ${props.formatDate(item.expiryAt)}` : "-"}</span>
-                    </div>
-                  </button>
-                ))}
-                {collectionDocuments.length === 0 && <div className={styles.emptyCard}>Nenhum documento encontrado.</div>}
-              </div>
-            ) : (
-              <div className={styles.listTable}>
-                <div className={styles.listHeader}>
-                  <span>Documento</span>
-                  <span>Tipo</span>
-                  <span>Status</span>
-                  <span>Owner</span>
-                  <span>Prox. revisao</span>
+                      <div className={styles.docCardMeta}>
+                        <span className={styles.profilePill}>{item.documentProfile.toUpperCase()}</span>
+                        <span>{item.processArea ?? "Sem area"} · {item.ownerId}</span>
+                      </div>
+                      <div className={styles.docCardFooter}>
+                        <span>{item.businessUnit || item.department || "-"}</span>
+                        <span>{item.expiryAt ? `Revisao: ${props.formatDate(item.expiryAt)}` : "-"}</span>
+                      </div>
+                    </button>
+                  ))}
+                  {collectionDocuments.length === 0 && <div className={styles.emptyCard}>Nenhum documento encontrado.</div>}
                 </div>
-                {collectionDocuments.map((item) => (
-                  <button
-                    key={item.documentId}
-                    type="button"
-                    className={styles.listRow}
-                    onClick={() => handleRecentOpen(item)}
-                  >
-                    <span className={styles.listTitle}>
-                      <strong>{formatDocumentDisplayName(item, props.documentProfiles)}</strong>
-                      <small>{item.documentId} · {item.processArea ?? "Sem area"}</small>
-                    </span>
-                    <span>{item.documentProfile.toUpperCase()}</span>
-                    <span>{statusLabel(item.status)}</span>
-                    <span>{item.ownerId}</span>
-                    <span>{item.expiryAt ? props.formatDate(item.expiryAt) : "-"}</span>
-                  </button>
-                ))}
-                {collectionDocuments.length === 0 && <div className={styles.emptyCard}>Nenhum documento encontrado.</div>}
-              </div>
-            )}
+              ) : (
+                <div className={styles.listTable}>
+                  <div className={styles.listHeader}>
+                    <span>Documento</span>
+                    <span>Tipo</span>
+                    <span>Status</span>
+                    <span>Owner</span>
+                    <span>Prox. revisao</span>
+                  </div>
+                  {collectionDocuments.map((item) => (
+                    <button
+                      key={item.documentId}
+                      type="button"
+                      className={styles.listRow}
+                      onClick={() => handleRecentOpen(item)}
+                    >
+                      <span className={styles.listTitle}>
+                        <strong>{formatDocumentDisplayName(item, props.documentProfiles)}</strong>
+                        <small>{item.documentId} · {item.processArea ?? "Sem area"}</small>
+                      </span>
+                      <span>{item.documentProfile.toUpperCase()}</span>
+                      <span>{statusLabel(item.status)}</span>
+                      <span>{item.ownerId}</span>
+                      <span>{item.expiryAt ? props.formatDate(item.expiryAt) : "-"}</span>
+                    </button>
+                  ))}
+                  {collectionDocuments.length === 0 && <div className={styles.emptyCard}>Nenhum documento encontrado.</div>}
+                </div>
+              )}
+            </div>
           </div>
         </section>
       </div>

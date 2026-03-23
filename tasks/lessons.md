@@ -263,3 +263,10 @@ Wrong:   Using custom pastel mixes in title chips can drift from the visual patt
 Correct: For tone-on-tone vinho chips, prefer `--vinho-soft` background, `--vinho` text and `--vinho-muted` border
 Rule:    When a visual pattern already exists in the screen, reuse the same token trio to keep components cohesive.
 Layer:   frontend
+
+## Lesson AK - Global element selectors can override component chips
+Date: 2026-03-23 | Trigger: correction
+Wrong:   The generic selector `.docCardHeader strong` forced white text and overrode the tone-on-tone chip text color
+Correct: Generic typography selectors should inherit color, while component-specific chip classes define their own foreground
+Rule:    Avoid hardcoding foreground color in broad element selectors when child components need independent color states.
+Layer:   frontend

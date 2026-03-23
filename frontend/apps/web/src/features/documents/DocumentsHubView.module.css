@@ -588,7 +588,7 @@
 .docCardHeader strong {
   font-size: 1.12rem;
   line-height: 1.18;
-  color: #fff;
+  color: inherit;
 }
 
 .docCardTitleChip {
@@ -605,6 +605,10 @@
   font-weight: 700;
   line-height: 1.2;
   white-space: normal;
+}
+
+.docCardHeader .docCardTitleChip {
+  color: var(--vinho);
 }
 
 .statusChip {

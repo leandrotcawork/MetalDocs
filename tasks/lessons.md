@@ -137,3 +137,10 @@ Wrong:   Reusing generous section padding on collection screens made low-volume 
 Correct: Tighten top padding and inter-block gap for sparse collection layouts
 Rule:    Screen density must be evaluated with both empty and sparse datasets, not only full lists.
 Layer:   frontend
+
+## Lesson S - Compact headers need fixed height
+Date: 2026-03-23 | Trigger: correction
+Wrong:   Compact header height still varied with content and felt too tall on sparse collections
+Correct: Set a fixed height and vertical centering for compact headers
+Rule:    Compact variants should be height-stable regardless of content size.
+Layer:   frontend

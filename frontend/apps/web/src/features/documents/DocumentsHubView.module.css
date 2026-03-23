@@ -11,7 +11,8 @@
 }
 
 .pageHeaderCompact {
-  padding: 0.9rem 3.4rem;
+  height: 72px;
+  padding: 0 3.4rem;
 }
 
 .hub {
@@ -38,6 +39,8 @@
 }
 
 .heroCompact {
+  height: 100%;
+  align-items: center;
   gap: 1rem;
 }
 
@@ -860,7 +863,8 @@
   }
 
   .pageHeaderCompact {
-    padding: 0.8rem 1.4rem;
+    height: 64px;
+    padding: 0 1.4rem;
   }
 
   .hero {

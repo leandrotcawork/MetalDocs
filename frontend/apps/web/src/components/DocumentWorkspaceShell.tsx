@@ -215,12 +215,7 @@ export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
   const isContentBuilder = props.activeView === "content-builder";
   const isCatalogView = isDocumentCatalogView(props.activeView);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-    po: true,
-    it: false,
-    rg: false,
-    fm: false,
-  });
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   useEffect(() => {

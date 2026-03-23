@@ -109,3 +109,10 @@ Wrong:   Icon toggle buttons inherited global `button` padding and shrank their 
 Correct: Explicitly set `padding: 0` on fixed-size icon buttons in component CSS Modules
 Rule:    Any icon-only button that defines width/height must also reset inherited padding.
 Layer:   frontend
+
+## Lesson O - Sidebar accordions default to closed
+Date: 2026-03-23 | Trigger: correction
+Wrong:   One "Por tipo" section was hardcoded as open by default, breaking consistency
+Correct: Initialize accordion state as closed for all sections unless explicitly requested
+Rule:    Sidebar accordions should open only by user interaction or explicit configuration.
+Layer:   frontend

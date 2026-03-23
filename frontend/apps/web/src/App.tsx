@@ -75,10 +75,13 @@ function AppContent() {
     error,
     isCreateSubmitting,
     activeView,
+    pendingViewNavigation,
     searchQuery,
     setMessage,
     setError,
     setActiveView,
+    requestViewNavigation,
+    clearPendingViewNavigation,
     setSearchQuery,
   } = useUiStore();
 
@@ -151,8 +154,8 @@ function AppContent() {
         expiryAt: selectedDocument.expiryAt ?? "",
       }));
     }
-    setActiveView("create");
-  }, [selectedDocument, setActiveView, setDocumentForm]);
+    requestViewNavigation("create");
+  }, [requestViewNavigation, selectedDocument, setDocumentForm]);
   const handleCreateFromDraft = useCallback(
     (contentDraft: Record<string, unknown>) => createDocumentFromDraft(contentDraft, user),
     [createDocumentFromDraft, user],
@@ -206,9 +209,9 @@ function AppContent() {
   }, [navigate]);
 
   useEffect(() => {
-    if (navSourceRef.current === "store") {
-      if (locationView === activeView) {
-        navSourceRef.current = null;
+    if (pendingViewNavigation) {
+      if (locationView === pendingViewNavigation) {
+        clearPendingViewNavigation();
       }
       return;
     }
@@ -225,9 +228,17 @@ function AppContent() {
       navSourceRef.current = "url";
       setActiveView(locationView);
     }
-  }, [activeView, isAdmin, location.pathname, locationView, navigate, setActiveView]);
+  }, [activeView, clearPendingViewNavigation, isAdmin, location.pathname, locationView, navigate, pendingViewNavigation, setActiveView]);
 
   useEffect(() => {
+    if (pendingViewNavigation) {
+      const targetPath = pathFromView(pendingViewNavigation);
+      if (targetPath !== location.pathname) {
+        navigate(targetPath);
+      }
+      return;
+    }
+
     if (navSourceRef.current === "url") {
       navSourceRef.current = null;
       return;
@@ -242,7 +253,7 @@ function AppContent() {
       navSourceRef.current = "store";
       navigate(targetPath);
     }
-  }, [activeView, location.pathname, navigate]);
+  }, [activeView, location.pathname, navigate, pendingViewNavigation]);
 
   useEffect(() => {
     void bootstrap();
@@ -332,7 +343,7 @@ function AppContent() {
           documentProfiles={documentProfiles}
           processAreas={processAreas}
           formatDate={formatDate}
-          onCreateDocument={() => setActiveView("create")}
+          onCreateDocument={handlePrimaryAction}
           onRefreshWorkspace={refreshWorkspace}
           onOpenDocument={openDocument}
         />
@@ -364,7 +375,7 @@ function AppContent() {
           currentUserId={user?.userId}
           formatDate={formatDate}
           onSearchQueryChange={setSearchQuery}
-          onCreateDocument={() => setActiveView("create")}
+          onCreateDocument={handlePrimaryAction}
           onRefreshWorkspace={refreshWorkspace}
           onOpenDocument={openDocument}
           onOpenDocumentForHub={openDocumentForHub}

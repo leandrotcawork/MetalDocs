@@ -179,3 +179,10 @@ Wrong:   Sidebar and primary CTA set the "store navigation" guard even though th
 Correct: Reserve the store-navigation guard only for flows that change `activeView` before route update; route-first clicks should call `navigate(...)` without setting that guard
 Rule:    In mixed navigation systems, route-first and store-first transitions need distinct sync paths.
 Layer:   frontend
+
+## Lesson Y - Store-driven view changes need explicit pending navigation state
+Date: 2026-03-23 | Trigger: correction
+Wrong:   Hooks changed `activeView` directly for flows like `create -> content-builder`, leaving the router sync unable to distinguish an intentional pending transition from stale URL state
+Correct: Store-first flows must write both `activeView` and a `pendingViewNavigation` flag that the app shell consumes to push the matching route before URL->store sync resumes
+Rule:    If view state can change outside the router, persist the pending route intent explicitly instead of inferring it from timing.
+Layer:   frontend

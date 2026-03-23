@@ -26,6 +26,7 @@ interface UiStore {
   error: string;
   isCreateSubmitting: boolean;
   activeView: WorkspaceView;
+  pendingViewNavigation: WorkspaceView | null;
   searchQuery: string;
   userForm: UserFormState;
   managedUserForm: ManagedUserFormState;
@@ -34,6 +35,8 @@ interface UiStore {
   setError: (error: string) => void;
   setIsCreateSubmitting: (isCreateSubmitting: boolean) => void;
   setActiveView: (activeView: WorkspaceView) => void;
+  requestViewNavigation: (activeView: WorkspaceView) => void;
+  clearPendingViewNavigation: () => void;
   setSearchQuery: (searchQuery: string) => void;
   setUserForm: (userForm: UserFormState | ((current: UserFormState) => UserFormState)) => void;
   setManagedUserForm: (
@@ -47,6 +50,7 @@ export const useUiStore = create<UiStore>((set) => ({
   error: "",
   isCreateSubmitting: false,
   activeView: "operations",
+  pendingViewNavigation: null,
   searchQuery: "",
   userForm: {
     userId: "",
@@ -70,6 +74,8 @@ export const useUiStore = create<UiStore>((set) => ({
   setError: (error) => set({ error }),
   setIsCreateSubmitting: (isCreateSubmitting) => set({ isCreateSubmitting }),
   setActiveView: (activeView) => set({ activeView }),
+  requestViewNavigation: (activeView) => set({ activeView, pendingViewNavigation: activeView }),
+  clearPendingViewNavigation: () => set({ pendingViewNavigation: null }),
   setSearchQuery: (searchQuery) => set({ searchQuery }),
   setUserForm: (userForm) =>
     set((state) => ({

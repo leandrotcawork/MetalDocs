@@ -76,7 +76,7 @@ export function useDocumentsWorkspace(applyDocumentProfile: (profileCode: string
     setDocumentDepartments,
     setSubjects,
   } = useRegistryStore();
-  const { setMessage, setError, setActiveView, setIsCreateSubmitting, setManagedUsers } = useUiStore();
+  const { setMessage, setError, setActiveView, requestViewNavigation, setIsCreateSubmitting, setManagedUsers } = useUiStore();
 
   const streamRefreshInFlightRef = useRef(false);
 
@@ -197,10 +197,10 @@ export function useDocumentsWorkspace(applyDocumentProfile: (profileCode: string
     async (documentId: string, nextView: "library" | "content-builder" = "library") => {
       const ok = await loadDocumentDetails(documentId);
       if (ok) {
-        setActiveView(nextView);
+        requestViewNavigation(nextView);
       }
     },
-    [loadDocumentDetails, setActiveView],
+    [loadDocumentDetails, requestViewNavigation],
   );
 
   const openDocumentForHub = useCallback(
@@ -253,7 +253,7 @@ export function useDocumentsWorkspace(applyDocumentProfile: (profileCode: string
           effectiveAt: documentForm.effectiveAt || undefined,
           expiryAt: documentForm.expiryAt || undefined,
         });
-        setActiveView("content-builder");
+        requestViewNavigation("content-builder");
         setIsCreateSubmitting(false);
         return;
       }
@@ -310,7 +310,7 @@ export function useDocumentsWorkspace(applyDocumentProfile: (profileCode: string
         }
         setMessage(handledContent ? "Documento criado e conteudo processado." : "Documento criado com sucesso.");
         if (!handledContent) {
-          setActiveView("library");
+          requestViewNavigation("library");
         }
         setIsCreateSubmitting(false);
         if (currentUser) await loadWorkspace(currentUser);
@@ -323,7 +323,7 @@ export function useDocumentsWorkspace(applyDocumentProfile: (profileCode: string
         stopApiTrace();
       }
     },
-    [contentFile, contentMode, documentForm, loadWorkspace, openDocument, setActiveView, setContentDocxUrl, setContentError, setContentFile, setContentMode, setContentPdfUrl, setContentStatus, setDocumentForm, setError, setIsCreateSubmitting, setMessage, setSelectedDocument],
+    [contentFile, contentMode, documentForm, loadWorkspace, openDocument, requestViewNavigation, setContentDocxUrl, setContentError, setContentFile, setContentMode, setContentPdfUrl, setContentStatus, setDocumentForm, setError, setIsCreateSubmitting, setMessage, setSelectedDocument],
   );
 
   const createDocumentFromDraft = useCallback(

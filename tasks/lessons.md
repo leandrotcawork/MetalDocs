@@ -305,3 +305,10 @@ Wrong:   Keeping the vinho hero inside the clickable body tied it to the button 
 Correct: Split decorative headers from the interactive body so the hero can own edge-to-edge layout while the body keeps its own clickable spacing
 Rule:    When a card has a decorative hero and a content body, model them as separate layout regions instead of one shared interactive container.
 Layer:   frontend
+
+## Lesson AQ - Hero ornaments must scale with header height
+Date: 2026-03-23 | Trigger: correction
+Wrong:   Reducing only the header container height leaves decorative circles, title and badge visually oversized
+Correct: When compressing a decorative hero, scale height, paddings, ornaments and typography together
+Rule:    Decorative surfaces must be resized proportionally so visual weight remains balanced after density changes.
+Layer:   frontend

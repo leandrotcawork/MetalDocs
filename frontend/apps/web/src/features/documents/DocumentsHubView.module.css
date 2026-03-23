@@ -572,13 +572,13 @@
 
 .docCardHero {
   position: relative;
-  min-height: 5rem;
-  padding: 0.95rem 1rem 0.72rem;
+  min-height: 3rem;
+  padding: 0.58rem 0.7rem 0.44rem;
   display: grid;
   place-items: center;
   overflow: hidden;
   background:
-    radial-gradient(circle at top right, rgba(255, 255, 255, 0.1) 0, rgba(255, 255, 255, 0.1) 2.75rem, transparent 2.8rem),
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.1) 0, rgba(255, 255, 255, 0.1) 1.75rem, transparent 1.8rem),
     linear-gradient(180deg, color-mix(in srgb, var(--vinho) 94%, #ffffff) 0%, color-mix(in srgb, var(--vinho) 90%, #000000 8%) 100%);
 }
 
@@ -590,17 +590,17 @@
 }
 
 .docCardOrbLeft {
-  width: 3.35rem;
-  height: 3.35rem;
-  left: 0.7rem;
-  bottom: 0.2rem;
+  width: 2rem;
+  height: 2rem;
+  left: 0.45rem;
+  bottom: 0.1rem;
 }
 
 .docCardOrbRight {
-  width: 4.35rem;
-  height: 4.35rem;
-  top: -0.45rem;
-  right: -0.35rem;
+  width: 2.6rem;
+  height: 2.6rem;
+  top: -0.3rem;
+  right: -0.2rem;
 }
 
 .docCardHeroContent {
@@ -609,7 +609,7 @@
   justify-items: center;
   width: 100%;
   min-width: 0;
-  padding-inline: 0.75rem 5.5rem;
+  padding-inline: 0.45rem 4.4rem;
   position: relative;
   z-index: 1;
 }
@@ -618,7 +618,7 @@
   max-width: 100%;
   padding: 0;
   color: #ffffff;
-  font-size: 1.14rem;
+  font-size: 1rem;
   font-weight: 700;
   line-height: 1.15;
   white-space: nowrap;
@@ -642,12 +642,12 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.16rem 0.7rem;
+  padding: 0.1rem 0.58rem;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 223, 178, 0.34);
   color: #fff1f1;
-  font-size: 0.64rem;
+  font-size: 0.58rem;
   font-weight: 700;
   letter-spacing: 0.03rem;
   text-transform: uppercase;

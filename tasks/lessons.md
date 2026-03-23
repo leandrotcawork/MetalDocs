@@ -368,10 +368,3 @@ Wrong:   Coupling watermark and metadata chip styles to hero layout can leave un
 Correct: Keep hero structure resilient so decorative and secondary metadata elements can be removed cleanly
 Rule:    Treat ornaments and helper metadata as optional layers, not layout anchors.
 Layer:   frontend
-
-## Lesson AZ - Dashboard popups should be isolated as feature components
-Date: 2026-03-23 | Trigger: correction
-Wrong:   Embedding modal markup directly in large view files increases coupling and slows UI iteration
-Correct: Keep dashboard overlays in dedicated component + module.css and integrate via explicit open/close state
-Rule:    For non-trivial dashboard overlays, prefer isolated feature components to keep host views maintainable.
-Layer:   frontend

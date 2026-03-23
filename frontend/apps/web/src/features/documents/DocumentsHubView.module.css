@@ -23,45 +23,6 @@
   color: var(--text);
 }
 
-.dashboardAlertBar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  border-radius: 1rem;
-  padding: 0.85rem 1rem;
-  box-shadow: var(--shadow-soft);
-}
-
-.dashboardAlertBar h2 {
-  margin: 0;
-  font-size: 1.1rem;
-}
-
-.dashboardAlertBar p {
-  margin: 0.2rem 0 0;
-  font-size: 0.8rem;
-  color: var(--muted);
-}
-
-.dashboardAlertButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid color-mix(in srgb, var(--vinho) 75%, #000000 12%);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--vinho) 80%, #ffffff), var(--vinho));
-  color: #fff;
-  min-height: 40px;
-  padding: 0.45rem 0.95rem;
-  border-radius: 0.7rem;
-  font-size: 0.82rem;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: 0 8px 14px rgba(98, 26, 46, 0.25);
-}
-
 .state {
   padding: 2rem;
   border-radius: 1rem;
@@ -1268,16 +1229,6 @@
 
   .hub {
     padding: 2rem 1.4rem 2.2rem;
-  }
-
-  .dashboardAlertBar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .dashboardAlertButton {
-    width: 100%;
-    justify-content: center;
   }
 
   .kpiGrid,

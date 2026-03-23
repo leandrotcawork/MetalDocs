@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useState } from "react";
+﻿import { useCallback, useEffect, useMemo } from "react";
 import { buildDocumentProfileCountMap } from "./adapters/catalogSummary";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { metalNobreProcessAreaHint } from "./adapters/metalNobreExperience";
@@ -6,7 +6,6 @@ import { formatDocumentDisplayName } from "../shared/documentDisplay";
 import { type RecentDocumentItem, useDocumentsStore } from "../../store/documents.store";
 import { FilterDropdown, type SelectMenuOption } from "../../components/ui/FilterDropdown";
 import { DocumentsHubHeader } from "./DocumentsHubHeader";
-import { DashboardAlertsModal, type DashboardAlertItem } from "./DashboardAlertsModal";
 import { buildDocumentsPath, documentsBasePath, parseDocumentsRoute } from "../../routing/workspaceRoutes";
 import styles from "./DocumentsHubView.module.css";
 import type { DocumentListItem, DocumentProfileGovernanceItem, DocumentProfileItem, ManagedUserItem, ProcessAreaItem, SearchDocumentItem } from "../../lib.types";
@@ -34,15 +33,6 @@ type HubStatus = "all" | "draft" | "review" | "approved";
 type HubMode = "card" | "list";
 type CollectionSort = "created-desc" | "created-asc" | "code-asc" | "code-desc";
 const recentKeyPrefix = "metaldocs.recentDocuments";
-const dashboardAlertCatalog: Array<Pick<DashboardAlertItem, "id" | "title" | "tone">> = [
-  { id: "capital", title: "Capital imobilizado elevado", tone: "violet" },
-  { id: "estoque-parado", title: "Estoque parado", tone: "orange" },
-  { id: "giro-critico", title: "Giro critico", tone: "blue" },
-  { id: "margem-apertada", title: "Margem de contribuicao apertada", tone: "gold" },
-  { id: "overstock", title: "Risco de overstock", tone: "rose" },
-  { id: "acima-mercado", title: "Preco acima do mercado", tone: "indigo" },
-  { id: "abaixo-mercado", title: "Preco abaixo do mercado", tone: "green" },
-];
 
 function recentStorageKey(userId?: string) {
   if (!userId) return null;
@@ -205,7 +195,6 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [alertsModalOpen, setAlertsModalOpen] = useState(false);
   const scope = documentScope(props.view);
   const {
     documentsHubView,
@@ -478,18 +467,6 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
     const thirtyDays = 1000 * 60 * 60 * 24 * 30;
     return expiry - Date.now() <= thirtyDays && expiry > Date.now();
   }).length;
-  const dashboardAlerts = useMemo<DashboardAlertItem[]>(() => {
-    const documentCount = Math.max(scopedDocuments.length, 1);
-    return dashboardAlertCatalog.map((alert, index) => {
-      const ratio = 0.08 + ((index % 5) * 0.07);
-      const skuCount = Math.max(Math.round(documentCount * ratio), index === 0 ? 0 : 1);
-      return { ...alert, skuCount };
-    });
-  }, [scopedDocuments.length]);
-  const totalMappedAlerts = useMemo(
-    () => dashboardAlerts.reduce((acc, item) => acc + item.skuCount, 0),
-    [dashboardAlerts],
-  );
 
 
   const normalizedQuery = props.searchQuery.trim().toLowerCase();
@@ -958,15 +935,6 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
       {headerShell}
 
       <section className={styles.hub}>
-      <section className={styles.dashboardAlertBar}>
-        <div>
-          <h2>Painel de alertas</h2>
-          <p>Mapa operacional para risco de estoque e margem.</p>
-        </div>
-        <button type="button" className={styles.dashboardAlertButton} onClick={() => setAlertsModalOpen(true)}>
-          Alertas ativos
-        </button>
-      </section>
 
       <section className={styles.kpiGrid}>
         <article className={styles.kpiCard}>
@@ -1119,18 +1087,10 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
           </div>
         </div>
       </section>
-      <DashboardAlertsModal
-        open={alertsModalOpen}
-        totalAlerts={totalMappedAlerts}
-        alerts={dashboardAlerts}
-        onClose={() => setAlertsModalOpen(false)}
-      />
       </section>
     </div>
   );
 }
-
-
 
 
 

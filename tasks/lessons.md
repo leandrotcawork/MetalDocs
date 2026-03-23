@@ -102,3 +102,10 @@ Wrong:   SVG icons inside fixed-size buttons relied on default inline layout and
 Correct: Use `inline-flex` with `align-items` and `justify-content` on the button and `display: block` on the SVG
 Rule:    Icon-only controls must explicitly define centering to keep alignment stable across browsers.
 Layer:   frontend
+
+## Lesson N - Reset global button padding for icon controls
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Icon toggle buttons inherited global `button` padding and shrank their internal icon drawing area
+Correct: Explicitly set `padding: 0` on fixed-size icon buttons in component CSS Modules
+Rule:    Any icon-only button that defines width/height must also reset inherited padding.
+Layer:   frontend

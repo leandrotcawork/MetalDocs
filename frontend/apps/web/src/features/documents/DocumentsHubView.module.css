@@ -448,6 +448,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
   border: 0;
   background: transparent;
   width: 34px;
@@ -472,6 +473,13 @@
   flex-wrap: wrap;
   gap: 0.6rem;
   align-items: center;
+}
+
+.tabRow button {
+  border-radius: 999px;
+  border: 1px solid var(--vinho);
+  background: var(--vinho);
+  color: #fff;
 }
 
 .tab,

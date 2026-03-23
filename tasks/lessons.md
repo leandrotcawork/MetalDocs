@@ -123,3 +123,10 @@ Wrong:   Reusing the full-height hub header on collection/detail screens left ex
 Correct: Use a compact header variant with reduced vertical padding for collection/detail views
 Rule:    Dense list screens should use a compact header to keep content closer to the fold.
 Layer:   frontend
+
+## Lesson Q - Compact header should remove non-essential copy
+Date: 2026-03-23 | Trigger: correction
+Wrong:   Keeping subtitle text in compact mode still produced an oversized header on sparse collections
+Correct: Hide subtitle and reduce title size in compact mode
+Rule:    Compact variants must remove secondary copy, not just shrink padding.
+Layer:   frontend

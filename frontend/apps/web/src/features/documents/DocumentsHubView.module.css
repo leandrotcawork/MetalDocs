@@ -37,6 +37,10 @@
   gap: 1.5rem;
 }
 
+.heroCompact {
+  gap: 1rem;
+}
+
 .heroCopy {
   flex: 1 1 auto;
   min-width: 0;
@@ -62,6 +66,10 @@
   margin: 0;
   font-size: 2rem;
   font-weight: 600;
+}
+
+.titleCompact {
+  font-size: 1.65rem;
 }
 
 .subtitle {

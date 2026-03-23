@@ -228,3 +228,10 @@ Wrong:   The collection card title relied on inherited text color, which made th
 Correct: Primary card titles must declare an explicit accent/text color in the component CSS
 Rule:    Critical text hierarchy must never depend on inherited color when the parent can be interactive or theme-variant.
 Layer:   frontend
+
+## Lesson AF - Collection controls should persist in query params
+Date: 2026-03-23 | Trigger: correction
+Wrong:   Collection-only filters and ordering would exist only in transient component state, losing the user's context on navigation or refresh
+Correct: Status, mode, department, area filter and sort order should all round-trip through `URLSearchParams`
+Rule:    In URL-driven screens, any user control that changes the visible result set should be serializable in the URL.
+Layer:   frontend

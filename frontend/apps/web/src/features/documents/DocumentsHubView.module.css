@@ -526,9 +526,40 @@
   border-color: var(--vinho);
 }
 
+.collectionFilterBar {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.filterControl {
+  display: grid;
+  gap: 0.32rem;
+}
+
+.filterControl span {
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08rem;
+  color: var(--muted);
+}
+
+.filterControl select {
+  width: 100%;
+  min-height: 42px;
+  border-radius: 0.9rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  padding: 0 0.9rem;
+  font-size: 0.82rem;
+  box-shadow: var(--shadow-soft);
+}
+
 .cardGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.85rem;
 }
 
@@ -557,23 +588,25 @@
   min-width: 0;
 }
 
-.docCardKicker {
-  display: inline-flex;
-  align-items: center;
-  width: fit-content;
-  padding: 0.22rem 0.52rem;
-  border-radius: 999px;
-  background: rgba(157, 35, 53, 0.08);
-  color: var(--vinho);
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-
 .docCardHeader strong {
   font-size: 1.12rem;
   line-height: 1.18;
   color: var(--vinho);
+}
+
+.docCardTitleChip {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.36rem 0.7rem;
+  border-radius: 999px;
+  background: var(--vinho);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: normal;
 }
 
 .statusChip {
@@ -861,8 +894,12 @@
 }
 
 @media (max-width: 1100px) {
+  .collectionFilterBar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .cardGrid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .docCardDetails {
@@ -888,6 +925,10 @@
   .collectionActions {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .collectionFilterBar {
+    grid-template-columns: 1fr;
   }
 
   .listHeader {

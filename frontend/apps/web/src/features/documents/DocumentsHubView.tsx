@@ -30,6 +30,7 @@ type DocumentsHubViewProps = {
 type HubScope = "all" | "mine" | "recent";
 type HubStatus = "all" | "draft" | "review" | "approved";
 type HubMode = "card" | "list";
+type CollectionSort = "created-desc" | "created-asc" | "code-asc" | "code-desc";
 const recentKeyPrefix = "metaldocs.recentDocuments";
 
 function recentStorageKey(userId?: string) {
@@ -122,6 +123,29 @@ function normalizeHubMode(value: string | null): HubMode {
   return "card";
 }
 
+function normalizeCollectionSort(value: string | null): CollectionSort {
+  if (value === "created-asc" || value === "code-asc" || value === "code-desc") return value;
+  return "created-desc";
+}
+
+function compareDocumentCode(
+  left: SearchDocumentItem,
+  right: SearchDocumentItem,
+  direction: "asc" | "desc",
+  profiles: DocumentProfileItem[],
+): number {
+  const leftSequence = left.documentSequence ?? Number.MAX_SAFE_INTEGER;
+  const rightSequence = right.documentSequence ?? Number.MAX_SAFE_INTEGER;
+
+  if (leftSequence !== rightSequence) {
+    return direction === "asc" ? leftSequence - rightSequence : rightSequence - leftSequence;
+  }
+
+  const leftName = formatDocumentDisplayName(left, profiles).toLowerCase();
+  const rightName = formatDocumentDisplayName(right, profiles).toLowerCase();
+  return direction === "asc" ? leftName.localeCompare(rightName) : rightName.localeCompare(leftName);
+}
+
 export function DocumentsHubView(props: DocumentsHubViewProps) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -146,20 +170,29 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
   const route = useMemo(() => parseDocumentsRoute(props.view, location.pathname), [location.pathname, props.view]);
   const queryStatus = useMemo(() => normalizeHubStatus(searchParams.get("status")), [searchParams]);
   const queryMode = useMemo(() => normalizeHubMode(searchParams.get("mode")), [searchParams]);
+  const queryDepartment = useMemo(() => searchParams.get("department") ?? "all", [searchParams]);
+  const queryAreaFilter = useMemo(() => searchParams.get("areaFilter") ?? "all", [searchParams]);
+  const querySort = useMemo(() => normalizeCollectionSort(searchParams.get("sort")), [searchParams]);
   const queryText = useMemo(() => searchParams.get("q") ?? "", [searchParams]);
 
   const buildHubParams = useCallback(
-    (next?: Partial<{ status: HubStatus; mode: HubMode; q: string }>) => {
+    (next?: Partial<{ status: HubStatus; mode: HubMode; q: string; department: string; areaFilter: string; sort: CollectionSort }>) => {
       const status = next?.status ?? documentsHubStatus;
       const mode = next?.mode ?? documentsHubMode;
       const q = next?.q ?? props.searchQuery;
+      const department = next?.department ?? queryDepartment;
+      const areaFilter = next?.areaFilter ?? queryAreaFilter;
+      const sort = next?.sort ?? querySort;
       const params = new URLSearchParams();
       if (status !== "all") params.set("status", status);
       if (mode !== "card") params.set("mode", mode);
+      if (department !== "all") params.set("department", department);
+      if (areaFilter !== "all") params.set("areaFilter", areaFilter);
+      if (sort !== "created-desc") params.set("sort", sort);
       if (q.trim()) params.set("q", q.trim());
       return params;
     },
-    [documentsHubMode, documentsHubStatus, props.searchQuery],
+    [documentsHubMode, documentsHubStatus, props.searchQuery, queryAreaFilter, queryDepartment, querySort],
   );
 
   const navigateWithParams = useCallback(
@@ -296,6 +329,22 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
     () => new Map(props.managedUsers.map((item) => [item.userId, item.displayName] as const)),
     [props.managedUsers],
   );
+  const departmentOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(scopedDocuments.map((item) => item.department.trim()).filter((value) => value.length > 0)),
+      ).sort((left, right) => left.localeCompare(right)),
+    [scopedDocuments],
+  );
+  const areaOptions = useMemo(
+    () =>
+      Array.from(new Set(scopedDocuments.map((item) => normalizeAreaCode(item.processArea)))).sort((left, right) => {
+        const leftLabel = processAreaNameByCode.get(left) ?? left;
+        const rightLabel = processAreaNameByCode.get(right) ?? right;
+        return leftLabel.localeCompare(rightLabel);
+      }),
+    [processAreaNameByCode, scopedDocuments],
+  );
 
   const areaCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -357,17 +406,21 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
         if (area !== documentsHubArea) return false;
       }
       if (documentsHubProfile !== "all" && item.documentProfile !== documentsHubProfile) return false;
+      if (queryDepartment !== "all" && item.department !== queryDepartment) return false;
+      if (queryAreaFilter !== "all" && normalizeAreaCode(item.processArea) !== queryAreaFilter) return false;
       if (!normalizedQuery) return true;
       const haystack = [
         item.title,
         item.documentId,
+        item.documentCode,
         item.documentProfile,
         item.processArea,
+        item.department,
         item.ownerId,
       ].join(" ").toLowerCase();
       return haystack.includes(normalizedQuery);
     });
-  }, [documentsHubArea, documentsHubProfile, normalizedQuery, scopedDocuments]);
+  }, [documentsHubArea, documentsHubProfile, normalizedQuery, queryAreaFilter, queryDepartment, scopedDocuments]);
 
   const tabCounts = useMemo(() => ({
     all: baseFilteredDocuments.length,
@@ -377,17 +430,30 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
   }), [baseFilteredDocuments]);
 
   const collectionDocuments = useMemo(() => {
+    let nextItems = baseFilteredDocuments;
     if (documentsHubStatus === "draft") {
-      return baseFilteredDocuments.filter((item) => item.status === "DRAFT");
+      nextItems = nextItems.filter((item) => item.status === "DRAFT");
     }
     if (documentsHubStatus === "review") {
-      return baseFilteredDocuments.filter((item) => item.status === "IN_REVIEW");
+      nextItems = nextItems.filter((item) => item.status === "IN_REVIEW");
     }
     if (documentsHubStatus === "approved") {
-      return baseFilteredDocuments.filter((item) => item.status === "APPROVED" || item.status === "PUBLISHED");
+      nextItems = nextItems.filter((item) => item.status === "APPROVED" || item.status === "PUBLISHED");
     }
-    return baseFilteredDocuments;
-  }, [baseFilteredDocuments, documentsHubStatus]);
+
+    return [...nextItems].sort((left, right) => {
+      if (querySort === "created-asc") {
+        return new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime();
+      }
+      if (querySort === "code-asc") {
+        return compareDocumentCode(left, right, "asc", props.documentProfiles);
+      }
+      if (querySort === "code-desc") {
+        return compareDocumentCode(left, right, "desc", props.documentProfiles);
+      }
+      return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
+    });
+  }, [baseFilteredDocuments, documentsHubStatus, props.documentProfiles, querySort]);
 
   const collectionTitle = useMemo(() => {
     if (documentsHubProfile !== "all") {
@@ -426,6 +492,30 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
       setSearchParams(nextParams, { replace: true });
     },
     [buildHubParams, setDocumentsHubMode, setSearchParams],
+  );
+
+  const handleDepartmentFilterChange = useCallback(
+    (department: string) => {
+      const nextParams = buildHubParams({ department });
+      setSearchParams(nextParams, { replace: true });
+    },
+    [buildHubParams, setSearchParams],
+  );
+
+  const handleAreaFilterChange = useCallback(
+    (areaFilter: string) => {
+      const nextParams = buildHubParams({ areaFilter });
+      setSearchParams(nextParams, { replace: true });
+    },
+    [buildHubParams, setSearchParams],
+  );
+
+  const handleSortChange = useCallback(
+    (sort: CollectionSort) => {
+      const nextParams = buildHubParams({ sort });
+      setSearchParams(nextParams, { replace: true });
+    },
+    [buildHubParams, setSearchParams],
   );
 
   if (props.loadState === "loading") {
@@ -603,6 +693,37 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
               <button type="button" className={documentsHubStatus === "review" ? styles.tabActive : styles.tab} onClick={() => handleStatusChange("review")}>Em revisao ({tabCounts.review})</button>
               <button type="button" className={documentsHubStatus === "approved" ? styles.tabActive : styles.tab} onClick={() => handleStatusChange("approved")}>Aprovados ({tabCounts.approved})</button>
             </div>
+            <div className={styles.collectionFilterBar}>
+              <label className={styles.filterControl}>
+                <span>Departamento</span>
+                <select value={queryDepartment} onChange={(event) => handleDepartmentFilterChange(event.target.value)}>
+                  <option value="all">Todos</option>
+                  {departmentOptions.map((department) => (
+                    <option key={department} value={department}>{department}</option>
+                  ))}
+                </select>
+              </label>
+              <label className={styles.filterControl}>
+                <span>Area</span>
+                <select value={queryAreaFilter} onChange={(event) => handleAreaFilterChange(event.target.value)}>
+                  <option value="all">Todas</option>
+                  {areaOptions.map((areaCode) => (
+                    <option key={areaCode} value={areaCode}>
+                      {processAreaNameByCode.get(areaCode) ?? areaCode}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className={styles.filterControl}>
+                <span>Ordenar por</span>
+                <select value={querySort} onChange={(event) => handleSortChange(event.target.value as CollectionSort)}>
+                  <option value="created-desc">Criacao mais recente</option>
+                  <option value="created-asc">Criacao mais antiga</option>
+                  <option value="code-asc">Codigo menor para maior</option>
+                  <option value="code-desc">Codigo maior para menor</option>
+                </select>
+              </label>
+            </div>
             </div>
 
             <div className={styles.collectionBody}>
@@ -617,8 +738,7 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
                     >
                       <div className={styles.docCardHeader}>
                         <div className={styles.docCardTitleBlock}>
-                          <span className={styles.docCardKicker}>{item.documentCode || item.documentProfile.toUpperCase()}</span>
-                          <strong>{formatDocumentDisplayName(item, props.documentProfiles)}</strong>
+                          <strong className={styles.docCardTitleChip}>{formatDocumentDisplayName(item, props.documentProfiles)}</strong>
                         </div>
                         <span className={styles.statusChip}>{statusLabel(item.status)}</span>
                       </div>

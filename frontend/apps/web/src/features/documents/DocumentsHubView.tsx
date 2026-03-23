@@ -1,9 +1,11 @@
-﻿import { useEffect, useMemo } from "react";
+﻿import { useCallback, useEffect, useMemo } from "react";
 import { buildDocumentProfileCountMap } from "./adapters/catalogSummary";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { metalNobreProcessAreaHint } from "./adapters/metalNobreExperience";
 import { formatDocumentDisplayName } from "../shared/documentDisplay";
 import { type RecentDocumentItem, useDocumentsStore } from "../../store/documents.store";
 import { DocumentsHubHeader } from "./DocumentsHubHeader";
+import { buildDocumentsPath, documentsBasePath, parseDocumentsRoute } from "../../routing/workspaceRoutes";
 import styles from "./DocumentsHubView.module.css";
 import type { DocumentListItem, DocumentProfileGovernanceItem, DocumentProfileItem, ProcessAreaItem, SearchDocumentItem } from "../../lib.types";
 
@@ -25,6 +27,8 @@ type DocumentsHubViewProps = {
 };
 
 type HubScope = "all" | "mine" | "recent";
+type HubStatus = "all" | "draft" | "review" | "approved";
+type HubMode = "card" | "list";
 const recentKeyPrefix = "metaldocs.recentDocuments";
 
 function recentStorageKey(userId?: string) {
@@ -107,7 +111,20 @@ function statusLabel(status: string): string {
   }
 }
 
+function normalizeHubStatus(value: string | null): HubStatus {
+  if (value === "draft" || value === "review" || value === "approved") return value;
+  return "all";
+}
+
+function normalizeHubMode(value: string | null): HubMode {
+  if (value === "list") return "list";
+  return "card";
+}
+
 export function DocumentsHubView(props: DocumentsHubViewProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const scope = documentScope(props.view);
   const {
     documentsHubView,
@@ -124,13 +141,51 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
     setRecentDocuments,
   } = useDocumentsStore();
 
+  const basePath = documentsBasePath(props.view);
+  const route = useMemo(() => parseDocumentsRoute(props.view, location.pathname), [location.pathname, props.view]);
+  const queryStatus = useMemo(() => normalizeHubStatus(searchParams.get("status")), [searchParams]);
+  const queryMode = useMemo(() => normalizeHubMode(searchParams.get("mode")), [searchParams]);
+  const queryText = useMemo(() => searchParams.get("q") ?? "", [searchParams]);
+
+  const buildHubParams = useCallback(
+    (next?: Partial<{ status: HubStatus; mode: HubMode; q: string }>) => {
+      const status = next?.status ?? documentsHubStatus;
+      const mode = next?.mode ?? documentsHubMode;
+      const q = next?.q ?? props.searchQuery;
+      const params = new URLSearchParams();
+      if (status !== "all") params.set("status", status);
+      if (mode !== "card") params.set("mode", mode);
+      if (q.trim()) params.set("q", q.trim());
+      return params;
+    },
+    [documentsHubMode, documentsHubStatus, props.searchQuery],
+  );
+
+  const navigateWithParams = useCallback(
+    (path: string, options?: { replace?: boolean }) => {
+      const params = buildHubParams();
+      const suffix = params.toString();
+      navigate(suffix ? `${path}?${suffix}` : path, options);
+    },
+    [buildHubParams, navigate],
+  );
+
+  const handleSearchQueryChange = useCallback(
+    (value: string) => {
+      props.onSearchQueryChange(value);
+      const nextParams = buildHubParams({ q: value });
+      setSearchParams(nextParams, { replace: true });
+    },
+    [buildHubParams, props, setSearchParams],
+  );
+
   const headerTitle = scope === "mine" ? "Meus documentos" : scope === "recent" ? "Recentes" : "Todos documentos";
   const headerVariant = documentsHubView === "collection" || documentsHubView === "detail" ? "compact" : "default";
   const headerShell = (
     <DocumentsHubHeader
       title={headerTitle}
       searchQuery={props.searchQuery}
-      onSearchQueryChange={props.onSearchQueryChange}
+      onSearchQueryChange={handleSearchQueryChange}
       variant={headerVariant}
     />
   );
@@ -176,11 +231,48 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
   }, [props.currentUserId, props.documents, recentDocuments, setRecentDocuments]);
 
   useEffect(() => {
-    setDocumentsHubView("overview");
-    setDocumentsHubStatus("all");
-    setDocumentsHubArea("all");
-    setDocumentsHubProfile("all");
-  }, [props.view, setDocumentsHubArea, setDocumentsHubProfile, setDocumentsHubStatus, setDocumentsHubView]);
+    if (route.view === "overview") {
+      setDocumentsHubView("overview");
+      setDocumentsHubStatus("all");
+      setDocumentsHubArea("all");
+      setDocumentsHubProfile("all");
+      return;
+    }
+
+    if (route.view === "collection") {
+      setDocumentsHubView("collection");
+      if (route.areaCode) {
+        setDocumentsHubArea(route.areaCode);
+        setDocumentsHubProfile("all");
+      } else if (route.profileCode) {
+        setDocumentsHubProfile(route.profileCode);
+        setDocumentsHubArea("all");
+      } else {
+        setDocumentsHubArea("all");
+        setDocumentsHubProfile("all");
+      }
+      return;
+    }
+
+    if (route.view === "detail") {
+      setDocumentsHubView("detail");
+      if (route.documentId && props.selectedDocument?.documentId !== route.documentId) {
+        void props.onOpenDocumentForHub(route.documentId);
+      }
+    }
+  }, [props.selectedDocument?.documentId, props.view, route, setDocumentsHubArea, setDocumentsHubProfile, setDocumentsHubStatus, setDocumentsHubView]);
+
+  useEffect(() => {
+    if (queryStatus !== documentsHubStatus) {
+      setDocumentsHubStatus(queryStatus);
+    }
+    if (queryMode !== documentsHubMode) {
+      setDocumentsHubMode(queryMode);
+    }
+    if (queryText !== props.searchQuery) {
+      props.onSearchQueryChange(queryText);
+    }
+  }, [documentsHubMode, documentsHubStatus, props, queryMode, queryStatus, queryText, setDocumentsHubMode, setDocumentsHubStatus]);
 
   const recentFallback = useMemo(
     () => scopedDocuments.slice(0, 8).map((item) => ({ ...item, openedAt: item.createdAt })),
@@ -324,9 +416,26 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
     ].slice(0, 8);
     setRecentDocuments(nextItems);
     storeRecentDocuments(props.currentUserId, nextItems);
-    void props.onOpenDocumentForHub(item.documentId);
-    setDocumentsHubView("detail");
+    navigateWithParams(buildDocumentsPath(props.view, { view: "detail", documentId: item.documentId }));
   };
+
+  const handleStatusChange = useCallback(
+    (status: HubStatus) => {
+      setDocumentsHubStatus(status);
+      const nextParams = buildHubParams({ status });
+      setSearchParams(nextParams, { replace: true });
+    },
+    [buildHubParams, setDocumentsHubStatus, setSearchParams],
+  );
+
+  const handleModeChange = useCallback(
+    (mode: HubMode) => {
+      setDocumentsHubMode(mode);
+      const nextParams = buildHubParams({ mode });
+      setSearchParams(nextParams, { replace: true });
+    },
+    [buildHubParams, setDocumentsHubMode, setSearchParams],
+  );
 
   if (documentsHubView === "detail") {
     if (!props.selectedDocument) {
@@ -354,9 +463,14 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
         {headerShell}
         <section className={styles.detail}>
         <div className={styles.breadcrumb}>
-          <button type="button" onClick={() => setDocumentsHubView("overview")}>Inicio</button>
+          <button type="button" onClick={() => navigateWithParams(buildDocumentsPath(props.view, { view: "overview" }))}>Inicio</button>
           <span>/</span>
-          <button type="button" onClick={() => setDocumentsHubView("collection")}>{collectionTitle}</button>
+          <button
+            type="button"
+            onClick={() => navigateWithParams(buildDocumentsPath(props.view, { view: "collection", areaCode: documentsHubArea !== "all" ? documentsHubArea : undefined, profileCode: documentsHubProfile !== "all" ? documentsHubProfile : undefined }))}
+          >
+            {collectionTitle}
+          </button>
           <span>/</span>
           <span>{formatDocumentDisplayName(doc, props.documentProfiles)}</span>
         </div>
@@ -439,13 +553,13 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
               <div className={styles.collectionHeader}>
                 <h2>{collectionTitle} <span>({tabCounts.all})</span></h2>
                 <div className={styles.collectionActions}>
-                  <div className={styles.viewToggle}>
-                    <button
-                      type="button"
-                      className={documentsHubMode === "card" ? styles.isActive : ""}
-                      onClick={() => setDocumentsHubMode("card")}
-                      title="Exibir em cards"
-                    >
+                <div className={styles.viewToggle}>
+                  <button
+                    type="button"
+                    className={documentsHubMode === "card" ? styles.isActive : ""}
+                    onClick={() => handleModeChange("card")}
+                    title="Exibir em cards"
+                  >
                       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
                         <rect x="1" y="1" width="6" height="6" rx="1.5" />
                         <rect x="9" y="1" width="6" height="6" rx="1.5" />
@@ -453,12 +567,12 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
                         <rect x="9" y="9" width="6" height="6" rx="1.5" />
                       </svg>
                     </button>
-                    <button
-                      type="button"
-                      className={documentsHubMode === "list" ? styles.isActive : ""}
-                      onClick={() => setDocumentsHubMode("list")}
-                      title="Exibir em lista"
-                    >
+                  <button
+                    type="button"
+                    className={documentsHubMode === "list" ? styles.isActive : ""}
+                    onClick={() => handleModeChange("list")}
+                    title="Exibir em lista"
+                  >
                       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
                         <path d="M3 4h10M3 8h10M3 12h10" strokeLinecap="round" />
                       </svg>
@@ -470,12 +584,12 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
                 </div>
               </div>
 
-              <div className={styles.tabRow}>
-                <button type="button" className={documentsHubStatus === "all" ? styles.tabActive : styles.tab} onClick={() => setDocumentsHubStatus("all")}>Todos ({tabCounts.all})</button>
-                <button type="button" className={documentsHubStatus === "draft" ? styles.tabActive : styles.tab} onClick={() => setDocumentsHubStatus("draft")}>Draft ({tabCounts.draft})</button>
-                <button type="button" className={documentsHubStatus === "review" ? styles.tabActive : styles.tab} onClick={() => setDocumentsHubStatus("review")}>Em revisao ({tabCounts.review})</button>
-                <button type="button" className={documentsHubStatus === "approved" ? styles.tabActive : styles.tab} onClick={() => setDocumentsHubStatus("approved")}>Aprovados ({tabCounts.approved})</button>
-              </div>
+            <div className={styles.tabRow}>
+              <button type="button" className={documentsHubStatus === "all" ? styles.tabActive : styles.tab} onClick={() => handleStatusChange("all")}>Todos ({tabCounts.all})</button>
+              <button type="button" className={documentsHubStatus === "draft" ? styles.tabActive : styles.tab} onClick={() => handleStatusChange("draft")}>Draft ({tabCounts.draft})</button>
+              <button type="button" className={documentsHubStatus === "review" ? styles.tabActive : styles.tab} onClick={() => handleStatusChange("review")}>Em revisao ({tabCounts.review})</button>
+              <button type="button" className={documentsHubStatus === "approved" ? styles.tabActive : styles.tab} onClick={() => handleStatusChange("approved")}>Aprovados ({tabCounts.approved})</button>
+            </div>
             </div>
 
             <div className={styles.collectionBody}>
@@ -586,7 +700,7 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
                   setDocumentsHubArea(area.code);
                   setDocumentsHubProfile("all");
                   setDocumentsHubStatus("all");
-                  setDocumentsHubView("collection");
+                  navigateWithParams(buildDocumentsPath(props.view, { view: "collection", areaCode: area.code }));
                 }}
                 style={{ ["--area-color" as string]: area.color } as React.CSSProperties}
               >
@@ -627,7 +741,7 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
                   setDocumentsHubProfile(profile.code);
                   setDocumentsHubArea("all");
                   setDocumentsHubStatus("all");
-                  setDocumentsHubView("collection");
+                  navigateWithParams(buildDocumentsPath(props.view, { view: "collection", profileCode: profile.code }));
                 }}
                 style={{ ["--type-color" as string]: profile.color } as React.CSSProperties}
               >
@@ -663,8 +777,8 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
               type="button"
               className={styles.linkButton}
               onClick={() => {
-                setDocumentsHubView("collection");
                 setDocumentsHubStatus("all");
+                navigateWithParams(buildDocumentsPath(props.view, { view: "collection" }));
               }}
             >
               Ver todos â†’
@@ -704,4 +818,12 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
     </div>
   );
 }
+
+
+
+
+
+
+
+
 

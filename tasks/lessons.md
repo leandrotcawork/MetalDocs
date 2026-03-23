@@ -242,3 +242,10 @@ Wrong:   Collection filters used ad-hoc native `select` controls, diverging from
 Correct: Feature filters should use `FilterDropdown`/`SelectMenu` primitives and align with existing control bars
 Rule:    Do not introduce parallel form controls when the design system already provides an equivalent component.
 Layer:   frontend
+
+## Lesson AH - Accent chips can require soft-tone variants
+Date: 2026-03-23 | Trigger: correction
+Wrong:   Reusing the strongest accent token in document title chips made the visual hierarchy too aggressive for dense card grids
+Correct: Use the lighter accent token variant for high-frequency chips while preserving text contrast
+Rule:    In repeated card UIs, prefer softened accent variants to avoid visual saturation.
+Layer:   frontend

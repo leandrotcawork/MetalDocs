@@ -573,9 +573,9 @@
 }
 
 .docCardHeader {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
   gap: 0.75rem;
 }
 
@@ -604,7 +604,9 @@
   font-size: 0.95rem;
   font-weight: 700;
   line-height: 1.2;
-  white-space: normal;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .docCardHeader .docCardTitleChip {

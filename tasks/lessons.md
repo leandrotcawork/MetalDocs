@@ -284,3 +284,10 @@ Wrong:   Muted borders reduced edge definition of title chips against light canv
 Correct: Use the normal accent border (`--vinho`) while keeping a light accent fill
 Rule:    When chip background is very light, border should stay at primary accent strength for shape clarity.
 Layer:   frontend
+
+## Lesson AN - Card status badges should use fixed right column layout
+Date: 2026-03-23 | Trigger: correction
+Wrong:   Flexible header layouts allowed the status chip (Draft) to drop below title when width got tight
+Correct: Use a two-column header layout (`minmax(0,1fr) auto`) with non-wrapping title chip text and explicit overflow handling
+Rule:    Metadata badges that define workflow state must keep a stable position regardless of title length.
+Layer:   frontend

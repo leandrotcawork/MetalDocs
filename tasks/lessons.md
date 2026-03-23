@@ -270,3 +270,10 @@ Wrong:   The generic selector `.docCardHeader strong` forced white text and over
 Correct: Generic typography selectors should inherit color, while component-specific chip classes define their own foreground
 Rule:    Avoid hardcoding foreground color in broad element selectors when child components need independent color states.
 Layer:   frontend
+
+## Lesson AL - Light red chips should bias toward accent tint, not neutral tint
+Date: 2026-03-23 | Trigger: correction
+Wrong:   Very neutral pastel backgrounds looked desaturated and did not read as vinho/red family
+Correct: Build light chips from the accent hue (`--vinho`) mixed with white, then keep accent-colored text
+Rule:    For recognizable brand hue at low intensity, derive light surfaces from the accent token instead of gray-leaning variants.
+Layer:   frontend

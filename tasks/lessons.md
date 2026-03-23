@@ -298,3 +298,10 @@ Wrong:   Iterating colors and spacing on the existing card preserved the old com
 Correct: When the requested visual introduces a new internal hierarchy, replace the component structure first (hero/header/body) and only then tune tokens
 Rule:    If the mock changes layout semantics, treat it as a component redesign rather than a style adjustment.
 Layer:   frontend
+
+## Lesson AP - Decorative card headers should not inherit interactive body spacing
+Date: 2026-03-23 | Trigger: correction
+Wrong:   Keeping the vinho hero inside the clickable body tied it to the button box model and constrained independent badge alignment
+Correct: Split decorative headers from the interactive body so the hero can own edge-to-edge layout while the body keeps its own clickable spacing
+Rule:    When a card has a decorative hero and a content body, model them as separate layout regions instead of one shared interactive container.
+Layer:   frontend

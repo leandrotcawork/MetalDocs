@@ -792,12 +792,7 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
               {documentsHubMode === "card" ? (
                 <div className={styles.cardGrid}>
                   {collectionDocuments.map((item) => (
-                    <button
-                      key={item.documentId}
-                      type="button"
-                      className={styles.docCard}
-                      onClick={() => handleRecentOpen(item)}
-                    >
+                    <article key={item.documentId} className={styles.docCard}>
                       <div className={styles.docCardHero}>
                         <span aria-hidden="true" className={`${styles.docCardOrb} ${styles.docCardOrbLeft}`} />
                         <span aria-hidden="true" className={`${styles.docCardOrb} ${styles.docCardOrbRight}`} />
@@ -809,42 +804,48 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
                           </span>
                         </div>
                       </div>
-                      <div className={styles.docCardBody}>
-                        <div className={styles.docCardDetails}>
-                          <span><strong>Autor</strong>{userNameById.get(item.ownerId) ?? item.ownerId ?? "-"}</span>
-                          <span><strong>Criado em</strong>{formatDateOnly(item.createdAt)}</span>
-                          <span><strong>Versao</strong>v{item.profileSchemaVersion ?? 1}</span>
+                      <button
+                        type="button"
+                        className={styles.docCardBodyButton}
+                        onClick={() => handleRecentOpen(item)}
+                      >
+                        <div className={styles.docCardBody}>
+                          <div className={styles.docCardDetails}>
+                            <span><strong>Autor</strong>{userNameById.get(item.ownerId) ?? item.ownerId ?? "-"}</span>
+                            <span><strong>Criado em</strong>{formatDateOnly(item.createdAt)}</span>
+                            <span><strong>Versao</strong>v{item.profileSchemaVersion ?? 1}</span>
+                          </div>
+                          <div className={styles.docCardTags}>
+                            <span
+                              className={styles.metaChip}
+                              style={
+                                {
+                                  ["--chip-color" as string]: departmentColorByCode[normalizeToken(item.department)] ?? "#6A5C62",
+                                  ["--chip-soft" as string]: hexToRgba(departmentColorByCode[normalizeToken(item.department)] ?? "#6A5C62", 0.14),
+                                } as React.CSSProperties
+                              }
+                            >
+                              Depto: {item.department || "-"}
+                            </span>
+                            <span
+                              className={styles.metaChipAccent}
+                              style={
+                                {
+                                  ["--chip-color" as string]: areaColorByCode[normalizeAreaCode(item.processArea)] ?? "#6A5C62",
+                                  ["--chip-soft" as string]: hexToRgba(areaColorByCode[normalizeAreaCode(item.processArea)] ?? "#6A5C62", 0.2),
+                                } as React.CSSProperties
+                              }
+                            >
+                              Área — {processAreaNameByCode.get(normalizeAreaCode(item.processArea)) ?? item.processArea ?? "Sem área"}
+                            </span>
+                          </div>
+                          <div className={styles.docCardFooter}>
+                            <span>{profileNameByCode.get(item.documentProfile) ?? item.documentProfile}</span>
+                            <span>{item.expiryAt ? `Revisao: ${props.formatDate(item.expiryAt)}` : "Sem data de revisao"}</span>
+                          </div>
                         </div>
-                        <div className={styles.docCardTags}>
-                          <span
-                            className={styles.metaChip}
-                            style={
-                              {
-                                ["--chip-color" as string]: departmentColorByCode[normalizeToken(item.department)] ?? "#6A5C62",
-                                ["--chip-soft" as string]: hexToRgba(departmentColorByCode[normalizeToken(item.department)] ?? "#6A5C62", 0.14),
-                              } as React.CSSProperties
-                            }
-                          >
-                            Depto: {item.department || "-"}
-                          </span>
-                          <span
-                            className={styles.metaChipAccent}
-                            style={
-                              {
-                                ["--chip-color" as string]: areaColorByCode[normalizeAreaCode(item.processArea)] ?? "#6A5C62",
-                                ["--chip-soft" as string]: hexToRgba(areaColorByCode[normalizeAreaCode(item.processArea)] ?? "#6A5C62", 0.2),
-                              } as React.CSSProperties
-                            }
-                          >
-                            Área — {processAreaNameByCode.get(normalizeAreaCode(item.processArea)) ?? item.processArea ?? "Sem área"}
-                          </span>
-                        </div>
-                        <div className={styles.docCardFooter}>
-                          <span>{profileNameByCode.get(item.documentProfile) ?? item.documentProfile}</span>
-                          <span>{item.expiryAt ? `Revisao: ${props.formatDate(item.expiryAt)}` : "Sem data de revisao"}</span>
-                        </div>
-                      </div>
-                    </button>
+                      </button>
+                    </article>
                   ))}
                   {collectionDocuments.length === 0 && <div className={styles.emptyCard}>Nenhum documento encontrado.</div>}
                 </div>

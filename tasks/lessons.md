@@ -312,3 +312,10 @@ Wrong:   Reducing only the header container height leaves decorative circles, ti
 Correct: When compressing a decorative hero, scale height, paddings, ornaments and typography together
 Rule:    Decorative surfaces must be resized proportionally so visual weight remains balanced after density changes.
 Layer:   frontend
+
+## Lesson AR - Hover motion should animate container, not isolated fragments
+Date: 2026-03-23 | Trigger: correction
+Wrong:   Applying hover only to inner button fragments creates broken motion between hero and body sections
+Correct: Animate the parent card container with shared transform and shadow transitions; keep click feedback as a secondary body state
+Rule:    Split-layout cards must use container-level hover transitions to preserve visual cohesion.
+Layer:   frontend

@@ -568,6 +568,15 @@
   gap: 0;
   box-shadow: var(--shadow-soft);
   overflow: hidden;
+  transition: transform 180ms ease, box-shadow 220ms ease, border-color 180ms ease;
+  will-change: transform;
+}
+
+.docCard:hover,
+.docCard:focus-within {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--vinho) 30%, var(--border));
+  box-shadow: 0 18px 36px rgba(27, 14, 18, 0.16);
 }
 
 .docCardHero {
@@ -675,6 +684,11 @@
   cursor: pointer;
   color: inherit;
   font: inherit;
+  transition: background-color 140ms ease;
+}
+
+.docCardBodyButton:active .docCardBody {
+  background: color-mix(in srgb, var(--surface) 92%, var(--vinho-soft));
 }
 
 .docCardBody {

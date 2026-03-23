@@ -193,3 +193,10 @@ Wrong:   The `documents` insert query added new columns but kept stale placehold
 Correct: When evolving insert statements, recount target columns and placeholder positions together so typed casts stay attached only to the intended JSON fields
 Rule:    Any SQL insert changed for schema evolution must be verified column-by-column against its bound arguments.
 Layer:   infrastructure
+
+## Lesson AA - Collection filters need neutral default state
+Date: 2026-03-23 | Trigger: correction
+Wrong:   All collection status chips shared the same vinho base style, so active and inactive filters looked selected
+Correct: Only the selected filter uses the accent state; inactive filters stay on neutral surface tokens with muted text
+Rule:    Selection controls must encode state through a single active accent and neutral defaults for every unselected option.
+Layer:   frontend

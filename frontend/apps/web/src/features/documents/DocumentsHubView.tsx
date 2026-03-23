@@ -283,6 +283,14 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
     return hydrateRecentDocuments(base, props.documents);
   }, [props.documents, recentDocuments, recentFallback]);
   const profileCounts = useMemo(() => buildDocumentProfileCountMap(scopedDocuments), [scopedDocuments]);
+  const processAreaNameByCode = useMemo(
+    () => new Map(props.processAreas.map((item) => [normalizeAreaCode(item.code), item.name] as const)),
+    [props.processAreas],
+  );
+  const profileNameByCode = useMemo(
+    () => new Map(props.documentProfiles.map((item) => [item.code, item.name] as const)),
+    [props.documentProfiles],
+  );
 
   const areaCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -604,6 +612,7 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
                     >
                       <div className={styles.docCardHeader}>
                         <div className={styles.docCardTitleBlock}>
+                          <span className={styles.docCardKicker}>{item.documentCode || item.documentProfile.toUpperCase()}</span>
                           <strong>{formatDocumentDisplayName(item, props.documentProfiles)}</strong>
                           <span className={styles.docCardId}>{item.documentId}</span>
                         </div>
@@ -611,11 +620,20 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
                       </div>
                       <div className={styles.docCardMeta}>
                         <span className={styles.profilePill}>{item.documentProfile.toUpperCase()}</span>
-                        <span>{item.processArea ?? "Sem area"} · {item.ownerId}</span>
+                        <span>{profileNameByCode.get(item.documentProfile) ?? item.documentProfile}</span>
+                        <span>{processAreaNameByCode.get(normalizeAreaCode(item.processArea)) ?? item.processArea ?? "Sem area"}</span>
+                      </div>
+                      <div className={styles.docCardDetails}>
+                        <span><strong>Autor</strong>{item.ownerId || "-"}</span>
+                        <span><strong>Criado em</strong>{props.formatDate(item.createdAt)}</span>
+                        <span><strong>Versao</strong>v{item.profileSchemaVersion ?? 1}</span>
+                        <span><strong>Departamento</strong>{item.department || "-"}</span>
+                        <span><strong>Processo</strong>{item.businessUnit || "-"}</span>
+                        <span><strong>Vigencia</strong>{item.effectiveAt ? props.formatDate(item.effectiveAt) : "-"}</span>
                       </div>
                       <div className={styles.docCardFooter}>
-                        <span>{item.businessUnit || item.department || "-"}</span>
-                        <span>{item.expiryAt ? `Revisao: ${props.formatDate(item.expiryAt)}` : "-"}</span>
+                        <span>{item.subject || "Sem assunto"}</span>
+                        <span>{item.expiryAt ? `Revisao: ${props.formatDate(item.expiryAt)}` : "Sem data de revisao"}</span>
                       </div>
                     </button>
                   ))}
@@ -639,11 +657,13 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
                     >
                       <span className={styles.listTitle}>
                         <strong>{formatDocumentDisplayName(item, props.documentProfiles)}</strong>
-                        <small>{item.documentId} · {item.processArea ?? "Sem area"}</small>
+                        <small>
+                          {item.documentCode || item.documentId} · {processAreaNameByCode.get(normalizeAreaCode(item.processArea)) ?? item.processArea ?? "Sem area"} · Autor: {item.ownerId}
+                        </small>
                       </span>
                       <span>{item.documentProfile.toUpperCase()}</span>
                       <span>{statusLabel(item.status)}</span>
-                      <span>{item.ownerId}</span>
+                      <span>{item.department || "-"}</span>
                       <span>{item.expiryAt ? props.formatDate(item.expiryAt) : "-"}</span>
                     </button>
                   ))}

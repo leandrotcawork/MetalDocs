@@ -7,12 +7,13 @@ import { type RecentDocumentItem, useDocumentsStore } from "../../store/document
 import { DocumentsHubHeader } from "./DocumentsHubHeader";
 import { buildDocumentsPath, documentsBasePath, parseDocumentsRoute } from "../../routing/workspaceRoutes";
 import styles from "./DocumentsHubView.module.css";
-import type { DocumentListItem, DocumentProfileGovernanceItem, DocumentProfileItem, ProcessAreaItem, SearchDocumentItem } from "../../lib.types";
+import type { DocumentListItem, DocumentProfileGovernanceItem, DocumentProfileItem, ManagedUserItem, ProcessAreaItem, SearchDocumentItem } from "../../lib.types";
 
 type DocumentsHubViewProps = {
   view: "library" | "my-docs" | "recent";
   loadState: "idle" | "loading" | "ready" | "error";
   currentUserId?: string;
+  managedUsers: ManagedUserItem[];
   documents: SearchDocumentItem[];
   documentProfiles: DocumentProfileItem[];
   processAreas: ProcessAreaItem[];
@@ -290,6 +291,10 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
   const profileNameByCode = useMemo(
     () => new Map(props.documentProfiles.map((item) => [item.code, item.name] as const)),
     [props.documentProfiles],
+  );
+  const userNameById = useMemo(
+    () => new Map(props.managedUsers.map((item) => [item.userId, item.displayName] as const)),
+    [props.managedUsers],
   );
 
   const areaCounts = useMemo(() => {
@@ -614,25 +619,18 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
                         <div className={styles.docCardTitleBlock}>
                           <span className={styles.docCardKicker}>{item.documentCode || item.documentProfile.toUpperCase()}</span>
                           <strong>{formatDocumentDisplayName(item, props.documentProfiles)}</strong>
-                          <span className={styles.docCardId}>{item.documentId}</span>
                         </div>
                         <span className={styles.statusChip}>{statusLabel(item.status)}</span>
                       </div>
-                      <div className={styles.docCardMeta}>
-                        <span className={styles.profilePill}>{item.documentProfile.toUpperCase()}</span>
-                        <span>{profileNameByCode.get(item.documentProfile) ?? item.documentProfile}</span>
-                        <span>{processAreaNameByCode.get(normalizeAreaCode(item.processArea)) ?? item.processArea ?? "Sem area"}</span>
-                      </div>
                       <div className={styles.docCardDetails}>
-                        <span><strong>Autor</strong>{item.ownerId || "-"}</span>
+                        <span><strong>Autor</strong>{userNameById.get(item.ownerId) ?? item.ownerId ?? "-"}</span>
                         <span><strong>Criado em</strong>{props.formatDate(item.createdAt)}</span>
                         <span><strong>Versao</strong>v{item.profileSchemaVersion ?? 1}</span>
                         <span><strong>Departamento</strong>{item.department || "-"}</span>
-                        <span><strong>Processo</strong>{item.businessUnit || "-"}</span>
-                        <span><strong>Vigencia</strong>{item.effectiveAt ? props.formatDate(item.effectiveAt) : "-"}</span>
+                        <span><strong>Area</strong>{processAreaNameByCode.get(normalizeAreaCode(item.processArea)) ?? item.processArea ?? "Sem area"}</span>
                       </div>
                       <div className={styles.docCardFooter}>
-                        <span>{item.subject || "Sem assunto"}</span>
+                        <span>{profileNameByCode.get(item.documentProfile) ?? item.documentProfile}</span>
                         <span>{item.expiryAt ? `Revisao: ${props.formatDate(item.expiryAt)}` : "Sem data de revisao"}</span>
                       </div>
                     </button>
@@ -658,7 +656,7 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
                       <span className={styles.listTitle}>
                         <strong>{formatDocumentDisplayName(item, props.documentProfiles)}</strong>
                         <small>
-                          {item.documentCode || item.documentId} · {processAreaNameByCode.get(normalizeAreaCode(item.processArea)) ?? item.processArea ?? "Sem area"} · Autor: {item.ownerId}
+                          {item.documentCode || item.documentId} · {processAreaNameByCode.get(normalizeAreaCode(item.processArea)) ?? item.processArea ?? "Sem area"} · Autor: {userNameById.get(item.ownerId) ?? item.ownerId}
                         </small>
                       </span>
                       <span>{item.documentProfile.toUpperCase()}</span>

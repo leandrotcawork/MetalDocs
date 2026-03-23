@@ -77,6 +77,7 @@ function AppContent() {
     activeView,
     pendingViewNavigation,
     searchQuery,
+    managedUsers,
     setMessage,
     setError,
     setActiveView,
@@ -358,6 +359,7 @@ function AppContent() {
           documentProfiles={documentProfiles}
           processAreas={processAreas}
           documents={visibleDocuments}
+          managedUsers={managedUsers}
           selectedDocument={selectedDocument}
           selectedProfileGovernance={selectedProfileGovernance}
           versions={versions}

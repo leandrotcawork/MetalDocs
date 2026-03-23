@@ -8,6 +8,7 @@ import type {
   DocumentListItem,
   DocumentProfileGovernanceItem,
   DocumentProfileItem,
+  ManagedUserItem,
   ProcessAreaItem,
   SearchDocumentItem,
   VersionDiffResponse,
@@ -21,6 +22,7 @@ type DocumentsWorkspaceViewProps = {
   documentProfiles: DocumentProfileItem[];
   processAreas: ProcessAreaItem[];
   documents: SearchDocumentItem[];
+  managedUsers: ManagedUserItem[];
   selectedDocument: DocumentListItem | null;
   selectedProfileGovernance: DocumentProfileGovernanceItem | null;
   versions: VersionListItem[];
@@ -52,6 +54,7 @@ export function DocumentsWorkspaceView(props: DocumentsWorkspaceViewProps) {
       view={props.view}
       loadState={props.loadState}
       currentUserId={props.currentUserId}
+      managedUsers={props.managedUsers}
       documents={props.documents}
       documentProfiles={props.documentProfiles}
       processAreas={props.processAreas}

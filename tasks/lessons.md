@@ -200,3 +200,10 @@ Wrong:   All collection status chips shared the same vinho base style, so active
 Correct: Only the selected filter uses the accent state; inactive filters stay on neutral surface tokens with muted text
 Rule:    Selection controls must encode state through a single active accent and neutral defaults for every unselected option.
 Layer:   frontend
+
+## Lesson AB - Document cards must resolve user-facing author names
+Date: 2026-03-23 | Trigger: correction
+Wrong:   Collection cards rendered raw `ownerId`, exposing system identifiers instead of the user name registered in IAM
+Correct: Document surfaces should resolve `ownerId` through the managed users directory and only fall back to the identifier when no display name exists
+Rule:    UI metadata shown to users must prefer human-readable directory fields over internal IDs.
+Layer:   frontend

@@ -537,9 +537,9 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 1.25rem;
-  padding: 1rem 1.1rem;
+  padding: 0.95rem 1.05rem;
   display: grid;
-  gap: 0.7rem;
+  gap: 0.55rem;
   cursor: pointer;
   box-shadow: var(--shadow-soft);
 }
@@ -553,7 +553,7 @@
 
 .docCardTitleBlock {
   display: grid;
-  gap: 0.35rem;
+  gap: 0.22rem;
   min-width: 0;
 }
 
@@ -571,8 +571,8 @@
 }
 
 .docCardHeader strong {
-  font-size: 1.05rem;
-  line-height: 1.2;
+  font-size: 1.12rem;
+  line-height: 1.18;
 }
 
 .statusChip {
@@ -585,53 +585,35 @@
   white-space: nowrap;
 }
 
-.docCardMeta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem;
-  font-size: 0.76rem;
-  color: var(--muted);
-  align-items: center;
-}
-
 .docCardDetails {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.55rem 1rem;
-  padding: 0.15rem 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem 0.85rem;
+  padding: 0.05rem 0 0.1rem;
 }
 
 .docCardDetails span {
   display: grid;
-  gap: 0.14rem;
-  font-size: 0.78rem;
+  gap: 0.08rem;
+  font-size: 0.76rem;
   color: var(--muted);
 }
 
 .docCardDetails strong {
-  font-size: 0.64rem;
+  font-size: 0.62rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08rem;
   color: var(--text);
 }
 
-.docCardId {
-  font-size: 0.69rem;
-  color: var(--muted);
-  font-family: "DM Mono", Consolas, monospace;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .docCardFooter {
   display: flex;
   justify-content: space-between;
   gap: 0.8rem;
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   color: var(--muted);
-  padding-top: 0.35rem;
+  padding-top: 0.28rem;
   border-top: 1px solid rgba(136, 96, 106, 0.14);
 }
 
@@ -858,7 +840,7 @@
   }
 
   .docCardDetails {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .listHeader,
@@ -924,6 +906,10 @@
   .collectionCreateButton {
     flex: 1;
     justify-content: center;
+  }
+
+  .docCardDetails {
+    grid-template-columns: 1fr;
   }
 
   .hub {

@@ -5,9 +5,9 @@
   border-radius: 14px;
   border: 1px solid var(--border);
   background: var(--surface);
-  padding: 0.35rem 0.75rem;
-  min-width: 320px;
-  max-width: 520px;
+  padding: 0.2rem 0.7rem;
+  min-width: 380px;
+  max-width: 620px;
   width: 100%;
 }
 

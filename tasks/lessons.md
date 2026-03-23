@@ -130,3 +130,10 @@ Wrong:   Keeping subtitle text in compact mode still produced an oversized heade
 Correct: Hide subtitle and reduce title size in compact mode
 Rule:    Compact variants must remove secondary copy, not just shrink padding.
 Layer:   frontend
+
+## Lesson R - Sparse list screens expose oversized section padding
+Date: 2026-03-23 | Trigger: correction
+Wrong:   Reusing generous section padding on collection screens made low-volume datasets look structurally larger than dense ones
+Correct: Tighten top padding and inter-block gap for sparse collection layouts
+Rule:    Screen density must be evaluated with both empty and sparse datasets, not only full lists.
+Layer:   frontend

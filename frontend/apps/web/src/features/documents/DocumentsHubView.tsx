@@ -626,8 +626,12 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
                         <span><strong>Autor</strong>{userNameById.get(item.ownerId) ?? item.ownerId ?? "-"}</span>
                         <span><strong>Criado em</strong>{props.formatDate(item.createdAt)}</span>
                         <span><strong>Versao</strong>v{item.profileSchemaVersion ?? 1}</span>
-                        <span><strong>Departamento</strong>{item.department || "-"}</span>
-                        <span><strong>Area</strong>{processAreaNameByCode.get(normalizeAreaCode(item.processArea)) ?? item.processArea ?? "Sem area"}</span>
+                      </div>
+                      <div className={styles.docCardTags}>
+                        <span className={styles.metaChip}>Departamento: {item.department || "-"}</span>
+                        <span className={styles.metaChipAccent}>
+                          Area: {processAreaNameByCode.get(normalizeAreaCode(item.processArea)) ?? item.processArea ?? "Sem area"}
+                        </span>
                       </div>
                       <div className={styles.docCardFooter}>
                         <span>{profileNameByCode.get(item.documentProfile) ?? item.documentProfile}</span>

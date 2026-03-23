@@ -607,6 +607,31 @@
   color: var(--text);
 }
 
+.docCardTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.metaChip,
+.metaChipAccent {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0.34rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 0.72rem;
+  color: var(--muted);
+  background: var(--surface);
+}
+
+.metaChipAccent {
+  background: rgba(157, 35, 53, 0.08);
+  border-color: rgba(157, 35, 53, 0.22);
+  color: var(--vinho);
+}
+
 .docCardFooter {
   display: flex;
   justify-content: space-between;

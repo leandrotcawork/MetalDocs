@@ -207,3 +207,10 @@ Wrong:   Collection cards rendered raw `ownerId`, exposing system identifiers in
 Correct: Document surfaces should resolve `ownerId` through the managed users directory and only fall back to the identifier when no display name exists
 Rule:    UI metadata shown to users must prefer human-readable directory fields over internal IDs.
 Layer:   frontend
+
+## Lesson AC - Classification metadata reads better as chips
+Date: 2026-03-23 | Trigger: correction
+Wrong:   Area and department were rendered as plain text fields inside the metadata grid, competing with temporal metadata and making the card heavier
+Correct: Short classification attributes such as area and department should be rendered as chips so the card keeps hierarchy: title first, facts second, classification tags third
+Rule:    Use chips for compact categorical metadata and reserve label/value rows for descriptive fields.
+Layer:   frontend

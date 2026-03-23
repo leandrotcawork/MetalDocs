@@ -490,25 +490,25 @@ Notes
 - Escopo inicial: Workspace + DocumentsHub (overview/collection/detail).
 
 ## Tasks
-- [ ] T1: ADR da navegacao por URL
+- [x] T1: ADR da navegacao por URL
       - Decisao: HashRouter agora; criterios para BrowserRouter depois
       - Mapa de rotas e regras de push/replace
       commit: `docs(adr): ADR-0019 frontend url routing (hash router)`
 
-- [ ] T2: Router base + sync de views
+- [x] T2: Router base + sync de views
       - Adicionar `react-router-dom`
       - Envelopar app no router
       - `activeView` passa a ser derivado da URL
       commit: `feat(frontend-nav): add url router for workspace views`
 
-- [ ] T3: DocumentsHub com URL
+- [x] T3: DocumentsHub com URL
       - Rotas para overview/collection/detail
       - Query params para status/mode/search
       - Regras de push vs replace
       commit: `feat(frontend-docs): sync documents hub state to url`
 
 ## Acceptance tests
-- [ ] `cd frontend/apps/web; npm.cmd run build`
+- [x] `cd frontend/apps/web; npm.cmd run build`
 - [ ] `cd frontend/apps/web; npm run e2e:smoke`
 - [ ] Manual: navegar overview -> collection -> detail; usar back/forward do browser
 

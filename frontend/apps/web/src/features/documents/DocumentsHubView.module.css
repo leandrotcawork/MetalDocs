@@ -29,16 +29,21 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: nowrap;
   gap: 1.5rem;
 }
 
 .heroCopy {
+  flex: 1 1 auto;
+  min-width: 0;
   display: grid;
   gap: 0.35rem;
 }
 
 .headerSearch {
-  max-width: 420px;
+  flex: 0 0 620px;
+  max-width: 620px;
+  min-width: 420px;
 }
 
 .eyebrow {

@@ -11,10 +11,12 @@ export function DocumentsHubHeader(props: DocumentsHubHeaderProps) {
   return (
     <header className={styles.pageHeader}>
       <div className={styles.hero}>
-        <h1 className={styles.title}>{props.title}</h1>
-        <p className={styles.subtitle}>
-          Acervo organizado por areas, tipos e status. Navegue pelos documentos mais relevantes.
-        </p>
+        <div className={styles.heroCopy}>
+          <h1 className={styles.title}>{props.title}</h1>
+          <p className={styles.subtitle}>
+            Acervo organizado por areas, tipos e status. Navegue pelos documentos mais relevantes.
+          </p>
+        </div>
         <div className={styles.headerSearch}>
           <SearchBar value={props.searchQuery} onChange={props.onSearchQueryChange} />
         </div>

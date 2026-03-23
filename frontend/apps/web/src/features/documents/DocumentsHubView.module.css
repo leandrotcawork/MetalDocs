@@ -2,6 +2,7 @@
   display: grid;
   gap: 0;
   color: var(--text);
+  align-content: start;
 }
 
 .pageHeader {

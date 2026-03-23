@@ -151,3 +151,10 @@ Wrong:   Collection headers and tabs shared the same container as the list, so s
 Correct: Wrap header + tabs in a dedicated intro block and render the list in a separate body container
 Rule:    Collection screens should isolate their header region from the list to keep positioning stable across content sizes.
 Layer:   frontend
+
+## Lesson U - Grid pages must opt out of stretch packing
+Date: 2026-03-23 | Trigger: correction
+Wrong:   A page-level CSS grid with auto rows stretched to fill the viewport, creating a huge blank "header" area on sparse screens
+Correct: Set `align-content: start` on page grids so rows keep intrinsic height and content starts directly below the topbar/header
+Rule:    When a grid container can stretch to viewport height, explicitly control `align-content` to prevent unintended vertical spacing.
+Layer:   frontend

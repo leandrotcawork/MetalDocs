@@ -526,35 +526,32 @@
   border-color: var(--vinho);
 }
 
+.collectionControlRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+}
+
 .collectionFilterBar {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
 }
 
-.filterControl {
-  display: grid;
-  gap: 0.32rem;
+.collectionFilterBar :global(.spotlight-select) {
+  min-width: 196px;
 }
 
-.filterControl span {
-  font-size: 0.66rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08rem;
-  color: var(--muted);
+.collectionFilterBar :global(.spotlight-select-trigger) {
+  min-height: 40px;
+  border-radius: 0.8rem;
 }
 
-.filterControl select {
-  width: 100%;
-  min-height: 42px;
-  border-radius: 0.9rem;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
-  padding: 0 0.9rem;
-  font-size: 0.82rem;
-  box-shadow: var(--shadow-soft);
+.collectionFilterBar :global(.spotlight-select-value) {
+  font-size: 0.78rem;
 }
 
 .cardGrid {
@@ -591,7 +588,7 @@
 .docCardHeader strong {
   font-size: 1.12rem;
   line-height: 1.18;
-  color: var(--vinho);
+  color: #fff;
 }
 
 .docCardTitleChip {
@@ -654,16 +651,16 @@
   min-height: 28px;
   padding: 0.34rem 0.7rem;
   border-radius: 999px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--chip-color, #6A5C62);
   font-size: 0.72rem;
-  color: var(--muted);
-  background: var(--surface);
+  color: var(--chip-color, #6A5C62);
+  background: var(--chip-soft, rgba(106, 92, 98, 0.14));
 }
 
 .metaChipAccent {
-  background: rgba(157, 35, 53, 0.08);
-  border-color: rgba(157, 35, 53, 0.22);
-  color: var(--vinho);
+  background: var(--chip-soft, rgba(106, 92, 98, 0.2));
+  border-color: var(--chip-color, #6A5C62);
+  color: var(--chip-color, #6A5C62);
 }
 
 .docCardFooter {
@@ -894,10 +891,6 @@
 }
 
 @media (max-width: 1100px) {
-  .collectionFilterBar {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .cardGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -927,8 +920,12 @@
     justify-content: space-between;
   }
 
+  .collectionControlRow {
+    align-items: stretch;
+  }
+
   .collectionFilterBar {
-    grid-template-columns: 1fr;
+    width: 100%;
   }
 
   .listHeader {

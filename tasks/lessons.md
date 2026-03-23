@@ -235,3 +235,10 @@ Wrong:   Collection-only filters and ordering would exist only in transient comp
 Correct: Status, mode, department, area filter and sort order should all round-trip through `URLSearchParams`
 Rule:    In URL-driven screens, any user control that changes the visible result set should be serializable in the URL.
 Layer:   frontend
+
+## Lesson AG - Reuse project dropdown primitives in feature filters
+Date: 2026-03-23 | Trigger: correction
+Wrong:   Collection filters used ad-hoc native `select` controls, diverging from the workspace UI pattern
+Correct: Feature filters should use `FilterDropdown`/`SelectMenu` primitives and align with existing control bars
+Rule:    Do not introduce parallel form controls when the design system already provides an equivalent component.
+Layer:   frontend

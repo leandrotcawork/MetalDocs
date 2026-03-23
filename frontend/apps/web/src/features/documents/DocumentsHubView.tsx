@@ -4,6 +4,7 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { metalNobreProcessAreaHint } from "./adapters/metalNobreExperience";
 import { formatDocumentDisplayName } from "../shared/documentDisplay";
 import { type RecentDocumentItem, useDocumentsStore } from "../../store/documents.store";
+import { FilterDropdown, type SelectMenuOption } from "../../components/ui/FilterDropdown";
 import { DocumentsHubHeader } from "./DocumentsHubHeader";
 import { buildDocumentsPath, documentsBasePath, parseDocumentsRoute } from "../../routing/workspaceRoutes";
 import styles from "./DocumentsHubView.module.css";
@@ -126,6 +127,50 @@ function normalizeHubMode(value: string | null): HubMode {
 function normalizeCollectionSort(value: string | null): CollectionSort {
   if (value === "created-asc" || value === "code-asc" || value === "code-desc") return value;
   return "created-desc";
+}
+
+function formatDateOnly(value?: string): string {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleDateString("pt-BR");
+}
+
+function normalizeToken(value?: string): string {
+  return (value ?? "").trim().toLowerCase();
+}
+
+const departmentColorByCode: Record<string, string> = {
+  operacoes: "#2D5DAD",
+  qualidade: "#1F7A45",
+  quality: "#1F7A45",
+  comercial: "#9D2335",
+  commercial: "#9D2335",
+  financeiro: "#8A5800",
+  finance: "#8A5800",
+  logistica: "#2B5C8A",
+  logistics: "#2B5C8A",
+  compras: "#6B3A9C",
+  purchasing: "#6B3A9C",
+};
+
+const areaColorByCode: Record<string, string> = {
+  quality: "#1F7A45",
+  marketplaces: "#6B3A9C",
+  commercial: "#9D2335",
+  purchasing: "#8A5800",
+  logistics: "#2B5C8A",
+  finance: "#B4541A",
+  "sem-area": "#6A5C62",
+};
+
+function hexToRgba(hex: string, alpha: number): string {
+  const value = hex.replace("#", "");
+  if (!/^[0-9a-fA-F]{6}$/.test(value)) return `rgba(106, 92, 98, ${alpha})`;
+  const red = Number.parseInt(value.slice(0, 2), 16);
+  const green = Number.parseInt(value.slice(2, 4), 16);
+  const blue = Number.parseInt(value.slice(4, 6), 16);
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
 }
 
 function compareDocumentCode(
@@ -344,6 +389,32 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
         return leftLabel.localeCompare(rightLabel);
       }),
     [processAreaNameByCode, scopedDocuments],
+  );
+  const departmentFilterOptions = useMemo<SelectMenuOption[]>(
+    () => [
+      { value: "all", label: "Departamento: todos" },
+      ...departmentOptions.map((department) => ({ value: department, label: department })),
+    ],
+    [departmentOptions],
+  );
+  const areaFilterOptions = useMemo<SelectMenuOption[]>(
+    () => [
+      { value: "all", label: "Area: todas" },
+      ...areaOptions.map((areaCode) => ({
+        value: areaCode,
+        label: processAreaNameByCode.get(areaCode) ?? areaCode,
+      })),
+    ],
+    [areaOptions, processAreaNameByCode],
+  );
+  const sortOptions = useMemo<SelectMenuOption[]>(
+    () => [
+      { value: "created-desc", label: "Criacao mais recente" },
+      { value: "created-asc", label: "Criacao mais antiga" },
+      { value: "code-asc", label: "Codigo menor para maior" },
+      { value: "code-desc", label: "Codigo maior para menor" },
+    ],
+    [],
   );
 
   const areaCounts = useMemo(() => {
@@ -687,42 +758,33 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
                 </div>
               </div>
 
-            <div className={styles.tabRow}>
-              <button type="button" className={documentsHubStatus === "all" ? styles.tabActive : styles.tab} onClick={() => handleStatusChange("all")}>Todos ({tabCounts.all})</button>
-              <button type="button" className={documentsHubStatus === "draft" ? styles.tabActive : styles.tab} onClick={() => handleStatusChange("draft")}>Draft ({tabCounts.draft})</button>
-              <button type="button" className={documentsHubStatus === "review" ? styles.tabActive : styles.tab} onClick={() => handleStatusChange("review")}>Em revisao ({tabCounts.review})</button>
-              <button type="button" className={documentsHubStatus === "approved" ? styles.tabActive : styles.tab} onClick={() => handleStatusChange("approved")}>Aprovados ({tabCounts.approved})</button>
-            </div>
-            <div className={styles.collectionFilterBar}>
-              <label className={styles.filterControl}>
-                <span>Departamento</span>
-                <select value={queryDepartment} onChange={(event) => handleDepartmentFilterChange(event.target.value)}>
-                  <option value="all">Todos</option>
-                  {departmentOptions.map((department) => (
-                    <option key={department} value={department}>{department}</option>
-                  ))}
-                </select>
-              </label>
-              <label className={styles.filterControl}>
-                <span>Area</span>
-                <select value={queryAreaFilter} onChange={(event) => handleAreaFilterChange(event.target.value)}>
-                  <option value="all">Todas</option>
-                  {areaOptions.map((areaCode) => (
-                    <option key={areaCode} value={areaCode}>
-                      {processAreaNameByCode.get(areaCode) ?? areaCode}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className={styles.filterControl}>
-                <span>Ordenar por</span>
-                <select value={querySort} onChange={(event) => handleSortChange(event.target.value as CollectionSort)}>
-                  <option value="created-desc">Criacao mais recente</option>
-                  <option value="created-asc">Criacao mais antiga</option>
-                  <option value="code-asc">Codigo menor para maior</option>
-                  <option value="code-desc">Codigo maior para menor</option>
-                </select>
-              </label>
+            <div className={styles.collectionControlRow}>
+              <div className={styles.tabRow}>
+                <button type="button" className={documentsHubStatus === "all" ? styles.tabActive : styles.tab} onClick={() => handleStatusChange("all")}>Todos ({tabCounts.all})</button>
+                <button type="button" className={documentsHubStatus === "draft" ? styles.tabActive : styles.tab} onClick={() => handleStatusChange("draft")}>Draft ({tabCounts.draft})</button>
+                <button type="button" className={documentsHubStatus === "review" ? styles.tabActive : styles.tab} onClick={() => handleStatusChange("review")}>Em revisao ({tabCounts.review})</button>
+                <button type="button" className={documentsHubStatus === "approved" ? styles.tabActive : styles.tab} onClick={() => handleStatusChange("approved")}>Aprovados ({tabCounts.approved})</button>
+              </div>
+              <div className={styles.collectionFilterBar}>
+                <FilterDropdown
+                  id="collection-department-filter"
+                  options={departmentFilterOptions}
+                  value={queryDepartment}
+                  onSelect={handleDepartmentFilterChange}
+                />
+                <FilterDropdown
+                  id="collection-area-filter"
+                  options={areaFilterOptions}
+                  value={queryAreaFilter}
+                  onSelect={handleAreaFilterChange}
+                />
+                <FilterDropdown
+                  id="collection-sort-filter"
+                  options={sortOptions}
+                  value={querySort}
+                  onSelect={(value) => handleSortChange(value as CollectionSort)}
+                />
+              </div>
             </div>
             </div>
 
@@ -744,12 +806,30 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
                       </div>
                       <div className={styles.docCardDetails}>
                         <span><strong>Autor</strong>{userNameById.get(item.ownerId) ?? item.ownerId ?? "-"}</span>
-                        <span><strong>Criado em</strong>{props.formatDate(item.createdAt)}</span>
+                        <span><strong>Criado em</strong>{formatDateOnly(item.createdAt)}</span>
                         <span><strong>Versao</strong>v{item.profileSchemaVersion ?? 1}</span>
                       </div>
                       <div className={styles.docCardTags}>
-                        <span className={styles.metaChip}>Departamento: {item.department || "-"}</span>
-                        <span className={styles.metaChipAccent}>
+                        <span
+                          className={styles.metaChip}
+                          style={
+                            {
+                              ["--chip-color" as string]: departmentColorByCode[normalizeToken(item.department)] ?? "#6A5C62",
+                              ["--chip-soft" as string]: hexToRgba(departmentColorByCode[normalizeToken(item.department)] ?? "#6A5C62", 0.14),
+                            } as React.CSSProperties
+                          }
+                        >
+                          Departamento: {item.department || "-"}
+                        </span>
+                        <span
+                          className={styles.metaChipAccent}
+                          style={
+                            {
+                              ["--chip-color" as string]: areaColorByCode[normalizeAreaCode(item.processArea)] ?? "#6A5C62",
+                              ["--chip-soft" as string]: hexToRgba(areaColorByCode[normalizeAreaCode(item.processArea)] ?? "#6A5C62", 0.2),
+                            } as React.CSSProperties
+                          }
+                        >
                           Area: {processAreaNameByCode.get(normalizeAreaCode(item.processArea)) ?? item.processArea ?? "Sem area"}
                         </span>
                       </div>

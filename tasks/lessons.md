@@ -249,3 +249,10 @@ Wrong:   Reusing the strongest accent token in document title chips made the vis
 Correct: Use the lighter accent token variant for high-frequency chips while preserving text contrast
 Rule:    In repeated card UIs, prefer softened accent variants to avoid visual saturation.
 Layer:   frontend
+
+## Lesson AI - Pastel accent chips still need contrast-safe text
+Date: 2026-03-23 | Trigger: correction
+Wrong:   Simply lightening chip backgrounds without adjusting text color can reduce readability
+Correct: When using `--vinho-muted` for chip backgrounds, pair with `--vinho-d` text and a supporting border
+Rule:    Any lighter accent surface must explicitly define a darker foreground for consistent readability.
+Layer:   frontend

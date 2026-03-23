@@ -256,3 +256,10 @@ Wrong:   Simply lightening chip backgrounds without adjusting text color can red
 Correct: When using `--vinho-muted` for chip backgrounds, pair with `--vinho-d` text and a supporting border
 Rule:    Any lighter accent surface must explicitly define a darker foreground for consistent readability.
 Layer:   frontend
+
+## Lesson AJ - Tone-on-tone chips should follow established token pairs
+Date: 2026-03-23 | Trigger: correction
+Wrong:   Using custom pastel mixes in title chips can drift from the visual pattern already used by classification chips
+Correct: For tone-on-tone vinho chips, prefer `--vinho-soft` background, `--vinho` text and `--vinho-muted` border
+Rule:    When a visual pattern already exists in the screen, reuse the same token trio to keep components cohesive.
+Layer:   frontend

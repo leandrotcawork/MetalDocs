@@ -598,9 +598,9 @@
   max-width: 100%;
   padding: 0.36rem 0.7rem;
   border-radius: 999px;
-  background: var(--vinho-muted);
-  color: var(--vinho-d);
-  border: 1px solid color-mix(in srgb, var(--vinho-muted) 76%, var(--vinho) 24%);
+  background: var(--vinho-soft);
+  color: var(--vinho);
+  border: 1px solid var(--vinho-muted);
   font-size: 0.95rem;
   font-weight: 700;
   line-height: 1.2;

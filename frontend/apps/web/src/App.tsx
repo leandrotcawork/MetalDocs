@@ -1,4 +1,5 @@
-import { Component, useCallback, useEffect } from "react";
+import { Component, useCallback, useEffect, useMemo, useRef } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "./lib.api";
 import { AuthShell } from "./components/AuthShell";
 import { DocumentCreateView } from "./components/DocumentCreateView";
@@ -18,6 +19,7 @@ import { statusOf } from "./features/shared/errors";
 import { DocumentsWorkspaceView } from "./features/documents/DocumentsWorkspaceView";
 import { RegistryExplorerView } from "./features/registry/RegistryExplorerView";
 import { WorkspaceShell } from "./features/shell/WorkspaceShell";
+import { isPathForView, pathFromView, viewFromPath } from "./routing/workspaceRoutes";
 
 type PolicyScope = "document" | "document_type" | "area";
 
@@ -80,6 +82,10 @@ function AppContent() {
     setSearchQuery,
   } = useUiStore();
 
+  const location = useLocation();
+  const navigate = useNavigate();
+  const navSourceRef = useRef<"url" | "store" | null>(null);
+
   const registry = useRegistryExplorer(() => documentsWorkspace.refreshWorkspace(user));
   const documentsWorkspace = useDocumentsWorkspace(registry.applyDocumentProfile, registry.prefetchProfile);
   const notificationsApi = useNotifications();
@@ -126,6 +132,7 @@ function AppContent() {
     (event: React.FormEvent<HTMLFormElement>) => handleCreateDocumentInternal(event, user),
     [handleCreateDocumentInternal, user],
   );
+
   const handleBackToCreate = useCallback(() => {
     if (selectedDocument) {
       setDocumentForm((current) => ({
@@ -183,6 +190,40 @@ function AppContent() {
     : activeView === "recent"
       ? [...documents].sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
       : documents;
+
+  const locationView = useMemo(() => viewFromPath(location.pathname), [location.pathname]);
+
+  useEffect(() => {
+    if (locationView === "admin" && !isAdmin) {
+      if (location.pathname !== "/") {
+        navSourceRef.current = "url";
+        navigate("/", { replace: true });
+      }
+      return;
+    }
+
+    if (locationView !== activeView) {
+      navSourceRef.current = "url";
+      setActiveView(locationView);
+    }
+  }, [activeView, isAdmin, location.pathname, locationView, navigate, setActiveView]);
+
+  useEffect(() => {
+    if (navSourceRef.current === "url") {
+      navSourceRef.current = null;
+      return;
+    }
+
+    if (isPathForView(location.pathname, activeView)) {
+      return;
+    }
+
+    const targetPath = pathFromView(activeView);
+    if (targetPath !== location.pathname) {
+      navSourceRef.current = "store";
+      navigate(targetPath);
+    }
+  }, [activeView, location.pathname, navigate]);
 
   useEffect(() => {
     void bootstrap();

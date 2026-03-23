@@ -319,3 +319,10 @@ Wrong:   Applying hover only to inner button fragments creates broken motion bet
 Correct: Animate the parent card container with shared transform and shadow transitions; keep click feedback as a secondary body state
 Rule:    Split-layout cards must use container-level hover transitions to preserve visual cohesion.
 Layer:   frontend
+
+## Lesson AS - Hero title scale should remain prominent after density reductions
+Date: 2026-03-23 | Trigger: correction
+Wrong:   Shrinking the hero reduced title font too aggressively and weakened hierarchy
+Correct: Keep compact hero spacing but preserve a larger title size for card identity
+Rule:    In compact card headers, reduce spacing before reducing primary title typography.
+Layer:   frontend

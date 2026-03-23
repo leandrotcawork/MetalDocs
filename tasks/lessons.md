@@ -221,3 +221,10 @@ Wrong:   `DocumentsHubView` declared `useCallback` hooks after `loading` and `er
 Correct: All hooks must be declared before any conditional return path; only rendered JSX may vary by state
 Rule:    In React components, never place hooks below an early return that can run on some renders but not others.
 Layer:   frontend
+
+## Lesson AE - Card titles need explicit accent color
+Date: 2026-03-23 | Trigger: correction
+Wrong:   The collection card title relied on inherited text color, which made the main document name visually disappear in some states
+Correct: Primary card titles must declare an explicit accent/text color in the component CSS
+Rule:    Critical text hierarchy must never depend on inherited color when the parent can be interactive or theme-variant.
+Layer:   frontend

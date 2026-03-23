@@ -573,6 +573,7 @@
 .docCardHeader strong {
   font-size: 1.12rem;
   line-height: 1.18;
+  color: var(--vinho);
 }
 
 .statusChip {

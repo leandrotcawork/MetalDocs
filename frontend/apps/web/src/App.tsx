@@ -198,12 +198,10 @@ function AppContent() {
       navigate("/", { replace: true });
       return;
     }
-    navSourceRef.current = "store";
     navigate(pathFromView(nextView));
   }, [isAdmin, navigate]);
 
   const handlePrimaryAction = useCallback(() => {
-    navSourceRef.current = "store";
     navigate(pathFromView("create"));
   }, [navigate]);
 

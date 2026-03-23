@@ -172,3 +172,10 @@ Wrong:   URL->store effect always overrode `activeView` from `locationView`, clo
 Correct: While a store-driven navigation is in flight, skip URL->store overwrite until `locationView === activeView`, then clear the navigation source flag
 Rule:    Bidirectional router sync needs explicit source guards to avoid race conditions and view reversion.
 Layer:   frontend
+
+## Lesson X - Route-first actions must not impersonate store-driven navigation
+Date: 2026-03-23 | Trigger: correction
+Wrong:   Sidebar and primary CTA set the "store navigation" guard even though they already navigated directly by URL, so the sync layer restored the previous route
+Correct: Reserve the store-navigation guard only for flows that change `activeView` before route update; route-first clicks should call `navigate(...)` without setting that guard
+Rule:    In mixed navigation systems, route-first and store-first transitions need distinct sync paths.
+Layer:   frontend

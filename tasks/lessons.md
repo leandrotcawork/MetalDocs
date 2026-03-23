@@ -277,3 +277,10 @@ Wrong:   Very neutral pastel backgrounds looked desaturated and did not read as 
 Correct: Build light chips from the accent hue (`--vinho`) mixed with white, then keep accent-colored text
 Rule:    For recognizable brand hue at low intensity, derive light surfaces from the accent token instead of gray-leaning variants.
 Layer:   frontend
+
+## Lesson AM - Tone-on-tone chips still need primary border contrast
+Date: 2026-03-23 | Trigger: correction
+Wrong:   Muted borders reduced edge definition of title chips against light canvas backgrounds
+Correct: Use the normal accent border (`--vinho`) while keeping a light accent fill
+Rule:    When chip background is very light, border should stay at primary accent strength for shape clarity.
+Layer:   frontend

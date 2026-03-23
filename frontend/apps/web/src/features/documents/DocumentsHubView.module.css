@@ -600,7 +600,7 @@
   border-radius: 999px;
   background: color-mix(in srgb, var(--vinho) 18%, #ffffff);
   color: var(--vinho);
-  border: 1px solid var(--vinho-muted);
+  border: 1px solid var(--vinho);
   font-size: 0.95rem;
   font-weight: 700;
   line-height: 1.2;

@@ -358,27 +358,38 @@
 }
 
 .collection {
-  display: grid;
-  gap: 1.2rem;
   padding: 2.5rem 2.8rem 3rem;
+}
+
+.collectionShell {
+  display: grid;
+  gap: 1rem;
+  max-width: 1120px;
+  margin: 0 auto;
 }
 
 .collectionHeader {
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 1.5rem;
+}
+
+.collectionIntro {
+  display: grid;
+  gap: 0.55rem;
 }
 
 .collectionHeader h2 {
-  margin: 0.4rem 0 0;
-  font-size: 1.6rem;
+  margin: 0;
+  font-size: 2rem;
   font-weight: 600;
+  letter-spacing: -0.03em;
 }
 
 .collectionHeader h2 span {
   color: var(--muted);
-  font-size: 0.95rem;
+  font-size: 1.1rem;
   font-weight: 500;
 }
 
@@ -404,21 +415,34 @@
   gap: 0.6rem;
 }
 
+.collectionCreateButton {
+  border: 0;
+  border-radius: 14px;
+  background: var(--vinho);
+  color: #fff;
+  padding: 0.72rem 1.05rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow-soft);
+}
+
 .viewToggle {
   display: inline-flex;
   border: 1px solid var(--border);
   background: var(--surface);
-  border-radius: 999px;
-  padding: 0.2rem;
+  border-radius: 14px;
+  padding: 0.25rem;
   gap: 0.2rem;
+  box-shadow: var(--shadow-soft);
 }
 
 .viewToggle button {
   border: 0;
   background: transparent;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
   color: var(--muted);
   cursor: pointer;
 }
@@ -433,6 +457,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.6rem;
+  align-items: center;
 }
 
 .tab,
@@ -440,71 +465,103 @@
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--surface);
-  padding: 0.35rem 0.8rem;
-  font-size: 0.75rem;
+  padding: 0.55rem 0.95rem;
+  font-size: 0.82rem;
   cursor: pointer;
+  box-shadow: var(--shadow-soft);
 }
 
 .tabActive {
-  background: var(--text);
+  background: #241313;
   color: #fff;
-  border-color: var(--text);
+  border-color: #241313;
 }
 
 .cardGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
+  gap: 0.85rem;
 }
 
 .docCard {
   text-align: left;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 1rem;
-  padding: 1rem 1.2rem;
+  border-radius: 1.25rem;
+  padding: 1rem 1.1rem;
   display: grid;
-  gap: 0.6rem;
+  gap: 0.7rem;
   cursor: pointer;
+  box-shadow: var(--shadow-soft);
 }
 
 .docCardHeader {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.75rem;
+}
+
+.docCardTitleBlock {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
 }
 
 .docCardHeader strong {
-  font-size: 0.95rem;
+  font-size: 1.02rem;
+  line-height: 1.15;
 }
 
 .statusChip {
   border-radius: 999px;
-  padding: 0.2rem 0.6rem;
+  padding: 0.24rem 0.62rem;
   background: var(--surface-2);
-  font-size: 0.7rem;
+  border: 1px solid var(--border);
+  font-size: 0.68rem;
   color: var(--muted);
+  white-space: nowrap;
 }
 
 .docCardMeta {
   display: flex;
-  gap: 0.8rem;
-  font-size: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  font-size: 0.76rem;
   color: var(--muted);
+  align-items: center;
 }
 
 .docCardId {
-  font-size: 0.7rem;
+  font-size: 0.69rem;
   color: var(--muted);
   font-family: "DM Mono", Consolas, monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .docCardFooter {
   display: flex;
   justify-content: space-between;
-  font-size: 0.72rem;
+  gap: 0.8rem;
+  font-size: 0.74rem;
   color: var(--muted);
+  padding-top: 0.1rem;
+}
+
+.profilePill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 20px;
+  padding: 0 0.38rem;
+  border-radius: 6px;
+  background: rgba(45, 93, 173, 0.1);
+  color: #2d5dad;
+  font-size: 0.65rem;
+  font-weight: 700;
 }
 
 .listTable {
@@ -728,7 +785,11 @@
 
   .collectionHeader {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
+  }
+
+  .collectionActions {
+    justify-content: space-between;
   }
 
   .listHeader {
@@ -763,6 +824,11 @@
 
   .headerSearch {
     width: 100%;
+  }
+
+  .collectionCreateButton {
+    flex: 1;
+    justify-content: center;
   }
 
   .hub {

@@ -81,3 +81,10 @@ Wrong:   Returning early before calling all hooks caused "Rendered more hooks th
 Correct: Ensure every render executes the same hooks in the same order; move early-return UI below hook declarations or split into wrapper components
 Rule:    React hooks must be called unconditionally and in a stable order across renders.
 Layer:   frontend
+
+## Lesson K - Collection screens need a local content shell
+Date: 2026-03-22 | Trigger: correction
+Wrong:   Rendering collection views directly on the full workspace canvas made hierarchy, spacing, and actions feel scattered
+Correct: Use a centered collection shell with local header, tabs, actions, and dense cards inside the page body
+Rule:    Secondary catalog screens should own a constrained internal layout instead of relying on raw page padding.
+Layer:   frontend

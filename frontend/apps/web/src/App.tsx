@@ -304,6 +304,7 @@ function AppContent() {
           currentUserId={user?.userId}
           formatDate={formatDate}
           onSearchQueryChange={setSearchQuery}
+          onCreateDocument={() => setActiveView("create")}
           onRefreshWorkspace={refreshWorkspace}
           onOpenDocument={openDocument}
           onOpenDocumentForHub={openDocumentForHub}

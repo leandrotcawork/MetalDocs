@@ -291,3 +291,10 @@ Wrong:   Flexible header layouts allowed the status chip (Draft) to drop below t
 Correct: Use a two-column header layout (`minmax(0,1fr) auto`) with non-wrapping title chip text and explicit overflow handling
 Rule:    Metadata badges that define workflow state must keep a stable position regardless of title length.
 Layer:   frontend
+
+## Lesson AO - Mock-driven UI changes require structural replacement, not palette tweaks
+Date: 2026-03-23 | Trigger: correction
+Wrong:   Iterating colors and spacing on the existing card preserved the old composition instead of matching the requested mock
+Correct: When the requested visual introduces a new internal hierarchy, replace the component structure first (hero/header/body) and only then tune tokens
+Rule:    If the mock changes layout semantics, treat it as a component redesign rather than a style adjustment.
+Layer:   frontend

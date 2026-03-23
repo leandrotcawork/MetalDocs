@@ -326,3 +326,10 @@ Wrong:   Shrinking the hero reduced title font too aggressively and weakened hie
 Correct: Keep compact hero spacing but preserve a larger title size for card identity
 Rule:    In compact card headers, reduce spacing before reducing primary title typography.
 Layer:   frontend
+
+## Lesson AT - Increase headline prominence with direct token adjustment
+Date: 2026-03-23 | Trigger: correction
+Wrong:   Incremental 1rem-scale headlines remained visually weak against decorative hero surfaces
+Correct: Raise title size directly to a stronger scale while preserving line-height and truncation rules
+Rule:    In stylized card heroes, typography should dominate ornaments to keep document identity readable.
+Layer:   frontend

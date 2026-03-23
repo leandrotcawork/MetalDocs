@@ -95,3 +95,10 @@ Wrong:   Relying on inherited styles for a tab that must remain highlighted caus
 Correct: Set an explicit background/border/text color override for the specific tab state in CSS Modules
 Rule:    When a UI element must have a non-default persistent style, declare it explicitly in its module to avoid drift.
 Layer:   frontend
+
+## Lesson M - Icon-only buttons need explicit centering
+Date: 2026-03-22 | Trigger: correction
+Wrong:   SVG icons inside fixed-size buttons relied on default inline layout and appeared off-center
+Correct: Use `inline-flex` with `align-items` and `justify-content` on the button and `display: block` on the SVG
+Rule:    Icon-only controls must explicitly define centering to keep alignment stable across browsers.
+Layer:   frontend

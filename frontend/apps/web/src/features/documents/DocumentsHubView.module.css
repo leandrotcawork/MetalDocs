@@ -445,6 +445,9 @@
 }
 
 .viewToggle button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 0;
   background: transparent;
   width: 34px;
@@ -452,6 +455,10 @@
   border-radius: 10px;
   color: var(--muted);
   cursor: pointer;
+}
+
+.viewToggle button svg {
+  display: block;
 }
 
 .viewToggle button:hover,
@@ -470,8 +477,9 @@
 .tab,
 .tabActive {
   border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--surface);
+  border: 1px solid var(--vinho);
+  background: var(--vinho);
+  color: #fff;
   padding: 0.55rem 0.95rem;
   font-size: 0.82rem;
   cursor: pointer;
@@ -479,9 +487,9 @@
 }
 
 .tabActive {
-  background: var(--vinho);
+  background: #6f1624;
   color: #fff;
-  border-color: var(--vinho);
+  border-color: #6f1624;
 }
 
 .tabRow > button:nth-child(2) {

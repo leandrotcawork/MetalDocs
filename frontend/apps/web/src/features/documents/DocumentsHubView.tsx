@@ -631,87 +631,133 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
     const governance = props.selectedProfileGovernance?.profileCode === doc.documentProfile
       ? props.selectedProfileGovernance
       : null;
+    const ownerLabel = userNameById.get(doc.ownerId) ?? doc.ownerId ?? "-";
+    const documentStatus = statusLabel(doc.status);
+    const profileMonogram = (doc.documentProfile || "doc").slice(0, 2).toUpperCase();
 
     return (
       <div className={styles.page}>
         {headerShell}
         <section className={styles.detail}>
-        <div className={styles.breadcrumb}>
-          <button type="button" onClick={() => navigateWithParams(buildDocumentsPath(props.view, { view: "overview" }))}>Inicio</button>
-          <span>/</span>
-          <button
-            type="button"
-            onClick={() => navigateWithParams(buildDocumentsPath(props.view, { view: "collection", areaCode: documentsHubArea !== "all" ? documentsHubArea : undefined, profileCode: documentsHubProfile !== "all" ? documentsHubProfile : undefined }))}
-          >
-            {collectionTitle}
-          </button>
-          <span>/</span>
-          <span>{formatDocumentDisplayName(doc, props.documentProfiles)}</span>
-        </div>
+          <div className={styles.detailShell}>
+            <article className={styles.detailHeroCard}>
+              <div className={styles.detailHeroLine} />
+              <div className={styles.detailHeroMain}>
+                <div className={styles.detailHeroTitleGroup}>
+                  <h2>{formatDocumentDisplayName(doc, props.documentProfiles)}</h2>
+                  <small>{doc.documentId}</small>
+                </div>
+                <div className={styles.detailHeroAside}>
+                  <span className={styles.detailDraftBadge}>
+                    <span aria-hidden="true" className={styles.detailDraftDot} />
+                    {documentStatus}
+                  </span>
+                  <span aria-hidden="true" className={styles.detailHeroWatermark}>{profileMonogram}</span>
+                </div>
+              </div>
+              <div className={styles.detailActionsBar}>
+                <button type="button" className={styles.primaryButton} onClick={() => props.onOpenDocument(doc.documentId, "content-builder")}>
+                  <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                    <path d="M3.5 2.5h6l3 3v8H3.5z" />
+                    <path d="M9.5 2.5v3h3" />
+                    <path d="M6 9h4M6 11h3" strokeLinecap="round" />
+                  </svg>
+                  Abrir documento
+                </button>
+                <button type="button" className={styles.ghostButton} disabled>
+                  <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                    <path d="M2.5 8h3l2.5-3 2.5 6 3-4" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  Enviar para revisao
+                </button>
+                <button type="button" className={styles.ghostButton} disabled>
+                  <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                    <path d="M6 2.5h5v9H6zM5 4H4v9h5" strokeLinejoin="round" />
+                  </svg>
+                  Duplicar
+                </button>
+                <button type="button" className={styles.ghostButton} disabled>
+                  <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                    <path d="M8 3a5 5 0 1 0 5 5" />
+                    <path d="M8 1.8v2.4M8 8l1.7 1.2" strokeLinecap="round" />
+                  </svg>
+                  Historico de versoes
+                </button>
+              </div>
+            </article>
 
-        <article className={styles.detailHero}>
-          <div className={styles.detailHeroHeader}>
-            <div className={styles.detailHeroBadge}>{doc.documentProfile.toUpperCase()}</div>
-            <div>
-              <h2>{formatDocumentDisplayName(doc, props.documentProfiles)}</h2>
-              <small>{doc.documentId}</small>
-            </div>
-            <span className={styles.statusChip}>{statusLabel(doc.status)}</span>
-          </div>
-          <div className={styles.detailMeta}>
-            <span><strong>Area</strong>{areaLabel}</span>
-            <span><strong>Processo</strong>{doc.businessUnit || "-"}</span>
-            <span><strong>Versao</strong>{doc.profileSchemaVersion ?? "-"}</span>
-            <span><strong>Owner</strong>{doc.ownerId}</span>
-            <span><strong>Prox. revisao</strong>{doc.expiryAt ? props.formatDate(doc.expiryAt) : "-"}</span>
-          </div>
-          <div className={styles.detailActions}>
-            <button type="button" className={styles.primaryButton} onClick={() => props.onOpenDocument(doc.documentId, "content-builder")}>
-              Abrir documento
-            </button>
-            <button type="button" className={styles.ghostButton} disabled>
-              Enviar para revisao
-            </button>
-            <button type="button" className={styles.ghostButton} disabled>
-              Duplicar
-            </button>
-            <button type="button" className={styles.ghostButton} disabled>
-              Historico de versoes
-            </button>
-          </div>
-        </article>
+            <div className={styles.detailPanelGrid}>
+              <article className={`${styles.detailPanel} ${styles.detailPanelBlue}`}>
+                <div className={styles.detailPanelHeader}>
+                  <span className={styles.detailPanelIcon}>
+                    <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                      <rect x="2.5" y="2.5" width="11" height="11" rx="2.2" />
+                      <path d="M5.2 8l1.8 1.8 3.7-3.7" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </span>
+                  <h3>Classificacao</h3>
+                </div>
+                <div className={styles.detailPanelBody}>
+                  <div className={styles.detailPanelRow}><span>Familia</span><strong className={styles.detailChipBlue}>{doc.documentFamily || "-"}</strong></div>
+                  <div className={styles.detailPanelRow}><span>Profile</span><strong>{profileLabel}</strong></div>
+                  <div className={styles.detailPanelRow}><span>Departamento</span><strong>{doc.department || "-"}</strong></div>
+                  <div className={styles.detailPanelRow}><span>Subject</span><strong>{doc.subject ?? "-"}</strong></div>
+                </div>
+              </article>
 
-        <div className={styles.detailGrid}>
-          <article className={styles.detailCard}>
-            <h3>Classificacao</h3>
-            <div className={styles.detailRows}>
-              <span><strong>Familia</strong>{doc.documentFamily}</span>
-              <span><strong>Profile</strong>{profileLabel}</span>
-              <span><strong>Departamento</strong>{doc.department}</span>
-              <span><strong>Subject</strong>{doc.subject ?? "-"}</span>
+              <article className={`${styles.detailPanel} ${styles.detailPanelGreen}`}>
+                <div className={styles.detailPanelHeader}>
+                  <span className={styles.detailPanelIcon}>
+                    <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                      <path d="M8 2.2 12.8 4v3.6C12.8 10.3 10.7 12.8 8 13.8 5.3 12.8 3.2 10.3 3.2 7.6V4z" />
+                    </svg>
+                  </span>
+                  <h3>Governanca</h3>
+                </div>
+                <div className={styles.detailPanelBody}>
+                  <div className={styles.detailPanelRow}><span>Workflow</span><strong className={styles.detailChipGreen}>{governance?.workflowProfile ?? "-"}</strong></div>
+                  <div className={styles.detailPanelRow}><span>Revisao</span><strong>{governance ? `${governance.reviewIntervalDays} dias` : "-"}</strong></div>
+                  <div className={styles.detailPanelRow}><span>Aprovacao</span><strong className={styles.detailChipGold}>{governance ? (governance.approvalRequired ? "Obrigatoria" : "Opcional") : "-"}</strong></div>
+                  <div className={styles.detailPanelRow}><span>Validade</span><strong>{governance ? `${governance.validityDays} dias` : "-"}</strong></div>
+                </div>
+              </article>
+
+              <article className={`${styles.detailPanel} ${styles.detailPanelRose}`}>
+                <div className={styles.detailPanelHeader}>
+                  <span className={styles.detailPanelIcon}>
+                    <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                      <path d="M5.6 7.1a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM11 7.8a1.7 1.7 0 1 0 0-3.4 1.7 1.7 0 0 0 0 3.4Z" />
+                      <path d="M2.8 12.8c.3-2 1.6-3 3.7-3s3.4 1 3.7 3M9.4 12.8c.2-1.3 1.1-2.1 2.5-2.1 1.4 0 2.3.8 2.5 2.1" strokeLinecap="round" />
+                    </svg>
+                  </span>
+                  <h3>Colaboracao</h3>
+                </div>
+                <div className={styles.detailPanelBody}>
+                  <div className={styles.detailPanelRow}><span>Lock de edicao</span><strong className={styles.detailMutedValue}>Sem lock ativo</strong></div>
+                  <div className={styles.detailPanelRow}><span>Ativo desde</span><strong>{props.formatDate(new Date().toISOString())}</strong></div>
+                  <div className={styles.detailPanelRow}><span>Proxima revisao</span><strong>{doc.expiryAt ? props.formatDate(doc.expiryAt) : "-"}</strong></div>
+                  <div className={styles.detailPanelRow}><span>Autor</span><strong>{ownerLabel}</strong></div>
+                </div>
+              </article>
+
+              <article className={`${styles.detailPanel} ${styles.detailPanelCyan}`}>
+                <div className={styles.detailPanelHeader}>
+                  <span className={styles.detailPanelIcon}>
+                    <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                      <path d="M4 2.8h8M4 6.2h8M4 9.6h5" strokeLinecap="round" />
+                      <path d="m10.3 12.2 1.3 1.3 2.2-2.2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </span>
+                  <h3>Diff da versao atual</h3>
+                </div>
+                <div className={styles.detailDiffEmpty}>
+                  <span className={styles.detailDiffIcon}>+</span>
+                  <p>Nenhuma alteracao registrada nesta versao.</p>
+                  <small>versao 1 · draft</small>
+                </div>
+              </article>
             </div>
-          </article>
-          <article className={styles.detailCard}>
-            <h3>Governanca</h3>
-            <div className={styles.detailRows}>
-              <span><strong>Workflow</strong>{governance?.workflowProfile ?? "-"}</span>
-              <span><strong>Revisao</strong>{governance ? `${governance.reviewIntervalDays} dias` : "-"}</span>
-              <span><strong>Aprovacao</strong>{governance ? (governance.approvalRequired ? "Obrigatoria" : "Opcional") : "-"}</span>
-              <span><strong>Validade</strong>{governance ? `${governance.validityDays} dias` : "-"}</span>
-            </div>
-          </article>
-          <article className={styles.detailCard}>
-            <h3>Colaboracao</h3>
-            <div className={styles.detailRows}>
-              <span><strong>Lock de edicao</strong>Sem lock ativo</span>
-              <span><strong>Ativo</strong>{props.formatDate(new Date().toISOString())}</span>
-            </div>
-          </article>
-          <article className={styles.detailCard}>
-            <h3>Diff da versao atual</h3>
-            <p className={styles.detailMuted}>Nenhuma alteracao registrada nesta versao.</p>
-          </article>
-        </div>
+          </div>
         </section>
       </div>
     );

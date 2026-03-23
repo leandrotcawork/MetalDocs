@@ -830,88 +830,147 @@
 
 .detail {
   display: grid;
-  gap: 1.4rem;
-  padding: 2.5rem 2.8rem 3rem;
+  padding: 2.2rem 2.6rem 3rem;
 }
 
-.detailHero {
+.detailShell {
+  width: min(1040px, 100%);
+  margin: 0 auto;
+  display: grid;
+  gap: 1.15rem;
+}
+
+.detailHeroCard {
+  position: relative;
+  overflow: hidden;
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 1.2rem;
-  padding: 1.4rem 1.6rem;
+  border: 1px solid rgba(94, 60, 67, 0.18);
+  border-radius: 1.4rem;
+  box-shadow: 0 10px 28px rgba(31, 20, 24, 0.14);
+  padding: 1.2rem 1.35rem 1.25rem;
   display: grid;
-  gap: 1rem;
+  gap: 1.05rem;
 }
 
-.detailHeroHeader {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 1rem;
-  align-items: center;
+.detailHeroLine {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 7px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--vinho) 78%, #ffffff), var(--vinho));
 }
 
-.detailHeroHeader h2 {
+.detailHeroMain {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 1.2rem;
+}
+
+.detailHeroTitleGroup h2 {
   margin: 0;
-  font-size: 1.4rem;
+  font-size: clamp(2rem, 1.9rem + 0.35vw, 2.45rem);
+  letter-spacing: -0.02em;
+  line-height: 1.05;
 }
 
-.detailHeroHeader small {
-  color: var(--muted);
-  font-size: 0.75rem;
-}
-
-.detailHeroBadge {
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
-  background: var(--surface-2);
-  color: var(--vinho);
+.detailHeroTitleGroup small {
+  margin-top: 0.65rem;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  font-weight: 700;
-}
-
-.detailMeta {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 1rem;
-  font-size: 0.75rem;
+  min-height: 31px;
+  border-radius: 0.55rem;
+  padding: 0.28rem 0.55rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   color: var(--muted);
+  font-size: 0.9rem;
+  font-family: "DM Mono", Consolas, monospace;
 }
 
-.detailMeta strong {
-  display: block;
-  color: var(--text);
-  font-size: 0.7rem;
+.detailHeroAside {
+  position: relative;
+  min-width: 132px;
+  min-height: 88px;
+  display: grid;
+  justify-items: end;
+  align-content: start;
+  gap: 0.45rem;
+}
+
+.detailHeroWatermark {
+  position: absolute;
+  top: -0.1rem;
+  right: -0.05rem;
+  color: rgba(118, 103, 109, 0.14);
+  font-size: 5rem;
+  line-height: 0.82;
+  font-weight: 700;
+  letter-spacing: -0.06em;
+}
+
+.detailDraftBadge {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 33px;
+  padding: 0.2rem 0.72rem;
+  border-radius: 999px;
+  background: #faefcc;
+  border: 1px solid #ead79f;
+  color: #6c4f17;
+  font-weight: 700;
+  font-size: 0.95rem;
   text-transform: uppercase;
-  letter-spacing: 0.08rem;
-  margin-bottom: 0.2rem;
 }
 
-.detailActions {
+.detailDraftDot {
+  width: 0.72rem;
+  height: 0.72rem;
+  border-radius: 999px;
+  background: #efc14e;
+  box-shadow: 0 0 0 2px rgba(239, 193, 78, 0.24);
+}
+
+.detailActionsBar {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.6rem;
+  align-items: center;
+  gap: 0.72rem;
 }
 
 .primaryButton {
-  border: 0;
+  border: 1px solid color-mix(in srgb, var(--vinho) 82%, #000000 8%);
   background: var(--vinho);
   color: #fff;
-  padding: 0.6rem 1rem;
-  border-radius: 0.8rem;
+  min-height: 44px;
+  padding: 0.62rem 1.05rem;
+  border-radius: 0.78rem;
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 8px 16px rgba(101, 26, 45, 0.28);
 }
 
 .ghostButton {
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
-  padding: 0.6rem 1rem;
-  border-radius: 0.8rem;
+  min-height: 44px;
+  padding: 0.62rem 1.05rem;
+  border-radius: 0.78rem;
   cursor: pointer;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: var(--shadow-soft);
 }
 
 .ghostButton:disabled {
@@ -919,69 +978,197 @@
   cursor: not-allowed;
 }
 
-.detailGrid {
+.detailPanelGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
+  gap: 1.05rem;
 }
 
-.detailCard {
+.detailPanel {
   background: var(--surface);
+  border: 1px solid rgba(104, 76, 84, 0.16);
+  border-radius: 1.12rem;
+  overflow: hidden;
+  box-shadow: 0 9px 18px rgba(34, 24, 27, 0.1);
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.detailPanelHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.72rem;
+  min-height: 58px;
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid rgba(129, 94, 106, 0.14);
+}
+
+.detailPanelHeader h3 {
+  margin: 0;
+  font-size: 1.78rem;
+  font-family: "Cormorant Garamond", serif;
+  letter-spacing: 0;
+}
+
+.detailPanelBlue .detailPanelHeader {
+  background: linear-gradient(90deg, rgba(76, 150, 236, 0.18), rgba(76, 150, 236, 0.08));
+  border-left: 6px solid #3f91e9;
+}
+
+.detailPanelGreen .detailPanelHeader {
+  background: linear-gradient(90deg, rgba(76, 212, 130, 0.2), rgba(76, 212, 130, 0.08));
+  border-left: 6px solid #36b66f;
+}
+
+.detailPanelRose .detailPanelHeader {
+  background: linear-gradient(90deg, rgba(220, 93, 137, 0.18), rgba(220, 93, 137, 0.08));
+  border-left: 6px solid #c95b87;
+}
+
+.detailPanelCyan .detailPanelHeader {
+  background: linear-gradient(90deg, rgba(80, 203, 211, 0.2), rgba(80, 203, 211, 0.08));
+  border-left: 6px solid #4cc3cb;
+}
+
+.detailPanelIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.58);
+  color: #1f2a34;
+}
+
+.detailPanelBody {
+  padding: 0.7rem 1rem 0.7rem;
+  display: grid;
+}
+
+.detailPanelRow {
+  min-height: 45px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  border-bottom: 1px solid rgba(122, 91, 101, 0.14);
+}
+
+.detailPanelRow:last-child {
+  border-bottom: 0;
+}
+
+.detailPanelRow span {
+  font-size: 1rem;
+}
+
+.detailPanelRow strong {
+  font-size: 1.02rem;
+  font-weight: 700;
+  text-align: right;
+}
+
+.detailChipBlue,
+.detailChipGreen,
+.detailChipGold {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0.1rem 0.72rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-transform: lowercase;
+}
+
+.detailChipBlue {
+  color: #1f5f96;
+  background: rgba(83, 164, 236, 0.2);
+}
+
+.detailChipGreen {
+  color: #216a47;
+  background: rgba(67, 194, 113, 0.22);
+}
+
+.detailChipGold {
+  color: #7b5c1d;
+  background: rgba(235, 198, 106, 0.34);
+}
+
+.detailMutedValue {
+  color: var(--muted);
+  font-style: italic;
+  font-weight: 500;
+}
+
+.detailDiffEmpty {
+  min-height: 170px;
+  padding: 1rem 1rem 1.15rem;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  gap: 0.5rem;
+}
+
+.detailDiffIcon {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 1rem;
-  padding: 1rem 1.2rem;
-  display: grid;
-  gap: 0.6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  line-height: 1;
+  color: var(--muted);
 }
 
-.detailCard h3 {
+.detailDiffEmpty p {
   margin: 0;
-  font-size: 0.8rem;
+  font-size: 1rem;
+}
+
+.detailDiffEmpty small {
+  font-size: 0.95rem;
+  color: var(--muted);
   text-transform: uppercase;
-  letter-spacing: 0.12rem;
-  color: var(--muted);
-}
-
-.detailRows {
-  display: grid;
-  gap: 0.4rem;
-  font-size: 0.78rem;
-  color: var(--muted);
-}
-
-.detailRows strong {
-  display: block;
-  color: var(--text);
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08rem;
-  margin-bottom: 0.1rem;
-}
-
-.detailMuted {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.78rem;
 }
 
 @media (max-width: 1100px) {
-  .detailMeta {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .detailGrid {
+  .detailPanelGrid {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 720px) {
   .detail {
-    padding: 1.6rem 1.2rem 2rem;
+    padding: 1.4rem 1rem 2rem;
   }
 
-  .detailHeroHeader {
+  .detailHeroMain {
     grid-template-columns: 1fr;
+    gap: 0.8rem;
+  }
+
+  .detailHeroAside {
     justify-items: start;
+  }
+
+  .detailHeroWatermark {
+    right: 0.2rem;
+  }
+
+  .detailActionsBar {
+    gap: 0.55rem;
+  }
+
+  .detailActionsBar .primaryButton,
+  .detailActionsBar .ghostButton {
+    width: 100%;
+    justify-content: center;
   }
 }
 

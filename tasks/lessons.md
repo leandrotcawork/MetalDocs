@@ -354,3 +354,10 @@ Wrong:   Centering title and badge in a single row without width constraints let
 Correct: Use a shared flex row with vertical centering and reserve fixed width budget for the badge
 Rule:    In one-line hero headers, allocate explicit width for status pills to keep alignment stable across title lengths.
 Layer:   frontend
+
+## Lesson AX - 1:1 mock implementation needs dedicated layout primitives
+Date: 2026-03-23 | Trigger: correction
+Wrong:   Reusing generic detail cards and metadata grids prevents faithful reproduction of high-fidelity reference screens
+Correct: Introduce explicit hero/panel primitives and semantic rows aligned to the target composition
+Rule:    For mock-accurate screens, structure components around the reference layout instead of stretching existing generic blocks.
+Layer:   frontend

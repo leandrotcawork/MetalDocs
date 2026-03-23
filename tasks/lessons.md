@@ -186,3 +186,10 @@ Wrong:   Hooks changed `activeView` directly for flows like `create -> content-b
 Correct: Store-first flows must write both `activeView` and a `pendingViewNavigation` flag that the app shell consumes to push the matching route before URL->store sync resumes
 Rule:    If view state can change outside the router, persist the pending route intent explicitly instead of inferring it from timing.
 Layer:   frontend
+
+## Lesson Z - SQL placeholder order must be audited when adding columns
+Date: 2026-03-23 | Trigger: correction
+Wrong:   The `documents` insert query added new columns but kept stale placeholder order, applying `::jsonb` casts to datetime params and producing runtime 500s
+Correct: When evolving insert statements, recount target columns and placeholder positions together so typed casts stay attached only to the intended JSON fields
+Rule:    Any SQL insert changed for schema evolution must be verified column-by-column against its bound arguments.
+Layer:   infrastructure

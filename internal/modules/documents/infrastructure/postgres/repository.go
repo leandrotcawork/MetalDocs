@@ -25,7 +25,7 @@ INSERT INTO metaldocs.documents (
   id, title, document_type_code, document_profile_code, document_family_code, document_sequence, document_code, process_area_code, subject_code,
   profile_schema_version, owner_id, business_unit, department, classification, status, tags, effective_at, expiry_at, metadata_json, created_at, updated_at
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17::jsonb, $18, $19, $20::jsonb, $21, $22)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16::jsonb, $17, $18, $19::jsonb, $20, $21)
 `
 	tagsJSON, metadataJSON, effectiveAt, expiryAt := serializeDocument(document)
 	_, err := r.db.ExecContext(ctx, q,
@@ -71,7 +71,7 @@ INSERT INTO metaldocs.documents (
   id, title, document_type_code, document_profile_code, document_family_code, document_sequence, document_code, process_area_code, subject_code,
   profile_schema_version, owner_id, business_unit, department, classification, status, tags, effective_at, expiry_at, metadata_json, created_at, updated_at
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17::jsonb, $18, $19, $20::jsonb, $21, $22)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16::jsonb, $17, $18, $19::jsonb, $20, $21)
 `
 	tagsJSON, metadataJSON, effectiveAt, expiryAt := serializeDocument(document)
 	if _, err := tx.ExecContext(ctx, insertDoc,
@@ -148,7 +148,7 @@ INSERT INTO metaldocs.documents (
   id, title, document_type_code, document_profile_code, document_family_code, document_sequence, document_code, process_area_code, subject_code,
   profile_schema_version, owner_id, business_unit, department, classification, status, tags, effective_at, expiry_at, metadata_json, created_at, updated_at
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17::jsonb, $18, $19, $20::jsonb, $21, $22)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16::jsonb, $17, $18, $19::jsonb, $20, $21)
 `
 	tagsJSON, metadataJSON, effectiveAt, expiryAt := serializeDocument(document)
 	if _, err := tx.ExecContext(ctx, insertDoc,

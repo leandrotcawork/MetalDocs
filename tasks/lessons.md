@@ -347,3 +347,10 @@ Wrong:   Absolute-positioning the workflow badge detached it from title alignmen
 Correct: Keep hero title and badge in the same centered layout flow with grid alignment
 Rule:    If a badge is visually paired with a heading, it should be laid out in the same flow container unless it is intentionally pinned.
 Layer:   frontend
+
+## Lesson AW - Horizontal title-badge pairs need constrained title width
+Date: 2026-03-23 | Trigger: correction
+Wrong:   Centering title and badge in a single row without width constraints lets long titles push badge alignment
+Correct: Use a shared flex row with vertical centering and reserve fixed width budget for the badge
+Rule:    In one-line hero headers, allocate explicit width for status pills to keep alignment stable across title lengths.
+Layer:   frontend

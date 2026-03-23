@@ -340,3 +340,10 @@ Wrong:   Using only `min-height` on decorative heroes allowed perceived height v
 Correct: Use explicit hero height with box sizing and center alignment for uniform visual rows
 Rule:    Repeated decorative card headers should use fixed block sizing to avoid inconsistent rhythm.
 Layer:   frontend
+
+## Lesson AV - Centered hero badges must share the title flow
+Date: 2026-03-23 | Trigger: correction
+Wrong:   Absolute-positioning the workflow badge detached it from title alignment and created visual imbalance
+Correct: Keep hero title and badge in the same centered layout flow with grid alignment
+Rule:    If a badge is visually paired with a heading, it should be laid out in the same flow container unless it is intentionally pinned.
+Layer:   frontend

@@ -10,6 +10,10 @@
   padding: 1.4rem 3.4rem;
 }
 
+.pageHeaderCompact {
+  padding: 0.9rem 3.4rem;
+}
+
 .hub {
   display: grid;
   gap: 2rem;
@@ -845,6 +849,10 @@
 @media (max-width: 720px) {
   .pageHeader {
     padding: 1.1rem 1.4rem;
+  }
+
+  .pageHeaderCompact {
+    padding: 0.8rem 1.4rem;
   }
 
   .hero {

@@ -125,11 +125,13 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
   } = useDocumentsStore();
 
   const headerTitle = scope === "mine" ? "Meus documentos" : scope === "recent" ? "Recentes" : "Todos documentos";
+  const headerVariant = documentsHubView === "collection" || documentsHubView === "detail" ? "compact" : "default";
   const headerShell = (
     <DocumentsHubHeader
       title={headerTitle}
       searchQuery={props.searchQuery}
       onSearchQueryChange={props.onSearchQueryChange}
+      variant={headerVariant}
     />
   );
 

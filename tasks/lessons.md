@@ -116,3 +116,10 @@ Wrong:   One "Por tipo" section was hardcoded as open by default, breaking consi
 Correct: Initialize accordion state as closed for all sections unless explicitly requested
 Rule:    Sidebar accordions should open only by user interaction or explicit configuration.
 Layer:   frontend
+
+## Lesson P - Compact header for dense collection screens
+Date: 2026-03-23 | Trigger: correction
+Wrong:   Reusing the full-height hub header on collection/detail screens left excessive vertical space
+Correct: Use a compact header variant with reduced vertical padding for collection/detail views
+Rule:    Dense list screens should use a compact header to keep content closer to the fold.
+Layer:   frontend

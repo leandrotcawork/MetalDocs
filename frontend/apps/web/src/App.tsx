@@ -208,6 +208,13 @@ function AppContent() {
   }, [navigate]);
 
   useEffect(() => {
+    if (navSourceRef.current === "store") {
+      if (locationView === activeView) {
+        navSourceRef.current = null;
+      }
+      return;
+    }
+
     if (locationView === "admin" && !isAdmin) {
       if (location.pathname !== "/") {
         navSourceRef.current = "url";

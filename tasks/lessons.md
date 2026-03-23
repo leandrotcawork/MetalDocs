@@ -165,3 +165,10 @@ Wrong:   Sidebar updated only `activeView`; when clicking the same view key (e.g
 Correct: Sidebar `onNavigate` must call router navigation (`navigate(pathFromView(view))`) instead of relying on store-only updates
 Rule:    In URL-driven apps, menu actions should be route-first so repeated clicks still normalize path and history.
 Layer:   frontend
+
+## Lesson W - Two-way URL sync must respect source-of-truth per transition
+Date: 2026-03-23 | Trigger: correction
+Wrong:   URL->store effect always overrode `activeView` from `locationView`, clobbering a store-driven transition before the route navigation happened
+Correct: While a store-driven navigation is in flight, skip URL->store overwrite until `locationView === activeView`, then clear the navigation source flag
+Rule:    Bidirectional router sync needs explicit source guards to avoid race conditions and view reversion.
+Layer:   frontend

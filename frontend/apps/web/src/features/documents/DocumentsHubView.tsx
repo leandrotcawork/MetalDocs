@@ -633,7 +633,6 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
       : null;
     const ownerLabel = userNameById.get(doc.ownerId) ?? doc.ownerId ?? "-";
     const documentStatus = statusLabel(doc.status);
-    const profileMonogram = (doc.documentProfile || "doc").slice(0, 2).toUpperCase();
 
     return (
       <div className={styles.page}>
@@ -645,14 +644,12 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
               <div className={styles.detailHeroMain}>
                 <div className={styles.detailHeroTitleGroup}>
                   <h2>{formatDocumentDisplayName(doc, props.documentProfiles)}</h2>
-                  <small>{doc.documentId}</small>
                 </div>
                 <div className={styles.detailHeroAside}>
                   <span className={styles.detailDraftBadge}>
                     <span aria-hidden="true" className={styles.detailDraftDot} />
                     {documentStatus}
                   </span>
-                  <span aria-hidden="true" className={styles.detailHeroWatermark}>{profileMonogram}</span>
                 </div>
               </div>
               <div className={styles.detailActionsBar}>

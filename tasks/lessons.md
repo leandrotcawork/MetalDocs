@@ -361,3 +361,10 @@ Wrong:   Reusing generic detail cards and metadata grids prevents faithful repro
 Correct: Introduce explicit hero/panel primitives and semantic rows aligned to the target composition
 Rule:    For mock-accurate screens, structure components around the reference layout instead of stretching existing generic blocks.
 Layer:   frontend
+
+## Lesson AY - Optional hero ornaments should be removable without layout side effects
+Date: 2026-03-23 | Trigger: correction
+Wrong:   Coupling watermark and metadata chip styles to hero layout can leave unused spacing after removal
+Correct: Keep hero structure resilient so decorative and secondary metadata elements can be removed cleanly
+Rule:    Treat ornaments and helper metadata as optional layers, not layout anchors.
+Layer:   frontend

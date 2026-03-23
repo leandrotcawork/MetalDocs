@@ -581,11 +581,13 @@
 
 .docCardHero {
   position: relative;
-  min-height: 3rem;
+  height: 50px;
+  min-height: 50px;
   padding: 0.58rem 0.7rem 0.44rem;
   display: grid;
   place-items: center;
   overflow: hidden;
+  box-sizing: border-box;
   background:
     radial-gradient(circle at top right, rgba(255, 255, 255, 0.1) 0, rgba(255, 255, 255, 0.1) 1.75rem, transparent 1.8rem),
     linear-gradient(180deg, color-mix(in srgb, var(--vinho) 94%, #ffffff) 0%, color-mix(in srgb, var(--vinho) 90%, #000000 8%) 100%);
@@ -613,10 +615,11 @@
 }
 
 .docCardHeroContent {
-  display: grid;
-  align-items: start;
-  justify-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
+  height: 100%;
   min-width: 0;
   padding-inline: 0.45rem 4.4rem;
   position: relative;

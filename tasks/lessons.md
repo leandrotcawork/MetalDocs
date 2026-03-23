@@ -333,3 +333,10 @@ Wrong:   Incremental 1rem-scale headlines remained visually weak against decorat
 Correct: Raise title size directly to a stronger scale while preserving line-height and truncation rules
 Rule:    In stylized card heroes, typography should dominate ornaments to keep document identity readable.
 Layer:   frontend
+
+## Lesson AU - Card hero consistency requires fixed height, not min-height
+Date: 2026-03-23 | Trigger: correction
+Wrong:   Using only `min-height` on decorative heroes allowed perceived height variance across cards
+Correct: Use explicit hero height with box sizing and center alignment for uniform visual rows
+Rule:    Repeated decorative card headers should use fixed block sizing to avoid inconsistent rhythm.
+Layer:   frontend

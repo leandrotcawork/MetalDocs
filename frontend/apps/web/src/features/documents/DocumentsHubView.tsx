@@ -956,11 +956,6 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
       {headerShell}
 
       <section className={styles.hub}>
-        <section className={styles.dashboardHeaderRow}>
-          <div className={styles.dashboardBrandMark}>M</div>
-          <h1>MetaDocs Premium</h1>
-        </section>
-
         <section className={styles.dashboardKpiStrip}>
           <article className={styles.dashboardKpiItem}>
             <strong>{scopedDocuments.length}</strong>

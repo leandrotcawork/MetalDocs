@@ -375,3 +375,10 @@ Wrong:   Reusing generic overview widgets makes it hard to match dashboard-first
 Correct: Build dedicated dashboard sections (kpi strip, timeline, pending table, snapshot cards) with explicit semantics
 Rule:    For reference-driven dashboards, prefer section-specific layout primitives over generic catalog blocks.
 Layer:   frontend
+
+## Lesson BB - Remove obsolete structural classes together with markup
+Date: 2026-03-25 | Trigger: correction
+Wrong:   Deleting JSX blocks without removing their CSS leaves dead selectors and increases maintenance noise
+Correct: Whenever a structural section is removed, delete corresponding CSS rules and responsive overrides in the same change
+Rule:    Keep JSX structure and CSS selector set synchronized to avoid stale styles.
+Layer:   frontend

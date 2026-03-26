@@ -21,8 +21,6 @@ import { RegistryExplorerView } from "./features/registry/RegistryExplorerView";
 import { WorkspaceShell } from "./features/shell/WorkspaceShell";
 import { isPathForView, pathFromView, viewFromPath } from "./routing/workspaceRoutes";
 
-type PolicyScope = "document" | "document_type" | "area";
-
 type AppErrorBoundaryState = {
   hasError: boolean;
   message: string;
@@ -108,20 +106,11 @@ function AppContent() {
     contentError,
     documents,
     selectedDocument,
-    versions,
-    versionDiff,
-    approvals,
-    attachments,
     collaborationPresence,
     documentEditLock,
-    policies,
-    auditEvents,
-    selectedFile,
-    policyResourceId,
     setDocumentForm,
     setCollaborationPresence,
     setDocumentEditLock,
-    setSelectedFile,
     openDocument,
     openDocumentForHub,
     refreshOperationalSignals,
@@ -130,7 +119,6 @@ function AppContent() {
     handleContentModeChange,
     handleContentFileChange,
     handleDownloadTemplate,
-    handleUploadAttachment,
   } = documentsWorkspace;
   const handleCreateDocument = useCallback(
     (event: React.FormEvent<HTMLFormElement>) => handleCreateDocumentInternal(event, user),
@@ -184,8 +172,6 @@ function AppContent() {
     selectedProfileGovernance,
   } = registry;
   const { notifications, handleMarkNotificationRead, subscribeOperations } = notificationsApi;
-  const policyScope: PolicyScope = "document";
-
   const currentUserRoles = Array.isArray(user?.roles) ? user.roles : [];
   const isAdmin = currentUserRoles.includes("admin");
   const userRoleLabel = roleLabelFromRoles(currentUserRoles);
@@ -344,7 +330,6 @@ function AppContent() {
           documentProfiles={documentProfiles}
           processAreas={processAreas}
           formatDate={formatDate}
-          onCreateDocument={handlePrimaryAction}
           onRefreshWorkspace={refreshWorkspace}
           onOpenDocument={openDocument}
         />
@@ -362,17 +347,6 @@ function AppContent() {
           managedUsers={managedUsers}
           selectedDocument={selectedDocument}
           selectedProfileGovernance={selectedProfileGovernance}
-          versions={versions}
-          versionDiff={versionDiff}
-          approvals={approvals}
-          attachments={attachments}
-          collaborationPresence={collaborationPresence}
-          documentEditLock={documentEditLock}
-          policies={policies}
-          auditEvents={auditEvents}
-          selectedFile={selectedFile}
-          policyScope={policyScope}
-          policyResourceId={policyResourceId}
           searchQuery={searchQuery}
           currentUserId={user?.userId}
           formatDate={formatDate}
@@ -381,8 +355,6 @@ function AppContent() {
           onRefreshWorkspace={refreshWorkspace}
           onOpenDocument={openDocument}
           onOpenDocumentForHub={openDocumentForHub}
-          onFileChange={setSelectedFile}
-          onUploadAttachment={handleUploadAttachment}
         />
       );
     }

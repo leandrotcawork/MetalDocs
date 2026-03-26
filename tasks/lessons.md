@@ -382,3 +382,164 @@ Wrong:   Deleting JSX blocks without removing their CSS leaves dead selectors an
 Correct: Whenever a structural section is removed, delete corresponding CSS rules and responsive overrides in the same change
 Rule:    Keep JSX structure and CSS selector set synchronized to avoid stale styles.
 Layer:   frontend
+
+## Lesson BC - Timeline rails should be independent from card boxes
+Date: 2026-03-25 | Trigger: correction
+Wrong:   Rendering timeline dots inside card content columns breaks visual continuity with the vertical rail
+Correct: Keep cards as content blocks and position dots on a dedicated rail axis outside the card box
+Rule:    For timeline UIs, the connector line and markers must share a fixed external axis.
+Layer:   frontend
+
+## Lesson BD - Timeline rails need a single axis source
+Date: 2026-03-25 | Trigger: correction
+Wrong:   Using separate magic offsets for the rail and the dot causes visible drift and overflow when card padding changes
+Correct: Derive rail, marker and card offset from one shared axis model in CSS
+Rule:    Timeline geometry must be expressed from one axis, not from unrelated pixel nudges.
+Layer:   frontend
+
+## Lesson BE - Route ownership must stay explicit
+Date: 2026-03-25 | Trigger: correction
+Wrong:   Moving a dashboard layout into the `/documents` overview mixed route intent and made `Todos Documentos` stop behaving like the document catalog entrypoint
+Correct: Keep the document overview on `/documents` and attach dashboard-specific layouts only to the operations/dashboard route
+Rule:    Screen ownership belongs to the route contract first; visual experiments must not silently replace another route's purpose.
+Layer:   frontend
+
+## Lesson BF - Timeline rails should be item-owned when endpoints matter
+Date: 2026-03-25 | Trigger: correction
+Wrong:   A single container rail cannot stop exactly at the first and last marker centers, so it visually overshoots
+Correct: Let each timeline row draw only the segment from its marker to the next row, and let the last row draw no segment
+Rule:    When a timeline must terminate exactly on markers, own the rail segments at the item level.
+Layer:   frontend
+
+## Lesson BG - Repeated rail patterns belong in UI primitives
+Date: 2026-03-25 | Trigger: correction
+Wrong:   Keeping timeline rail geometry inside one dashboard stylesheet turns every visual tweak into a page-specific patch
+Correct: Extract the rail, marker, connector, and item card into a reusable UI component with a small typed API
+Rule:    Any visual primitive reused or expected to evolve across screens should move into `components/ui`.
+Layer:   frontend
+
+## Lesson BH - Shared axis elements must share the same containing block
+Date: 2026-03-25 | Trigger: correction
+Wrong:   Positioning the connector from the row shell but the marker from the inner card creates horizontal drift even when both use the same token
+Correct: Position the rail and the marker from the same parent box
+Rule:    Any UI elements that must align on one axis should be absolutely positioned from the same containing block.
+Layer:   frontend
+
+## Lesson BI - Motion belongs in the primitive, not in the page
+Date: 2026-03-25 | Trigger: correction
+Wrong:   Adding pulse and rail animations at the dashboard level would couple motion tuning to one screen
+Correct: Keep timeline motion inside the reusable rail component so geometry and animation evolve together
+Rule:    When a UI primitive owns structure, it should also own its motion behavior.
+Layer:   frontend
+
+## Lesson BJ - Center rail axes from gutter width, not from separate offsets
+Date: 2026-03-25 | Trigger: correction
+Wrong:   Defining the rail axis and the card start separately makes the line look off-center between the container edge and the subcard edge
+Correct: Define one gutter width and derive the rail axis as its midpoint
+Rule:    When a marker sits in a layout gutter, center it from the gutter geometry itself.
+Layer:   frontend
+
+## Lesson BK - Decorative gutters need mirrored compensation
+Date: 2026-03-25 | Trigger: correction
+Wrong:   Reserving timeline gutter space only on the left shifts the visible subcards off-center inside the parent card
+Correct: Keep the left gutter for the rail and mirror that reserved width on the opposite side when the rows should read centered
+Rule:    If ornament space changes one side of a layout, compensate on the other side when centering the content block matters.
+Layer:   frontend
+
+## Lesson BL - Center card bodies with dedicated layout wrappers
+Date: 2026-03-25 | Trigger: correction
+Wrong:   Trying to vertically center content by targeting generic `article > div` structure risks affecting unrelated dashboard cards and ignores fixed headers
+Correct: Split the card into header and body rows and center only the body wrapper within the remaining height
+Rule:    When a card has a fixed header, vertical centering must happen inside an explicit body container, not on generic descendants.
+Layer:   frontend
+
+## Lesson BM - Interactive cards need explicit hover elevation
+Date: 2026-03-25 | Trigger: correction
+Wrong:   Rebuilding cards in a new component without restoring hover/focus elevation makes interactive surfaces feel flat and less discoverable
+Correct: Carry the existing interaction language forward with subtle lift, stronger shadow, and border emphasis on hover/focus
+Rule:    When replacing or extracting clickable cards, preserve the established hover affordance in the new primitive.
+Layer:   frontend
+
+## Lesson BN - Overview entry cards are interactive surfaces too
+Date: 2026-03-25 | Trigger: correction
+Wrong:   Treating overview cards as static containers removes hover feedback even though they navigate deeper into the flow
+Correct: Give overview entry cards the same hover/focus elevation language as other clickable cards
+Rule:    If a card is a navigation entrypoint, its interactivity must be visually obvious.
+Layer:   frontend
+
+## Lesson BO - Accent borders need explicit stroke weight
+Date: 2026-03-25 | Trigger: correction
+Wrong:   Recoloring timeline accents without increasing stroke width leaves highlighted states visually weak against neutral surfaces
+Correct: Increase border thickness together with the accent color on highlighted timeline markers and hover states
+Rule:    Accent states should change both color and stroke weight when they need to stand out from neutral cards.
+Layer:   frontend
+
+## Lesson BP - Hover emphasis can use a stronger stroke than resting accent
+Date: 2026-03-25 | Trigger: correction
+Wrong:   Keeping hover borders only slightly thicker makes the interaction hard to notice on soft card surfaces
+Correct: Use a visibly stronger border width on hover than on the resting highlighted state
+Rule:    Hover emphasis should be stronger than static emphasis when the card itself is the interactive target.
+Layer:   frontend
+
+## Lesson BQ - Hover language must cover all view modes
+Date: 2026-03-25 | Trigger: correction
+Wrong:   Adding hover affordance to card view only leaves list rows in the same screen feeling static and inconsistent
+Correct: Apply the same interaction language across both card and list representations of the same document collection
+Rule:    When a screen offers multiple view modes, interactivity cues must remain consistent across them.
+Layer:   frontend
+
+## Lesson BR - Shared hover language needs shared border weight
+Date: 2026-03-25 | Trigger: correction
+Wrong:   Keeping accent hover borders at different thicknesses across overview cards, collection cards, and list rows makes the same interaction feel inconsistent
+Correct: Use the same `2px` hover border weight across all document navigation surfaces
+Rule:    Reused interaction patterns should keep the same stroke weight across all representations of the same feature.
+Layer:   frontend
+
+## Lesson BS - KPI metrics should read as cards, not cells
+Date: 2026-03-25 | Trigger: correction
+Wrong:   Rendering dashboard KPIs as flat strip cells with separators makes them look like table columns instead of actionable summary cards
+Correct: Give each KPI its own bordered surface, radius, shadow, and subtle accent line while keeping the strip layout
+Rule:    Summary metrics in dashboards should be individual cards when visual scanning and polish matter.
+Layer:   frontend
+
+## Lesson BT - Shared KPI primitives must be styled at the primitive level
+Date: 2026-03-25 | Trigger: correction
+Wrong:   Upgrading KPI visuals only in one screen leaves other pages using the same metric primitive visually behind
+Correct: Apply the card treatment to the shared `catalog-stat` primitive so all KPI strips inherit the same design language
+Rule:    When multiple screens share the same metric primitive, visual upgrades belong in the primitive, not in one consumer.
+Layer:   frontend
+
+## Lesson BU - Page-specific KPI layouts should not piggyback on shell stats
+Date: 2026-03-25 | Trigger: correction
+Wrong:   Styling the shell-level `catalog-stat` primitive to mimic one page-specific dashboard layout leaks that visual decision into unrelated screens
+Correct: Keep shell stats neutral and style page-owned KPI strips inside the page module that owns the layout
+Rule:    If only one page needs a richer KPI treatment, implement it in that page component instead of mutating the shared shell primitive.
+Layer:   frontend
+
+## Lesson BV - Route ownership must have one live implementation
+Date: 2026-03-25 | Trigger: correction
+Wrong:   Keeping a legacy documents workspace implementation and dead dashboard CSS inside the documents feature made edits land in the wrong owner
+Correct: Keep one live implementation per route, remove dead feature CSS from unrelated modules, and let each page own only its own layout system
+Rule:    A route should have one active implementation and one stylesheet owner; duplicate implementations create inevitable UI drift.
+Layer:   frontend
+
+## Lesson BW - Hero headers should be a shared UI primitive
+Date: 2026-03-25 | Trigger: correction
+Wrong:   Reimplementing topbar hero layout per page caused drift between dashboard and documents and forced cross-feature CSS coupling
+Correct: Move the hero header into a shared UI component and reuse it in each route owner
+Rule:    Shared page chrome must live in a reusable UI primitive, while page content remains route-owned.
+Layer:   frontend
+
+## Lesson BX - Extracted primitives require dead-style cleanup
+Date: 2026-03-25 | Trigger: correction
+Wrong:   Keeping old page-local CSS after moving header layout to a shared primitive left orphaned styles inside the feature module
+Correct: Remove the replaced selectors from the old module in the same change that introduces the shared primitive
+Rule:    Any extraction to shared UI must include dead-style removal in prior owners to prevent CSS drift and confusion.
+Layer:   frontend
+
+## Lesson BY - Hero headers should not be nested under padded content wrappers
+Date: 2026-03-25 | Trigger: correction
+Wrong:   Rendering the page hero `header` inside the same section that owns content padding couples topbar spacing to body layout
+Correct: Render hero `header` as a sibling before the padded content section
+Rule:    Shared topbar/hero chrome should be outside route content padding wrappers.
+Layer:   frontend

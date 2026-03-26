@@ -467,29 +467,6 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
     const thirtyDays = 1000 * 60 * 60 * 24 * 30;
     return expiry - Date.now() <= thirtyDays && expiry > Date.now();
   }).length;
-  const latestDocuments = useMemo(
-    () =>
-      [...scopedDocuments]
-        .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
-        .slice(0, 5),
-    [scopedDocuments],
-  );
-  const nextExpiryDays = useMemo(() => {
-    const upcoming = scopedDocuments
-      .map((item) => item.expiryAt)
-      .filter((value): value is string => Boolean(value))
-      .map((value) => Math.ceil((new Date(value).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
-      .filter((value) => value >= 0);
-    if (upcoming.length === 0) return 0;
-    return Math.min(...upcoming);
-  }, [scopedDocuments]);
-  const focusAreaCard = useMemo(() => {
-    return [...areaCards]
-      .filter((item) => item.count > 0)
-      .sort((left, right) => right.count - left.count)[0] ?? null;
-  }, [areaCards]);
-
-
   const normalizedQuery = props.searchQuery.trim().toLowerCase();
   const baseFilteredDocuments = useMemo(() => {
     return scopedDocuments.filter((item) => {
@@ -956,99 +933,156 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
       {headerShell}
 
       <section className={styles.hub}>
-        <section className={styles.dashboardKpiStrip}>
-          <article className={styles.dashboardKpiItem}>
+        <section className={styles.kpiGrid}>
+          <article className={styles.kpiCard}>
+            <span>Total</span>
             <strong>{scopedDocuments.length}</strong>
-            <small>Documentos Ativos</small>
+            <small>documentos no recorte</small>
           </article>
-          <article className={styles.dashboardKpiItem}>
+          <article className={styles.kpiCard}>
+            <span>Vigentes</span>
+            <strong>{approvedCount}</strong>
+            <small>prontos para referencia</small>
+          </article>
+          <article className={styles.kpiCard}>
+            <span>Em andamento</span>
             <strong>{inReviewCount}</strong>
-            <small>Em Revisao</small>
+            <small>na fila de revisao</small>
           </article>
-          <article className={styles.dashboardKpiItem}>
-            <strong>0</strong>
-            <small>Notificacoes Pendentes</small>
-          </article>
-          <article className={styles.dashboardKpiItem}>
-            <strong>{props.documentProfiles.length}</strong>
-            <small>Profiles Disponiveis</small>
+          <article className={styles.kpiCard}>
+            <span>Atencao</span>
+            <strong>{expiringSoon}</strong>
+            <small>vencendo nos proximos 30 dias</small>
           </article>
         </section>
 
-        <section className={styles.dashboardMainGrid}>
-          <article className={`${styles.dashboardCard} ${styles.dashboardCardBlue}`}>
-            <header className={styles.dashboardCardHeader}>
-              <h2>Ultimos Documentos</h2>
-            </header>
-            <div className={styles.dashboardTimeline}>
-              {latestDocuments.map((item, index) => (
-                <button key={item.documentId} type="button" className={styles.dashboardTimelineItem} onClick={() => handleRecentOpen(item)}>
-                  <span className={`${styles.dashboardTimelineDot} ${index === 0 ? styles.dashboardTimelineDotActive : ""}`} />
-                  <div className={styles.dashboardTimelineContent}>
-                    <strong>{formatDocumentDisplayName(item, props.documentProfiles)}</strong>
-                    <small>{props.formatDate(item.createdAt)}</small>
+        <section className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <h2>Areas</h2>
+          </div>
+          <div className={styles.areaGrid}>
+            {areaCards.map((area) => (
+              <article key={area.code} className={styles.areaCard}>
+                <button
+                  type="button"
+                  className={styles.areaButton}
+                  onClick={() => {
+                    setDocumentsHubArea(area.code);
+                    setDocumentsHubProfile("all");
+                    setDocumentsHubStatus("all");
+                    navigateWithParams(buildDocumentsPath(props.view, { view: "collection", areaCode: area.code }));
+                  }}
+                  style={{ ["--area-color" as string]: area.color } as React.CSSProperties}
+                >
+                  <span className={styles.areaStripe} />
+                  <div className={styles.areaMeta}>
+                    <strong>{area.label}</strong>
+                    <small>{area.count} documentos</small>
+                    <div className={styles.areaBar}>
+                      <span
+                        className={styles.areaBarFill}
+                        style={{ width: totalDocuments > 0 ? `${Math.round((area.count / totalDocuments) * 100)}%` : "0%" }}
+                      />
+                    </div>
                   </div>
-                  <span className={styles.dashboardTimelineType}>
-                    {profileNameByCode.get(item.documentProfile) ?? item.documentProfile}
-                  </span>
+                  <span className={styles.areaDescription}>{area.description}</span>
                 </button>
-              ))}
-              {latestDocuments.length === 0 ? <div className={styles.emptyCard}>Sem documentos recentes.</div> : null}
-            </div>
-          </article>
-
-          <div className={styles.dashboardRightStack}>
-            <article className={`${styles.dashboardCard} ${styles.dashboardCardOrange}`}>
-              <header className={styles.dashboardCardHeader}>
-                <h2>Pendencias de revisao</h2>
-              </header>
-              <div className={styles.dashboardPendingTable}>
-                <div className={styles.dashboardPendingHead}>
-                  <span>Prioridade</span>
-                  <span>Revisao</span>
-                </div>
-                {["Prioritario", "Medio", "Represente", "Politico"].map((priority) => (
-                  <div key={priority} className={styles.dashboardPendingRow}>
-                    <span className={styles.dashboardPriorityTag}>{priority}</span>
-                    <span>{inReviewCount > 0 ? `${inReviewCount} documento(s) aguardando revisao.` : "Nenhum documento aguardando revisao."}</span>
-                  </div>
-                ))}
-              </div>
-            </article>
-
-            <article className={`${styles.dashboardCard} ${styles.dashboardCardRed}`}>
-              <header className={styles.dashboardCardHeader}>
-                <h2>Expiracoes Proximas</h2>
-              </header>
-              <div className={styles.dashboardExpiry}>
-                <div className={styles.dashboardExpiryCount}>
-                  <strong>{nextExpiryDays}</strong>
-                  <small>Dias Restantes</small>
-                </div>
-                <p>{expiringSoon > 0 ? `${expiringSoon} documento(s) vencendo nos proximos 30 dias.` : "Nenhuma expiracao nos proximos 30 dias."}</p>
-              </div>
-            </article>
+              </article>
+            ))}
+            {areaCards.length === 0 && (
+              <article className={styles.emptyCard}>
+                <span>Nenhuma area com documentos.</span>
+              </article>
+            )}
           </div>
         </section>
 
-        <section className={styles.dashboardBottomGrid}>
-          <article className={`${styles.dashboardCard} ${styles.dashboardCardGreen}`}>
-            <header className={styles.dashboardCardHeader}>
-              <h2>Snapshot Operacional</h2>
-            </header>
-            <div className={styles.dashboardSnapshot}>
-              <span>Sem notificacoes nao lidas.</span>
+        <section className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <h2>Tipos de documento</h2>
+          </div>
+          <div className={styles.typeGrid}>
+            {profileCards.map((profile) => (
+              <article key={profile.code} className={styles.typeCard}>
+                <button
+                  type="button"
+                  className={styles.typeButton}
+                  onClick={() => {
+                    setDocumentsHubProfile(profile.code);
+                    setDocumentsHubArea("all");
+                    setDocumentsHubStatus("all");
+                    navigateWithParams(buildDocumentsPath(props.view, { view: "collection", profileCode: profile.code }));
+                  }}
+                  style={{ ["--type-color" as string]: profile.color } as React.CSSProperties}
+                >
+                  <span className={styles.typeStripe} />
+                  <span className={styles.typeBadge}>{profile.badge}</span>
+                  <div className={styles.typeMeta}>
+                    <strong>{profile.label}</strong>
+                    <small>{profile.count} documentos</small>
+                    <div className={styles.typeBar}>
+                      <span
+                        className={styles.typeBarFill}
+                        style={{ width: totalDocuments > 0 ? `${Math.round((profile.count / totalDocuments) * 100)}%` : "0%" }}
+                      />
+                    </div>
+                  </div>
+                  <span className={styles.typeDescription}>{profile.description}</span>
+                </button>
+              </article>
+            ))}
+            {profileCards.length === 0 && (
+              <article className={styles.emptyCard}>
+                <span>Nenhum tipo com documentos.</span>
+              </article>
+            )}
+          </div>
+        </section>
+
+        <section className={styles.section}>
+          <div className={styles.recentPanel}>
+            <div className={styles.recentHeader}>
+              <h2>Abertos recentemente</h2>
+              <button
+                type="button"
+                className={styles.linkButton}
+                onClick={() => {
+                  setDocumentsHubStatus("all");
+                  navigateWithParams(buildDocumentsPath(props.view, { view: "collection" }));
+                }}
+              >
+                Ver todos →
+              </button>
             </div>
-          </article>
-          <article className={`${styles.dashboardCard} ${styles.dashboardCardPurple}`}>
-            <header className={styles.dashboardCardHeader}>
-              <h2>Foco Metal Nobre</h2>
-            </header>
-            <div className={styles.dashboardFocus}>
-              <strong>{focusAreaCard ? `${focusAreaCard.label} (${focusAreaCard.count})` : "Sem area (0)"}</strong>
-              <span>{focusAreaCard?.description ?? "Sem dados de foco operacional."}</span>
+            <div className={styles.recentList}>
+              {recentItems.length === 0 ? (
+                <div className={styles.emptyCard}>Nenhum documento recente.</div>
+              ) : (
+                recentItems.map((item) => (
+                  <button
+                    key={item.documentId}
+                    type="button"
+                    className={styles.recentRow}
+                    onClick={() => handleRecentOpen(item)}
+                  >
+                    <span className={styles.recentBadge}>{item.documentProfile.toUpperCase()}</span>
+                    <div className={styles.recentMeta}>
+                      <strong>{formatDocumentDisplayName(item, props.documentProfiles)}</strong>
+                      <div className={styles.recentSubline}>
+                        <span>{item.processArea ?? "Sem area"}</span>
+                        <span>Aberto por {item.ownerId}</span>
+                        <span>{props.formatDate(item.openedAt ?? item.createdAt)}</span>
+                      </div>
+                    </div>
+                    <div className={styles.recentAside}>
+                      <span className={styles.recentStatus}>{statusLabel(item.status)}</span>
+                      <small className={styles.recentCode}>{item.documentId}</small>
+                    </div>
+                  </button>
+                ))
+              )}
             </div>
-          </article>
+          </div>
         </section>
       </section>
     </div>

@@ -1,0 +1,233 @@
+.root {
+  --timeline-frame-padding: 1rem;
+  --timeline-gutter: 2.5rem;
+  --timeline-axis: calc(var(--timeline-gutter) / 2.5);
+  --timeline-gap: 0.7rem;
+  --timeline-marker-size: 14px;
+  display: grid;
+  gap: var(--timeline-gap);
+  padding:
+    0.65rem
+    calc(var(--timeline-frame-padding) + var(--timeline-gutter))
+    0.95rem
+    var(--timeline-frame-padding);
+}
+
+.rootBlue {
+  --timeline-accent: #8f3141;
+  --timeline-accent-border: #702332;
+  --timeline-accent-soft: rgba(143, 49, 65, 0.62);
+}
+
+.rootGold {
+  --timeline-accent: #d8a12d;
+  --timeline-accent-border: #b68114;
+  --timeline-accent-soft: rgba(216, 161, 45, 0.56);
+}
+
+.rootGreen {
+  --timeline-accent: #2d9660;
+  --timeline-accent-border: #1f7548;
+  --timeline-accent-soft: rgba(45, 150, 96, 0.56);
+}
+
+.itemShell {
+  position: relative;
+  padding-left: var(--timeline-gutter);
+}
+
+.itemShell::before {
+  content: "";
+  position: absolute;
+  left: var(--timeline-axis);
+  top: 50%;
+  width: 2px;
+  height: calc(100% + var(--timeline-gap));
+  background: #c2cbd7;
+  transform: translateX(-50%);
+  z-index: 1;
+}
+
+.itemShell::after {
+  content: "";
+  position: absolute;
+  left: var(--timeline-axis);
+  top: 50%;
+  width: 4px;
+  height: calc(100% + var(--timeline-gap));
+  border-radius: 999px;
+  background:
+    linear-gradient(
+      to top,
+      transparent 0%,
+      transparent 20%,
+      var(--timeline-accent-soft) 50%,
+      transparent 80%,
+      transparent 100%
+    );
+  background-size: 100% 220%;
+  background-position: center 100%;
+  transform: translateX(-50%);
+  animation: timeline-rail-flow 2.4s linear infinite;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.itemShellLast::before {
+  content: none;
+}
+
+.itemShellLast::after {
+  content: none;
+}
+
+.itemCardButton,
+.itemCardStatic {
+  position: relative;
+  min-height: 66px;
+  border: 1px solid #c7cdda;
+  border-radius: 0.82rem;
+  background: #f9fafc;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem 0.6rem 1rem;
+  text-align: left;
+  box-shadow: 0 6px 10px rgba(35, 40, 57, 0.08);
+  transition: transform 180ms ease, box-shadow 220ms ease, border-color 180ms ease;
+  will-change: transform;
+}
+
+.itemCardButton {
+  width: 100%;
+  cursor: pointer;
+}
+
+.itemCardButton:hover,
+.itemCardButton:focus-visible {
+  transform: translateY(-3px);
+  border-width: 2px;
+  border-color: color-mix(in srgb, var(--timeline-accent) 58%, #c7cdda);
+  box-shadow: 0 16px 30px rgba(27, 14, 18, 0.14);
+}
+
+.itemCardStatic {
+  cursor: default;
+}
+
+.marker {
+  position: absolute;
+  left: var(--timeline-axis);
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: var(--timeline-marker-size);
+  height: var(--timeline-marker-size);
+  border-radius: 999px;
+  background: #c0c7d3;
+  border: 1px solid #acb6c5;
+  z-index: 2;
+}
+
+.marker::after {
+  content: "";
+  position: absolute;
+  inset: -9px;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--timeline-accent) 20%, transparent);
+  opacity: 0;
+  transform: scale(0.68);
+}
+
+.markerActive {
+  background: var(--timeline-accent);
+  border: 2px solid var(--timeline-accent-border);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--timeline-accent) 18%, transparent);
+}
+
+.markerActive::after {
+  opacity: 1;
+  animation: timeline-marker-pulse 1.9s ease-out infinite;
+}
+
+.itemContent {
+  min-width: 0;
+}
+
+.itemTitle {
+  display: block;
+  font-size: 1.14rem;
+  line-height: 1.1;
+  color: #7d2638;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.itemSubtitle {
+  display: block;
+  margin-top: 0.2rem;
+  color: #4f6178;
+  font-size: 0.85rem;
+}
+
+.itemAside {
+  font-size: 0.92rem;
+  color: #1f2a3f;
+  white-space: nowrap;
+}
+
+.emptyState {
+  border: 1px dashed #c8ced9;
+  border-radius: 0.82rem;
+  padding: 1rem;
+  background: #f9fafc;
+  color: #556274;
+}
+
+@keyframes timeline-marker-pulse {
+  0% {
+    opacity: 0.62;
+    transform: scale(0.7);
+  }
+  70% {
+    opacity: 0;
+    transform: scale(2.05);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.05);
+  }
+}
+
+@keyframes timeline-rail-flow {
+  0% {
+    background-position: center 100%;
+  }
+  100% {
+    background-position: center 0%;
+  }
+}
+
+@media (max-width: 640px) {
+  .itemCardButton,
+  .itemCardStatic {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 0.25rem;
+  }
+
+  .itemAside {
+    font-size: 0.84rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .itemShell::after,
+  .markerActive::after {
+    animation: none;
+  }
+
+  .markerActive::after {
+    opacity: 0.32;
+    transform: scale(1.05);
+  }
+}

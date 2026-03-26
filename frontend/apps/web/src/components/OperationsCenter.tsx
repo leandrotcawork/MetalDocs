@@ -1,8 +1,11 @@
+import { useMemo, useState } from "react";
 import { metalNobreProcessAreaHint } from "../features/documents/adapters/metalNobreExperience";
 import { formatDocumentDisplayName } from "../features/shared/documentDisplay";
 import type { DocumentProfileItem, NotificationItem, ProcessAreaItem, SearchDocumentItem } from "../lib.types";
 import { WorkspaceDataState } from "./WorkspaceDataState";
-import { WorkspaceViewFrame } from "./WorkspaceViewFrame";
+import styles from "./OperationsCenter.module.css";
+import { TimelineRail } from "./ui/TimelineRail";
+import { WorkspaceHeroHeader } from "./ui/WorkspaceHeroHeader";
 
 type LoadState = "idle" | "loading" | "ready" | "error";
 
@@ -13,29 +16,52 @@ type OperationsCenterProps = {
   documentProfiles: DocumentProfileItem[];
   processAreas: ProcessAreaItem[];
   formatDate: (value?: string) => string;
-  onCreateDocument: () => void;
   onRefreshWorkspace: () => void | Promise<void>;
   onOpenDocument: (documentId: string) => void | Promise<void>;
 };
 
 export function OperationsCenter(props: OperationsCenterProps) {
-  const hasOperationalData = props.documents.length > 0 || props.notifications.length > 0;
+  const [searchQuery, setSearchQuery] = useState("");
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const filteredDocuments = useMemo(() => {
+    if (!normalizedQuery) return props.documents;
+    return props.documents.filter((item) => {
+      const haystack = [
+        item.title,
+        item.documentCode,
+        item.documentId,
+        item.documentProfile,
+        item.processArea,
+        item.department,
+        item.ownerId,
+      ].join(" ").toLowerCase();
+      return haystack.includes(normalizedQuery);
+    });
+  }, [normalizedQuery, props.documents]);
+
+  const hasOperationalData = filteredDocuments.length > 0 || props.notifications.length > 0;
   const profileNameByCode = new Map(props.documentProfiles.map((item) => [item.code, item.name]));
   const areaNameByCode = new Map(props.processAreas.map((item) => [item.code, item.name]));
-  const pendingReviews = props.documents.filter((item) => item.status === "IN_REVIEW");
-  const recentDocuments = [...props.documents]
+  const pendingReviews = filteredDocuments.filter((item) => item.status === "IN_REVIEW");
+  const recentDocuments = [...filteredDocuments]
     .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
     .slice(0, 5);
   const unreadNotifications = props.notifications.filter((item) => item.status !== "READ");
-  const expiringSoon = props.documents
+  const expiringSoon = filteredDocuments
     .filter((item) => {
       if (!item.expiryAt) return false;
       const diff = new Date(item.expiryAt).getTime() - Date.now();
       return diff > 0 && diff <= 1000 * 60 * 60 * 24 * 30;
     })
     .slice(0, 5);
+  const nextExpiryDays = expiringSoon
+    .map((item) => item.expiryAt)
+    .filter((value): value is string => Boolean(value))
+    .map((value) => Math.ceil((new Date(value).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    .filter((value) => value >= 0)
+    .sort((left, right) => left - right)[0] ?? 0;
   const areaCountByCode = new Map<string, number>();
-  for (const document of props.documents) {
+  for (const document of filteredDocuments) {
     const areaCode = (document.processArea ?? "").trim().toLowerCase();
     if (areaCode === "") {
       continue;
@@ -46,125 +72,130 @@ export function OperationsCenter(props: OperationsCenterProps) {
     .map(([code, count]) => ({ code, label: areaNameByCode.get(code) ?? code, count, hint: metalNobreProcessAreaHint(code) }))
     .sort((left, right) => right.count - left.count)
     .slice(0, 5);
+  const focusArea = processAreaSnapshot[0] ?? null;
 
   return (
-    <WorkspaceViewFrame
-      kicker="Centro operacional"
-      title="Painel documental"
-      description="Visao executiva do que pede atencao agora, sem depender de realtime obrigatorio para ser util no dia a dia."
-      actions={<button type="button" onClick={props.onCreateDocument}>Criar novo documento</button>}
-      stats={(
-        <div className="catalog-stats">
-          <article className="catalog-stat"><span>Documentos ativos</span><strong>{props.documents.length}</strong><small>Acervo indexado no workspace</small></article>
-          <article className="catalog-stat"><span>Em revisao</span><strong>{pendingReviews.length}</strong><small>Fila operacional imediata</small></article>
-          <article className="catalog-stat"><span>Notificacoes pendentes</span><strong>{unreadNotifications.length}</strong><small>Leitura do usuario autenticado</small></article>
-          <article className="catalog-stat"><span>Profiles disponiveis</span><strong>{props.documentProfiles.length}</strong><small>Motor profile-first pronto para authoring</small></article>
-        </div>
-      )}
-    >
+    <>
+      <WorkspaceHeroHeader
+        title="Painel documental"
+        subtitle="Visao executiva do que pede atencao agora, sem depender de realtime obrigatorio para ser util no dia a dia."
+        searchQuery={searchQuery}
+        onSearchQueryChange={setSearchQuery}
+      />
+
+      <section className={styles.content}>
       <WorkspaceDataState
         loadState={props.loadState}
         isEmpty={!hasOperationalData}
-        emptyTitle="Sem sinais operacionais no momento"
-        emptyDescription="Ainda nao ha documentos ou notificacoes para compor o centro operacional."
+        emptyTitle={normalizedQuery ? "Nenhum documento para a busca atual" : "Sem sinais operacionais no momento"}
+        emptyDescription={normalizedQuery
+          ? "A busca nao retornou documentos no dashboard. Ajuste os termos e tente novamente."
+          : "Ainda nao ha documentos ou notificacoes para compor o centro operacional."}
         loadingLabel="Atualizando centro operacional"
         errorDescription="Nao foi possivel sincronizar os indicadores operacionais agora."
         onRetry={props.onRefreshWorkspace}
       />
 
       {props.loadState === "ready" && hasOperationalData && (
-      <div className="operations-grid">
-        <section className="catalog-panel">
-          <div className="catalog-panel-head">
-            <div>
-              <p className="catalog-kicker">Recentes</p>
-              <h2>Ultimos documentos</h2>
-            </div>
-          </div>
-          <ul className="catalog-mini-list">
-            {recentDocuments.map((item) => (
-              <li key={item.documentId}>
-                <button type="button" className="inline-link-button" onClick={() => void props.onOpenDocument(item.documentId)}>{formatDocumentDisplayName(item, props.documentProfiles)}</button>
-                <small>{profileNameByCode.get(item.documentProfile) ?? item.documentProfile} / {props.formatDate(item.createdAt)}</small>
-              </li>
-            ))}
-            {recentDocuments.length === 0 && <li><span>Nenhum documento carregado.</span></li>}
-          </ul>
-        </section>
+        <>
+          <section className={styles.kpiStrip}>
+            <article className={styles.kpiItem}>
+              <strong>{filteredDocuments.length}</strong>
+              <small>Documentos Ativos</small>
+            </article>
+            <article className={styles.kpiItem}>
+              <strong>{pendingReviews.length}</strong>
+              <small>Em Revisao</small>
+            </article>
+            <article className={styles.kpiItem}>
+              <strong>{unreadNotifications.length}</strong>
+              <small>Notificacoes Pendentes</small>
+            </article>
+            <article className={styles.kpiItem}>
+              <strong>{props.documentProfiles.length}</strong>
+              <small>Profiles Disponiveis</small>
+            </article>
+          </section>
 
-        <section className="catalog-panel">
-          <div className="catalog-panel-head">
-            <div>
-              <p className="catalog-kicker">Aprovacoes</p>
-              <h2>Pendencias de revisao</h2>
-            </div>
-          </div>
-          <ul className="catalog-mini-list">
-            {pendingReviews.map((item) => (
-              <li key={item.documentId}>
-                <button type="button" className="inline-link-button" onClick={() => void props.onOpenDocument(item.documentId)}>{formatDocumentDisplayName(item, props.documentProfiles)}</button>
-                <small>{item.processArea || "Sem area"} / {item.ownerId}</small>
-              </li>
-            ))}
-            {pendingReviews.length === 0 && <li><span>Nenhum documento aguardando revisao.</span></li>}
-          </ul>
-        </section>
+          <section className={styles.mainGrid}>
+            <article className={`${styles.card} ${styles.cardBlue}`}>
+              <header className={styles.cardHeader}>
+                <h2>Ultimos Documentos</h2>
+              </header>
+              <div className={styles.timelineBody}>
+                <TimelineRail
+                  accent="blue"
+                  ariaLabel="Ultimos documentos"
+                  emptyState="Sem documentos recentes."
+                  items={recentDocuments.map((item, index) => ({
+                    id: item.documentId,
+                    title: formatDocumentDisplayName(item, props.documentProfiles),
+                    subtitle: props.formatDate(item.createdAt),
+                    aside: profileNameByCode.get(item.documentProfile) ?? item.documentProfile,
+                    active: index === 0,
+                    onClick: () => void props.onOpenDocument(item.documentId),
+                  }))}
+                />
+              </div>
+            </article>
 
-        <section className="catalog-panel">
-          <div className="catalog-panel-head">
-            <div>
-              <p className="catalog-kicker">Notificacoes</p>
-              <h2>Snapshot operacional</h2>
-            </div>
-          </div>
-          <ul className="catalog-mini-list">
-            {unreadNotifications.slice(0, 5).map((item) => (
-              <li key={item.id}>
-                <span>{item.title}</span>
-                <small>{props.formatDate(item.createdAt)}</small>
-              </li>
-            ))}
-            {unreadNotifications.length === 0 && <li><span>Sem notificacoes nao lidas.</span></li>}
-          </ul>
-        </section>
+            <div className={styles.rightStack}>
+              <article className={`${styles.card} ${styles.cardOrange}`}>
+                <header className={styles.cardHeader}>
+                  <h2>Pendencias de revisao</h2>
+                </header>
+                <div className={styles.pendingTable}>
+                  <div className={styles.pendingHead}>
+                    <span>Prioridade</span>
+                    <span>Revisao</span>
+                  </div>
+                  {["Prioritario", "Medio", "Represente", "Politico"].map((priority) => (
+                    <div key={priority} className={styles.pendingRow}>
+                      <span className={styles.priorityTag}>{priority}</span>
+                      <span>{pendingReviews.length > 0 ? `${pendingReviews.length} documento(s) aguardando revisao.` : "Nenhum documento aguardando revisao."}</span>
+                    </div>
+                  ))}
+                </div>
+              </article>
 
-        <section className="catalog-panel">
-          <div className="catalog-panel-head">
-            <div>
-              <p className="catalog-kicker">Cadencia</p>
-              <h2>Expiracoes proximas</h2>
+              <article className={`${styles.card} ${styles.cardRed}`}>
+                <header className={styles.cardHeader}>
+                  <h2>Expiracoes Proximas</h2>
+                </header>
+                <div className={styles.expiry}>
+                  <div className={styles.expiryCount}>
+                    <strong>{nextExpiryDays}</strong>
+                    <small>Dias Restantes</small>
+                  </div>
+                  <p>{expiringSoon.length > 0 ? `${expiringSoon.length} documento(s) vencendo nos proximos 30 dias.` : "Nenhuma expiracao nos proximos 30 dias."}</p>
+                </div>
+              </article>
             </div>
-          </div>
-          <ul className="catalog-mini-list">
-            {expiringSoon.map((item) => (
-              <li key={item.documentId}>
-                <button type="button" className="inline-link-button" onClick={() => void props.onOpenDocument(item.documentId)}>{formatDocumentDisplayName(item, props.documentProfiles)}</button>
-                <small>Vence em {props.formatDate(item.expiryAt)}</small>
-              </li>
-            ))}
-            {expiringSoon.length === 0 && <li><span>Nenhuma expiracao nos proximos 30 dias.</span></li>}
-          </ul>
-        </section>
+          </section>
 
-        <section className="catalog-panel">
-          <div className="catalog-panel-head">
-            <div>
-              <p className="catalog-kicker">Processos</p>
-              <h2>Foco Metal Nobre</h2>
-            </div>
-          </div>
-          <ul className="catalog-mini-list">
-            {processAreaSnapshot.map((item) => (
-              <li key={item.code}>
-                <span>{item.label} ({item.count})</span>
-                <small>{item.hint}</small>
-              </li>
-            ))}
-            {processAreaSnapshot.length === 0 && <li><span>Sem processos com documentos no recorte atual.</span></li>}
-          </ul>
-        </section>
-      </div>
+          <section className={styles.bottomGrid}>
+            <article className={`${styles.card} ${styles.cardGreen}`}>
+              <header className={styles.cardHeader}>
+                <h2>Snapshot Operacional</h2>
+              </header>
+              <div className={styles.snapshot}>
+                <span>{unreadNotifications.length > 0 ? `${unreadNotifications.length} notificacao(oes) nao lidas.` : "Sem notificacoes nao lidas."}</span>
+              </div>
+            </article>
+
+            <article className={`${styles.card} ${styles.cardPurple}`}>
+              <header className={styles.cardHeader}>
+                <h2>Foco Metal Nobre</h2>
+              </header>
+              <div className={styles.focus}>
+                <strong>{focusArea ? `${focusArea.label} (${focusArea.count})` : "Sem area (0)"}</strong>
+                <span>{focusArea?.hint ?? "Sem processos com documentos no recorte atual."}</span>
+              </div>
+            </article>
+          </section>
+        </>
       )}
-    </WorkspaceViewFrame>
+      </section>
+    </>
   );
 }

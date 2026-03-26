@@ -1,0 +1,28 @@
+{
+  "session_id": "2026-03-26-session",
+  "started_at": "2026-03-26T10:00:00Z",
+  "last_task_id": "2026-03-26-sidebar-cleanup",
+  "current_pipeline_step": 0,
+  "tasks_completed_this_session": 0,
+  "tasks_since_consolidate": 0,
+  "consecutive_failures": 0,
+  "strategy_rotation": {
+    "task_id": null,
+    "current_strategy": 0,
+    "attempts": []
+  },
+  "context_pressure": "low",
+  "active_context_files": [],
+  "subagents_dispatched": [],
+  "snapshot_reason": "brain-decision complete",
+  "last_decision": {
+    "task_id": "2026-03-26-sidebar-cleanup",
+    "domain": "frontend",
+    "risk": "low",
+    "type": "feature",
+    "score": 15,
+    "model": "haiku",
+    "plan_mode": false,
+    "timestamp": "2026-03-26T10:00:00Z"
+  }
+}

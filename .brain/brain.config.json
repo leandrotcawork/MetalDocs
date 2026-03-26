@@ -1,0 +1,99 @@
+{
+  "brain_id": "metaldocs-brain",
+  "version": "0.3.0",
+  "created_at": "2026-03-26T10:00:00Z",
+  "project_root": ".",
+  "brain_root": ".brain",
+  "database": {
+    "path": ".brain/brain.db",
+    "schema_version": 1
+  },
+  "cortex_regions": ["backend", "frontend", "database", "infra"],
+  "hooks": {
+    "profile": "standard",
+    "profiles": {
+      "minimal": "Tier 1 only — session briefing, hippocampus guard, config protection, session end",
+      "standard": "Tier 1+2 — adds strategy rotation, quality gate, task safety net",
+      "strict": "All tiers — adds activity observer"
+    },
+    "individual_overrides": {}
+  },
+  "resilience": {
+    "circuit_breaker": {
+      "enabled": true,
+      "failure_threshold": 3,
+      "cooldown_seconds": 300,
+      "window_seconds": 600
+    },
+    "strategy_rotation": {
+      "enabled": true,
+      "failure_threshold": 2,
+      "max_retry_per_strategy": 2,
+      "strategies": ["default", "alternative", "minimal", "escalate", "human"]
+    }
+  },
+  "subagents": {
+    "enabled": true,
+    "dispatch_threshold": 20,
+    "parallel_review": true,
+    "fallback_to_inline": true,
+    "model_overrides": {
+      "implementation": null,
+      "review": "sonnet",
+      "document": "haiku",
+      "research": "haiku",
+      "status": "haiku"
+    }
+  },
+  "learning": {
+    "confidence_initial": 0.3,
+    "promotion_threshold": 0.7,
+    "min_occurrences_for_promotion": 3,
+    "scope_default": "project",
+    "auto_promote_to_global": false
+  },
+  "context_loading": {
+    "tier_1_max_tokens": 4000,
+    "tier_2_max_tokens": 15000,
+    "tier_3_max_tokens": 5000,
+    "tier_1_always_loaded": ["hippocampus_summary", "current_task", "top_3_lessons"],
+    "tier_2_default_count": 5,
+    "tier_3_on_demand": true,
+    "persistent_mind_cache": "working-memory/agent-state.md"
+  },
+  "token_budgets": {
+    "context_mapper": { "in": 4000, "out": 2000 },
+    "mckinsey_layer": { "in": 5000, "out": 3000, "subagent_budget": 3000, "high_stakes_only": true },
+    "planner": { "in": 15000, "out": 5000 },
+    "implementer": { "in": 40000, "out": 20000, "subagent_budget": 50000 },
+    "reviewer": { "in": 15000, "out": 5000 },
+    "documenter": { "in": 8000, "out": 4000 },
+    "learner": { "in": 5000, "out": 2000 },
+    "verifier": { "in": 10000, "out": 3000 }
+  },
+  "token_optimization": {
+    "compact_suggestion_threshold": 50,
+    "context_pressure_levels": {
+      "low": 0.50,
+      "moderate": 0.65,
+      "high": 0.75,
+      "critical": 0.80
+    }
+  },
+  "consolidation": {
+    "trigger": "explicit_command_or_5_tasks",
+    "auto_propose_updates": true,
+    "developer_approval_required": true,
+    "last_consolidation": null
+  },
+  "lesson_escalation": {
+    "threshold": 3,
+    "action": "propose_hippocampus_convention"
+  },
+  "weight_decay": {
+    "enabled": true,
+    "rate_per_day": 0.005,
+    "min_weight": 0.1,
+    "max_stale_days": 90
+  }
+}

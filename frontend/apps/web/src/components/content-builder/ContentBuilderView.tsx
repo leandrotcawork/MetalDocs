@@ -27,6 +27,7 @@ type BuilderState = {
   contentDraft: Record<string, unknown>;
   schema: DocumentProfileSchemaItem | null;
   previewCollapsed: boolean;
+  sidebarCollapsed: boolean;
 };
 
 type BuilderAction =
@@ -38,7 +39,8 @@ type BuilderAction =
   | { type: "set_error"; payload: { message: string } }
   | { type: "set_pdf"; payload: { pdfUrl: string } }
   | { type: "set_version"; payload: { version: number | null } }
-  | { type: "set_preview"; payload: { collapsed: boolean } };
+  | { type: "set_preview"; payload: { collapsed: boolean } }
+  | { type: "set_sidebar"; payload: { collapsed: boolean } };
 
 const initialState: BuilderState = {
   status: "loading",
@@ -48,6 +50,7 @@ const initialState: BuilderState = {
   contentDraft: {},
   schema: null,
   previewCollapsed: false,
+  sidebarCollapsed: false,
 };
 
 function reducer(state: BuilderState, action: BuilderAction): BuilderState {
@@ -78,6 +81,8 @@ function reducer(state: BuilderState, action: BuilderAction): BuilderState {
       return { ...state, version: action.payload.version };
     case "set_preview":
       return { ...state, previewCollapsed: action.payload.collapsed };
+    case "set_sidebar":
+      return { ...state, sidebarCollapsed: action.payload.collapsed };
     default:
       return state;
   }
@@ -86,7 +91,7 @@ function reducer(state: BuilderState, action: BuilderAction): BuilderState {
 export function ContentBuilderView(props: ContentBuilderViewProps) {
   const documentId = props.document?.documentId ?? "";
   const [state, dispatch] = useReducer(reducer, initialState);
-  const { status, error, pdfUrl, version, contentDraft, schema, previewCollapsed } = state;
+  const { status, error, pdfUrl, version, contentDraft, schema, previewCollapsed, sidebarCollapsed } = state;
   const editorRef = useRef<HTMLDivElement | null>(null);
   const [activeSectionKey, setActiveSectionKey] = useState<string | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
@@ -444,23 +449,50 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
       </section>
 
       <div className="content-builder-layout">
-        <aside className="content-builder-sections-nav">
-          <ProgressSidebar
-            title="Secoes"
-            items={sections.map((section, index) => {
-              const isActive = currentSectionKey === section.key;
-              const isComplete = sectionCompletion[section.key] ?? false;
-              const stepStatus: StepStatus = isActive ? "active" : isComplete ? "done" : "pending";
-              return {
-                key: section.key,
-                label: section.title ?? section.key,
-                description: section.description ?? `Secao ${index + 1}`,
-                status: stepStatus,
-                isCurrent: isActive,
-                onSelect: () => handleSectionNav(section.key),
-              };
-            })}
-          />
+        <aside className={`content-builder-sections-nav ${sidebarCollapsed ? "is-collapsed" : ""}`}>
+          {sidebarCollapsed ? (
+            <button
+              type="button"
+              className="content-builder-sidebar-toggle is-collapsed"
+              onClick={() => dispatch({ type: "set_sidebar", payload: { collapsed: false } })}
+              aria-label="Expandir navegacao"
+            >
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M7 5l6 5-6 5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          ) : (
+            <>
+              <div className="content-builder-sidebar-header">
+                <button
+                  type="button"
+                  className="content-builder-sidebar-toggle"
+                  onClick={() => dispatch({ type: "set_sidebar", payload: { collapsed: true } })}
+                  aria-label="Recolher navegacao"
+                >
+                  <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M13 5l-6 5 6 5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              </div>
+              <ProgressSidebar
+                title="Secoes"
+                items={sections.map((section, index) => {
+                  const isActive = currentSectionKey === section.key;
+                  const isComplete = sectionCompletion[section.key] ?? false;
+                  const stepStatus: StepStatus = isActive ? "active" : isComplete ? "done" : "pending";
+                  return {
+                    key: section.key,
+                    label: section.title ?? section.key,
+                    description: section.description ?? `Secao ${index + 1}`,
+                    status: stepStatus,
+                    isCurrent: isActive,
+                    onSelect: () => handleSectionNav(section.key),
+                  };
+                })}
+              />
+            </>
+          )}
         </aside>
 
         {previewCollapsed ? (

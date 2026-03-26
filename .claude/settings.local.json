@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp \"C:/Users/leandro.theodoro.MN-NTB-LEANDROT/.claude/plugins/marketplaces/forgeflow-plugins/templates/brain/working-memory/brain-state.json\" \"c:/Users/leandro.theodoro.MN-NTB-LEANDROT/Documents/MetalDocs/.brain/working-memory/brain-state.json\")",
+      "Bash(cp \"C:/Users/leandro.theodoro.MN-NTB-LEANDROT/.claude/plugins/marketplaces/forgeflow-plugins/templates/brain/progress/brain-project-state.json\" \"c:/Users/leandro.theodoro.MN-NTB-LEANDROT/Documents/MetalDocs/.brain/progress/brain-project-state.json\")",
+      "Bash(python -:*)",
+      "Bash(npx tsc:*)"
+    ]
+  }
+}

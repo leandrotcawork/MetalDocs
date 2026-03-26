@@ -1834,6 +1834,45 @@ td small {
   flex-direction: column;
   padding: 12px 0;
   overflow-y: auto;
+  transition: width 0.2s ease;
+}
+
+.content-builder-sections-nav.is-collapsed {
+  width: 36px;
+  padding: 8px 0;
+  align-items: center;
+  overflow: hidden;
+}
+
+.content-builder-sidebar-header {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 8px 6px;
+}
+
+.content-builder-sidebar-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  border-radius: 4px;
+  transition: background 0.15s, color 0.15s;
+  padding: 0;
+  font-family: inherit;
+}
+
+.content-builder-sidebar-toggle:hover {
+  background: var(--vinho-pale);
+  color: var(--vinho);
+}
+
+.content-builder-sidebar-toggle.is-collapsed {
+  margin-top: 4px;
 }
 
 .content-builder-sections-title {

@@ -898,6 +898,7 @@
 
 .workspace-sidebar.is-collapsed {
   width: 44px;
+  grid-template-rows: auto;
 }
 
 .workspace-sidebar-toggle {
@@ -909,7 +910,7 @@
   border-radius: 6px;
   border: none;
   background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.7);
+  color: #ffffff;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
   flex-shrink: 0;

@@ -217,6 +217,7 @@ export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
   const userMenuRef = useRef<HTMLDivElement | null>(null);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent) {
@@ -358,27 +359,9 @@ export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
       </header>
 
       <div className={styles["workspace-layout"]}>
-        <aside className={styles["workspace-sidebar"]}>
+        <aside className={`${styles["workspace-sidebar"]} ${sidebarCollapsed ? styles["is-collapsed"] : ""}`}>
+          {!sidebarCollapsed && (
           <div className={styles["workspace-sidebar-scroll"]}>
-            <div className={styles["workspace-context-pill"]}>
-              <div className={styles["workspace-context-mark"]} aria-hidden="true">
-                <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.4">
-                  <path d="M2 2h9v9H2z" strokeLinejoin="round" />
-                  <path d="M2 5h9M5 5v6" strokeLinecap="round" />
-                </svg>
-              </div>
-              <div className={styles["workspace-context-copy"]}>
-                <strong>{props.organizationLabel}</strong>
-                <small>{props.userRoleLabel}</small>
-              </div>
-              <span className={styles["workspace-context-chevron"]} aria-hidden="true">
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4">
-                  <path d="M3 4.5 6 7.5l3-3" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </span>
-            </div>
-
-            <div className={styles["workspace-divider"]} />
 
             {primarySections.map((section, index) => (
               <div key={section.label} className={styles["workspace-nav-group"]}>
@@ -473,13 +456,22 @@ export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
               </div>
             ))}
           </div>
+          )}
 
           <div className={styles["workspace-sidebar-footer"]}>
-            <div className={styles["workspace-runtime-card"]}>
-              <span>Workspace</span>
-              <strong>Control room documental</strong>
-              <small>{props.reviewCount} documento(s) em revisao</small>
-            </div>
+            <button
+              type="button"
+              className={styles["workspace-sidebar-toggle"]}
+              onClick={() => setSidebarCollapsed((c) => !c)}
+              title={sidebarCollapsed ? "Expandir sidebar" : "Recolher sidebar"}
+              aria-label={sidebarCollapsed ? "Expandir sidebar" : "Recolher sidebar"}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+                {sidebarCollapsed
+                  ? <path d="M5 3l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
+                  : <path d="M9 3l-4 4 4 4" strokeLinecap="round" strokeLinejoin="round" />}
+              </svg>
+            </button>
           </div>
         </aside>
 

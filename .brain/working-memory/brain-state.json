@@ -1,8 +1,8 @@
 {
   "session_id": "2026-03-26-session",
   "started_at": "2026-03-26T10:00:00Z",
-  "last_task_id": "2026-03-26-sidebar-cleanup",
-  "current_pipeline_step": 0,
+  "last_task_id": "2026-03-26-sidebar-toggle-top",
+  "current_pipeline_step": 3,
   "tasks_completed_this_session": 0,
   "tasks_since_consolidate": 0,
   "consecutive_failures": 0,

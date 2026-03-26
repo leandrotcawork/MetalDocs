@@ -360,6 +360,25 @@ export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
 
       <div className={styles["workspace-layout"]}>
         <aside className={`${styles["workspace-sidebar"]} ${sidebarCollapsed ? styles["is-collapsed"] : ""}`}>
+          <div className={styles["workspace-sidebar-header"]}>
+            {!sidebarCollapsed && (
+              <span className={styles["workspace-sidebar-header-title"]}>Navegacao</span>
+            )}
+            <button
+              type="button"
+              className={styles["workspace-sidebar-toggle"]}
+              onClick={() => setSidebarCollapsed((c) => !c)}
+              title={sidebarCollapsed ? "Expandir sidebar" : "Recolher sidebar"}
+              aria-label={sidebarCollapsed ? "Expandir sidebar" : "Recolher sidebar"}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+                {sidebarCollapsed
+                  ? <path d="M3 11L11 3M7 3h4v4" strokeLinecap="round" strokeLinejoin="round" />
+                  : <path d="M11 3L3 11M7 11H3V7" strokeLinecap="round" strokeLinejoin="round" />}
+              </svg>
+            </button>
+          </div>
+
           {!sidebarCollapsed && (
           <div className={styles["workspace-sidebar-scroll"]}>
 
@@ -458,21 +477,6 @@ export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
           </div>
           )}
 
-          <div className={styles["workspace-sidebar-footer"]}>
-            <button
-              type="button"
-              className={styles["workspace-sidebar-toggle"]}
-              onClick={() => setSidebarCollapsed((c) => !c)}
-              title={sidebarCollapsed ? "Expandir sidebar" : "Recolher sidebar"}
-              aria-label={sidebarCollapsed ? "Expandir sidebar" : "Recolher sidebar"}
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
-                {sidebarCollapsed
-                  ? <path d="M5 3l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
-                  : <path d="M9 3l-4 4 4 4" strokeLinecap="round" strokeLinejoin="round" />}
-              </svg>
-            </button>
-          </div>
         </aside>
 
         <main className={`${styles["workspace-main"]} ${isCatalogView || isCreateView || isContentBuilder ? styles["is-toolbarless"] : ""} ${isCreateView ? styles["is-create-view"] : ""} ${isContentBuilder ? styles["is-content-builder-view"] : ""}`}>

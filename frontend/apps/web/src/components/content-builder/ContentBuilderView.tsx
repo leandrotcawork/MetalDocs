@@ -1,13 +1,15 @@
-import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { api } from "../../lib.api";
 import type { DocumentListItem, DocumentProfileSchemaItem } from "../../lib.types";
 import { formatDocumentDisplayName } from "../../features/shared/documentDisplay";
 import { ProgressSidebar } from "../create/widgets/ProgressSidebar";
 import type { StepStatus } from "../create/documentCreateTypes";
-import { PdfPreview } from "../create/widgets/PdfPreview";
 import { ContentSchemaForm } from "./ContentSchemaForm";
 import type { SchemaSection } from "./contentSchemaTypes";
 import { hasAnyValue, isFieldComplete, sectionAnchorId } from "./contentBuilderUtils";
+import { useAutoSave } from "./useAutoSave";
+import { PreviewPanel } from "./preview/PreviewPanel";
+import { ResizableSplitPane } from "./ResizableSplitPane";
 
 type ContentBuilderViewProps = {
   document: DocumentListItem | null;
@@ -35,6 +37,7 @@ type BuilderAction =
   | { type: "set_status"; payload: { status: BuilderStatus } }
   | { type: "set_error"; payload: { message: string } }
   | { type: "set_pdf"; payload: { pdfUrl: string } }
+  | { type: "set_version"; payload: { version: number | null } }
   | { type: "set_preview"; payload: { collapsed: boolean } };
 
 const initialState: BuilderState = {
@@ -71,6 +74,8 @@ function reducer(state: BuilderState, action: BuilderAction): BuilderState {
       return { ...state, error: action.payload.message };
     case "set_pdf":
       return { ...state, pdfUrl: action.payload.pdfUrl };
+    case "set_version":
+      return { ...state, version: action.payload.version };
     case "set_preview":
       return { ...state, previewCollapsed: action.payload.collapsed };
     default:
@@ -87,9 +92,14 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [autosaveLabel, setAutosaveLabel] = useState("Nao salvo");
 
+  const profileCode = props.document?.documentProfile ?? "";
   const documentCode = useMemo(() => {
     if (!props.document?.documentId) return "--";
     return props.document.documentCode ?? formatDocumentDisplayName(props.document);
+  }, [props.document]);
+
+  const documentTitle = useMemo(() => {
+    return props.document?.title ?? "";
   }, [props.document]);
 
   const sections = useMemo(() => {
@@ -112,20 +122,53 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
     return completion;
   }, [sections, contentDraft]);
 
+  // --- Auto-save integration ---
+  const saveFn = useCallback(
+    async (docId: string, body: { content: Record<string, unknown> }) => {
+      const response = await api.saveDocumentContentNative(docId, body);
+      return { pdfUrl: response.pdfUrl, version: response.version ?? null };
+    },
+    [],
+  );
+
+  const autoSave = useAutoSave({
+    documentId,
+    contentDraft,
+    saveFn,
+    debounceMs: 3000,
+    enabled: !!documentId && status !== "loading",
+  });
+
+  // Sync auto-save results back into reducer
+  useEffect(() => {
+    if (autoSave.lastSavedPdfUrl && autoSave.lastSavedPdfUrl !== pdfUrl) {
+      dispatch({ type: "set_pdf", payload: { pdfUrl: autoSave.lastSavedPdfUrl } });
+    }
+  }, [autoSave.lastSavedPdfUrl, pdfUrl]);
+
+  useEffect(() => {
+    if (autoSave.lastSavedAt && autoSave.lastSavedAt !== lastSavedAt) {
+      setLastSavedAt(autoSave.lastSavedAt);
+      if (status === "dirty") {
+        dispatch({ type: "set_status", payload: { status: "idle" } });
+      }
+    }
+  }, [autoSave.lastSavedAt, lastSavedAt, status]);
+
+  // --- Data loading ---
   useEffect(() => {
     if (!documentId) {
-      const profileCode = props.document?.documentProfile;
-      if (!profileCode) {
+      const pCode = props.document?.documentProfile;
+      if (!pCode) {
         dispatch({ type: "set_status", payload: { status: "idle" } });
         dispatch({ type: "set_draft", payload: { contentDraft: {} } });
         return;
       }
-      const resolvedProfileCode = profileCode;
       let isActive = true;
       async function loadDraftSchema() {
         dispatch({ type: "load_start" });
         try {
-          const schemasResponse = await api.listDocumentProfileSchemas(resolvedProfileCode);
+          const schemasResponse = await api.listDocumentProfileSchemas(pCode!);
           if (!isActive) return;
           const items = Array.isArray(schemasResponse.items) ? schemasResponse.items : [];
           const activeSchema = items.find((item) => item.isActive) ?? items[0] ?? null;
@@ -139,9 +182,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
         }
       }
       void loadDraftSchema();
-      return () => {
-        isActive = false;
-      };
+      return () => { isActive = false; };
     }
     let isActive = true;
     async function loadContent() {
@@ -153,9 +194,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
             ? api.listDocumentProfileSchemas(props.document.documentProfile)
             : Promise.resolve({ items: [] as DocumentProfileSchemaItem[] }),
           api.getDocumentContentPdf(documentId).catch((err) => {
-            if (statusOf(err) === 404) {
-              return null;
-            }
+            if (statusOf(err) === 404) return null;
             throw err;
           }),
         ]);
@@ -184,9 +223,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
       }
     }
     void loadContent();
-    return () => {
-      isActive = false;
-    };
+    return () => { isActive = false; };
   }, [documentId, props.document?.documentProfile]);
 
   useEffect(() => {
@@ -208,21 +245,15 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
         const visible = entries
           .filter((entry) => entry.isIntersecting)
           .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
-        if (visible.length === 0) {
-          return;
-        }
+        if (visible.length === 0) return;
         const key = (visible[0].target as HTMLElement).dataset.sectionKey;
-        if (key) {
-          setActiveSectionKey(key);
-        }
+        if (key) setActiveSectionKey(key);
       },
       { root, threshold: [0.35, 0.6, 0.85] },
     );
 
     nodes.forEach((node) => observer.observe(node));
-    return () => {
-      observer.disconnect();
-    };
+    return () => { observer.disconnect(); };
   }, [sections]);
 
   function handleSectionNav(sectionKey: string) {
@@ -237,12 +268,11 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
   async function handleSave() {
     if (!documentId) return;
     dispatch({ type: "set_error", payload: { message: "" } });
-    const parsedContent: Record<string, unknown> = contentDraft ?? {};
     dispatch({ type: "set_status", payload: { status: "saving" } });
     try {
-      const response = await api.saveDocumentContentNative(documentId, { content: parsedContent });
+      const response = await api.saveDocumentContentNative(documentId, { content: contentDraft ?? {} });
       dispatch({ type: "set_pdf", payload: { pdfUrl: response.pdfUrl } });
-      dispatch({ type: "load_success", payload: { contentDraft: parsedContent, schema, version: response.version ?? null, pdfUrl: response.pdfUrl } });
+      dispatch({ type: "load_success", payload: { contentDraft: contentDraft ?? {}, schema, version: response.version ?? null, pdfUrl: response.pdfUrl } });
       setLastSavedAt(new Date());
     } catch {
       dispatch({ type: "load_error", payload: { message: "Falha ao salvar o conteudo." } });
@@ -250,16 +280,15 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
   }
 
   async function handleRenderPdf() {
-    const parsedContent: Record<string, unknown> = contentDraft ?? {};
     if (!documentId) {
       if (!props.onCreateFromDraft) return;
       dispatch({ type: "set_error", payload: { message: "" } });
       dispatch({ type: "set_status", payload: { status: "rendering" } });
       try {
-        const created = await props.onCreateFromDraft(parsedContent);
+        const created = await props.onCreateFromDraft(contentDraft ?? {});
         dispatch({
           type: "load_success",
-          payload: { contentDraft: parsedContent, schema, version: created.version ?? null, pdfUrl: created.pdfUrl },
+          payload: { contentDraft: contentDraft ?? {}, schema, version: created.version ?? null, pdfUrl: created.pdfUrl },
         });
         setLastSavedAt(new Date());
       } catch {
@@ -282,34 +311,43 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
     }
   }
 
+  // --- Status label ---
+  const effectiveStatus = autoSave.isSaving ? "saving" : status;
+
   useEffect(() => {
-    if (status === "saving") {
+    if (autoSave.isSaving) {
       setAutosaveLabel("Salvando...");
       return;
     }
-    if (status === "rendering") {
+    if (effectiveStatus === "saving") {
+      setAutosaveLabel("Salvando...");
+      return;
+    }
+    if (effectiveStatus === "rendering") {
       setAutosaveLabel("Gerando PDF...");
       return;
     }
-    if (status === "dirty") {
-      setAutosaveLabel("Nao salvo");
+    if (effectiveStatus === "dirty") {
+      setAutosaveLabel("Editando...");
       return;
     }
-    if (status === "idle" && lastSavedAt) {
+    if (effectiveStatus === "idle" && lastSavedAt) {
       setAutosaveLabel("Salvo agora");
       const timer = window.setTimeout(() => setAutosaveLabel("Salvo ha pouco"), 3000);
       return () => window.clearTimeout(timer);
     }
     setAutosaveLabel("Salvo");
-  }, [status, lastSavedAt]);
+  }, [effectiveStatus, lastSavedAt, autoSave.isSaving]);
 
-  const statusLabel = status === "dirty"
-    ? "Nao salvo"
-    : status === "saving"
-      ? "Salvando..."
-      : status === "rendering"
-        ? "Gerando PDF..."
-      : "Salvo";
+  const statusLabel = autoSave.isSaving
+    ? "Salvando..."
+    : status === "dirty"
+      ? "Editando..."
+      : status === "saving"
+        ? "Salvando..."
+        : status === "rendering"
+          ? "Gerando PDF..."
+          : "Salvo";
 
   if (!props.document) {
     return (
@@ -322,6 +360,40 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
       </section>
     );
   }
+
+  const editorPane = (
+    <main className="content-builder-editor" ref={editorRef}>
+      <div className="content-builder-editor-inner">
+        <ContentSchemaForm
+          schema={schema}
+          value={contentDraft}
+          activeSectionKey={activeSectionKey}
+          onChange={(next) => {
+            dispatch({ type: "set_draft", payload: { contentDraft: next } });
+            dispatch({ type: "set_status", payload: { status: "dirty" } });
+          }}
+        />
+        {error && <div className="content-builder-error">{error}</div>}
+        {autoSave.error && <div className="content-builder-error">{autoSave.error}</div>}
+      </div>
+    </main>
+  );
+
+  const previewPane = (
+    <PreviewPanel
+      schema={schema}
+      contentDraft={contentDraft}
+      pdfUrl={pdfUrl}
+      profileCode={profileCode}
+      documentCode={documentCode}
+      documentTitle={documentTitle}
+      version={version}
+      activeSectionKey={activeSectionKey}
+      isDirty={status === "dirty"}
+      collapsed={previewCollapsed}
+      onToggleCollapse={(collapsed) => dispatch({ type: "set_preview", payload: { collapsed } })}
+    />
+  );
 
   return (
     <section className="content-builder">
@@ -337,11 +409,11 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
         </div>
         <div className="content-builder-breadcrumb">
           <span className="content-builder-breadcrumb-link">MetalDocs</span>
-          <span className="content-builder-breadcrumb-sep">›</span>
+          <span className="content-builder-breadcrumb-sep">&rsaquo;</span>
           <span className="content-builder-breadcrumb-link">Acervo</span>
-          <span className="content-builder-breadcrumb-sep">›</span>
+          <span className="content-builder-breadcrumb-sep">&rsaquo;</span>
           <span className="content-builder-breadcrumb-link">{documentCode}</span>
-          <span className="content-builder-breadcrumb-sep">›</span>
+          <span className="content-builder-breadcrumb-sep">&rsaquo;</span>
           <strong className="content-builder-breadcrumb-current">Editor de conteudo</strong>
         </div>
         <div className="content-builder-topbar-actions">
@@ -352,7 +424,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
       <section className="content-builder-docbar">
         <div className="content-builder-docbar-left">
           <div className="content-builder-meta">
-            <span className="content-builder-pill">Profile / {props.document.documentProfile.toUpperCase()}</span>
+            <span className="content-builder-pill">Profile / {profileCode.toUpperCase()}</span>
             <span className="content-builder-pill">Status / {props.document.status}</span>
             <span className="content-builder-pill">Versao / {version ?? "-"}</span>
           </div>
@@ -378,12 +450,12 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
             items={sections.map((section, index) => {
               const isActive = currentSectionKey === section.key;
               const isComplete = sectionCompletion[section.key] ?? false;
-              const status: StepStatus = isActive ? "active" : isComplete ? "done" : "pending";
+              const stepStatus: StepStatus = isActive ? "active" : isComplete ? "done" : "pending";
               return {
                 key: section.key,
                 label: section.title ?? section.key,
                 description: section.description ?? `Secao ${index + 1}`,
-                status,
+                status: stepStatus,
                 isCurrent: isActive,
                 onSelect: () => handleSectionNav(section.key),
               };
@@ -391,84 +463,21 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
           />
         </aside>
 
-        <main className="content-builder-editor" ref={editorRef}>
-          <div className="content-builder-editor-inner">
-            <ContentSchemaForm
-              schema={schema}
-              value={contentDraft}
-              activeSectionKey={activeSectionKey}
-              onChange={(next) => {
-                dispatch({ type: "set_draft", payload: { contentDraft: next } });
-                dispatch({ type: "set_status", payload: { status: "dirty" } });
-              }}
-            />
-            {error && <div className="content-builder-error">{error}</div>}
-          </div>
-        </main>
-
-        <aside className={`content-builder-preview ${previewCollapsed ? "is-collapsed" : ""}`}>
-          {!previewCollapsed && (
-            <div className="content-builder-preview-inner">
-              <div className="content-builder-preview-header">
-                <button
-                  type="button"
-                  className="content-builder-preview-toggle"
-                  onClick={() => dispatch({ type: "set_preview", payload: { collapsed: true } })}
-                  aria-label="Recolher preview"
-                >
-                  <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M7 5l6 5-6 5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </button>
-                <div className="content-builder-preview-title">
-                  <strong>Preview do PDF</strong>
-                  <small>Atualize para refletir as ultimas edicoes.</small>
-                </div>
-              </div>
-              <div className="content-builder-preview-body">
-                {pdfUrl ? (
-                  <PdfPreview url={pdfUrl} className="content-builder-preview-frame" width={320} />
-                ) : (
-                  <div className="content-builder-preview-empty">
-                    <div className="content-builder-preview-empty-icon" aria-hidden="true">
-                      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
-                        <path d="M4 2h7l3 3v11H4V2z" strokeLinejoin="round" />
-                        <path d="M11 2v3h3" strokeLinejoin="round" />
-                        <path d="M6 9h6M6 12h4" strokeLinecap="round" />
-                      </svg>
-                    </div>
-                    <strong>Nenhum PDF gerado</strong>
-                    <span>Salve o conteudo e clique em "Gerar PDF" para visualizar.</span>
-                  </div>
-                )}
-                {status === "dirty" && pdfUrl && (
-                  <div className="content-builder-preview-warning">
-                    Preview pode estar desatualizado. Gere novamente para ver as ultimas edicoes.
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-          {previewCollapsed && (
-            <button
-              type="button"
-              className="content-builder-preview-toggle is-collapsed"
-              onClick={() => dispatch({ type: "set_preview", payload: { collapsed: false } })}
-              aria-label="Expandir preview"
-            >
-              <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M13 5l-6 5 6 5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-          )}
-        </aside>
+        {previewCollapsed ? (
+          <>
+            {editorPane}
+            {previewPane}
+          </>
+        ) : (
+          <ResizableSplitPane left={editorPane} right={previewPane} />
+        )}
       </div>
 
       <footer className="content-builder-footer">
         <div className="content-builder-footer-left">
           <span className="content-builder-version-pill">v{version ?? "-"}</span>
           <div className="content-builder-autosave">
-            <span className={`content-builder-autosave-dot ${status === "dirty" ? "is-warn" : status === "saving" || status === "rendering" ? "is-info" : "is-ok"}`} />
+            <span className={`content-builder-autosave-dot ${status === "dirty" ? "is-warn" : autoSave.isSaving || status === "saving" || status === "rendering" ? "is-info" : "is-ok"}`} />
             <span>{autosaveLabel}</span>
           </div>
         </div>
@@ -477,7 +486,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
             type="button"
             className="content-builder-btn ghost"
             onClick={handleSave}
-            disabled={status === "saving" || status === "loading" || status === "rendering"}
+            disabled={status === "saving" || status === "loading" || status === "rendering" || autoSave.isSaving}
           >
             Salvar rascunho
           </button>
@@ -485,7 +494,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
             type="button"
             className="content-builder-btn primary"
             onClick={handleRenderPdf}
-            disabled={status === "saving" || status === "loading" || status === "rendering"}
+            disabled={status === "saving" || status === "loading" || status === "rendering" || autoSave.isSaving}
           >
             Gerar PDF
           </button>

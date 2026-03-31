@@ -68,6 +68,7 @@ func main() {
 	auditService := auditapp.NewService(deps.AuditReader)
 	docService := docapp.NewService(deps.DocumentsRepo, deps.Publisher, nil).
 		WithAttachmentStore(deps.AttachmentStore).
+		WithAuditWriter(deps.AuditWriter).
 		WithCarbone(deps.CarboneClient, deps.CarboneTemplates)
 	auditHandler := auditdelivery.NewHandler(auditService)
 	docHandler := docdelivery.NewHandler(docService).

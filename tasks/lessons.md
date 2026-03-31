@@ -571,3 +571,10 @@ Wrong:   Swallowing `json.Marshal` errors for version body blocks and writing `"
 Correct: Return the serialization error from the repository helper and abort the write before hitting the database
 Rule:    Persistence code must never replace invalid structured data with an empty payload, because that turns write failures into silent data loss.
 Layer:   infrastructure
+
+## Lesson CC - Package-local audit/event IDs avoid cross-package coupling
+Date: 2026-03-31 | Trigger: correction
+Wrong:   The documents application package tried to reuse an ID helper from another module package and failed at compile time
+Correct: Keep event/audit ID generation helpers inside the package that emits the event, with the same fallback semantics
+Rule:    Emission helpers should live next to the code that uses them so packages do not depend on unrelated private helpers.
+Layer:   process

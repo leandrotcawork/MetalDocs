@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"encoding/json"
 	"strings"
 	"time"
 )
@@ -117,6 +118,14 @@ type AddVersionCommand struct {
 	DocumentID    string
 	Content       string
 	ChangeSummary string
+	TraceID       string
+}
+
+type SaveEtapaBodyCommand struct {
+	DocumentID    string
+	VersionNumber int
+	StepIndex     int
+	Blocks        []json.RawMessage
 	TraceID       string
 }
 

@@ -2,9 +2,12 @@ package unit
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"testing"
 	"time"
 
+	auditdomain "metaldocs/internal/modules/audit/domain"
 	"metaldocs/internal/modules/documents/application"
 	"metaldocs/internal/modules/documents/domain"
 	"metaldocs/internal/modules/documents/infrastructure/memory"
@@ -26,6 +29,15 @@ type capturePublisher struct {
 
 func (p *capturePublisher) Publish(_ context.Context, event messaging.Event) error {
 	p.events = append(p.events, event)
+	return nil
+}
+
+type captureAuditWriter struct {
+	events []auditdomain.Event
+}
+
+func (w *captureAuditWriter) Record(_ context.Context, event auditdomain.Event) error {
+	w.events = append(w.events, event)
 	return nil
 }
 
@@ -161,6 +173,125 @@ func TestAddVersionIncrementsVersionNumber(t *testing.T) {
 
 	if len(versions) != 2 {
 		t.Fatalf("expected 2 versions, got %d", len(versions))
+	}
+}
+
+func TestSaveEtapaBodyCreatesNewVersionWhenTargetIsNotDraft(t *testing.T) {
+	repo := memory.NewRepository()
+	pub := &capturePublisher{}
+	audit := &captureAuditWriter{}
+	svc := application.NewService(repo, pub, fixedClock{now: time.Date(2026, 3, 16, 10, 0, 0, 0, time.UTC)}).
+		WithAuditWriter(audit)
+
+	_, err := svc.CreateDocument(context.Background(), domain.CreateDocumentCommand{
+		DocumentID:   "doc-etapa-1",
+		Title:        "Procedure",
+		DocumentType: "po",
+		OwnerID:      "user-1",
+		BusinessUnit: "quality",
+		Department:   "qa",
+		MetadataJSON: map[string]any{
+			"procedure_code": "PO-ETAPA-1",
+		},
+		InitialContent: "original-content",
+		TraceID:        "trace-etapa-1",
+	})
+	if err != nil {
+		t.Fatalf("unexpected create error: %v", err)
+	}
+
+	if err := repo.UpdateDocumentStatus(context.Background(), "doc-etapa-1", domain.StatusApproved); err != nil {
+		t.Fatalf("unexpected status update error: %v", err)
+	}
+
+	updated, err := svc.SaveEtapaBodyAuthorized(iamdomain.WithAuthContext(context.Background(), "editor-1", nil), domain.SaveEtapaBodyCommand{
+		DocumentID:    "doc-etapa-1",
+		VersionNumber: 1,
+		StepIndex:     0,
+		Blocks: []json.RawMessage{
+			json.RawMessage(`{"type":"paragraph","text":"primeiro bloco"}`),
+		},
+		TraceID: "trace-etapa-2",
+	})
+	if err != nil {
+		t.Fatalf("unexpected save error: %v", err)
+	}
+
+	if updated.Number != 2 {
+		t.Fatalf("expected new version 2, got %d", updated.Number)
+	}
+	if len(updated.BodyBlocks) != 1 {
+		t.Fatalf("expected 1 body block, got %d", len(updated.BodyBlocks))
+	}
+	if len(updated.BodyBlocks[0].Blocks) != 1 {
+		t.Fatalf("expected 1 raw block, got %d", len(updated.BodyBlocks[0].Blocks))
+	}
+	if string(updated.BodyBlocks[0].Blocks[0]) != `{"type":"paragraph","text":"primeiro bloco"}` {
+		t.Fatalf("unexpected block payload: %s", string(updated.BodyBlocks[0].Blocks[0]))
+	}
+
+	versions, err := svc.ListVersions(context.Background(), "doc-etapa-1")
+	if err != nil {
+		t.Fatalf("unexpected list error: %v", err)
+	}
+	if len(versions) != 2 {
+		t.Fatalf("expected 2 versions, got %d", len(versions))
+	}
+	if len(versions[0].BodyBlocks) != 0 {
+		t.Fatalf("expected draft version 1 to remain unchanged, got %#v", versions[0].BodyBlocks)
+	}
+	if len(versions[1].BodyBlocks) != 1 {
+		t.Fatalf("expected version 2 to carry body blocks, got %#v", versions[1].BodyBlocks)
+	}
+
+	if len(audit.events) != 1 {
+		t.Fatalf("expected 1 audit event, got %d", len(audit.events))
+	}
+	if audit.events[0].ActorID != "editor-1" {
+		t.Fatalf("expected actor editor-1, got %s", audit.events[0].ActorID)
+	}
+	if len(pub.events) < 3 {
+		t.Fatalf("expected etapa body update event, got %d events", len(pub.events))
+	}
+	lastEvent := pub.events[len(pub.events)-1]
+	if lastEvent.EventType != "document.etapa_body.updated" {
+		t.Fatalf("expected etapa body event, got %s", lastEvent.EventType)
+	}
+	if lastEvent.IdempotencyKey != "etapa_body_updated:doc-etapa-1:2:0" {
+		t.Fatalf("unexpected idempotency key: %s", lastEvent.IdempotencyKey)
+	}
+}
+
+func TestSaveEtapaBodyRejectsInvalidBlocks(t *testing.T) {
+	repo := memory.NewRepository()
+	svc := application.NewService(repo, nil, fixedClock{now: time.Now().UTC()})
+
+	_, err := svc.CreateDocument(context.Background(), domain.CreateDocumentCommand{
+		DocumentID:   "doc-etapa-2",
+		Title:        "Procedure",
+		DocumentType: "po",
+		OwnerID:      "user-2",
+		BusinessUnit: "quality",
+		Department:   "qa",
+		MetadataJSON: map[string]any{
+			"procedure_code": "PO-ETAPA-2",
+		},
+		InitialContent: "original-content",
+	})
+	if err != nil {
+		t.Fatalf("unexpected create error: %v", err)
+	}
+
+	_, err = svc.SaveEtapaBodyAuthorized(iamdomain.WithAuthContext(context.Background(), "editor-2", nil), domain.SaveEtapaBodyCommand{
+		DocumentID:    "doc-etapa-2",
+		VersionNumber: 1,
+		StepIndex:     0,
+		Blocks: []json.RawMessage{
+			json.RawMessage("{"),
+		},
+	})
+	if !errors.Is(err, domain.ErrInvalidNativeContent) {
+		t.Fatalf("expected invalid native content error, got %v", err)
 	}
 }
 

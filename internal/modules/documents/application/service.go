@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	auditdomain "metaldocs/internal/modules/audit/domain"
 	"metaldocs/internal/modules/documents/domain"
 	"metaldocs/internal/platform/messaging"
 	"metaldocs/internal/platform/render/carbone"
@@ -25,6 +26,7 @@ func (realClock) Now() time.Time {
 type Service struct {
 	repo             domain.Repository
 	attachmentStore  domain.AttachmentStore
+	audit            auditdomain.Writer
 	publisher        messaging.Publisher
 	clock            Clock
 	carboneClient    *carbone.Client
@@ -40,6 +42,11 @@ func NewService(repo domain.Repository, publisher messaging.Publisher, clock Clo
 
 func (s *Service) WithAttachmentStore(store domain.AttachmentStore) *Service {
 	s.attachmentStore = store
+	return s
+}
+
+func (s *Service) WithAuditWriter(writer auditdomain.Writer) *Service {
+	s.audit = writer
 	return s
 }
 

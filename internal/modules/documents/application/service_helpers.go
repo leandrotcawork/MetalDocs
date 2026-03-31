@@ -2,6 +2,8 @@ package application
 
 import (
 	"crypto/md5"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -21,6 +23,14 @@ func cloneTimePtr(value *time.Time) *time.Time {
 func contentHash(value string) string {
 	sum := md5.Sum([]byte(value))
 	return fmt.Sprintf("%x", sum[:])
+}
+
+func mustNewID() string {
+	buf := make([]byte, 16)
+	if _, err := rand.Read(buf); err != nil {
+		return fmt.Sprintf("documents-fallback-%d", time.Now().UnixNano())
+	}
+	return hex.EncodeToString(buf)
 }
 
 func normalizeTags(tags []string) []string {

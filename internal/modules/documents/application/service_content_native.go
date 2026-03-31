@@ -215,7 +215,7 @@ func (s *Service) RenderDocumentTemplateDocxAuthorized(ctx context.Context, docu
 	if !allowed {
 		return nil, domain.ErrDocumentNotFound
 	}
-	data := buildDocumentTemplateData(doc, nil)
+	data := buildDocumentTemplateData(doc, domain.Version{}, nil)
 	return s.renderProfileTemplate(ctx, doc.DocumentProfile, data, "docx", "document-template")
 }
 
@@ -257,13 +257,13 @@ func (s *Service) renderProfileTemplate(ctx context.Context, profileCode string,
 }
 
 func (s *Service) renderDocumentPDF(ctx context.Context, doc domain.Document, version domain.Version, content map[string]any, traceID string) ([]byte, error) {
-	data := buildDocumentTemplateData(doc, content)
+	data := buildDocumentTemplateData(doc, version, content)
 	data["version"] = version.Number
 	data["createdAt"] = version.CreatedAt.Format(time.RFC3339)
 	return s.renderProfileTemplate(ctx, doc.DocumentProfile, data, "pdf", traceID)
 }
 
-func buildDocumentTemplateData(doc domain.Document, content map[string]any) map[string]any {
+func buildDocumentTemplateData(doc domain.Document, version domain.Version, content map[string]any) map[string]any {
 	data := map[string]any{
 		"documentId":     doc.ID,
 		"title":          doc.Title,
@@ -276,12 +276,77 @@ func buildDocumentTemplateData(doc domain.Document, content map[string]any) map[
 		"department":     doc.Department,
 		"classification": doc.Classification,
 	}
-	if content != nil {
-		data["content"] = content
+	projectedContent := cloneContentMap(content)
+	if len(version.BodyBlocks) > 0 {
+		data["bodyBlocks"] = cloneEtapaBodies(version.BodyBlocks)
+		projectedContent = mergeEtapaBodyBlocks(projectedContent, version.BodyBlocks)
+	}
+	if len(projectedContent) > 0 {
+		data["content"] = projectedContent
 	}
 	return data
 }
 
 func documentContentStorageKey(documentID string, version int, extension string) string {
 	return fmt.Sprintf("documents/%s/versions/%d/content.%s", documentID, version, strings.TrimPrefix(extension, "."))
+}
+
+func cloneContentMap(content map[string]any) map[string]any {
+	if len(content) == 0 {
+		return map[string]any{}
+	}
+	out := make(map[string]any, len(content))
+	for key, value := range content {
+		out[key] = value
+	}
+	return out
+}
+
+func mergeEtapaBodyBlocks(content map[string]any, bodyBlocks []domain.EtapaBody) map[string]any {
+	if len(content) == 0 || len(bodyBlocks) == 0 {
+		return content
+	}
+
+	if process, ok := content["process"].(map[string]any); ok {
+		clonedProcess := cloneContentMap(process)
+		clonedProcess["etapas"] = mergeEtapaRows(clonedProcess["etapas"], bodyBlocks)
+		content["process"] = clonedProcess
+	}
+	if etapas, ok := content["etapas"]; ok {
+		content["etapas"] = mergeEtapaRows(etapas, bodyBlocks)
+	}
+	return content
+}
+
+func mergeEtapaRows(rows any, bodyBlocks []domain.EtapaBody) any {
+	switch typed := rows.(type) {
+	case []any:
+		out := make([]any, len(typed))
+		for index := range out {
+			row, ok := typed[index].(map[string]any)
+			if !ok || index >= len(bodyBlocks) {
+				out[index] = typed[index]
+				continue
+			}
+			clonedRow := cloneContentMap(row)
+			clonedRow["blocks"] = cloneRawMessages(bodyBlocks[index].Blocks)
+			out[index] = clonedRow
+		}
+		return out
+	case []map[string]any:
+		out := make([]map[string]any, len(typed))
+		for index, row := range typed {
+			cloned := make(map[string]any, len(row))
+			for key, value := range row {
+				cloned[key] = value
+			}
+			if index < len(bodyBlocks) {
+				cloned["blocks"] = cloneRawMessages(bodyBlocks[index].Blocks)
+			}
+			out[index] = cloned
+		}
+		return out
+	default:
+		return rows
+	}
 }

@@ -203,6 +203,22 @@ The implementation plan must include:
 - Docgen tests that validate `.docx` output generation for representative document payloads.
 - End-to-end export flow verification through the Go API.
 
+## Docgen Test Harness (Minimal)
+
+This harness is intentionally minimal and standalone. It is not wired into any
+existing test runner or Makefile target.
+
+Success criteria:
+
+- `tsc --noEmit` in `apps/docgen` passes with zero errors.
+- `node dist/index.js` starts without crashing.
+- A single `curl -X POST http://localhost:3001/generate` with a sample payload
+  returns a valid `.docx` binary (non-zero bytes) and the response
+  `Content-Type` is `application/vnd.openxmlformats-officedocument.wordprocessingml.document`.
+
+This harness exists to validate docgen boot + payload handling only. It is not a
+replacement for future unit or integration test suites.
+
 ## Deferred Decisions
 
 These are intentionally deferred to implementation planning:

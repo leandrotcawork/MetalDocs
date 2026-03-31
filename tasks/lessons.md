@@ -543,17 +543,3 @@ Wrong:   Rendering the page hero `header` inside the same section that owns cont
 Correct: Render hero `header` as a sibling before the padded content section
 Rule:    Shared topbar/hero chrome should be outside route content padding wrappers.
 Layer:   frontend
-
-## Lesson CA - Verify edits in the intended worktree before validating
-Date: 2026-03-31 | Trigger: correction
-Wrong:   Assuming a patch landed in the active worktree without confirming the file path, which produced a misleading green test run in a different repo root
-Correct: Confirm the created or updated files exist in the target worktree before running validation commands
-Rule:    Validation is only meaningful after the edit is verified in the repository root actually under test.
-Layer:   process
-
-## Lesson BZ - PowerShell param block must be first
-Date: 2026-03-30 | Trigger: correction
-Wrong:   Putting `$ErrorActionPreference` before `param(...)` in a `.ps1` script
-Correct: Place `param(...)` as the first non-comment statement
-Rule:    In PowerShell scripts, `param` must be the first executable statement to parse correctly.
-Layer:   process

@@ -544,6 +544,13 @@ Correct: Render hero `header` as a sibling before the padded content section
 Rule:    Shared topbar/hero chrome should be outside route content padding wrappers.
 Layer:   frontend
 
+## Lesson BZ - Subagent execution must not stall
+Date: 2026-03-31 | Trigger: correction
+Wrong:   Launching a subagent and then pausing until the user prompts you to continue, causing missed reviews and delays
+Correct: After launching a subagent, explicitly wait for completion and continue the review flow without user prompts
+Rule:    Subagent-driven development requires continuous monitoring and immediate review handoff
+Layer:   process
+
 ## Lesson BZ - Local servers should read port from env with a default
 Date: 2026-03-31 | Trigger: correction
 Wrong:   Hardcoding `app.listen(3001)` forced harnesses and local runs to collide with an occupied port

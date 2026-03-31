@@ -4,6 +4,7 @@
 1. Read `tasks/lessons.md` — apply every rule before touching code
 2. Read `tasks/todo.md` — know current state
 3. After any correction: write lesson to `tasks/lessons.md` immediately
+4. When launching a subagent, stay in the loop: explicitly wait for completion and proceed through reviews without pausing for user prompts. Never require the user to tell you to continue.
 
 ## Engineering bar
 Every decision passes this filter:

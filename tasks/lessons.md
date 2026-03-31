@@ -550,3 +550,10 @@ Wrong:   Hardcoding `app.listen(3001)` forced harnesses and local runs to collid
 Correct: Read `PORT` from the environment and fall back to a documented default for the service
 Rule:    Long-lived local services should be configurable through env vars so harnesses can override ports safely.
 Layer:   process
+
+## Lesson CA - Plan SQL snippets should preserve intent, not overconstrain syntax
+Date: 2026-03-31 | Trigger: correction
+Wrong:   Requiring a single exact SQL form in the plan when `IF NOT EXISTS` and schema qualification are both acceptable
+Correct: State the migration intent clearly and allow equivalent SQL forms that keep the same schema-qualified target and idempotent behavior
+Rule:    Execution plans should constrain semantics, not harmless SQL syntax variants.
+Layer:   process

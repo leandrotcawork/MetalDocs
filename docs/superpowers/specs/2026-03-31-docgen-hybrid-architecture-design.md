@@ -191,6 +191,7 @@ This boundary also makes future evolution safer:
 - If rich content is introduced ad hoc, profile schemas can drift without a clear normalization layer.
 - Export parity with current visual expectations requires dedicated docgen rendering tests.
 - If Go leaks render-specific assumptions into canonical storage, the same coupling problem will reappear in a different form.
+  Mitigation: the Go application layer must contain an explicit projection function that maps canonical content to DocumentPayload — this function is the firewall between storage shape and render shape, and it must be the only place that knows both.
 
 ## Testing Strategy
 
@@ -207,6 +208,7 @@ The implementation plan must include:
 These are intentionally deferred to implementation planning:
 
 - Exact shape of the canonical rich block schema per profile.
+  Constraint: The block schema must be defined as a typed Go struct in the domain layer before any persistence or API code is written. The schema is not inferred from Tiptap's output format — Tiptap's JSON is an editor concern and must be adapted at the frontend boundary before reaching Go.
 - Whether any targeted rich-field endpoint is needed immediately, or whether the first slice can ship with canonical whole-content save only.
 - Exact proxy route names and transport details between Go and docgen.
 - Deployment/container orchestration details for `apps/docgen`.

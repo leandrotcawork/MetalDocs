@@ -16,3 +16,5 @@ carbone/renders/
 frontend/apps/web/test-results/
 frontend/apps/web/playwright-report/
 frontend/apps/web/.cache/
+
+.worktrees/

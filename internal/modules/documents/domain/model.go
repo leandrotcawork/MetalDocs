@@ -64,6 +64,7 @@ type Version struct {
 	ChangeSummary    string
 	ContentSource    string
 	NativeContent    map[string]any
+	BodyBlocks       []EtapaBody
 	DocxStorageKey   string
 	PdfStorageKey    string
 	TextContent      string

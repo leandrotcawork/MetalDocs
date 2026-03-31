@@ -37,6 +37,7 @@ type Repository interface {
 	UpdateDocumentStatus(ctx context.Context, documentID, status string) error
 	SaveVersion(ctx context.Context, version Version) error
 	UpdateVersionPDF(ctx context.Context, documentID string, versionNumber int, pdfStorageKey string, pageCount int) error
+	UpdateVersionBodyBlocks(ctx context.Context, documentID string, versionNumber int, bodyBlocks []EtapaBody) error
 	ListVersions(ctx context.Context, documentID string) ([]Version, error)
 	GetVersion(ctx context.Context, documentID string, versionNumber int) (Version, error)
 	NextVersionNumber(ctx context.Context, documentID string) (int, error)

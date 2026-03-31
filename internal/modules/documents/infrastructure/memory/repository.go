@@ -518,6 +518,24 @@ func (r *Repository) UpdateVersionPDF(_ context.Context, documentID string, vers
 	return domain.ErrVersionNotFound
 }
 
+func (r *Repository) UpdateVersionBodyBlocks(_ context.Context, documentID string, versionNumber int, bodyBlocks []domain.EtapaBody) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, exists := r.documents[documentID]; !exists {
+		return domain.ErrDocumentNotFound
+	}
+	versions := r.versions[documentID]
+	for i := range versions {
+		if versions[i].Number == versionNumber {
+			versions[i].BodyBlocks = bodyBlocks
+			r.versions[documentID] = versions
+			return nil
+		}
+	}
+	return domain.ErrVersionNotFound
+}
+
 func (r *Repository) saveVersionLocked(_ context.Context, version domain.Version) error {
 	if _, exists := r.documents[version.DocumentID]; !exists {
 		return domain.ErrDocumentNotFound

@@ -11,13 +11,15 @@ try {
   npx tsc -p tsconfig.build.json
 
   Write-Host "==> Start server (node dist/index.js)"
+  $oldPort = $env:PORT
+  $env:PORT = "3002"
   $proc = Start-Process -FilePath "node" -ArgumentList "dist/index.js" -PassThru -NoNewWindow
   Start-Sleep -Seconds 2
 
   Write-Host "==> POST /generate"
   $resp = curl.exe -s -D - -o "$env:TEMP\\docgen-harness.docx" `
     -H "Content-Type: application/json" `
-    -X POST "http://localhost:3001/generate" `
+    -X POST "http://localhost:3002/generate" `
     --data-binary "@$PSScriptRoot\\sample-payload.json"
 
   $len = (Get-Item "$env:TEMP\\docgen-harness.docx").Length
@@ -33,5 +35,6 @@ try {
 }
 finally {
   if ($proc -and !$proc.HasExited) { Stop-Process -Id $proc.Id }
+  $env:PORT = $oldPort
   Pop-Location
 }

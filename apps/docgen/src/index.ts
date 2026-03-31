@@ -17,6 +17,8 @@ app.post("/generate", async (req, res) => {
   }
 });
 
-app.listen(3001, () => {
-  console.log("docgen listening on :3001");
+const port = Number(process.env.PORT ?? 3001);
+
+app.listen(port, () => {
+  console.log(`docgen listening on :${port}`);
 });

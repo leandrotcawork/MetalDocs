@@ -543,3 +543,10 @@ Wrong:   Rendering the page hero `header` inside the same section that owns cont
 Correct: Render hero `header` as a sibling before the padded content section
 Rule:    Shared topbar/hero chrome should be outside route content padding wrappers.
 Layer:   frontend
+
+## Lesson BZ - Local servers should read port from env with a default
+Date: 2026-03-31 | Trigger: correction
+Wrong:   Hardcoding `app.listen(3001)` forced harnesses and local runs to collide with an occupied port
+Correct: Read `PORT` from the environment and fall back to a documented default for the service
+Rule:    Long-lived local services should be configurable through env vars so harnesses can override ports safely.
+Layer:   process

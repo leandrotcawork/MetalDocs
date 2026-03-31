@@ -564,3 +564,10 @@ Wrong:   Requiring a single exact SQL form in the plan when `IF NOT EXISTS` and 
 Correct: State the migration intent clearly and allow equivalent SQL forms that keep the same schema-qualified target and idempotent behavior
 Rule:    Execution plans should constrain semantics, not harmless SQL syntax variants.
 Layer:   process
+
+## Lesson CB - Persistence serializers must fail closed
+Date: 2026-03-31 | Trigger: correction
+Wrong:   Swallowing `json.Marshal` errors for version body blocks and writing `"[]"` instead
+Correct: Return the serialization error from the repository helper and abort the write before hitting the database
+Rule:    Persistence code must never replace invalid structured data with an empty payload, because that turns write failures into silent data loss.
+Layer:   infrastructure

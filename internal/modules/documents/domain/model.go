@@ -478,6 +478,7 @@ func defaultContentSchemaPO() map[string]any {
 						"columns": []map[string]any{
 							{"key": "num", "label": "#", "type": "number"},
 							{"key": "etapa", "label": "Etapa", "type": "text"},
+							{"key": "blocks", "label": "Blocos", "type": "rich_blocks"},
 							{"key": "responsavel", "label": "Responsavel", "type": "text"},
 							{"key": "prazo", "label": "Prazo", "type": "text"},
 							{"key": "observacao", "label": "Observacao", "type": "text"},

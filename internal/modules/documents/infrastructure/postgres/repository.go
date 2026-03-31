@@ -108,7 +108,10 @@ INSERT INTO metaldocs.document_versions (
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, COALESCE($8::jsonb, '[]'::jsonb), $9, $10, $11, $12, $13, $14, $15)
 `
-	contentSource, nativeContentJSON, bodyBlocksJSON, textContent := serializeVersion(version)
+	contentSource, nativeContentJSON, bodyBlocksJSON, textContent, err := serializeVersion(version)
+	if err != nil {
+		return fmt.Errorf("serialize version: %w", err)
+	}
 	if _, err := tx.ExecContext(ctx, insertVersion,
 		version.DocumentID,
 		version.Number,
@@ -186,7 +189,10 @@ INSERT INTO metaldocs.document_versions (
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, COALESCE($8::jsonb, '[]'::jsonb), $9, $10, $11, $12, $13, $14, $15)
 `
-	contentSource, nativeContentJSON, bodyBlocksJSON, textContent := serializeVersion(version)
+	contentSource, nativeContentJSON, bodyBlocksJSON, textContent, err := serializeVersion(version)
+	if err != nil {
+		return fmt.Errorf("serialize version: %w", err)
+	}
 	if _, err := tx.ExecContext(ctx, insertVersion,
 		version.DocumentID,
 		version.Number,
@@ -1037,8 +1043,11 @@ INSERT INTO metaldocs.document_versions (
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, COALESCE($8::jsonb, '[]'::jsonb), $9, $10, $11, $12, $13, $14, $15)
 `
-	contentSource, nativeContentJSON, bodyBlocksJSON, textContent := serializeVersion(version)
-	_, err := r.db.ExecContext(ctx, q,
+	contentSource, nativeContentJSON, bodyBlocksJSON, textContent, err := serializeVersion(version)
+	if err != nil {
+		return fmt.Errorf("serialize version: %w", err)
+	}
+	if _, execErr := r.db.ExecContext(ctx, q,
 		version.DocumentID,
 		version.Number,
 		version.Content,
@@ -1054,9 +1063,8 @@ VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, COALESCE($8::jsonb, '[]'::jsonb), $9,
 		nullIfEmpty(version.OriginalFilename),
 		nullIfZeroInt(version.PageCount),
 		version.CreatedAt,
-	)
-	if err != nil {
-		return mapError(err)
+	); execErr != nil {
+		return mapError(execErr)
 	}
 	return nil
 }
@@ -1088,10 +1096,13 @@ UPDATE metaldocs.document_versions
 SET body_blocks = COALESCE($3::jsonb, '[]'::jsonb)
 WHERE document_id = $1 AND version_number = $2
 `
-	bodyBlocksJSON := serializeBodyBlocks(bodyBlocks)
-	res, err := r.db.ExecContext(ctx, q, documentID, versionNumber, bodyBlocksJSON)
+	bodyBlocksJSON, err := serializeBodyBlocks(bodyBlocks)
 	if err != nil {
-		return mapError(err)
+		return fmt.Errorf("serialize version body blocks: %w", err)
+	}
+	res, execErr := r.db.ExecContext(ctx, q, documentID, versionNumber, bodyBlocksJSON)
+	if execErr != nil {
+		return mapError(execErr)
 	}
 	affected, err := res.RowsAffected()
 	if err != nil {
@@ -1582,7 +1593,7 @@ func applyOptionalFields(doc *domain.Document, tagsJSON []byte, metadataJSON []b
 	}
 }
 
-func serializeVersion(version domain.Version) (string, string, string, any) {
+func serializeVersion(version domain.Version) (string, string, string, any, error) {
 	contentSource := strings.TrimSpace(version.ContentSource)
 	if contentSource == "" {
 		contentSource = domain.ContentSourceNative
@@ -1590,34 +1601,38 @@ func serializeVersion(version domain.Version) (string, string, string, any) {
 
 	nativeContentJSON := "{}"
 	if len(version.NativeContent) > 0 {
-		if raw, err := json.Marshal(version.NativeContent); err == nil {
-			nativeContentJSON = string(raw)
+		raw, err := json.Marshal(version.NativeContent)
+		if err != nil {
+			return "", "", "", nil, fmt.Errorf("marshal native content: %w", err)
 		}
+		nativeContentJSON = string(raw)
 	}
 
 	bodyBlocksJSON := "[]"
 	if len(version.BodyBlocks) > 0 {
-		if raw, err := json.Marshal(version.BodyBlocks); err == nil {
-			bodyBlocksJSON = string(raw)
+		raw, err := json.Marshal(version.BodyBlocks)
+		if err != nil {
+			return "", "", "", nil, fmt.Errorf("marshal body blocks: %w", err)
 		}
+		bodyBlocksJSON = string(raw)
 	}
 
 	var textContent any
 	if strings.TrimSpace(version.TextContent) != "" {
 		textContent = version.TextContent
 	}
-	return contentSource, nativeContentJSON, bodyBlocksJSON, textContent
+	return contentSource, nativeContentJSON, bodyBlocksJSON, textContent, nil
 }
 
-func serializeBodyBlocks(bodyBlocks []domain.EtapaBody) string {
+func serializeBodyBlocks(bodyBlocks []domain.EtapaBody) (string, error) {
 	if len(bodyBlocks) == 0 {
-		return "[]"
+		return "[]", nil
 	}
 	raw, err := json.Marshal(bodyBlocks)
 	if err != nil {
-		return "[]"
+		return "", fmt.Errorf("marshal body blocks: %w", err)
 	}
-	return string(raw)
+	return string(raw), nil
 }
 
 func applyVersionOptionalFields(version *domain.Version, nativeContentJSON []byte, bodyBlocksJSON []byte, docxStorageKey sql.NullString, pdfStorageKey sql.NullString, textContent sql.NullString, fileSizeBytes sql.NullInt64, originalFilename sql.NullString, pageCount sql.NullInt64) {

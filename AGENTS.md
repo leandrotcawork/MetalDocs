@@ -35,7 +35,7 @@ Every decision passes this filter:
 - Worker consumers must be idempotent — retry-safe
 
 **Data**
-- Document versions are immutable — never update existing version content
+- Document versions are immutable — never update existing version content, except when the version is DRAFT (draft versions may be updated in place)
 - Audit log is append-only — never update or delete audit events
 - Migrations additive-first — destructive migration requires ADR
 

@@ -732,3 +732,10 @@ Wrong:   `os.ReadFile("api/openapi/v1/openapi.yaml")` failed when the test ran f
 Correct: Resolve workspace files with a root-relative path such as `filepath.Join("..", "..", "api", "openapi", "v1", "openapi.yaml")`
 Rule:    Tests that validate repository artifacts must use a stable repo-root path instead of assuming the package working directory.
 Layer:   process
+
+## Lesson CE - Draft versions may be edited in place
+Date: 2026-03-31 | Trigger: correction
+Wrong:   Treating draft versions as immutable and always creating a new version on edit
+Correct: Allow in-place updates when the version is in DRAFT
+Rule:    Immutability applies to non-draft versions only; draft updates can be in-place
+Layer:   process

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"reflect"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -122,6 +123,12 @@ func newDocumentsRepoTestHarness(t *testing.T) (*postgres.Repository, *documents
 	})
 
 	return postgres.NewRepository(db), state
+}
+
+func newPostgresRepositoryForTest(t *testing.T) *postgres.Repository {
+	t.Helper()
+	repo, _ := newDocumentsRepoTestHarness(t)
+	return repo
 }
 
 type documentsRepoDriver struct {
@@ -518,20 +525,120 @@ func TestPostgresRepository_SaveDocumentTypeSchemaRuntime(t *testing.T) {
 	repo := newPostgresRepositoryForTest(t)
 	ctx := context.Background()
 
-	item := domain.DocumentTypeDefinition{
+	item := documentTypeDefinitionRuntime{
 		Key:           "po",
 		Name:          "Procedimento Operacional",
 		ActiveVersion: 1,
-		Schema: domain.DocumentTypeSchema{
-			Sections: []domain.SectionDef{
+		Schema: documentTypeSchemaRuntime{
+			Sections: []sectionDefRuntime{
 				{Key: "identificacao", Num: "1", Title: "Identificacao"},
 			},
 		},
 	}
 
-	if err := repo.UpsertDocumentTypeDefinition(ctx, item); err != nil {
-		t.Fatalf("upsert type: %v", err)
+	method := reflect.ValueOf(repo).MethodByName("UpsertDocumentTypeDefinition")
+	if !method.IsValid() {
+		t.Fatalf("missing UpsertDocumentTypeDefinition")
 	}
+	if method.Type().NumIn() != 2 {
+		t.Fatalf("unexpected UpsertDocumentTypeDefinition signature: %s", method.Type())
+	}
+
+	arg, err := prepareReflectionArg(method.Type().In(1), reflect.ValueOf(item))
+	if err != nil {
+		t.Fatalf("prepare argument: %v", err)
+	}
+
+	results := method.Call([]reflect.Value{reflect.ValueOf(ctx), arg})
+	if len(results) != 1 {
+		t.Fatalf("unexpected return count: %d", len(results))
+	}
+	if errValue := results[0]; !errValue.IsNil() {
+		t.Fatalf("upsert type: %v", errValue.Interface())
+	}
+}
+
+type documentTypeDefinitionRuntime struct {
+	Key           string
+	Name          string
+	ActiveVersion int
+	Schema        documentTypeSchemaRuntime
+}
+
+type documentTypeSchemaRuntime struct {
+	Sections []sectionDefRuntime
+}
+
+type sectionDefRuntime struct {
+	Key   string
+	Num   string
+	Title string
+}
+
+func prepareReflectionArg(target reflect.Type, src reflect.Value) (reflect.Value, error) {
+	if !src.IsValid() {
+		return reflect.Zero(target), nil
+	}
+	if src.Type().AssignableTo(target) {
+		return src, nil
+	}
+	if src.Type().ConvertibleTo(target) {
+		return src.Convert(target), nil
+	}
+	if target.Kind() == reflect.Pointer {
+		value, err := prepareReflectionArg(target.Elem(), src)
+		if err != nil {
+			return reflect.Value{}, err
+		}
+		ptr := reflect.New(target.Elem())
+		ptr.Elem().Set(value)
+		return ptr, nil
+	}
+	if target.Kind() == reflect.Struct {
+		if src.Kind() == reflect.Pointer {
+			src = src.Elem()
+		}
+		if src.Kind() != reflect.Struct {
+			return reflect.Value{}, fmt.Errorf("cannot map %s to %s", src.Type(), target)
+		}
+		out := reflect.New(target).Elem()
+		for i := 0; i < target.NumField(); i++ {
+			field := target.Field(i)
+			if !field.IsExported() {
+				continue
+			}
+			sourceField := src.FieldByName(field.Name)
+			if !sourceField.IsValid() {
+				continue
+			}
+			value, err := prepareReflectionArg(field.Type, sourceField)
+			if err != nil {
+				return reflect.Value{}, err
+			}
+			if out.Field(i).CanSet() {
+				out.Field(i).Set(value)
+			}
+		}
+		return out, nil
+	}
+	if target.Kind() == reflect.Slice {
+		if src.Kind() == reflect.Pointer {
+			src = src.Elem()
+		}
+		if src.Kind() != reflect.Slice {
+			return reflect.Value{}, fmt.Errorf("cannot map %s to %s", src.Type(), target)
+		}
+		out := reflect.MakeSlice(target, src.Len(), src.Len())
+		for i := 0; i < src.Len(); i++ {
+			value, err := prepareReflectionArg(target.Elem(), src.Index(i))
+			if err != nil {
+				return reflect.Value{}, err
+			}
+			out.Index(i).Set(value)
+		}
+		return out, nil
+	}
+	return reflect.Value{}, fmt.Errorf("cannot map %s to %s", src.Type(), target)
 }
 
 func seedDocument(id string) domain.Document {

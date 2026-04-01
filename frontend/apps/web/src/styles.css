@@ -2237,7 +2237,7 @@ td small {
 }
 
 .content-builder-preview {
-  width: 380px;
+  width: 100%;
   border-left: 1px solid var(--border);
   background: var(--surface);
   display: flex;
@@ -2453,11 +2453,6 @@ td small {
   color: var(--text-soft);
 }
 
-@media (max-width: 1200px) {
-  .content-builder-preview {
-    width: 320px;
-  }
-}
 
 @media (max-width: 980px) {
   .content-builder-layout {
@@ -3346,6 +3341,7 @@ td small {
   overflow-x: hidden;
   padding: 16px;
   background: var(--bg);
+  container-type: inline-size;
 }
 
 .preview-panel-pdf {
@@ -3363,6 +3359,13 @@ td small {
   flex-direction: column;
   align-items: stretch;
   gap: 16px;
+  zoom: 0.6;
+}
+
+@container (min-width: 520px) {
+  .preview-document {
+    zoom: 0.88;
+  }
 }
 
 .preview-document-page {
@@ -3370,8 +3373,8 @@ td small {
   border-radius: 4px;
   box-shadow: 0 2px 12px rgba(74, 33, 33, 0.08);
   padding: 32px 28px 24px;
-  width: 100%;
-  max-width: 100%;
+  width: 700px;
+  max-width: none;
   font-size: 11px;
   line-height: 1.55;
   color: var(--text);

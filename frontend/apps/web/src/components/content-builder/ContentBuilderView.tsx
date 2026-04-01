@@ -4,7 +4,7 @@ import type { DocumentListItem, DocumentProfileSchemaItem } from "../../lib.type
 import { formatDocumentDisplayName } from "../../features/shared/documentDisplay";
 import { ProgressSidebar } from "../create/widgets/ProgressSidebar";
 import type { StepStatus } from "../create/documentCreateTypes";
-import { ContentSchemaForm } from "./ContentSchemaForm";
+import { DynamicEditor } from "../../features/documents/runtime/DynamicEditor";
 import type { SchemaSection } from "./contentSchemaTypes";
 import { hasAnyValue, isFieldComplete, sectionAnchorId } from "./contentBuilderUtils";
 import { useAutoSave } from "./useAutoSave";
@@ -369,7 +369,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
   const editorPane = (
     <main className="content-builder-editor" ref={editorRef}>
       <div className="content-builder-editor-inner">
-        <ContentSchemaForm
+        <DynamicEditor
           schema={schema}
           value={contentDraft}
           activeSectionKey={activeSectionKey}

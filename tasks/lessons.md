@@ -593,6 +593,27 @@ Correct: Resolve workspace files with a root-relative path such as `filepath.Joi
 Rule:    Tests that validate repository artifacts must use a stable repo-root path instead of assuming the package working directory.
 Layer:   process
 
+## Lesson CI - Schema runtime migrations must preserve legacy discriminants until renderers move
+Date: 2026-04-01 | Trigger: build failure
+Wrong:   Replacing the shallow schema field union with a runtime union that dropped still-live discriminants like `array`
+Correct: Keep legacy field discriminants available in the runtime type layer until the rendering components are migrated, or isolate them behind an adapter layer
+Rule:    Contract migrations must remain compatible with currently deployed renderers until those consumers are updated in the same change.
+Layer:   frontend
+
+## Lesson CJ - Runtime adapters must synthesize legacy repeat shapes explicitly
+Date: 2026-04-01 | Trigger: build failure
+Wrong:   Mapping legacy `array` and `checklist` schema fields to repeat fields without rebuilding their expected nested item structure
+Correct: Detect legacy repeat-like discriminants and synthesize the item field shape the renderer expects before handing values to the UI
+Rule:    Compatibility adapters should preserve both the field kind and the value shape, not only the top-level discriminant.
+Layer:   frontend
+
+## Lesson CK - Tiptap table support comes from the exact subpackages
+Date: 2026-04-01 | Trigger: build failure
+Wrong:   Importing table row, header, and cell nodes from the main table package even though the editor exposes them through separate modules
+Correct: Install and import the specific Tiptap subpackages that own each node/extension required by the editor
+Rule:    Rich-text editor integrations should follow the library's package boundaries exactly instead of assuming a monolithic export surface.
+Layer:   frontend
+
 ## Lesson CH - docx option objects must match library shapes exactly
 Date: 2026-04-01 | Trigger: build failure
 Wrong:   Passing `underline: true` and partial image alt text objects into `docx` helpers

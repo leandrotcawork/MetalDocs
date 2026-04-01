@@ -3357,15 +3357,8 @@ td small {
 .preview-document {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: center;
   gap: 16px;
-  zoom: 0.6;
-}
-
-@container (min-width: 650px) {
-  .preview-document {
-    zoom: 0.88;
-  }
 }
 
 .preview-document-page {
@@ -3379,6 +3372,14 @@ td small {
   line-height: 1.55;
   color: var(--text);
   position: relative;
+  zoom: 0.6;
+  margin: 0 auto;
+}
+
+@container (min-width: 650px) {
+  .preview-document-page {
+    zoom: 0.88;
+  }
 }
 
 .preview-doc-header-wrapper {

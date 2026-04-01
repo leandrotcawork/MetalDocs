@@ -1,14 +1,11 @@
 package docgen
 
 type RenderPayload struct {
-	Document RenderDocument `json:"document"`
-	Schema   RenderSchema   `json:"schema"`
-	Values   map[string]any `json:"values"`
-}
-
-type RenderDocument struct {
-	DocumentID string `json:"documentId"`
-	Title      string `json:"title"`
+	DocumentType string         `json:"documentType"`
+	DocumentCode string         `json:"documentCode"`
+	Title        string         `json:"title"`
+	Schema       RenderSchema   `json:"schema"`
+	Values       map[string]any `json:"values"`
 }
 
 type RenderSchema struct {

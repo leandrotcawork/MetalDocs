@@ -59,7 +59,7 @@ func (c *Client) Generate(ctx context.Context, payload RenderPayload, traceID st
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Trace-Id", traceID)
 
-	log.Printf("docgen generate trace_id=%s document_id=%s", traceID, payload.Document.DocumentID)
+	log.Printf("docgen generate trace_id=%s document_type=%s document_code=%s", traceID, payload.DocumentType, payload.DocumentCode)
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("docgen request: %w", err)

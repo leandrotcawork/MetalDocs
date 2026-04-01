@@ -17,7 +17,7 @@ import (
 type DocumentRuntimeBundle struct {
 	Document domain.Document
 	Version  domain.Version
-	Type     domain.DocumentTypeDefinition
+	Schema   domain.DocumentProfileSchemaVersion
 }
 
 func (s *Service) GetDocumentRuntimeBundle(ctx context.Context, documentID string) (DocumentRuntimeBundle, error) {
@@ -31,7 +31,7 @@ func (s *Service) GetDocumentRuntimeBundle(ctx context.Context, documentID strin
 		return DocumentRuntimeBundle{}, err
 	}
 
-	typeDefinition, err := s.resolveDocumentTypeDefinition(ctx, firstNonEmpty(doc.DocumentType, doc.DocumentProfile))
+	runtimeSchema, err := s.resolveActiveProfileSchema(ctx, doc.DocumentProfile)
 	if err != nil {
 		return DocumentRuntimeBundle{}, err
 	}
@@ -39,7 +39,7 @@ func (s *Service) GetDocumentRuntimeBundle(ctx context.Context, documentID strin
 	return DocumentRuntimeBundle{
 		Document: doc,
 		Version:  version,
-		Type:     typeDefinition,
+		Schema:   runtimeSchema,
 	}, nil
 }
 
@@ -151,13 +151,17 @@ func (s *Service) ExportDocumentDocxAuthorized(ctx context.Context, documentID, 
 		return nil, err
 	}
 
+	schema, err := toDocgenSchema(bundle.Schema.ContentSchema)
+	if err != nil {
+		return nil, err
+	}
+
 	payload := docgen.RenderPayload{
-		Document: docgen.RenderDocument{
-			DocumentID: bundle.Document.ID,
-			Title:      bundle.Document.Title,
-		},
-		Schema: toDocgenSchema(bundle.Type.Schema),
-		Values: cloneRuntimeValues(bundle.Version.Values),
+		DocumentType: firstNonEmpty(bundle.Document.DocumentType, bundle.Document.DocumentProfile),
+		DocumentCode: bundle.Document.DocumentCode,
+		Title:        bundle.Document.Title,
+		Schema:       schema,
+		Values:       cloneRuntimeValues(bundle.Version.Values),
 	}
 
 	return s.docgenClient.Generate(ctx, payload, traceID)
@@ -212,43 +216,248 @@ func (s *Service) publishRuntimeValuesUpdated(ctx context.Context, doc domain.Do
 	})
 }
 
-func toDocgenSchema(schema domain.DocumentTypeSchema) docgen.RenderSchema {
-	sections := make([]docgen.RenderSection, 0, len(schema.Sections))
-	for _, section := range schema.Sections {
-		sections = append(sections, toDocgenSection(section))
+func toDocgenSchema(schema map[string]any) (docgen.RenderSchema, error) {
+	rawSections := toRuntimeMapSlice(schema["sections"])
+	sections := make([]docgen.RenderSection, 0, len(rawSections))
+	for index, rawSection := range rawSections {
+		sectionMap, ok := rawSection.(map[string]any)
+		if !ok {
+			return docgen.RenderSchema{}, domain.ErrInvalidCommand
+		}
+		section, err := toDocgenSection(sectionMap, index+1)
+		if err != nil {
+			return docgen.RenderSchema{}, err
+		}
+		sections = append(sections, section)
 	}
-	return docgen.RenderSchema{Sections: sections}
+	if len(sections) == 0 {
+		return docgen.RenderSchema{}, domain.ErrInvalidCommand
+	}
+	return docgen.RenderSchema{Sections: sections}, nil
 }
 
-func toDocgenSection(section domain.SectionDef) docgen.RenderSection {
-	fields := make([]docgen.RenderField, 0, len(section.Fields))
-	for _, field := range section.Fields {
-		fields = append(fields, toDocgenField(field))
+func toDocgenSection(section map[string]any, fallbackNum int) (docgen.RenderSection, error) {
+	key, ok := toRuntimeString(section["key"])
+	if !ok {
+		return docgen.RenderSection{}, domain.ErrInvalidCommand
 	}
-	return docgen.RenderSection{
-		Key:    section.Key,
-		Num:    section.Num,
-		Title:  section.Title,
-		Color:  section.Color,
+	title, ok := toRuntimeString(section["title"])
+	if !ok {
+		return docgen.RenderSection{}, domain.ErrInvalidCommand
+	}
+	num, ok := toRuntimeString(section["num"])
+	if !ok {
+		num = fmt.Sprintf("%d", fallbackNum)
+	}
+
+	fields := make([]docgen.RenderField, 0)
+	for _, rawField := range toRuntimeMapSlice(section["fields"]) {
+		fieldMap, ok := rawField.(map[string]any)
+		if !ok {
+			return docgen.RenderSection{}, domain.ErrInvalidCommand
+		}
+		field, err := toDocgenField(fieldMap, false)
+		if err != nil {
+			return docgen.RenderSection{}, err
+		}
+		fields = append(fields, field)
+	}
+	if len(fields) == 0 {
+		return docgen.RenderSection{}, domain.ErrInvalidCommand
+	}
+
+	sectionOut := docgen.RenderSection{
+		Key:    key,
+		Num:    num,
+		Title:  title,
 		Fields: fields,
 	}
+	if color, ok := toRuntimeString(section["color"]); ok {
+		sectionOut.Color = color
+	}
+	return sectionOut, nil
 }
 
-func toDocgenField(field domain.FieldDef) docgen.RenderField {
-	columns := make([]docgen.RenderField, 0, len(field.Columns))
-	for _, column := range field.Columns {
-		columns = append(columns, toDocgenField(column))
+func toDocgenField(field map[string]any, inTable bool) (docgen.RenderField, error) {
+	key, ok := toRuntimeString(field["key"])
+	if !ok {
+		return docgen.RenderField{}, domain.ErrInvalidCommand
 	}
-	itemFields := make([]docgen.RenderField, 0, len(field.ItemFields))
-	for _, itemField := range field.ItemFields {
-		itemFields = append(itemFields, toDocgenField(itemField))
+	label, ok := toRuntimeString(field["label"])
+	if !ok {
+		label = key
 	}
-	return docgen.RenderField{
-		Key:        field.Key,
-		Label:      field.Label,
-		Type:       field.Type,
-		Options:    append([]string(nil), field.Options...),
-		Columns:    columns,
-		ItemFields: itemFields,
+	fieldType, ok := toRuntimeString(field["type"])
+	if !ok {
+		fieldType = "text"
+	}
+
+	renderType := fieldType
+	if inTable {
+		renderType = normalizeDocgenScalarType(renderType)
+	}
+
+	out := docgen.RenderField{
+		Key:   key,
+		Label: label,
+		Type:  renderType,
+	}
+	if options := toRuntimeStringSlice(field["options"]); len(options) > 0 {
+		out.Options = options
+	}
+
+	if inTable {
+		switch fieldType {
+		case "array", "checklist", "repeat", "rich", "rich_blocks", "table":
+			out.Type = "textarea"
+			return out, nil
+		}
+	}
+
+	switch fieldType {
+	case "table":
+		columns := make([]docgen.RenderField, 0)
+		for _, rawColumn := range toRuntimeMapSlice(field["columns"]) {
+			columnMap, ok := rawColumn.(map[string]any)
+			if !ok {
+				return docgen.RenderField{}, domain.ErrInvalidCommand
+			}
+			column, err := toDocgenField(columnMap, true)
+			if err != nil {
+				return docgen.RenderField{}, err
+			}
+			columns = append(columns, column)
+		}
+		if len(columns) == 0 {
+			return docgen.RenderField{}, domain.ErrInvalidCommand
+		}
+		out.Type = "table"
+		out.Columns = columns
+	case "repeat":
+		itemFields := make([]docgen.RenderField, 0)
+		for _, rawItemField := range toRuntimeMapSlice(field["itemFields"]) {
+			itemFieldMap, ok := rawItemField.(map[string]any)
+			if !ok {
+				return docgen.RenderField{}, domain.ErrInvalidCommand
+			}
+			itemField, err := toDocgenField(itemFieldMap, false)
+			if err != nil {
+				return docgen.RenderField{}, err
+			}
+			itemFields = append(itemFields, itemField)
+		}
+		if len(itemFields) == 0 {
+			itemType := normalizeDocgenScalarType(toRuntimeStringFallback(field["itemType"], "text"))
+			itemFields = []docgen.RenderField{
+				{
+					Key:   "value",
+					Label: "Item",
+					Type:  itemType,
+				},
+			}
+		}
+		out.Type = "repeat"
+		out.ItemFields = itemFields
+	case "array":
+		itemType := normalizeDocgenScalarType(toRuntimeStringFallback(field["itemType"], "text"))
+		out.Type = "repeat"
+		out.ItemFields = []docgen.RenderField{
+			{
+				Key:   "value",
+				Label: "Item",
+				Type:  itemType,
+			},
+		}
+	case "checklist":
+		out.Type = "repeat"
+		out.ItemFields = []docgen.RenderField{
+			{
+				Key:   "label",
+				Label: "Item",
+				Type:  "text",
+			},
+			{
+				Key:   "checked",
+				Label: "Concluido",
+				Type:  "checkbox",
+			},
+		}
+	case "rich_blocks":
+		out.Type = "textarea"
+	case "rich":
+		out.Type = "rich"
+	default:
+		out.Type = normalizeDocgenScalarType(renderType)
+	}
+
+	return out, nil
+}
+
+func normalizeDocgenScalarType(fieldType string) string {
+	switch strings.ToLower(strings.TrimSpace(fieldType)) {
+	case "text", "textarea", "number", "date", "select", "checkbox", "table", "rich", "repeat":
+		return strings.ToLower(strings.TrimSpace(fieldType))
+	case "rich_blocks":
+		return "textarea"
+	case "array", "checklist":
+		return "repeat"
+	default:
+		return "text"
+	}
+}
+
+func toRuntimeString(value any) (string, bool) {
+	str, ok := value.(string)
+	if !ok {
+		return "", false
+	}
+	trimmed := strings.TrimSpace(str)
+	if trimmed == "" {
+		return "", false
+	}
+	return trimmed, true
+}
+
+func toRuntimeStringFallback(value any, fallback string) string {
+	if str, ok := toRuntimeString(value); ok {
+		return str
+	}
+	return fallback
+}
+
+func toRuntimeStringSlice(value any) []string {
+	items := toRuntimeMapSlice(value)
+	if len(items) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(items))
+	for _, item := range items {
+		if str, ok := item.(string); ok {
+			if trimmed := strings.TrimSpace(str); trimmed != "" {
+				out = append(out, trimmed)
+			}
+		}
+	}
+	return out
+}
+
+func toRuntimeMapSlice(value any) []any {
+	switch typed := value.(type) {
+	case []any:
+		return typed
+	case []map[string]any:
+		out := make([]any, 0, len(typed))
+		for _, item := range typed {
+			out = append(out, item)
+		}
+		return out
+	case []string:
+		out := make([]any, 0, len(typed))
+		for _, item := range typed {
+			out = append(out, item)
+		}
+		return out
+	default:
+		return nil
 	}
 }

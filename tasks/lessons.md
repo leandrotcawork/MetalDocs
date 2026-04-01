@@ -642,6 +642,20 @@ Correct: Keep the table wrapper tags and the column sizing attributes/styles tha
 Rule:    Preview sanitizers must preserve the structural tags and metadata required for editor-rendered table layout to remain faithful.
 Layer:   frontend
 
+## Lesson CM - Runtime export must source the active profile schema, not the legacy type definition
+Date: 2026-04-01 | Trigger: correction
+Wrong:   DOCX export used the document type definition schema, which lagged behind the active runtime profile schema
+Correct: Build export payloads from the active profile schema version so docgen sees the same runtime sections and fields as the editor
+Rule:    Export pipelines must read from the same runtime schema source as the editing flow to avoid drift between authoring and generated output.
+Layer:   application
+
+## Lesson CN - Preview adapters should normalize to renderer input, not lower-level runtime structs
+Date: 2026-04-01 | Trigger: build failure
+Wrong:   Passing `RuntimeSection[]` directly into the preview renderer broke the expected `SchemaSection[]` shape
+Correct: Use the schema normalizer that produces the renderer's field contract before handing data to preview components
+Rule:    UI adapters should translate data into the exact component contract they render, not into a neighboring internal representation.
+Layer:   frontend
+
 ## Lesson CH - docx option objects must match library shapes exactly
 Date: 2026-04-01 | Trigger: build failure
 Wrong:   Passing `underline: true` and partial image alt text objects into `docx` helpers

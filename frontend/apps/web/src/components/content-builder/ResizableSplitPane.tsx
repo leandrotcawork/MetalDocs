@@ -15,7 +15,7 @@ export function ResizableSplitPane({
   storageKey = "metaldocs:editor-split-width",
   defaultRightWidth = 420,
   minLeftWidth = 400,
-  minRightWidth = 280,
+  minRightWidth = 340,
 }: ResizableSplitPaneProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [rightWidth, setRightWidth] = useState(() => {

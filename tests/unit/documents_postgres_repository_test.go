@@ -514,6 +514,26 @@ func TestPostgresRepositorySaveVersionFailsOnBodyBlocksSerializationError(t *tes
 	}
 }
 
+func TestPostgresRepository_SaveDocumentTypeSchemaRuntime(t *testing.T) {
+	repo := newPostgresRepositoryForTest(t)
+	ctx := context.Background()
+
+	item := domain.DocumentTypeDefinition{
+		Key:           "po",
+		Name:          "Procedimento Operacional",
+		ActiveVersion: 1,
+		Schema: domain.DocumentTypeSchema{
+			Sections: []domain.SectionDef{
+				{Key: "identificacao", Num: "1", Title: "Identificacao"},
+			},
+		},
+	}
+
+	if err := repo.UpsertDocumentTypeDefinition(ctx, item); err != nil {
+		t.Fatalf("upsert type: %v", err)
+	}
+}
+
 func seedDocument(id string) domain.Document {
 	now := time.Date(2026, 3, 31, 10, 0, 0, 0, time.UTC)
 	return domain.Document{

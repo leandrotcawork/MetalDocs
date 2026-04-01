@@ -295,6 +295,27 @@ func TestSaveEtapaBodyRejectsInvalidBlocks(t *testing.T) {
 	}
 }
 
+func TestService_SaveDocumentValues_UpdatesDraftInPlace(t *testing.T) {
+	repo := memory.NewRepository()
+	service := application.NewService(repo, nil, nil)
+	ctx := context.Background()
+
+	doc := seedRuntimeDocument(t, repo, domain.StatusDraft)
+	values := map[string]any{"objetivo": "Novo texto"}
+
+	version, err := service.SaveDocumentValuesAuthorized(ctx, domain.SaveDocumentValuesCommand{
+		DocumentID: doc.ID,
+		Values:     values,
+		TraceID:    "trace-runtime-save",
+	})
+	if err != nil {
+		t.Fatalf("save values: %v", err)
+	}
+	if version.Number != 1 {
+		t.Fatalf("expected in-place draft update, got version %d", version.Number)
+	}
+}
+
 func TestListDocumentsReturnsCreatedDocuments(t *testing.T) {
 	repo := memory.NewRepository()
 	svc := application.NewService(repo, nil, fixedClock{now: time.Date(2026, 3, 16, 10, 0, 0, 0, time.UTC)})
@@ -470,6 +491,46 @@ func TestValidateDocumentProfileAlias(t *testing.T) {
 	}
 }
 
+func TestValidateDocumentTypeSchema_RejectsUnknownFieldType(t *testing.T) {
+	schema := domain.DocumentTypeSchema{
+		Sections: []domain.SectionDef{
+			{
+				Key:   "s1",
+				Num:   "1",
+				Title: "Section 1",
+				Fields: []domain.FieldDef{
+					{Key: "x", Label: "X", Type: "unknown"},
+				},
+			},
+		},
+	}
+
+	err := domain.ValidateDocumentTypeSchema(schema)
+	if !errors.Is(err, domain.ErrDocumentSchemaInvalidField) {
+		t.Fatalf("expected schema field error, got %v", err)
+	}
+}
+
+func TestValidateDocumentTypeSchema_RejectsUnknownFieldType(t *testing.T) {
+	schema := domain.DocumentTypeSchema{
+		Sections: []domain.SectionDef{
+			{
+				Key:   "s1",
+				Num:   "1",
+				Title: "Section 1",
+				Fields: []domain.FieldDef{
+					{Key: "x", Label: "X", Type: "unknown"},
+				},
+			},
+		},
+	}
+
+	err := domain.ValidateDocumentTypeSchema(schema)
+	if !errors.Is(err, domain.ErrDocumentSchemaInvalidField) {
+		t.Fatalf("expected schema field error, got %v", err)
+	}
+}
+
 func TestDiffVersionsDetectsContentChange(t *testing.T) {
 	repo := memory.NewRepository()
 	svc := application.NewService(repo, nil, fixedClock{now: time.Date(2026, 3, 16, 10, 0, 0, 0, time.UTC)})
@@ -516,6 +577,34 @@ func TestListVersionsRequiresExistingDocument(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for missing document")
 	}
+}
+
+func seedRuntimeDocument(t *testing.T, repo *memory.Repository, status string) domain.Document {
+	t.Helper()
+
+	now := time.Date(2026, 3, 16, 10, 0, 0, 0, time.UTC)
+	doc := seedDocument("doc-runtime")
+	doc.Status = status
+	doc.CreatedAt = now
+	doc.UpdatedAt = now
+
+	if err := repo.CreateDocument(context.Background(), doc); err != nil {
+		t.Fatalf("seed runtime document: %v", err)
+	}
+	if err := repo.SaveVersion(context.Background(), domain.Version{
+		DocumentID:    doc.ID,
+		Number:        1,
+		Content:       "{}",
+		ContentHash:   "hash-runtime-1",
+		ChangeSummary: "initial runtime values",
+		ContentSource: domain.ContentSourceNative,
+		Values:        map[string]any{},
+		CreatedAt:     now,
+	}); err != nil {
+		t.Fatalf("seed runtime version: %v", err)
+	}
+
+	return doc
 }
 
 func TestUploadAndListAttachmentsAuthorized(t *testing.T) {

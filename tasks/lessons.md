@@ -578,3 +578,10 @@ Wrong:   The documents application package tried to reuse an ID helper from anot
 Correct: Keep event/audit ID generation helpers inside the package that emits the event, with the same fallback semantics
 Rule:    Emission helpers should live next to the code that uses them so packages do not depend on unrelated private helpers.
 Layer:   process
+
+## Lesson CD - Preserve approved plan granularity
+Date: 2026-03-31 | Trigger: correction
+Wrong:   Rewriting a detailed migration plan into a shorter version and dropping the concrete file, code, and test guidance already approved by the user
+Correct: Preserve the approved plan detail level and restore the full version when the user expects the original execution granularity
+Rule:    Once a migration plan has an agreed execution granularity, do not compress it unless the user explicitly asks for less detail.
+Layer:   process

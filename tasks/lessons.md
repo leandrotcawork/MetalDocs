@@ -585,3 +585,31 @@ Wrong:   Rewriting a detailed migration plan into a shorter version and dropping
 Correct: Preserve the approved plan detail level and restore the full version when the user expects the original execution granularity
 Rule:    Once a migration plan has an agreed execution granularity, do not compress it unless the user explicitly asks for less detail.
 Layer:   process
+
+## Lesson CE - Contract tests that read repo artifacts must resolve from the repo root
+Date: 2026-03-31 | Trigger: correction
+Wrong:   `os.ReadFile("api/openapi/v1/openapi.yaml")` failed when the test ran from `tests/contract`
+Correct: Resolve workspace files with a root-relative path such as `filepath.Join("..", "..", "api", "openapi", "v1", "openapi.yaml")`
+Rule:    Tests that validate repository artifacts must use a stable repo-root path instead of assuming the package working directory.
+Layer:   process
+
+## Lesson CH - docx option objects must match library shapes exactly
+Date: 2026-04-01 | Trigger: build failure
+Wrong:   Passing `underline: true` and partial image alt text objects into `docx` helpers
+Correct: Use the library's expected option objects, including `UnderlineType` and full `DocPropertiesOptions` fields such as `name`
+Rule:    Third-party renderers often validate nested option shapes strictly, so wrappers must follow the exact documented object contract.
+Layer:   infrastructure
+
+## Lesson CG - Schema validation must fail closed on empty nested definitions
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Accepting empty `sections`, `fields`, `table.columns`, or `repeat.itemFields` let invalid runtime schemas pass validation
+Correct: Reject empty top-level and nested schema definitions explicitly and return structured domain codes for each invalid shape
+Rule:    Runtime schema validation should treat missing structure as a hard error, not as a no-op.
+Layer:   domain
+
+## Lesson CE - Contract tests that read repo artifacts must resolve from the repo root
+Date: 2026-03-31 | Trigger: correction
+Wrong:   `os.ReadFile("api/openapi/v1/openapi.yaml")` failed when the test ran from `tests/contract`
+Correct: Resolve workspace files with a root-relative path such as `filepath.Join("..", "..", "api", "openapi", "v1", "openapi.yaml")`
+Rule:    Tests that validate repository artifacts must use a stable repo-root path instead of assuming the package working directory.
+Layer:   process

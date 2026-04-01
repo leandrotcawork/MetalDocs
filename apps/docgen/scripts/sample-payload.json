@@ -2,5 +2,184 @@
   "documentType": "PO",
   "documentCode": "PO-01",
   "title": "Procedimento Operacional",
-  "sections": {}
+  "schema": {
+    "sections": [
+      {
+        "key": "contexto",
+        "num": "1",
+        "title": "Contexto",
+        "color": "#7c1d1d",
+        "fields": [
+          {
+            "key": "descricao",
+            "label": "Descricao",
+            "type": "textarea"
+          },
+          {
+            "key": "versao",
+            "label": "Versao",
+            "type": "number"
+          },
+          {
+            "key": "vigente",
+            "label": "Vigente",
+            "type": "checkbox"
+          }
+        ]
+      },
+      {
+        "key": "operacao",
+        "num": "2",
+        "title": "Operacao",
+        "fields": [
+          {
+            "key": "responsaveis",
+            "label": "Responsaveis",
+            "type": "table",
+            "columns": [
+              {
+                "key": "area",
+                "label": "Area",
+                "type": "text"
+              },
+              {
+                "key": "responsavel",
+                "label": "Responsavel",
+                "type": "text"
+              },
+              {
+                "key": "prazo",
+                "label": "Prazo",
+                "type": "date"
+              }
+            ]
+          },
+          {
+            "key": "introducao",
+            "label": "Introducao",
+            "type": "rich"
+          },
+          {
+            "key": "etapas",
+            "label": "Etapas",
+            "type": "repeat",
+            "itemFields": [
+              {
+                "key": "titulo",
+                "label": "Titulo",
+                "type": "text"
+              },
+              {
+                "key": "detalhe",
+                "label": "Detalhe",
+                "type": "textarea"
+              },
+              {
+                "key": "observacoes",
+                "label": "Observacoes",
+                "type": "rich"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "values": {
+    "contexto": {
+      "descricao": "Documento de referencia para validar o runtime schema + values.",
+      "versao": 1,
+      "vigente": true
+    },
+    "operacao": {
+      "responsaveis": [
+        {
+          "area": "Operacao",
+          "responsavel": "Maria",
+          "prazo": "2026-04-10"
+        },
+        {
+          "area": "Qualidade",
+          "responsavel": "Joao",
+          "prazo": "2026-04-12"
+        }
+      ],
+      "introducao": [
+        {
+          "type": "text",
+          "runs": [
+            {
+              "text": "Este documento e gerado a partir de schema + values."
+            }
+          ]
+        },
+        {
+          "type": "list",
+          "ordered": false,
+          "items": [
+            "Textos livres",
+            "Imagens controladas",
+            "Tabelas simples",
+            "Listas"
+          ]
+        },
+        {
+          "type": "image",
+          "mimeType": "image/png",
+          "altText": "Selo de teste",
+          "width": 24,
+          "height": 24,
+          "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/5xkAAAAASUVORK5CYII="
+        },
+        {
+          "type": "table",
+          "header": true,
+          "rows": [
+            ["Tema", "Status"],
+            ["Render", "Ativo"],
+            ["Harness", "Coberto"]
+          ]
+        }
+      ],
+      "etapas": [
+        {
+          "titulo": "Preparar",
+          "detalhe": "Separar materiais e confirmar insumos.",
+          "observacoes": [
+            {
+              "type": "text",
+              "runs": [
+                {
+                  "text": "Bloco rich dentro de repeat."
+                }
+              ]
+            },
+            {
+              "type": "list",
+              "ordered": true,
+              "items": [
+                "Abrir checklist",
+                "Validar pendencias",
+                "Prosseguir para execucao"
+              ]
+            }
+          ]
+        },
+        {
+          "titulo": "Executar",
+          "detalhe": "Rodar o fluxo principal com rastreabilidade.",
+          "observacoes": [
+            {
+              "type": "text",
+              "runs": [
+                {
+                  "text": "A saida precisa continuar estatica e previsivel."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
 }

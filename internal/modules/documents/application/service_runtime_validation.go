@@ -49,6 +49,9 @@ func validateDocumentTypeFieldDefinition(field domain.FieldDef) error {
 	switch fieldType {
 	case "text", "textarea", "number", "date", "select", "checkbox", "table", "rich", "repeat", "array", "rich_blocks":
 		if fieldType == "table" {
+			if len(field.Columns) == 0 {
+				return domain.ErrDocumentSchemaInvalidField
+			}
 			for _, column := range field.Columns {
 				if err := validateDocumentTypeFieldDefinition(column); err != nil {
 					return err
@@ -56,6 +59,9 @@ func validateDocumentTypeFieldDefinition(field domain.FieldDef) error {
 			}
 		}
 		if fieldType == "repeat" {
+			if len(field.ItemFields) == 0 {
+				return domain.ErrDocumentSchemaInvalidField
+			}
 			for _, itemField := range field.ItemFields {
 				if err := validateDocumentTypeFieldDefinition(itemField); err != nil {
 					return err

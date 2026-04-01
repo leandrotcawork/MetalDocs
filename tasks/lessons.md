@@ -600,6 +600,13 @@ Correct: Return structured error codes like `DOCUMENT_SCHEMA_INVALID_FIELD` and 
 Rule:    Domain validation must emit structured error codes and reject empty structural definitions to protect downstream runtimes.
 Layer:   domain
 
+## Lesson CG - Runtime field validators must fail closed on nested definitions
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Accepting `table` fields without columns or `repeat` fields without item fields in runtime validation
+Correct: Reject empty `table.columns` and `repeat.itemFields` when validating schema fields
+Rule:    Nested runtime field definitions must be non-empty to avoid invalid schemas reaching persistence and rendering.
+Layer:   application
+
 ## Lesson CF - Worktree edits must target the active git root explicitly
 Date: 2026-03-31 | Trigger: correction
 Wrong:   Applying a patch without an explicit worktree path wrote changes into the parent checkout copy instead of the isolated worktree

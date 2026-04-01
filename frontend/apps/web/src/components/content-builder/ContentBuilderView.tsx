@@ -273,13 +273,14 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
 
   async function handleSave() {
     if (!documentId) return false;
+    const savedContent = contentDraft ?? {};
     dispatch({ type: "set_error", payload: { message: "" } });
     dispatch({ type: "set_status", payload: { status: "saving" } });
     try {
-      const response = await api.saveDocumentContentNative(documentId, { content: contentDraft ?? {} });
+      const response = await api.saveDocumentContentNative(documentId, { content: savedContent });
+      autoSave.acknowledgeSave(savedContent, response.pdfUrl);
       dispatch({ type: "set_pdf", payload: { pdfUrl: response.pdfUrl } });
-      dispatch({ type: "load_success", payload: { contentDraft: contentDraft ?? {}, schema, version: response.version ?? null, pdfUrl: response.pdfUrl } });
-      setLastSavedAt(new Date());
+      dispatch({ type: "load_success", payload: { contentDraft: savedContent, schema, version: response.version ?? null, pdfUrl: response.pdfUrl } });
       return true;
     } catch {
       dispatch({ type: "load_error", payload: { message: "Falha ao salvar o conteudo." } });

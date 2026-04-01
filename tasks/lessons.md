@@ -593,6 +593,13 @@ Correct: Resolve workspace files with a root-relative path such as `filepath.Joi
 Rule:    Tests that validate repository artifacts must use a stable repo-root path instead of assuming the package working directory.
 Layer:   process
 
+## Lesson CP - Manual saves must acknowledge autosave state before leaving the view
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Manual saves updated the document but left a pending autosave timer and stale last-saved refs, so the same content could be written twice
+Correct: Clear any pending autosave timer and sync the last-saved json/pdf/timestamp immediately after a successful manual persistence path
+Rule:    When manual and automatic writes share the same content source, the automatic layer must be explicitly acknowledged after manual persistence.
+Layer:   frontend
+
 ## Lesson CM - Export actions must flush dirty drafts before server export
 Date: 2026-04-01 | Trigger: correction
 Wrong:   DOCX export called the export endpoint while the editor still had unsaved draft changes

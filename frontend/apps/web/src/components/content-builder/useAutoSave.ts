@@ -14,6 +14,7 @@ type AutoSaveResult = {
   lastSavedAt: Date | null;
   error: string;
   saveNow: () => void;
+  acknowledgeSave: (content: Record<string, unknown>, pdfUrl: string) => void;
 };
 
 export function useAutoSave(options: AutoSaveOptions): AutoSaveResult {
@@ -73,6 +74,18 @@ export function useAutoSave(options: AutoSaveOptions): AutoSaveResult {
     void doSave();
   }, [doSave]);
 
+  const acknowledgeSave = useCallback((content: Record<string, unknown>, pdfUrl: string) => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    const currentJson = JSON.stringify(content);
+    lastSavedJsonRef.current = currentJson;
+    setLastSavedPdfUrl(pdfUrl);
+    setLastSavedAt(new Date());
+    setError("");
+  }, []);
+
   useEffect(() => {
     if (!documentId || !enabled) return;
 
@@ -105,5 +118,5 @@ export function useAutoSave(options: AutoSaveOptions): AutoSaveResult {
     };
   }, []);
 
-  return { isSaving, lastSavedPdfUrl, lastSavedAt, error, saveNow };
+  return { isSaving, lastSavedPdfUrl, lastSavedAt, error, saveNow, acknowledgeSave };
 }

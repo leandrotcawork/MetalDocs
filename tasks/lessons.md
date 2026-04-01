@@ -614,6 +614,13 @@ Correct: Accept the OpenAPI shape (plain object) or update the spec and tests to
 Rule:    Handler request parsing must match the OpenAPI contract to avoid client/server drift.
 Layer:   delivery
 
+## Lesson CI - Draft edits are in-place by product decision
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Treating all versions as immutable even for draft edits, conflicting with product requirement
+Correct: Allow in-place updates for draft versions; only non-draft edits create new versions
+Rule:    Product rules can override immutability for drafts, but only when explicitly documented.
+Layer:   process
+
 ## Lesson CF - Worktree edits must target the active git root explicitly
 Date: 2026-03-31 | Trigger: correction
 Wrong:   Applying a patch without an explicit worktree path wrote changes into the parent checkout copy instead of the isolated worktree

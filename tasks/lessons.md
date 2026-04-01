@@ -607,6 +607,13 @@ Correct: Render label, required mark, and description for rich fields in both ed
 Rule:    All field types should surface the same metadata to keep the editor consistent.
 Layer:   frontend
 
+## Lesson CS - Rich preview must sanitize HTML
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Rendering rich preview HTML directly created an XSS sink in the editor preview
+Correct: Sanitize rich HTML before rendering it in preview mode
+Rule:    Any rich content preview must sanitize user-provided HTML.
+Layer:   frontend
+
 ## Lesson CI - Schema runtime migrations must preserve legacy discriminants until renderers move
 Date: 2026-04-01 | Trigger: build failure
 Wrong:   Replacing the shallow schema field union with a runtime union that dropped still-live discriminants like `array`

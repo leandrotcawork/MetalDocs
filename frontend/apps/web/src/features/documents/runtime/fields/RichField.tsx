@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from "react";
+import DOMPurify from "dompurify";
 import type { Editor } from "@tiptap/react";
 import { Color } from "@tiptap/extension-color";
 import Image from "@tiptap/extension-image";
@@ -23,9 +24,45 @@ type RichFieldProps = {
 };
 
 const EMPTY_HTML = "<p></p>";
+const RICH_PREVIEW_ALLOWED_TAGS = [
+  "a",
+  "blockquote",
+  "br",
+  "code",
+  "em",
+  "h1",
+  "h2",
+  "h3",
+  "hr",
+  "img",
+  "li",
+  "ol",
+  "p",
+  "pre",
+  "span",
+  "strong",
+  "s",
+  "table",
+  "tbody",
+  "td",
+  "th",
+  "thead",
+  "tr",
+  "ul",
+];
+const RICH_PREVIEW_ALLOWED_ATTR = ["alt", "colspan", "height", "href", "rel", "rowspan", "src", "style", "target", "title", "width"];
 
 export function RichField({ field, value, mode, onChange }: RichFieldProps) {
   const content = useMemo(() => normalizeRichValue(value), [value]);
+  const safeContent = useMemo(
+    () =>
+      DOMPurify.sanitize(content || EMPTY_HTML, {
+        ALLOWED_ATTR: RICH_PREVIEW_ALLOWED_ATTR,
+        ALLOWED_TAGS: RICH_PREVIEW_ALLOWED_TAGS,
+        KEEP_CONTENT: true,
+      }),
+    [content],
+  );
   const label = field.label ?? field.key;
 
   if (mode === "preview") {
@@ -37,7 +74,7 @@ export function RichField({ field, value, mode, onChange }: RichFieldProps) {
         </div>
         {field.description && <div className={editorStyles.fieldDescription}>{field.description}</div>}
         <div className={styles.editorShell}>
-          <div className={styles.previewBody} dangerouslySetInnerHTML={{ __html: content || EMPTY_HTML }} />
+          <div className={styles.previewBody} dangerouslySetInnerHTML={{ __html: safeContent }} />
         </div>
       </div>
     );

@@ -1,57 +1,35 @@
 import { useEffect, useRef, useState } from "react";
-import type { DocumentProfileSchemaItem } from "../../../lib.types";
-import type { SchemaSection } from "../contentSchemaTypes";
 import { PdfPreview } from "../../create/widgets/PdfPreview";
-import { DocumentPreviewRenderer } from "./DocumentPreviewRenderer";
-import { normalizeDocumentTypeSchema } from "../../../features/documents/runtime/schemaRuntimeAdapters";
 
 type PreviewPanelProps = {
-  schema: DocumentProfileSchemaItem | null;
-  contentDraft: Record<string, unknown>;
   pdfUrl: string;
-  profileCode: string;
-  documentCode: string;
-  documentTitle: string;
-  documentStatus: string;
-  version: number | null;
-  activeSectionKey?: string | null;
   isDirty: boolean;
+  isBusy: boolean;
   collapsed: boolean;
   onToggleCollapse: (collapsed: boolean) => void;
 };
 
-type PreviewMode = "live" | "pdf";
-
-export function PreviewPanel(props: PreviewPanelProps) {
-  const {
-    schema,
-    contentDraft,
-    pdfUrl,
-    profileCode,
-    documentCode,
-    documentTitle,
-    documentStatus,
-    version,
-    activeSectionKey,
-    isDirty,
-    collapsed,
-    onToggleCollapse,
-  } = props;
-
-  const [mode, setMode] = useState<PreviewMode>("live");
-  const previewRef = useRef<HTMLDivElement | null>(null);
-
-  const sections: SchemaSection[] = normalizeDocumentTypeSchema(schema?.contentSchema).sections;
+export function PreviewPanel({
+  pdfUrl,
+  isDirty,
+  isBusy,
+  collapsed,
+  onToggleCollapse,
+}: PreviewPanelProps) {
+  const bodyRef = useRef<HTMLDivElement | null>(null);
+  const [bodyWidth, setBodyWidth] = useState(0);
 
   useEffect(() => {
-    if (!activeSectionKey || !previewRef.current || mode !== "live") return;
-    const target = previewRef.current.querySelector<HTMLElement>(
-      `[data-preview-section="${activeSectionKey}"]`,
-    );
-    if (target) {
-      target.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }, [activeSectionKey, mode]);
+    const el = bodyRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setBodyWidth(Math.floor(entry.contentRect.width));
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   if (collapsed) {
     return (
@@ -84,54 +62,38 @@ export function PreviewPanel(props: PreviewPanelProps) {
               <path d="M7 5l6 5-6 5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
-          <nav className="preview-panel-tabs">
-            <button
-              type="button"
-              className={`preview-panel-tab ${mode === "live" ? "is-active" : ""}`}
-              onClick={() => setMode("live")}
-            >
-              Ao vivo
-            </button>
-            <button
-              type="button"
-              className={`preview-panel-tab ${mode === "pdf" ? "is-active" : ""}`}
-              onClick={() => setMode("pdf")}
-            >
-              PDF
-              {isDirty && pdfUrl && <span className="preview-panel-tab-badge" />}
-            </button>
-          </nav>
+          <span className="preview-panel-title-text">Preview</span>
         </div>
 
-        <div className="preview-panel-body" ref={previewRef}>
-          {mode === "live" && (
-            <DocumentPreviewRenderer
-              sections={sections}
-              content={contentDraft}
-              profileCode={profileCode}
-              documentCode={documentCode}
-              title={documentTitle}
-              documentStatus={documentStatus}
-              version={version}
-              activeSectionKey={activeSectionKey}
-            />
-          )}
-          {mode === "pdf" && (
-            <div className="preview-panel-pdf">
-              {pdfUrl ? (
-                <PdfPreview url={pdfUrl} className="content-builder-preview-frame" width={380} />
-              ) : (
-                <div className="content-builder-preview-empty">
-                  <div className="content-builder-preview-empty-icon" aria-hidden="true">
-                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
-                      <path d="M4 2h7l3 3v11H4V2z" strokeLinejoin="round" />
-                      <path d="M11 2v3h3" strokeLinejoin="round" />
-                      <path d="M6 9h6M6 12h4" strokeLinecap="round" />
-                    </svg>
-                  </div>
-                  <strong>Nenhum PDF gerado</strong>
-                  <span>O PDF sera gerado automaticamente ao salvar.</span>
+        <div className="preview-panel-body" ref={bodyRef}>
+          {!pdfUrl ? (
+            <div className="content-builder-preview-empty">
+              <div className="content-builder-preview-empty-icon" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
+                  <path d="M4 2h7l3 3v11H4V2z" strokeLinejoin="round" />
+                  <path d="M11 2v3h3" strokeLinejoin="round" />
+                  <path d="M6 9h6M6 12h4" strokeLinecap="round" />
+                </svg>
+              </div>
+              <strong>Nenhum preview disponivel</strong>
+              <span>Salve o documento para gerar o preview.</span>
+            </div>
+          ) : (
+            <div className="preview-panel-pdf-wrapper">
+              {(isDirty || isBusy) && (
+                <div className={`preview-panel-overlay ${isBusy ? "is-saving" : "is-stale"}`}>
+                  {isBusy ? (
+                    <>
+                      <span className="preview-panel-spinner" />
+                      <span>Atualizando preview...</span>
+                    </>
+                  ) : (
+                    <span className="preview-panel-stale-badge">Alteracoes nao salvas</span>
+                  )}
                 </div>
+              )}
+              {bodyWidth > 0 && (
+                <PdfPreview url={pdfUrl} width={bodyWidth} />
               )}
             </div>
           )}

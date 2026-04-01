@@ -512,3 +512,17 @@ Notes
 - [ ] `cd frontend/apps/web; npm run e2e:smoke`
 - [ ] Manual: navegar overview -> collection -> detail; usar back/forward do browser
 
+---
+
+## Feature: Schema Runtime Platform Cutover
+Area: `apps/api/` + `frontend/apps/web/` + `apps/docgen/`  |  Risk: medium  |  Goal: keep one canonical schema contract across backend, frontend, and docgen
+
+## Tasks
+- [x] Final verification: `go test ./...`
+- [x] Final verification: `cd frontend/apps/web; npm run build`
+- [x] Final verification: `powershell -ExecutionPolicy Bypass -File apps/docgen/scripts/harness.ps1`
+- [x] Cutover note: one runtime schema contract now owns the shared document shape
+- [x] Bookkeeping: record the schema runtime migration completion
+
+commit: `chore(runtime): record schema runtime migration completion`
+

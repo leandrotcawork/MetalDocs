@@ -31,6 +31,9 @@ type Repository interface {
 	UpsertSubject(ctx context.Context, item Subject) error
 	DeactivateSubject(ctx context.Context, code string) error
 	ListDocumentTypes(ctx context.Context) ([]DocumentType, error)
+	ListDocumentTypeDefinitions(ctx context.Context) ([]DocumentTypeDefinition, error)
+	GetDocumentTypeDefinition(ctx context.Context, key string) (DocumentTypeDefinition, error)
+	UpsertDocumentTypeDefinition(ctx context.Context, item DocumentTypeDefinition) error
 	ReserveNextDocumentSequence(ctx context.Context, profileCode string) (int, error)
 	ListAccessPolicies(ctx context.Context, resourceScope, resourceID string) ([]AccessPolicy, error)
 	ReplaceAccessPolicies(ctx context.Context, resourceScope, resourceID string, policies []AccessPolicy) error
@@ -38,6 +41,7 @@ type Repository interface {
 	SaveVersion(ctx context.Context, version Version) error
 	UpdateVersionPDF(ctx context.Context, documentID string, versionNumber int, pdfStorageKey string, pageCount int) error
 	UpdateVersionBodyBlocks(ctx context.Context, documentID string, versionNumber int, bodyBlocks []EtapaBody) error
+	UpdateVersionValues(ctx context.Context, documentID string, versionNumber int, values DocumentValues) error
 	ListVersions(ctx context.Context, documentID string) ([]Version, error)
 	GetVersion(ctx context.Context, documentID string, versionNumber int) (Version, error)
 	NextVersionNumber(ctx context.Context, documentID string) (int, error)
@@ -60,6 +64,13 @@ type AtomicCreateRepository interface {
 // AtomicCreateRepositoryWithPolicies extends atomic create with access policies.
 type AtomicCreateRepositoryWithPolicies interface {
 	CreateDocumentWithInitialVersionAndPolicies(ctx context.Context, document Document, version Version, policies []AccessPolicy) error
+}
+
+// DocumentTypeDefinitionRepository persists canonical runtime schema definitions.
+type DocumentTypeDefinitionRepository interface {
+	ListDocumentTypeDefinitions(ctx context.Context) ([]DocumentTypeDefinition, error)
+	GetDocumentTypeDefinition(ctx context.Context, key string) (DocumentTypeDefinition, error)
+	UpsertDocumentTypeDefinition(ctx context.Context, item DocumentTypeDefinition) error
 }
 
 type AttachmentStore interface {

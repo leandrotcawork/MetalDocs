@@ -8,6 +8,9 @@ export function hasAnyValue(field: SchemaField, value: unknown): boolean {
   if (field.type === "table") {
     return Array.isArray(value) && value.length > 0;
   }
+  if (field.type === "repeat") {
+    return hasRepeatValue(field.itemFields ?? [], value);
+  }
   if (field.type === "array") {
     return Array.isArray(value) && value.some((item) => String(item ?? "").trim() !== "");
   }
@@ -23,6 +26,9 @@ export function hasAnyValue(field: SchemaField, value: unknown): boolean {
 export function isFieldComplete(field: SchemaField, value: unknown) {
   if (field.type === "table") {
     return Array.isArray(value) && value.length > 0;
+  }
+  if (field.type === "repeat") {
+    return hasRepeatValue(field.itemFields ?? [], value);
   }
   if (field.type === "array") {
     return Array.isArray(value) && value.some((item) => String(item ?? "").trim() !== "");
@@ -50,4 +56,20 @@ export function sectionProgress(fields: SchemaField[], sectionValue: Record<stri
     progressDots: ratio === 0 ? 0 : ratio < 50 ? 1 : ratio < 90 ? 2 : 3,
     progressLabel: `${ratio}%`,
   };
+}
+
+function hasRepeatValue(itemFields: SchemaField[], value: unknown): boolean {
+  if (!Array.isArray(value) || value.length === 0) {
+    return false;
+  }
+  if (itemFields.length === 0) {
+    return true;
+  }
+  return value.some((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      return String(item ?? "").trim() !== "";
+    }
+    const record = item as Record<string, unknown>;
+    return itemFields.some((field) => hasAnyValue(field, record[field.key]));
+  });
 }

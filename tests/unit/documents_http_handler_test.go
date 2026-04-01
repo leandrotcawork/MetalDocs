@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"metaldocs/internal/modules/documents/application"
-	"metaldocs/internal/modules/documents/domain"
 	httpdelivery "metaldocs/internal/modules/documents/delivery/http"
+	"metaldocs/internal/modules/documents/domain"
 	"metaldocs/internal/modules/documents/infrastructure/memory"
 	iamdomain "metaldocs/internal/modules/iam/domain"
 	"metaldocs/internal/platform/observability"
@@ -166,57 +166,7 @@ func TestCreateAndListVersionsFlow(t *testing.T) {
 func TestDocumentsHandler_PutRuntimeContent(t *testing.T) {
 	mux := newRuntimeContentTestMux(t)
 
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/documents/doc-1/content", strings.NewReader(`{"values":{"objetivo":"Texto"}}`))
-	req.Header.Set("Content-Type", "application/json")
-	req = req.WithContext(iamdomain.WithAuthContext(req.Context(), "editor-local", []iamdomain.Role{iamdomain.RoleEditor}))
-	rec := httptest.NewRecorder()
-
-	mux.ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusNoContent {
-		t.Fatalf("expected 204, got %d body=%s", rec.Code, rec.Body.String())
-	}
-}
-
-func TestDocumentsHandler_PutRuntimeContent(t *testing.T) {
-	mux := newTestMux()
-	repo := memory.NewRepository()
-	svc := application.NewService(repo, nil, nil).WithAttachmentStore(memory.NewAttachmentStore())
-
-	doc := domain.Document{
-		ID:              "doc-1",
-		Title:           "Procedimento Operacional",
-		DocumentType:    "po",
-		DocumentProfile: "po",
-		DocumentFamily:  "procedure",
-		DocumentSequence: 1,
-		DocumentCode:    "PO-01",
-		ProfileSchemaVersion: 1,
-		OwnerID:         "owner-1",
-		BusinessUnit:    "ops",
-		Department:      "general",
-		Classification:  domain.ClassificationInternal,
-		Status:          domain.StatusDraft,
-		CreatedAt:       time.Date(2026, 3, 16, 10, 0, 0, 0, time.UTC),
-		UpdatedAt:       time.Date(2026, 3, 16, 10, 0, 0, 0, time.UTC),
-	}
-	if err := repo.CreateDocument(context.Background(), doc); err != nil {
-		t.Fatalf("seed document: %v", err)
-	}
-	if err := repo.SaveVersion(context.Background(), domain.Version{
-		DocumentID:    doc.ID,
-		Number:        1,
-		Content:       "{}",
-		ContentHash:   "hash-runtime-1",
-		ChangeSummary: "initial runtime values",
-		ContentSource: domain.ContentSourceNative,
-		Values:        map[string]any{"objetivo": "Texto anterior"},
-		CreatedAt:     doc.CreatedAt,
-	}); err != nil {
-		t.Fatalf("seed version: %v", err)
-	}
-
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/documents/doc-1/content", strings.NewReader(`{"values":{"objetivo":"Texto"}}`))
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/documents/doc-1/content", strings.NewReader(`{"objetivo":"Texto"}`))
 	req.Header.Set("Content-Type", "application/json")
 	req = req.WithContext(iamdomain.WithAuthContext(req.Context(), "editor-local", []iamdomain.Role{iamdomain.RoleEditor}))
 	rec := httptest.NewRecorder()

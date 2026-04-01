@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { SchemaDocumentEditorState } from "../features/documents/runtime/schemaRuntimeTypes";
 import type {
   AccessPolicyItem,
   AttachmentItem,
@@ -89,6 +90,8 @@ interface DocumentsStore {
   contentError: string;
   selectedFile: File | null;
   policyResourceId: string;
+  selectedDocumentTypeKey: string;
+  schemaDocumentEditor: SchemaDocumentEditorState;
   setLoadState: (loadState: LoadState) => void;
   setDocuments: (documents: SearchDocumentItem[]) => void;
   setSelectedDocument: (selectedDocument: DocumentListItem | null) => void;
@@ -115,6 +118,12 @@ interface DocumentsStore {
   setContentError: (contentError: string) => void;
   setSelectedFile: (selectedFile: File | null) => void;
   setPolicyResourceId: (policyResourceId: string) => void;
+  setSelectedDocumentTypeKey: (selectedDocumentTypeKey: string) => void;
+  setSchemaDocumentEditor: (
+    schemaDocumentEditor:
+      | SchemaDocumentEditorState
+      | ((current: SchemaDocumentEditorState) => SchemaDocumentEditorState),
+  ) => void;
 }
 
 export const useDocumentsStore = create<DocumentsStore>((set) => ({
@@ -144,6 +153,19 @@ export const useDocumentsStore = create<DocumentsStore>((set) => ({
   contentError: "",
   selectedFile: null,
   policyResourceId: "",
+  selectedDocumentTypeKey: "",
+  schemaDocumentEditor: {
+    documentId: "",
+    typeKey: "",
+    schema: null,
+    values: {},
+    version: null,
+    pdfUrl: "",
+    status: "idle",
+    error: "",
+    bundle: null,
+    document: null,
+  },
   setLoadState: (loadState) => set({ loadState }),
   setDocuments: (documents) => set({ documents }),
   setSelectedDocument: (selectedDocument) => set({ selectedDocument }),
@@ -173,6 +195,12 @@ export const useDocumentsStore = create<DocumentsStore>((set) => ({
   setContentError: (contentError) => set({ contentError }),
   setSelectedFile: (selectedFile) => set({ selectedFile }),
   setPolicyResourceId: (policyResourceId) => set({ policyResourceId }),
+  setSelectedDocumentTypeKey: (selectedDocumentTypeKey) => set({ selectedDocumentTypeKey }),
+  setSchemaDocumentEditor: (schemaDocumentEditor) =>
+    set((state) => ({
+      schemaDocumentEditor:
+        typeof schemaDocumentEditor === "function" ? schemaDocumentEditor(state.schemaDocumentEditor) : schemaDocumentEditor,
+    })),
 }));
 
 export type { DocumentFormState, DocumentsHubMode, DocumentsHubStatus, DocumentsHubView, RecentDocumentItem };

@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from "react";
+import DOMPurify from "dompurify";
 import type { Editor } from "@tiptap/react";
 import { Color } from "@tiptap/extension-color";
 import Image from "@tiptap/extension-image";
@@ -10,6 +11,7 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { TextStyle } from "@tiptap/extension-text-style";
 import type { RuntimeRichField } from "../schemaRuntimeTypes";
+import editorStyles from "../DynamicEditor.module.css";
 import styles from "../RichField.module.css";
 
 type RuntimeMode = "edit" | "preview";
@@ -22,10 +24,8 @@ type RichFieldProps = {
 };
 
 const EMPTY_HTML = "<p></p>";
-const RICH_PREVIEW_STRIP_TAGS = new Set(["script", "style", "iframe", "object", "embed", "svg", "math"]);
-const RICH_PREVIEW_ALLOWED_TAGS = new Set([
+const RICH_PREVIEW_ALLOWED_TAGS = [
   "a",
-  "b",
   "blockquote",
   "br",
   "code",
@@ -57,47 +57,61 @@ const RICH_PREVIEW_ALLOWED_TAGS = new Set([
   "tr",
   "u",
   "ul",
-]);
-const RICH_PREVIEW_ALLOWED_ATTRIBUTES: Partial<Record<string, Set<string>>> = {
-  a: new Set(["href", "rel", "target", "title", "style"]),
-  col: new Set(["span", "style"]),
-  img: new Set(["alt", "height", "loading", "src", "title", "width", "style"]),
-  table: new Set(["style"]),
-  td: new Set(["colspan", "colwidth", "rowspan", "style"]),
-  th: new Set(["colspan", "colwidth", "rowspan", "style"]),
-  span: new Set(["style"]),
-};
-const RICH_PREVIEW_ALLOWED_STYLE_PROPERTIES = new Set([
-  "background-color",
-  "color",
-  "font-family",
-  "font-size",
-  "font-style",
-  "font-weight",
-  "min-width",
-  "text-align",
-  "text-decoration",
-  "text-decoration-line",
+];
+const RICH_PREVIEW_ALLOWED_ATTR = [
+  "alt",
+  "colspan",
+  "colwidth",
+  "height",
+  "href",
+  "loading",
+  "rel",
+  "rowspan",
+  "span",
+  "src",
+  "style",
+  "target",
+  "title",
   "width",
-]);
+];
 
 export function RichField({ field, value, mode, onChange }: RichFieldProps) {
   const content = useMemo(() => normalizeRichValue(value), [value]);
+  const safeContent = useMemo(
+    () =>
+      DOMPurify.sanitize(content || EMPTY_HTML, {
+        ALLOWED_ATTR: RICH_PREVIEW_ALLOWED_ATTR,
+        ALLOWED_TAGS: RICH_PREVIEW_ALLOWED_TAGS,
+        KEEP_CONTENT: true,
+      }),
+    [content],
+  );
+  const label = field.label ?? field.key;
 
   if (mode === "preview") {
     return (
       <div className={styles.richRoot}>
+        <div className={editorStyles.fieldLabel}>
+          <span>{label}</span>
+          {field.required && <span className={editorStyles.requiredMark}>*</span>}
+        </div>
+        {field.description && <div className={editorStyles.fieldDescription}>{field.description}</div>}
         <div className={styles.editorShell}>
-          <div className={styles.previewBody} dangerouslySetInnerHTML={{ __html: sanitizeRichPreviewHtml(content || EMPTY_HTML) }} />
+          <div className={styles.previewBody} dangerouslySetInnerHTML={{ __html: safeContent }} />
         </div>
       </div>
     );
   }
 
-  return <RichEditor field={field} value={content} onChange={onChange} />;
+  return <RichEditor field={field} value={content} onChange={onChange} label={label} />;
 }
 
-function RichEditor({ value, onChange }: Pick<RichFieldProps, "value" | "onChange"> & { field: RuntimeRichField }) {
+function RichEditor({
+  value,
+  onChange,
+  field,
+  label,
+}: Pick<RichFieldProps, "value" | "onChange" | "field"> & { label: string }) {
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -130,6 +144,11 @@ function RichEditor({ value, onChange }: Pick<RichFieldProps, "value" | "onChang
 
   return (
     <div className={styles.richRoot}>
+      <div className={editorStyles.fieldLabel}>
+        <span>{label}</span>
+        {field.required && <span className={editorStyles.requiredMark}>*</span>}
+      </div>
+      {field.description && <div className={editorStyles.fieldDescription}>{field.description}</div>}
       <div className={styles.editorShell}>
         <div className={styles.toolbar}>
           <div className={styles.toolbarGroup}>
@@ -323,129 +342,3 @@ function normalizeRichValue(value: unknown) {
   return EMPTY_HTML;
 }
 
-function sanitizeRichPreviewHtml(html: string) {
-  const template = document.createElement("template");
-  template.innerHTML = html;
-  sanitizePreviewNode(template.content);
-  return template.innerHTML;
-}
-
-function sanitizePreviewNode(node: ChildNode | DocumentFragment) {
-  for (const child of Array.from(node.childNodes)) {
-    if (child.nodeType === Node.TEXT_NODE) {
-      continue;
-    }
-
-    if (child.nodeType !== Node.ELEMENT_NODE) {
-      child.remove();
-      continue;
-    }
-
-    const element = child as HTMLElement;
-    const tagName = element.tagName.toLowerCase();
-
-    if (RICH_PREVIEW_STRIP_TAGS.has(tagName)) {
-      element.remove();
-      continue;
-    }
-
-    sanitizePreviewNode(element);
-
-    if (!RICH_PREVIEW_ALLOWED_TAGS.has(tagName)) {
-      unwrapPreviewElement(element);
-      continue;
-    }
-
-    sanitizePreviewAttributes(element);
-  }
-}
-
-function sanitizePreviewAttributes(element: HTMLElement) {
-  const tagName = element.tagName.toLowerCase();
-  const allowedAttributes = RICH_PREVIEW_ALLOWED_ATTRIBUTES[tagName] ?? new Set<string>();
-
-  for (const { name, value } of Array.from(element.attributes)) {
-    if (name.startsWith("on")) {
-      element.removeAttribute(name);
-      continue;
-    }
-
-    if (!allowedAttributes.has(name)) {
-      element.removeAttribute(name);
-      continue;
-    }
-
-    if (name === "href" || name === "src") {
-      if (!isSafeUrl(value, name === "src")) {
-        element.removeAttribute(name);
-      }
-      continue;
-    }
-
-    if (name === "style") {
-      const sanitizedStyle = sanitizeStyle(value, tagName);
-      if (sanitizedStyle) {
-        element.setAttribute(name, sanitizedStyle);
-      } else {
-        element.removeAttribute(name);
-      }
-    }
-  }
-
-  if (tagName === "a" && element.getAttribute("target") === "_blank" && !element.getAttribute("rel")) {
-    element.setAttribute("rel", "noopener noreferrer");
-  }
-}
-
-function sanitizeStyle(styleValue: string, tagName: string) {
-  const probe = document.createElement("div");
-  probe.setAttribute("style", styleValue);
-
-  const allowedProperties = RICH_PREVIEW_ALLOWED_STYLE_PROPERTIES;
-  if (tagName === "col") {
-    return keepAllowedStyleDeclarations(probe, allowedProperties);
-  }
-
-  if (tagName === "table" || tagName === "span" || tagName === "a" || tagName === "img" || tagName === "td" || tagName === "th") {
-    return keepAllowedStyleDeclarations(probe, allowedProperties);
-  }
-
-  return "";
-}
-
-function keepAllowedStyleDeclarations(element: HTMLElement, allowedProperties: Set<string>) {
-  const declarations = element.getAttribute("style")?.split(";") ?? [];
-  const kept = declarations
-    .map((declaration) => declaration.trim())
-    .filter(Boolean)
-    .filter((declaration) => {
-      const separatorIndex = declaration.indexOf(":");
-      if (separatorIndex === -1) return false;
-      const propertyName = declaration.slice(0, separatorIndex).trim().toLowerCase();
-      return allowedProperties.has(propertyName);
-    });
-
-  return kept.join("; ");
-}
-
-function isSafeUrl(value: string, allowDataImage: boolean) {
-  const trimmed = value.trim();
-  if (!trimmed) return false;
-  if (trimmed.startsWith("#") || trimmed.startsWith("/")) return true;
-  if (/^https?:\/\//i.test(trimmed)) return true;
-  if (allowDataImage && /^data:image\//i.test(trimmed)) return true;
-  if (/^blob:/i.test(trimmed)) return true;
-
-  return false;
-}
-
-function unwrapPreviewElement(element: HTMLElement) {
-  const parent = element.parentNode;
-  if (!parent) return;
-
-  while (element.firstChild) {
-    parent.insertBefore(element.firstChild, element);
-  }
-
-  element.remove();
-}

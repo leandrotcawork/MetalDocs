@@ -593,6 +593,62 @@ Correct: Resolve workspace files with a root-relative path such as `filepath.Joi
 Rule:    Tests that validate repository artifacts must use a stable repo-root path instead of assuming the package working directory.
 Layer:   process
 
+## Lesson CW - Keep one canonical schema contract across runtime layers
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Letting backend runtime types, frontend renderers, and docgen harnesses each infer their own schema shape
+Correct: Keep one canonical schema contract and adapt every consumer to that same shape before cutover
+Rule:    Runtime migrations stay safe only when all layers read the same contract instead of parallel interpretations.
+Layer:   process
+
+## Lesson CV - Saved timestamp must have a single owner
+Date: 2026-04-01 | Trigger: correction
+Wrong:   ContentBuilderView kept a local saved-at mirror instead of reading the autosave timestamp directly
+Correct: Read saved-at from `useAutoSave` only and let `acknowledgeSave(...)` update the hook state after a successful save
+Rule:    Shared save metadata should have one owner so callers observe state rather than reassigning it.
+Layer:   frontend
+
+## Lesson CT - Manual persistence paths must sync autosave state
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Draft-create persistence updated the document but left autosave unaware of the saved content and PDF URL
+Correct: After any manual persistence path, call `autoSave.acknowledgeSave(content, pdfUrl)` with the persisted content and returned PDF URL
+Rule:    Autosave state must be acknowledged after every successful manual save path so the dirty indicator and last-saved metadata stay in sync.
+Layer:   frontend
+
+## Lesson CP - Manual saves must acknowledge autosave state before leaving the view
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Manual saves updated the document but left a pending autosave timer and stale last-saved refs, so the same content could be written twice
+Correct: Clear any pending autosave timer and sync the last-saved json/pdf/timestamp immediately after a successful manual persistence path
+Rule:    When manual and automatic writes share the same content source, the automatic layer must be explicitly acknowledged after manual persistence.
+Layer:   frontend
+
+## Lesson CM - Export actions must flush dirty drafts before server export
+Date: 2026-04-01 | Trigger: correction
+Wrong:   DOCX export called the export endpoint while the editor still had unsaved draft changes
+Correct: Save the draft first when the editor is dirty, and only then call the export endpoint
+Rule:    Any export action that depends on editor content must flush pending draft changes before generating server-side output.
+Layer:   frontend
+
+## Lesson CQ - Editor hooks should not reload on initialValues identity changes
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Using `initialValues` in hook dependencies caused refetches when callers passed new object instances
+Correct: Stabilize `initialValues` with a ref and update it when the semantic input changes
+Rule:    Editor hooks must avoid reload loops while still honoring updated initial values.
+Layer:   frontend
+
+## Lesson CR - Rich fields must display metadata like other fields
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Rich field rendering omitted label/description, unlike scalar/table/repeat fields
+Correct: Render label, required mark, and description for rich fields in both edit and preview modes
+Rule:    All field types should surface the same metadata to keep the editor consistent.
+Layer:   frontend
+
+## Lesson CS - Rich preview must sanitize HTML
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Rendering rich preview HTML directly created an XSS sink in the editor preview
+Correct: Sanitize rich HTML before rendering it in preview mode
+Rule:    Any rich content preview must sanitize user-provided HTML.
+Layer:   frontend
+
 ## Lesson CI - Schema runtime migrations must preserve legacy discriminants until renderers move
 Date: 2026-04-01 | Trigger: build failure
 Wrong:   Replacing the shallow schema field union with a runtime union that dropped still-live discriminants like `array`
@@ -619,6 +675,34 @@ Date: 2026-04-01 | Trigger: correction
 Wrong:   Stripping `colgroup`, `col`, and width-related table attributes from rich preview HTML removed Tiptap's sizing output
 Correct: Keep the table wrapper tags and the column sizing attributes/styles that the editor emits
 Rule:    Preview sanitizers must preserve the structural tags and metadata required for editor-rendered table layout to remain faithful.
+Layer:   frontend
+
+## Lesson CM - Runtime export must source the active profile schema, not the legacy type definition
+Date: 2026-04-01 | Trigger: correction
+Wrong:   DOCX export used the document type definition schema, which lagged behind the active runtime profile schema
+Correct: Build export payloads from the active profile schema version so docgen sees the same runtime sections and fields as the editor
+Rule:    Export pipelines must read from the same runtime schema source as the editing flow to avoid drift between authoring and generated output.
+Layer:   application
+
+## Lesson CN - Preview adapters should normalize to renderer input, not lower-level runtime structs
+Date: 2026-04-01 | Trigger: build failure
+Wrong:   Passing `RuntimeSection[]` directly into the preview renderer broke the expected `SchemaSection[]` shape
+Correct: Use the schema normalizer that produces the renderer's field contract before handing data to preview components
+Rule:    UI adapters should translate data into the exact component contract they render, not into a neighboring internal representation.
+Layer:   frontend
+
+## Lesson CO - Guarded prop values should be reused as local non-null inputs
+Date: 2026-04-01 | Trigger: build failure
+Wrong:   Reading `props.document.documentId` inside a handler after already guarding `documentId` caused a nullable prop error
+Correct: Use the narrowed local `documentId` captured from the guarded prop when building async handler inputs
+Rule:    After a prop-derived value is guarded, reuse the narrowed local instead of re-reading the nullable prop in later code.
+Layer:   frontend
+
+## Lesson CP - Autosave should own saved timestamp updates
+Date: 2026-04-01 | Trigger: correction
+Wrong:   The draft-create path called `autoSave.acknowledgeSave(...)` and then set `lastSavedAt` again manually
+Correct: Let `autoSave.acknowledgeSave(...)` be the single owner of saved timestamp updates after a successful create/save
+Rule:    When a helper already synchronizes saved-state metadata, do not duplicate that state write in the caller.
 Layer:   frontend
 
 ## Lesson CH - docx option objects must match library shapes exactly

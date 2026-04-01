@@ -3,6 +3,7 @@ import type { DocumentProfileSchemaItem } from "../../../lib.types";
 import type { SchemaSection } from "../contentSchemaTypes";
 import { PdfPreview } from "../../create/widgets/PdfPreview";
 import { DocumentPreviewRenderer } from "./DocumentPreviewRenderer";
+import { normalizeDocumentTypeSchema } from "../../../features/documents/runtime/schemaRuntimeAdapters";
 
 type PreviewPanelProps = {
   schema: DocumentProfileSchemaItem | null;
@@ -38,10 +39,7 @@ export function PreviewPanel(props: PreviewPanelProps) {
   const [mode, setMode] = useState<PreviewMode>("live");
   const previewRef = useRef<HTMLDivElement | null>(null);
 
-  const sections: SchemaSection[] = (() => {
-    const raw = schema?.contentSchema as { sections?: SchemaSection[] } | undefined;
-    return Array.isArray(raw?.sections) ? raw.sections : [];
-  })();
+  const sections: SchemaSection[] = normalizeDocumentTypeSchema(schema?.contentSchema).sections;
 
   useEffect(() => {
     if (!activeSectionKey || !previewRef.current || mode !== "live") return;

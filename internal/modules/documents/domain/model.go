@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"encoding/json"
 	"strings"
 	"time"
 )
@@ -64,7 +63,8 @@ type Version struct {
 	ContentHash      string
 	ChangeSummary    string
 	ContentSource    string
-	NativeContent    map[string]any
+	NativeContent    DocumentValues
+	Values           DocumentValues
 	BodyBlocks       []EtapaBody
 	DocxStorageKey   string
 	PdfStorageKey    string
@@ -125,13 +125,19 @@ type SaveEtapaBodyCommand struct {
 	DocumentID    string
 	VersionNumber int
 	StepIndex     int
-	Blocks        []json.RawMessage
+	Blocks        []RichBlock
 	TraceID       string
 }
 
 type SaveNativeContentCommand struct {
 	DocumentID string
 	Content    map[string]any
+	TraceID    string
+}
+
+type SaveDocumentValuesCommand struct {
+	DocumentID string
+	Values     map[string]any
 	TraceID    string
 }
 
@@ -167,6 +173,13 @@ type DocumentType struct {
 	Name               string
 	Description        string
 	ReviewIntervalDays int
+}
+
+type DocumentTypeDefinition struct {
+	Key           string
+	Name          string
+	ActiveVersion int
+	Schema        DocumentTypeSchema
 }
 
 type DocumentFamily struct {

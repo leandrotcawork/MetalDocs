@@ -31,6 +31,7 @@ import (
 	outboxpg "metaldocs/internal/platform/messaging/outbox/postgres"
 	"metaldocs/internal/platform/observability"
 	"metaldocs/internal/platform/render/carbone"
+	docgenclient "metaldocs/internal/platform/render/docgen"
 	localstorage "metaldocs/internal/platform/storage/local"
 	miniostorage "metaldocs/internal/platform/storage/minio"
 )
@@ -48,6 +49,7 @@ type APIDependencies struct {
 	AuditWriter       auditdomain.Writer
 	AuditReader       auditdomain.Reader
 	Publisher         messaging.Publisher
+	DocgenClient      *docgenclient.Client
 	StatusProvider    observability.RuntimeStatusProvider
 	Cleanup           func()
 }
@@ -62,6 +64,7 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 	if err != nil {
 		log.Printf("carbone bootstrap degraded: %v", err)
 	}
+	docgenClient := docgenclient.NewClient(config.LoadDocgenConfig())
 	carboneCheck := observability.DependencyCheck{
 		Name: "carbone",
 		Check: func(ctx context.Context) (observability.DependencyCheckResult, error) {
@@ -116,6 +119,7 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 			AuditWriter:       auditpg.NewWriter(db),
 			AuditReader:       auditpg.NewWriter(db),
 			Publisher:         outboxpg.NewPublisher(db),
+			DocgenClient:      docgenClient,
 			StatusProvider:    observability.NewPostgresRuntimeStatusProvider(db, repoMode, attachmentsCfg.Provider, authn.Enabled(), carboneCheck),
 			Cleanup:           func() { _ = closeDB(db) },
 		}, nil
@@ -150,6 +154,7 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 			AuditWriter:       auditStore,
 			AuditReader:       auditStore,
 			Publisher:         nooppub.NewPublisher(),
+			DocgenClient:      docgenClient,
 			StatusProvider:    observability.NewStaticRuntimeStatusProvider(repoMode, attachmentsCfg.Provider, authn.Enabled(), carboneCheck),
 			Cleanup:           func() {},
 		}, nil

@@ -94,8 +94,8 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
   const { status, error, pdfUrl, version, contentDraft, schema, previewCollapsed, sidebarCollapsed } = state;
   const editorRef = useRef<HTMLDivElement | null>(null);
   const [activeSectionKey, setActiveSectionKey] = useState<string | null>(null);
-  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [autosaveLabel, setAutosaveLabel] = useState("Nao salvo");
+  const [isExporting, setIsExporting] = useState(false);
 
   const profileCode = props.document?.documentProfile ?? "";
   const documentCode = useMemo(() => {
@@ -143,6 +143,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
     debounceMs: 3000,
     enabled: !!documentId && status !== "loading",
   });
+  const lastSavedAt = autoSave.lastSavedAt;
 
   // Sync auto-save results back into reducer
   useEffect(() => {
@@ -152,13 +153,10 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
   }, [autoSave.lastSavedPdfUrl, pdfUrl]);
 
   useEffect(() => {
-    if (autoSave.lastSavedAt && autoSave.lastSavedAt !== lastSavedAt) {
-      setLastSavedAt(autoSave.lastSavedAt);
-      if (status === "dirty") {
-        dispatch({ type: "set_status", payload: { status: "idle" } });
-      }
+    if (lastSavedAt && status === "dirty") {
+      dispatch({ type: "set_status", payload: { status: "idle" } });
     }
-  }, [autoSave.lastSavedAt, lastSavedAt, status]);
+  }, [lastSavedAt, status]);
 
   // --- Data loading ---
   useEffect(() => {
@@ -271,16 +269,48 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
   }
 
   async function handleSave() {
-    if (!documentId) return;
+    if (!documentId) return false;
+    const savedContent = contentDraft ?? {};
     dispatch({ type: "set_error", payload: { message: "" } });
     dispatch({ type: "set_status", payload: { status: "saving" } });
     try {
-      const response = await api.saveDocumentContentNative(documentId, { content: contentDraft ?? {} });
+      const response = await api.saveDocumentContentNative(documentId, { content: savedContent });
+      autoSave.acknowledgeSave(savedContent, response.pdfUrl);
       dispatch({ type: "set_pdf", payload: { pdfUrl: response.pdfUrl } });
-      dispatch({ type: "load_success", payload: { contentDraft: contentDraft ?? {}, schema, version: response.version ?? null, pdfUrl: response.pdfUrl } });
-      setLastSavedAt(new Date());
+      dispatch({ type: "load_success", payload: { contentDraft: savedContent, schema, version: response.version ?? null, pdfUrl: response.pdfUrl } });
+      return true;
     } catch {
       dispatch({ type: "load_error", payload: { message: "Falha ao salvar o conteudo." } });
+      return false;
+    }
+  }
+
+  async function handleExportDocx() {
+    if (!documentId || isExporting) return;
+    setIsExporting(true);
+    dispatch({ type: "set_error", payload: { message: "" } });
+    try {
+      if (status === "dirty") {
+        const saved = await handleSave();
+        if (!saved) return;
+      }
+      const blob = await api.exportDocumentDocx(documentId);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const downloadName = `${(documentCode || documentId || "documento")
+        .toLowerCase()
+        .replace(/[^a-z0-9._-]+/gi, "-")
+        .replace(/^-+|-+$/g, "") || "documento"}.docx`;
+      link.href = url;
+      link.download = downloadName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      dispatch({ type: "set_error", payload: { message: "Nao foi possivel exportar o DOCX." } });
+    } finally {
+      setIsExporting(false);
     }
   }
 
@@ -291,11 +321,11 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
       dispatch({ type: "set_status", payload: { status: "rendering" } });
       try {
         const created = await props.onCreateFromDraft(contentDraft ?? {});
+        autoSave.acknowledgeSave(contentDraft ?? {}, created.pdfUrl);
         dispatch({
           type: "load_success",
           payload: { contentDraft: contentDraft ?? {}, schema, version: created.version ?? null, pdfUrl: created.pdfUrl },
         });
-        setLastSavedAt(new Date());
       } catch {
         dispatch({ type: "load_error", payload: { message: "Falha ao criar o documento." } });
       }
@@ -517,8 +547,16 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
           <button
             type="button"
             className="content-builder-btn ghost"
+            onClick={handleExportDocx}
+            disabled={isExporting || status === "saving" || status === "loading" || status === "rendering" || autoSave.isSaving}
+          >
+            Exportar .docx
+          </button>
+          <button
+            type="button"
+            className="content-builder-btn ghost"
             onClick={handleSave}
-            disabled={status === "saving" || status === "loading" || status === "rendering" || autoSave.isSaving}
+            disabled={isExporting || status === "saving" || status === "loading" || status === "rendering" || autoSave.isSaving}
           >
             Salvar rascunho
           </button>
@@ -526,7 +564,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
             type="button"
             className="content-builder-btn primary"
             onClick={handleRenderPdf}
-            disabled={status === "saving" || status === "loading" || status === "rendering" || autoSave.isSaving}
+            disabled={isExporting || status === "saving" || status === "loading" || status === "rendering" || autoSave.isSaving}
           >
             Gerar PDF
           </button>

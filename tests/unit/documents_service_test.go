@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"metaldocs/internal/platform/config"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -13,6 +16,7 @@ import (
 	"metaldocs/internal/modules/documents/infrastructure/memory"
 	iamdomain "metaldocs/internal/modules/iam/domain"
 	"metaldocs/internal/platform/messaging"
+	"metaldocs/internal/platform/render/docgen"
 )
 
 type fixedClock struct {
@@ -295,27 +299,6 @@ func TestSaveEtapaBodyRejectsInvalidBlocks(t *testing.T) {
 	}
 }
 
-func TestService_SaveDocumentValues_UpdatesDraftInPlace(t *testing.T) {
-	repo := memory.NewRepository()
-	service := application.NewService(repo, nil, nil)
-	ctx := context.Background()
-
-	doc := seedRuntimeDocument(t, repo, domain.StatusDraft)
-	values := map[string]any{"objetivo": "Novo texto"}
-
-	version, err := service.SaveDocumentValuesAuthorized(ctx, domain.SaveDocumentValuesCommand{
-		DocumentID: doc.ID,
-		Values:     values,
-		TraceID:    "trace-runtime-save",
-	})
-	if err != nil {
-		t.Fatalf("save values: %v", err)
-	}
-	if version.Number != 1 {
-		t.Fatalf("expected in-place draft update, got version %d", version.Number)
-	}
-}
-
 func TestListDocumentsReturnsCreatedDocuments(t *testing.T) {
 	repo := memory.NewRepository()
 	svc := application.NewService(repo, nil, fixedClock{now: time.Date(2026, 3, 16, 10, 0, 0, 0, time.UTC)})
@@ -509,9 +492,32 @@ func TestValidateDocumentTypeSchema_RejectsUnknownFieldType(t *testing.T) {
 	if !errors.Is(err, domain.ErrDocumentSchemaInvalidField) {
 		t.Fatalf("expected schema field error, got %v", err)
 	}
+	if got := err.Error(); got != "DOCUMENT_SCHEMA_INVALID_FIELD" {
+		t.Fatalf("expected structured error code, got %s", got)
+	}
 }
 
-func TestValidateDocumentTypeSchema_RejectsUnknownFieldType(t *testing.T) {
+func TestValidateDocumentTypeSchema_RejectsEmptySchema(t *testing.T) {
+	err := domain.ValidateDocumentTypeSchema(domain.DocumentTypeSchema{})
+	if !errors.Is(err, domain.ErrDocumentSchemaInvalid) {
+		t.Fatalf("expected schema invalid error, got %v", err)
+	}
+}
+
+func TestValidateDocumentTypeSchema_RejectsEmptySectionDefinition(t *testing.T) {
+	schema := domain.DocumentTypeSchema{
+		Sections: []domain.SectionDef{
+			{},
+		},
+	}
+
+	err := domain.ValidateDocumentTypeSchema(schema)
+	if !errors.Is(err, domain.ErrDocumentSchemaInvalidSection) {
+		t.Fatalf("expected section error, got %v", err)
+	}
+}
+
+func TestValidateDocumentTypeSchema_RejectsEmptyTableColumns(t *testing.T) {
 	schema := domain.DocumentTypeSchema{
 		Sections: []domain.SectionDef{
 			{
@@ -519,7 +525,7 @@ func TestValidateDocumentTypeSchema_RejectsUnknownFieldType(t *testing.T) {
 				Num:   "1",
 				Title: "Section 1",
 				Fields: []domain.FieldDef{
-					{Key: "x", Label: "X", Type: "unknown"},
+					{Key: "table", Label: "Table", Type: "table"},
 				},
 			},
 		},
@@ -527,7 +533,27 @@ func TestValidateDocumentTypeSchema_RejectsUnknownFieldType(t *testing.T) {
 
 	err := domain.ValidateDocumentTypeSchema(schema)
 	if !errors.Is(err, domain.ErrDocumentSchemaInvalidField) {
-		t.Fatalf("expected schema field error, got %v", err)
+		t.Fatalf("expected field error for empty table columns, got %v", err)
+	}
+}
+
+func TestValidateDocumentTypeSchema_RejectsEmptyRepeatItemFields(t *testing.T) {
+	schema := domain.DocumentTypeSchema{
+		Sections: []domain.SectionDef{
+			{
+				Key:   "s1",
+				Num:   "1",
+				Title: "Section 1",
+				Fields: []domain.FieldDef{
+					{Key: "repeat", Label: "Repeat", Type: "repeat"},
+				},
+			},
+		},
+	}
+
+	err := domain.ValidateDocumentTypeSchema(schema)
+	if !errors.Is(err, domain.ErrDocumentSchemaInvalidField) {
+		t.Fatalf("expected field error for empty repeat item fields, got %v", err)
 	}
 }
 
@@ -577,6 +603,131 @@ func TestListVersionsRequiresExistingDocument(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for missing document")
 	}
+}
+
+func TestService_SaveDocumentValues_UpdatesDraftInPlace(t *testing.T) {
+	repo := memory.NewRepository()
+	service := application.NewService(repo, nil, nil)
+	ctx := context.Background()
+
+	doc := seedRuntimeDocument(t, repo, domain.StatusDraft)
+	values := map[string]any{"objetivo": "Novo texto"}
+
+	version, err := service.SaveDocumentValuesAuthorized(ctx, domain.SaveDocumentValuesCommand{
+		DocumentID: doc.ID,
+		Values:     values,
+		TraceID:    "trace-runtime-save",
+	})
+	if err != nil {
+		t.Fatalf("save values: %v", err)
+	}
+	if version.Number != 1 {
+		t.Fatalf("expected in-place draft update, got version %d", version.Number)
+	}
+}
+
+type capturedDocgenRequest struct {
+	DocumentType string `json:"documentType"`
+	DocumentCode string `json:"documentCode"`
+	Title        string `json:"title"`
+	Schema       struct {
+		Sections []struct {
+			Key string `json:"key"`
+		} `json:"sections"`
+	} `json:"schema"`
+	Values map[string]any `json:"values"`
+}
+
+type runtimeDocgenStub struct {
+	LastPayload capturedDocgenRequest
+}
+
+func newRuntimeServiceWithDocgenStub(t *testing.T) (*application.Service, *runtimeDocgenStub) {
+	t.Helper()
+
+	repo := memory.NewRepository()
+	stub := &runtimeDocgenStub{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/generate" {
+			t.Fatalf("unexpected docgen request %s %s", r.Method, r.URL.Path)
+		}
+		defer r.Body.Close()
+
+		if err := json.NewDecoder(r.Body).Decode(&stub.LastPayload); err != nil {
+			t.Fatalf("decode docgen payload: %v", err)
+		}
+
+		w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("docx"))
+	}))
+	t.Cleanup(server.Close)
+
+	service := application.NewService(repo, nil, nil).WithDocgenClient(docgen.NewClient(config.DocgenConfig{
+		Enabled:               true,
+		APIURL:                server.URL,
+		RequestTimeoutSeconds: 5,
+	}))
+
+	doc := seedDocument("doc-1")
+	doc.DocumentProfile = "po"
+	doc.DocumentType = "po"
+	doc.Status = domain.StatusDraft
+	doc.ProfileSchemaVersion = 1
+	doc.CreatedAt = time.Date(2026, 3, 16, 10, 0, 0, 0, time.UTC)
+	doc.UpdatedAt = doc.CreatedAt
+	if err := repo.CreateDocument(context.Background(), doc); err != nil {
+		t.Fatalf("seed runtime document: %v", err)
+	}
+	if err := repo.SaveVersion(context.Background(), domain.Version{
+		DocumentID:    doc.ID,
+		Number:        1,
+		Content:       "{}",
+		ContentHash:   "hash-runtime-export",
+		ChangeSummary: "initial runtime export",
+		ContentSource: domain.ContentSourceNative,
+		Values: map[string]any{
+			"identification": map[string]any{
+				"objetivo": "Texto de teste",
+			},
+		},
+		CreatedAt: doc.CreatedAt,
+	}); err != nil {
+		t.Fatalf("seed runtime version: %v", err)
+	}
+
+	return service, stub
+}
+
+func TestService_ExportDocxUsesSchemaRuntimePayload(t *testing.T) {
+	service, docgenStub := newRuntimeServiceWithDocgenStub(t)
+	ctx := context.Background()
+
+	_, err := service.ExportDocumentDocxAuthorized(ctx, "doc-1", "trace-export")
+	if err != nil {
+		t.Fatalf("export docx: %v", err)
+	}
+
+	if len(docgenStub.LastPayload.Schema.Sections) < 4 {
+		t.Fatalf("expected runtime schema payload, got %d sections", len(docgenStub.LastPayload.Schema.Sections))
+	}
+
+	keys := make([]string, 0, len(docgenStub.LastPayload.Schema.Sections))
+	for _, section := range docgenStub.LastPayload.Schema.Sections {
+		keys = append(keys, section.Key)
+	}
+	if !containsString(keys, "process") {
+		t.Fatalf("expected runtime schema sections to include process, got %v", keys)
+	}
+}
+
+func containsString(items []string, target string) bool {
+	for _, item := range items {
+		if item == target {
+			return true
+		}
+	}
+	return false
 }
 
 func seedRuntimeDocument(t *testing.T, repo *memory.Repository, status string) domain.Document {

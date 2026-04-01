@@ -18,6 +18,12 @@ export function useSchemaDocumentEditor(options: UseSchemaDocumentEditorOptions 
   const initialValuesRef = useRef<Record<string, unknown>>(options.initialValues ?? {});
 
   useEffect(() => {
+    if (options.initialValues) {
+      initialValuesRef.current = options.initialValues;
+    }
+  }, [options.initialValues]);
+
+  useEffect(() => {
     const nextTypeKey = options.typeKey ?? "";
     if (nextTypeKey !== selectedDocumentTypeKey) {
       setSelectedDocumentTypeKey(nextTypeKey);

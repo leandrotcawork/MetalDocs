@@ -686,6 +686,6 @@ Layer:   infrastructure
 ## Lesson CQ - Editor hooks should not reload on initialValues identity changes
 Date: 2026-04-01 | Trigger: correction
 Wrong:   Using `initialValues` in hook dependencies caused refetches when callers passed new object instances
-Correct: Treat `initialValues` as one-time initialization data held in a ref
-Rule:    Editor hooks must avoid reloading on unstable object identities to prevent state churn.
+Correct: Stabilize `initialValues` with a ref and update it when the semantic input changes
+Rule:    Editor hooks must avoid reload loops while still honoring updated initial values.
 Layer:   frontend

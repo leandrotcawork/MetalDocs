@@ -16,6 +16,12 @@ import type {
   VersionDiffResponse,
   VersionListItem,
 } from "../lib.types";
+import type {
+  SchemaDocumentContentSaveResponse,
+  SchemaDocumentEditorBundleResponse,
+  SchemaDocumentTypeBundleResponse,
+} from "../features/documents/runtime/schemaRuntimeTypes";
+import { normalizeDocumentTypeSchema, normalizeSchemaDocumentEditorBundle } from "../features/documents/runtime/schemaRuntimeAdapters";
 import { request, requestBlob } from "./client";
 
 function normalizeStringArray(value: unknown): string[] {
@@ -37,6 +43,20 @@ function normalizeDocumentProfileSchema(value: DocumentProfileSchemaItem): Docum
     })) : [],
     contentSchema: value?.contentSchema && typeof value.contentSchema === "object" ? value.contentSchema : {},
   };
+}
+
+function normalizeRuntimeSchemaBundle(value: SchemaDocumentTypeBundleResponse): SchemaDocumentTypeBundleResponse {
+  return {
+    typeKey: value?.typeKey ?? "",
+    name: value?.name ?? "",
+    description: value?.description ?? "",
+    activeVersion: typeof value?.activeVersion === "number" ? value.activeVersion : null,
+    schema: normalizeDocumentTypeSchema(value?.schema),
+  };
+}
+
+function normalizeRuntimeEditorBundle(value: SchemaDocumentEditorBundleResponse): SchemaDocumentEditorBundleResponse {
+  return normalizeSchemaDocumentEditorBundle(value);
 }
 
 function normalizeDocumentProfileGovernance(value: DocumentProfileGovernanceItem): DocumentProfileGovernanceItem {
@@ -176,6 +196,24 @@ export async function getDocumentEditorBundle(documentId: string) {
   return normalizeDocumentEditorBundle(
     await request<DocumentEditorBundleResponse>(`/documents/${encodeURIComponent(documentId)}/editor-bundle`),
   );
+}
+
+export async function fetchDocumentTypeBundle(typeKey: string) {
+  return normalizeRuntimeSchemaBundle(
+    await request<SchemaDocumentTypeBundleResponse>(`/document-types/${encodeURIComponent(typeKey)}/bundle`),
+  );
+}
+
+export async function fetchDocumentEditorBundle(documentId: string) {
+  const response = await request<SchemaDocumentEditorBundleResponse>(`/documents/${encodeURIComponent(documentId)}/editor-bundle`);
+  return normalizeRuntimeEditorBundle(response);
+}
+
+export async function saveDocumentContent(documentId: string, values: Record<string, unknown>) {
+  return request<SchemaDocumentContentSaveResponse>(`/documents/${encodeURIComponent(documentId)}/content`, {
+    method: "PUT",
+    body: JSON.stringify({ values }),
+  });
 }
 
 export function createDocument(body: Record<string, unknown>) {

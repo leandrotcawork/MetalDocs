@@ -96,6 +96,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
   const [activeSectionKey, setActiveSectionKey] = useState<string | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [autosaveLabel, setAutosaveLabel] = useState("Nao salvo");
+  const [isExporting, setIsExporting] = useState(false);
 
   const profileCode = props.document?.documentProfile ?? "";
   const documentCode = useMemo(() => {
@@ -281,6 +282,31 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
       setLastSavedAt(new Date());
     } catch {
       dispatch({ type: "load_error", payload: { message: "Falha ao salvar o conteudo." } });
+    }
+  }
+
+  async function handleExportDocx() {
+    if (!documentId || isExporting) return;
+    setIsExporting(true);
+    dispatch({ type: "set_error", payload: { message: "" } });
+    try {
+      const blob = await api.exportDocumentDocx(documentId);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const downloadName = `${(documentCode || documentId || "documento")
+        .toLowerCase()
+        .replace(/[^a-z0-9._-]+/gi, "-")
+        .replace(/^-+|-+$/g, "") || "documento"}.docx`;
+      link.href = url;
+      link.download = downloadName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      dispatch({ type: "set_error", payload: { message: "Nao foi possivel exportar o DOCX." } });
+    } finally {
+      setIsExporting(false);
     }
   }
 
@@ -517,8 +543,16 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
           <button
             type="button"
             className="content-builder-btn ghost"
+            onClick={handleExportDocx}
+            disabled={isExporting || status === "saving" || status === "loading" || status === "rendering" || autoSave.isSaving}
+          >
+            Exportar .docx
+          </button>
+          <button
+            type="button"
+            className="content-builder-btn ghost"
             onClick={handleSave}
-            disabled={status === "saving" || status === "loading" || status === "rendering" || autoSave.isSaving}
+            disabled={isExporting || status === "saving" || status === "loading" || status === "rendering" || autoSave.isSaving}
           >
             Salvar rascunho
           </button>
@@ -526,7 +560,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
             type="button"
             className="content-builder-btn primary"
             onClick={handleRenderPdf}
-            disabled={status === "saving" || status === "loading" || status === "rendering" || autoSave.isSaving}
+            disabled={isExporting || status === "saving" || status === "loading" || status === "rendering" || autoSave.isSaving}
           >
             Gerar PDF
           </button>

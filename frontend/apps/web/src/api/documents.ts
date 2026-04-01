@@ -334,6 +334,12 @@ export function downloadDocumentTemplateDocx(documentId: string) {
   return requestBlob(`/documents/${encodeURIComponent(documentId)}/template/docx`);
 }
 
+export function exportDocumentDocx(documentId: string) {
+  return requestBlob(`/documents/${encodeURIComponent(documentId)}/export/docx`, {
+    method: "POST",
+  });
+}
+
 export async function listAccessPolicies(resourceScope: string, resourceId: string) {
   const response = await request<{ items: AccessPolicyItem[] }>(
     `/access-policies?resourceScope=${encodeURIComponent(resourceScope)}&resourceId=${encodeURIComponent(resourceId)}`,

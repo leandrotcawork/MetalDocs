@@ -656,6 +656,13 @@ Correct: Use the schema normalizer that produces the renderer's field contract b
 Rule:    UI adapters should translate data into the exact component contract they render, not into a neighboring internal representation.
 Layer:   frontend
 
+## Lesson CO - Guarded prop values should be reused as local non-null inputs
+Date: 2026-04-01 | Trigger: build failure
+Wrong:   Reading `props.document.documentId` inside a handler after already guarding `documentId` caused a nullable prop error
+Correct: Use the narrowed local `documentId` captured from the guarded prop when building async handler inputs
+Rule:    After a prop-derived value is guarded, reuse the narrowed local instead of re-reading the nullable prop in later code.
+Layer:   frontend
+
 ## Lesson CH - docx option objects must match library shapes exactly
 Date: 2026-04-01 | Trigger: build failure
 Wrong:   Passing `underline: true` and partial image alt text objects into `docx` helpers

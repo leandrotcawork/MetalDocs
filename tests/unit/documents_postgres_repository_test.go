@@ -24,6 +24,8 @@ type documentsRepoState struct {
 	mu        sync.Mutex
 	documents map[string]domain.Document
 	versions  map[string]map[int]storedVersion
+	types     map[string]domain.DocumentTypeDefinition
+	schemas   map[string]string
 }
 
 type storedVersion struct {
@@ -34,6 +36,7 @@ type storedVersion struct {
 	changeSummary    string
 	contentSource    string
 	nativeContent    string
+	values           string
 	bodyBlocks       string
 	docxStorageKey   any
 	pdfStorageKey    any
@@ -54,7 +57,44 @@ func (s *documentsRepoState) seedDocument(doc domain.Document) {
 	if s.versions == nil {
 		s.versions = map[string]map[int]storedVersion{}
 	}
+	if s.types == nil {
+		s.types = map[string]domain.DocumentTypeDefinition{}
+	}
+	if s.schemas == nil {
+		s.schemas = map[string]string{}
+	}
 	s.documents[doc.ID] = doc
+}
+
+func (s *documentsRepoState) upsertTypeDefinition(item domain.DocumentTypeDefinition) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.types == nil {
+		s.types = map[string]domain.DocumentTypeDefinition{}
+	}
+	s.types[strings.ToLower(strings.TrimSpace(item.Key))] = item
+}
+
+func (s *documentsRepoState) upsertTypeSchema(key string, schema string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.schemas == nil {
+		s.schemas = map[string]string{}
+	}
+	s.schemas[strings.ToLower(strings.TrimSpace(key))] = schema
+}
+
+func (s *documentsRepoState) listTypeDefinitions() []domain.DocumentTypeDefinition {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	out := make([]domain.DocumentTypeDefinition, 0, len(s.types))
+	for _, item := range s.types {
+		out = append(out, item)
+	}
+	return out
 }
 
 func (s *documentsRepoState) saveVersion(version storedVersion) {
@@ -83,6 +123,23 @@ func (s *documentsRepoState) updateVersionBodyBlocks(documentID string, versionN
 		return 0
 	}
 	version.bodyBlocks = bodyBlocks
+	versions[versionNumber] = version
+	return 1
+}
+
+func (s *documentsRepoState) updateVersionValues(documentID string, versionNumber int, values string) int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	versions, ok := s.versions[documentID]
+	if !ok {
+		return 0
+	}
+	version, ok := versions[versionNumber]
+	if !ok {
+		return 0
+	}
+	version.values = values
 	versions[versionNumber] = version
 	return 1
 }
@@ -157,8 +214,24 @@ func (c *documentsRepoConn) Begin() (driver.Tx, error) {
 
 func (c *documentsRepoConn) ExecContext(_ context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
 	switch {
+	case strings.Contains(query, "INSERT INTO metaldocs.document_types"):
+		if len(args) < 3 {
+			return nil, fmt.Errorf("unexpected args for type upsert: %d", len(args))
+		}
+		c.state.upsertTypeDefinition(domain.DocumentTypeDefinition{
+			Key:           stringArg(args[0]),
+			Name:          stringArg(args[1]),
+			ActiveVersion: int(intArg(args[2])),
+		})
+		return driver.RowsAffected(1), nil
+	case strings.Contains(query, "INSERT INTO metaldocs.document_type_schema_versions"):
+		if len(args) < 3 {
+			return nil, fmt.Errorf("unexpected args for type schema upsert: %d", len(args))
+		}
+		c.state.upsertTypeSchema(stringArg(args[0]), stringArg(args[2]))
+		return driver.RowsAffected(1), nil
 	case strings.Contains(query, "INSERT INTO metaldocs.document_versions"):
-		if len(args) < 15 {
+		if len(args) < 16 {
 			return nil, fmt.Errorf("unexpected args for version insert: %d", len(args))
 		}
 		version := storedVersion{
@@ -169,17 +242,21 @@ func (c *documentsRepoConn) ExecContext(_ context.Context, query string, args []
 			changeSummary:    stringArg(args[4]),
 			contentSource:    stringArg(args[5]),
 			nativeContent:    stringArg(args[6]),
-			bodyBlocks:       stringArg(args[7]),
-			docxStorageKey:   nullableStringArg(args[8]),
-			pdfStorageKey:    nullableStringArg(args[9]),
-			textContent:      nullableStringArg(args[10]),
-			fileSizeBytes:    nullableInt64Arg(args[11]),
-			originalFilename: nullableStringArg(args[12]),
-			pageCount:        nullableIntArg(args[13]),
-			createdAt:        timeArg(args[14]),
+			values:           stringArg(args[7]),
+			bodyBlocks:       stringArg(args[8]),
+			docxStorageKey:   nullableStringArg(args[9]),
+			pdfStorageKey:    nullableStringArg(args[10]),
+			textContent:      nullableStringArg(args[11]),
+			fileSizeBytes:    nullableInt64Arg(args[12]),
+			originalFilename: nullableStringArg(args[13]),
+			pageCount:        nullableIntArg(args[14]),
+			createdAt:        timeArg(args[15]),
 		}
 		c.state.saveVersion(version)
 		return driver.RowsAffected(1), nil
+	case strings.Contains(query, "UPDATE metaldocs.document_versions") && strings.Contains(query, "SET values_json = $3::jsonb"):
+		affected := c.state.updateVersionValues(stringArg(args[0]), int(intArg(args[1])), stringArg(args[2]))
+		return driver.RowsAffected(affected), nil
 	case strings.Contains(query, "UPDATE metaldocs.document_versions") && strings.Contains(query, "SET body_blocks = COALESCE($3::jsonb, '[]'::jsonb)"):
 		affected := c.state.updateVersionBodyBlocks(stringArg(args[0]), int(intArg(args[1])), stringArg(args[2]))
 		return driver.RowsAffected(affected), nil
@@ -190,6 +267,31 @@ func (c *documentsRepoConn) ExecContext(_ context.Context, query string, args []
 
 func (c *documentsRepoConn) QueryContext(_ context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
 	switch {
+	case strings.Contains(query, "FROM metaldocs.document_types"):
+		if strings.Contains(query, "WHERE t.type_key = $1") {
+			key := stringArg(args[0])
+			c.state.mu.Lock()
+			item, ok := c.state.types[strings.ToLower(strings.TrimSpace(key))]
+			schema := c.state.schemas[strings.ToLower(strings.TrimSpace(key))]
+			c.state.mu.Unlock()
+			if !ok {
+				return newDocumentsRepoRows([]string{"type_key", "name", "active_version", "schema_json"}, nil), nil
+			}
+			if strings.TrimSpace(schema) == "" {
+				schema = `{"sections":[]}`
+			}
+			return newDocumentsRepoRows([]string{"type_key", "name", "active_version", "schema_json"}, [][]driver.Value{[]driver.Value{item.Key, item.Name, int64(item.ActiveVersion), []byte(schema)}}), nil
+		}
+		items := c.state.listTypeDefinitions()
+		rows := make([][]driver.Value, 0, len(items))
+		for _, item := range items {
+			schema := c.state.schemas[strings.ToLower(strings.TrimSpace(item.Key))]
+			if strings.TrimSpace(schema) == "" {
+				schema = `{"sections":[]}`
+			}
+			rows = append(rows, []driver.Value{item.Key, item.Name, int64(item.ActiveVersion), []byte(schema)})
+		}
+		return newDocumentsRepoRows([]string{"type_key", "name", "active_version", "schema_json"}, rows), nil
 	case strings.Contains(query, "FROM metaldocs.documents"):
 		docID := stringArg(args[0])
 		doc, ok := c.state.getDocument(docID)
@@ -265,7 +367,7 @@ func (r *documentsRepoRows) Next(dest []driver.Value) error {
 func versionColumns() []string {
 	return []string{
 		"document_id", "version_number", "content", "content_hash", "change_summary",
-		"content_source", "native_content", "body_blocks", "docx_storage_key", "pdf_storage_key",
+		"content_source", "native_content", "values_json", "body_blocks", "docx_storage_key", "pdf_storage_key",
 		"text_content", "file_size_bytes", "original_filename", "page_count", "created_at",
 	}
 }
@@ -305,6 +407,7 @@ func versionRow(version storedVersion) []driver.Value {
 		version.changeSummary,
 		version.contentSource,
 		jsonBytesString(version.nativeContent, "{}"),
+		jsonBytesString(version.values, "{}"),
 		jsonBytesString(version.bodyBlocks, "[]"),
 		version.docxStorageKey,
 		version.pdfStorageKey,
@@ -522,7 +625,7 @@ func TestPostgresRepositorySaveVersionFailsOnBodyBlocksSerializationError(t *tes
 }
 
 func TestPostgresRepository_SaveDocumentTypeSchemaRuntime(t *testing.T) {
-	repo := newPostgresRepositoryForTest(t)
+	repo, state := newDocumentsRepoTestHarness(t)
 	ctx := context.Background()
 
 	item := documentTypeDefinitionRuntime{
@@ -555,6 +658,41 @@ func TestPostgresRepository_SaveDocumentTypeSchemaRuntime(t *testing.T) {
 	}
 	if errValue := results[0]; !errValue.IsNil() {
 		t.Fatalf("upsert type: %v", errValue.Interface())
+	}
+
+	definitionsMethod := reflect.ValueOf(repo).MethodByName("ListDocumentTypeDefinitions")
+	if !definitionsMethod.IsValid() {
+		t.Fatalf("missing ListDocumentTypeDefinitions")
+	}
+	definitionResults := definitionsMethod.Call([]reflect.Value{reflect.ValueOf(ctx)})
+	if len(definitionResults) != 2 {
+		t.Fatalf("unexpected list return count: %d", len(definitionResults))
+	}
+	if !definitionResults[1].IsNil() {
+		t.Fatalf("list document type definitions: %v", definitionResults[1].Interface())
+	}
+
+	state.seedDocument(seedDocument("doc-runtime"))
+	if err := repo.SaveVersion(ctx, domain.Version{
+		DocumentID:    "doc-runtime",
+		Number:        1,
+		Content:       "{}",
+		ContentHash:   "hash-runtime",
+		ChangeSummary: "initial",
+		Values:        map[string]any{"objetivo": "antigo"},
+		CreatedAt:     time.Date(2026, 3, 31, 10, 0, 0, 0, time.UTC),
+	}); err != nil {
+		t.Fatalf("save runtime version: %v", err)
+	}
+	if err := repo.UpdateVersionValues(ctx, "doc-runtime", 1, map[string]any{"objetivo": "novo"}); err != nil {
+		t.Fatalf("update version values: %v", err)
+	}
+	got, err := repo.GetVersion(ctx, "doc-runtime", 1)
+	if err != nil {
+		t.Fatalf("get updated version: %v", err)
+	}
+	if got.Values["objetivo"] != "novo" {
+		t.Fatalf("expected updated runtime value, got %#v", got.Values)
 	}
 }
 

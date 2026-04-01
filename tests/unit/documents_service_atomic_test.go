@@ -43,6 +43,18 @@ func (r *atomicRepoSpy) ListDocumentTypes(context.Context) ([]domain.DocumentTyp
 	return domain.DefaultDocumentTypes(), nil
 }
 
+func (r *atomicRepoSpy) ListDocumentTypeDefinitions(context.Context) ([]domain.DocumentTypeDefinition, error) {
+	return domain.DefaultDocumentTypeDefinitions(), nil
+}
+
+func (r *atomicRepoSpy) GetDocumentTypeDefinition(context.Context, string) (domain.DocumentTypeDefinition, error) {
+	return domain.DefaultDocumentTypeDefinitions()[0], nil
+}
+
+func (r *atomicRepoSpy) UpsertDocumentTypeDefinition(context.Context, domain.DocumentTypeDefinition) error {
+	return nil
+}
+
 func (r *atomicRepoSpy) ReserveNextDocumentSequence(_ context.Context, profileCode string) (int, error) {
 	if r.sequence <= 0 {
 		r.sequence = 1
@@ -161,6 +173,10 @@ func (r *atomicRepoSpy) UpdateVersionPDF(context.Context, string, int, string, i
 }
 
 func (r *atomicRepoSpy) UpdateVersionBodyBlocks(context.Context, string, int, []domain.EtapaBody) error {
+	return nil
+}
+
+func (r *atomicRepoSpy) UpdateVersionValues(context.Context, string, int, domain.DocumentValues) error {
 	return nil
 }
 

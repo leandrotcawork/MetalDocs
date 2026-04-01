@@ -64,6 +64,7 @@ type Version struct {
 	ChangeSummary    string
 	ContentSource    string
 	NativeContent    DocumentValues
+	Values           DocumentValues
 	BodyBlocks       []EtapaBody
 	DocxStorageKey   string
 	PdfStorageKey    string
@@ -131,6 +132,12 @@ type SaveEtapaBodyCommand struct {
 type SaveNativeContentCommand struct {
 	DocumentID string
 	Content    map[string]any
+	TraceID    string
+}
+
+type SaveDocumentValuesCommand struct {
+	DocumentID string
+	Values     map[string]any
 	TraceID    string
 }
 

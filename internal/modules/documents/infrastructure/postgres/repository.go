@@ -103,12 +103,12 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16::j
 	const insertVersion = `
 INSERT INTO metaldocs.document_versions (
   document_id, version_number, content, content_hash, change_summary,
-  content_source, native_content, body_blocks, docx_storage_key, pdf_storage_key, text_content,
+  content_source, native_content, values_json, body_blocks, docx_storage_key, pdf_storage_key, text_content,
   file_size_bytes, original_filename, page_count, created_at
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, COALESCE($8::jsonb, '[]'::jsonb), $9, $10, $11, $12, $13, $14, $15)
+VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, COALESCE($9::jsonb, '[]'::jsonb), $10, $11, $12, $13, $14, $15, $16)
 `
-	contentSource, nativeContentJSON, bodyBlocksJSON, textContent, err := serializeVersion(version)
+	contentSource, nativeContentJSON, valuesJSON, bodyBlocksJSON, textContent, err := serializeVersion(version)
 	if err != nil {
 		return fmt.Errorf("serialize version: %w", err)
 	}
@@ -120,6 +120,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, COALESCE($8::jsonb, '[]'::jsonb), $9,
 		version.ChangeSummary,
 		contentSource,
 		nativeContentJSON,
+		valuesJSON,
 		bodyBlocksJSON,
 		nullIfEmpty(version.DocxStorageKey),
 		nullIfEmpty(version.PdfStorageKey),
@@ -184,12 +185,12 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16::j
 	const insertVersion = `
 INSERT INTO metaldocs.document_versions (
   document_id, version_number, content, content_hash, change_summary,
-  content_source, native_content, body_blocks, docx_storage_key, pdf_storage_key, text_content,
+  content_source, native_content, values_json, body_blocks, docx_storage_key, pdf_storage_key, text_content,
   file_size_bytes, original_filename, page_count, created_at
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, COALESCE($8::jsonb, '[]'::jsonb), $9, $10, $11, $12, $13, $14, $15)
+VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, COALESCE($9::jsonb, '[]'::jsonb), $10, $11, $12, $13, $14, $15, $16)
 `
-	contentSource, nativeContentJSON, bodyBlocksJSON, textContent, err := serializeVersion(version)
+	contentSource, nativeContentJSON, valuesJSON, bodyBlocksJSON, textContent, err := serializeVersion(version)
 	if err != nil {
 		return fmt.Errorf("serialize version: %w", err)
 	}
@@ -201,6 +202,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, COALESCE($8::jsonb, '[]'::jsonb), $9,
 		version.ChangeSummary,
 		contentSource,
 		nativeContentJSON,
+		valuesJSON,
 		bodyBlocksJSON,
 		nullIfEmpty(version.DocxStorageKey),
 		nullIfEmpty(version.PdfStorageKey),
@@ -457,6 +459,100 @@ ORDER BY p.code ASC
 		return nil, fmt.Errorf("list document types rows: %w", err)
 	}
 	return out, nil
+}
+
+func (r *Repository) ListDocumentTypeDefinitions(ctx context.Context) ([]domain.DocumentTypeDefinition, error) {
+	const q = `
+SELECT t.type_key, t.name, t.active_version, s.schema_json
+FROM metaldocs.document_types t
+LEFT JOIN metaldocs.document_type_schema_versions s
+  ON s.type_key = t.type_key AND s.version = t.active_version
+ORDER BY t.type_key ASC
+`
+	rows, err := r.db.QueryContext(ctx, q)
+	if err != nil {
+		return nil, fmt.Errorf("list document type definitions: %w", err)
+	}
+	defer rows.Close()
+
+	var out []domain.DocumentTypeDefinition
+	for rows.Next() {
+		var item domain.DocumentTypeDefinition
+		var rawSchema []byte
+		if err := rows.Scan(&item.Key, &item.Name, &item.ActiveVersion, &rawSchema); err != nil {
+			return nil, fmt.Errorf("scan document type definition: %w", err)
+		}
+		if len(rawSchema) > 0 {
+			if err := json.Unmarshal(rawSchema, &item.Schema); err != nil {
+				return nil, fmt.Errorf("unmarshal document type schema: %w", err)
+			}
+		}
+		out = append(out, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list document type definitions rows: %w", err)
+	}
+	return out, nil
+}
+
+func (r *Repository) GetDocumentTypeDefinition(ctx context.Context, key string) (domain.DocumentTypeDefinition, error) {
+	const q = `
+SELECT t.type_key, t.name, t.active_version, s.schema_json
+FROM metaldocs.document_types t
+LEFT JOIN metaldocs.document_type_schema_versions s
+  ON s.type_key = t.type_key AND s.version = t.active_version
+WHERE t.type_key = $1
+`
+	var item domain.DocumentTypeDefinition
+	var rawSchema []byte
+	if err := r.db.QueryRowContext(ctx, q, strings.ToLower(strings.TrimSpace(key))).Scan(&item.Key, &item.Name, &item.ActiveVersion, &rawSchema); err != nil {
+		if err == sql.ErrNoRows {
+			return domain.DocumentTypeDefinition{}, domain.ErrInvalidDocumentType
+		}
+		return domain.DocumentTypeDefinition{}, fmt.Errorf("get document type definition: %w", err)
+	}
+	if len(rawSchema) > 0 {
+		if err := json.Unmarshal(rawSchema, &item.Schema); err != nil {
+			return domain.DocumentTypeDefinition{}, fmt.Errorf("unmarshal document type schema: %w", err)
+		}
+	}
+	return item, nil
+}
+
+func (r *Repository) UpsertDocumentTypeDefinition(ctx context.Context, item domain.DocumentTypeDefinition) error {
+	normalized, err := normalizeDocumentTypeDefinition(item)
+	if err != nil {
+		return err
+	}
+
+	rawSchema, err := json.Marshal(normalized.Schema)
+	if err != nil {
+		return fmt.Errorf("marshal document type schema: %w", err)
+	}
+
+	const upsertType = `
+INSERT INTO metaldocs.document_types (type_key, name, description, family_key, active_version)
+VALUES ($1, $2, '', '', $3)
+ON CONFLICT (type_key) DO UPDATE
+SET name = EXCLUDED.name,
+    active_version = EXCLUDED.active_version,
+    updated_at = NOW()
+`
+	if _, err := r.db.ExecContext(ctx, upsertType, normalized.Key, normalized.Name, normalized.ActiveVersion); err != nil {
+		return mapError(err)
+	}
+
+	const upsertSchema = `
+INSERT INTO metaldocs.document_type_schema_versions (type_key, version, schema_json, governance_json)
+VALUES ($1, $2, $3::jsonb, '{}'::jsonb)
+ON CONFLICT (type_key, version) DO UPDATE
+SET schema_json = EXCLUDED.schema_json
+`
+	if _, err := r.db.ExecContext(ctx, upsertSchema, normalized.Key, normalized.ActiveVersion, string(rawSchema)); err != nil {
+		return mapError(err)
+	}
+
+	return nil
 }
 
 func (r *Repository) ListDocumentFamilies(ctx context.Context) ([]domain.DocumentFamily, error) {
@@ -1038,12 +1134,12 @@ func (r *Repository) SaveVersion(ctx context.Context, version domain.Version) er
 	const q = `
 INSERT INTO metaldocs.document_versions (
   document_id, version_number, content, content_hash, change_summary,
-  content_source, native_content, body_blocks, docx_storage_key, pdf_storage_key, text_content,
+  content_source, native_content, values_json, body_blocks, docx_storage_key, pdf_storage_key, text_content,
   file_size_bytes, original_filename, page_count, created_at
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, COALESCE($8::jsonb, '[]'::jsonb), $9, $10, $11, $12, $13, $14, $15)
+VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, COALESCE($9::jsonb, '[]'::jsonb), $10, $11, $12, $13, $14, $15, $16)
 `
-	contentSource, nativeContentJSON, bodyBlocksJSON, textContent, err := serializeVersion(version)
+	contentSource, nativeContentJSON, valuesJSON, bodyBlocksJSON, textContent, err := serializeVersion(version)
 	if err != nil {
 		return fmt.Errorf("serialize version: %w", err)
 	}
@@ -1055,6 +1151,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, COALESCE($8::jsonb, '[]'::jsonb), $9,
 		version.ChangeSummary,
 		contentSource,
 		nativeContentJSON,
+		valuesJSON,
 		bodyBlocksJSON,
 		nullIfEmpty(version.DocxStorageKey),
 		nullIfEmpty(version.PdfStorageKey),
@@ -1065,6 +1162,30 @@ VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, COALESCE($8::jsonb, '[]'::jsonb), $9,
 		version.CreatedAt,
 	); execErr != nil {
 		return mapError(execErr)
+	}
+	return nil
+}
+
+func (r *Repository) UpdateVersionValues(ctx context.Context, documentID string, versionNumber int, values domain.DocumentValues) error {
+	const q = `
+UPDATE metaldocs.document_versions
+SET values_json = $3::jsonb
+WHERE document_id = $1 AND version_number = $2
+`
+	rawValues, err := json.Marshal(values)
+	if err != nil {
+		return fmt.Errorf("marshal version values: %w", err)
+	}
+	res, err := r.db.ExecContext(ctx, q, documentID, versionNumber, string(rawValues))
+	if err != nil {
+		return mapError(err)
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected update version values: %w", err)
+	}
+	if affected == 0 {
+		return domain.ErrVersionNotFound
 	}
 	return nil
 }
@@ -1122,7 +1243,7 @@ func (r *Repository) ListVersions(ctx context.Context, documentID string) ([]dom
 
 	const q = `
 SELECT document_id, version_number, content, content_hash, change_summary,
-       content_source, native_content, body_blocks, docx_storage_key, pdf_storage_key, text_content,
+       content_source, native_content, values_json, body_blocks, docx_storage_key, pdf_storage_key, text_content,
        file_size_bytes, original_filename, page_count, created_at
 FROM metaldocs.document_versions
 WHERE document_id = $1
@@ -1138,6 +1259,7 @@ ORDER BY version_number ASC
 	for rows.Next() {
 		var version domain.Version
 		var nativeContentJSON []byte
+		var valuesJSON []byte
 		var bodyBlocksJSON []byte
 		var docxStorageKey sql.NullString
 		var pdfStorageKey sql.NullString
@@ -1153,6 +1275,7 @@ ORDER BY version_number ASC
 			&version.ChangeSummary,
 			&version.ContentSource,
 			&nativeContentJSON,
+			&valuesJSON,
 			&bodyBlocksJSON,
 			&docxStorageKey,
 			&pdfStorageKey,
@@ -1164,7 +1287,7 @@ ORDER BY version_number ASC
 		); err != nil {
 			return nil, fmt.Errorf("scan version: %w", err)
 		}
-		applyVersionOptionalFields(&version, nativeContentJSON, bodyBlocksJSON, docxStorageKey, pdfStorageKey, textContent, fileSizeBytes, originalFilename, pageCount)
+		applyVersionOptionalFields(&version, nativeContentJSON, valuesJSON, bodyBlocksJSON, docxStorageKey, pdfStorageKey, textContent, fileSizeBytes, originalFilename, pageCount)
 		out = append(out, version)
 	}
 	if err := rows.Err(); err != nil {
@@ -1182,13 +1305,14 @@ func (r *Repository) GetVersion(ctx context.Context, documentID string, versionN
 
 	const q = `
 SELECT document_id, version_number, content, content_hash, change_summary,
-       content_source, native_content, body_blocks, docx_storage_key, pdf_storage_key, text_content,
+       content_source, native_content, values_json, body_blocks, docx_storage_key, pdf_storage_key, text_content,
        file_size_bytes, original_filename, page_count, created_at
 FROM metaldocs.document_versions
 WHERE document_id = $1 AND version_number = $2
 `
 	var version domain.Version
 	var nativeContentJSON []byte
+	var valuesJSON []byte
 	var bodyBlocksJSON []byte
 	var docxStorageKey sql.NullString
 	var pdfStorageKey sql.NullString
@@ -1204,6 +1328,7 @@ WHERE document_id = $1 AND version_number = $2
 		&version.ChangeSummary,
 		&version.ContentSource,
 		&nativeContentJSON,
+		&valuesJSON,
 		&bodyBlocksJSON,
 		&docxStorageKey,
 		&pdfStorageKey,
@@ -1218,7 +1343,7 @@ WHERE document_id = $1 AND version_number = $2
 		}
 		return domain.Version{}, fmt.Errorf("get version: %w", err)
 	}
-	applyVersionOptionalFields(&version, nativeContentJSON, bodyBlocksJSON, docxStorageKey, pdfStorageKey, textContent, fileSizeBytes, originalFilename, pageCount)
+	applyVersionOptionalFields(&version, nativeContentJSON, valuesJSON, bodyBlocksJSON, docxStorageKey, pdfStorageKey, textContent, fileSizeBytes, originalFilename, pageCount)
 	return version, nil
 }
 
@@ -1593,7 +1718,7 @@ func applyOptionalFields(doc *domain.Document, tagsJSON []byte, metadataJSON []b
 	}
 }
 
-func serializeVersion(version domain.Version) (string, string, string, any, error) {
+func serializeVersion(version domain.Version) (string, string, string, string, any, error) {
 	contentSource := strings.TrimSpace(version.ContentSource)
 	if contentSource == "" {
 		contentSource = domain.ContentSourceNative
@@ -1603,16 +1728,25 @@ func serializeVersion(version domain.Version) (string, string, string, any, erro
 	if len(version.NativeContent) > 0 {
 		raw, err := json.Marshal(version.NativeContent)
 		if err != nil {
-			return "", "", "", nil, fmt.Errorf("marshal native content: %w", err)
+			return "", "", "", "", nil, fmt.Errorf("marshal native content: %w", err)
 		}
 		nativeContentJSON = string(raw)
+	}
+
+	valuesJSON := "{}"
+	if len(version.Values) > 0 {
+		raw, err := json.Marshal(version.Values)
+		if err != nil {
+			return "", "", "", "", nil, fmt.Errorf("marshal version values: %w", err)
+		}
+		valuesJSON = string(raw)
 	}
 
 	bodyBlocksJSON := "[]"
 	if len(version.BodyBlocks) > 0 {
 		raw, err := json.Marshal(version.BodyBlocks)
 		if err != nil {
-			return "", "", "", nil, fmt.Errorf("marshal body blocks: %w", err)
+			return "", "", "", "", nil, fmt.Errorf("marshal body blocks: %w", err)
 		}
 		bodyBlocksJSON = string(raw)
 	}
@@ -1621,7 +1755,7 @@ func serializeVersion(version domain.Version) (string, string, string, any, erro
 	if strings.TrimSpace(version.TextContent) != "" {
 		textContent = version.TextContent
 	}
-	return contentSource, nativeContentJSON, bodyBlocksJSON, textContent, nil
+	return contentSource, nativeContentJSON, valuesJSON, bodyBlocksJSON, textContent, nil
 }
 
 func serializeBodyBlocks(bodyBlocks []domain.EtapaBody) (string, error) {
@@ -1635,7 +1769,7 @@ func serializeBodyBlocks(bodyBlocks []domain.EtapaBody) (string, error) {
 	return string(raw), nil
 }
 
-func applyVersionOptionalFields(version *domain.Version, nativeContentJSON []byte, bodyBlocksJSON []byte, docxStorageKey sql.NullString, pdfStorageKey sql.NullString, textContent sql.NullString, fileSizeBytes sql.NullInt64, originalFilename sql.NullString, pageCount sql.NullInt64) {
+func applyVersionOptionalFields(version *domain.Version, nativeContentJSON []byte, valuesJSON []byte, bodyBlocksJSON []byte, docxStorageKey sql.NullString, pdfStorageKey sql.NullString, textContent sql.NullString, fileSizeBytes sql.NullInt64, originalFilename sql.NullString, pageCount sql.NullInt64) {
 	if len(nativeContentJSON) > 0 {
 		var nativeContent map[string]any
 		if err := json.Unmarshal(nativeContentJSON, &nativeContent); err == nil {
@@ -1644,6 +1778,15 @@ func applyVersionOptionalFields(version *domain.Version, nativeContentJSON []byt
 	}
 	if version.NativeContent == nil {
 		version.NativeContent = map[string]any{}
+	}
+	if len(valuesJSON) > 0 {
+		var values map[string]any
+		if err := json.Unmarshal(valuesJSON, &values); err == nil {
+			version.Values = values
+		}
+	}
+	if version.Values == nil {
+		version.Values = map[string]any{}
 	}
 	if len(bodyBlocksJSON) > 0 {
 		var bodyBlocks []domain.EtapaBody
@@ -1672,4 +1815,16 @@ func applyVersionOptionalFields(version *domain.Version, nativeContentJSON []byt
 	if pageCount.Valid {
 		version.PageCount = int(pageCount.Int64)
 	}
+}
+
+func normalizeDocumentTypeDefinition(item domain.DocumentTypeDefinition) (domain.DocumentTypeDefinition, error) {
+	item.Key = strings.ToLower(strings.TrimSpace(item.Key))
+	item.Name = strings.TrimSpace(item.Name)
+	if item.Key == "" || item.Name == "" {
+		return domain.DocumentTypeDefinition{}, domain.ErrInvalidCommand
+	}
+	if item.ActiveVersion <= 0 {
+		item.ActiveVersion = 1
+	}
+	return item, nil
 }

@@ -104,3 +104,38 @@ func validateFieldDef(field FieldDef) error {
 
 	return nil
 }
+
+func DefaultDocumentTypeDefinitions() []DocumentTypeDefinition {
+	return []DocumentTypeDefinition{
+		{
+			Key:           "po",
+			Name:          "Procedimento Operacional",
+			ActiveVersion: 1,
+			Schema: DocumentTypeSchema{
+				Sections: []SectionDef{
+					{Key: "identificacao", Num: "1", Title: "Identificacao"},
+				},
+			},
+		},
+		{
+			Key:           "it",
+			Name:          "Instrucao de Trabalho",
+			ActiveVersion: 1,
+			Schema: DocumentTypeSchema{
+				Sections: []SectionDef{
+					{Key: "contexto", Num: "1", Title: "Contexto"},
+				},
+			},
+		},
+		{
+			Key:           "rg",
+			Name:          "Registro",
+			ActiveVersion: 1,
+			Schema: DocumentTypeSchema{
+				Sections: []SectionDef{
+					{Key: "evento", Num: "1", Title: "Evento"},
+				},
+			},
+		},
+	}
+}

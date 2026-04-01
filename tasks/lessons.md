@@ -606,3 +606,10 @@ Wrong:   Applying a patch without an explicit worktree path wrote changes into t
 Correct: Use absolute paths rooted at the active worktree when editing files so the intended git root receives the change
 Rule:    In multi-checkout environments, file edits must name the active worktree explicitly or they can land in the wrong repository copy.
 Layer:   process
+
+## Lesson CG - Runtime value validation is schema-field gated
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Assuming runtime values should be rejected even when a document type schema only defines sections
+Correct: Skip value validation until the schema defines fields; once fields exist, validate only those declared fields
+Rule:    Runtime schema enforcement must be permissive by default and only activate where the schema explicitly declares structure.
+Layer:   application

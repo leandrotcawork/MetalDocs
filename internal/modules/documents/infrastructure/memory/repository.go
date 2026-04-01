@@ -24,6 +24,7 @@ type Repository struct {
 	departments         []domain.DocumentDepartment
 	subjects            []domain.Subject
 	types               []domain.DocumentType
+	typeDefinitions     []domain.DocumentTypeDefinition
 	policies            map[string][]domain.AccessPolicy
 	collabPresence      map[string]map[string]domain.CollaborationPresence
 	editLocks           map[string]domain.DocumentEditLock
@@ -44,6 +45,7 @@ func NewRepository() *Repository {
 		departments:         domain.DefaultDocumentDepartments(),
 		subjects:            domain.DefaultSubjects(),
 		types:               domain.DefaultDocumentTypes(),
+		typeDefinitions:     domain.DefaultDocumentTypeDefinitions(),
 		policies:            map[string][]domain.AccessPolicy{},
 		collabPresence:      map[string]map[string]domain.CollaborationPresence{},
 		editLocks:           map[string]domain.DocumentEditLock{},
@@ -186,6 +188,52 @@ func (r *Repository) ListDocumentTypes(_ context.Context) ([]domain.DocumentType
 	out := make([]domain.DocumentType, len(r.types))
 	copy(out, r.types)
 	return out, nil
+}
+
+func (r *Repository) ListDocumentTypeDefinitions(_ context.Context) ([]domain.DocumentTypeDefinition, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	out := make([]domain.DocumentTypeDefinition, len(r.typeDefinitions))
+	for i, item := range r.typeDefinitions {
+		out[i] = cloneDocumentTypeDefinition(item)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		return strings.ToLower(strings.TrimSpace(out[i].Key)) < strings.ToLower(strings.TrimSpace(out[j].Key))
+	})
+	return out, nil
+}
+
+func (r *Repository) GetDocumentTypeDefinition(_ context.Context, key string) (domain.DocumentTypeDefinition, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	normalizedKey := strings.ToLower(strings.TrimSpace(key))
+	for _, item := range r.typeDefinitions {
+		if strings.EqualFold(item.Key, normalizedKey) {
+			return cloneDocumentTypeDefinition(item), nil
+		}
+	}
+	return domain.DocumentTypeDefinition{}, domain.ErrInvalidDocumentType
+}
+
+func (r *Repository) UpsertDocumentTypeDefinition(_ context.Context, item domain.DocumentTypeDefinition) error {
+	normalized, err := normalizeDocumentTypeDefinition(item)
+	if err != nil {
+		return err
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for index := range r.typeDefinitions {
+		if strings.EqualFold(r.typeDefinitions[index].Key, normalized.Key) {
+			r.typeDefinitions[index] = cloneDocumentTypeDefinition(normalized)
+			return nil
+		}
+	}
+	r.typeDefinitions = append(r.typeDefinitions, cloneDocumentTypeDefinition(normalized))
+	return nil
 }
 
 func (r *Repository) ListDocumentFamilies(_ context.Context) ([]domain.DocumentFamily, error) {
@@ -536,10 +584,30 @@ func (r *Repository) UpdateVersionBodyBlocks(_ context.Context, documentID strin
 	return domain.ErrVersionNotFound
 }
 
+func (r *Repository) UpdateVersionValues(_ context.Context, documentID string, versionNumber int, values domain.DocumentValues) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, exists := r.documents[documentID]; !exists {
+		return domain.ErrDocumentNotFound
+	}
+	versions := r.versions[documentID]
+	for i := range versions {
+		if versions[i].Number == versionNumber {
+			versions[i].Values = cloneRuntimeValues(values)
+			r.versions[documentID] = versions
+			return nil
+		}
+	}
+	return domain.ErrVersionNotFound
+}
+
 func (r *Repository) saveVersionLocked(_ context.Context, version domain.Version) error {
 	if _, exists := r.documents[version.DocumentID]; !exists {
 		return domain.ErrDocumentNotFound
 	}
+	version.Values = cloneRuntimeValues(version.Values)
+	version.NativeContent = cloneRuntimeValues(version.NativeContent)
 	r.versions[version.DocumentID] = append(r.versions[version.DocumentID], version)
 	return nil
 }
@@ -556,6 +624,10 @@ func (r *Repository) ListVersions(_ context.Context, documentID string) ([]domai
 	sort.Slice(versions, func(i, j int) bool {
 		return versions[i].Number < versions[j].Number
 	})
+	for i := range versions {
+		versions[i].Values = cloneRuntimeValues(versions[i].Values)
+		versions[i].NativeContent = cloneRuntimeValues(versions[i].NativeContent)
+	}
 
 	return versions, nil
 }
@@ -569,6 +641,8 @@ func (r *Repository) GetVersion(_ context.Context, documentID string, versionNum
 	}
 	for _, version := range r.versions[documentID] {
 		if version.Number == versionNumber {
+			version.Values = cloneRuntimeValues(version.Values)
+			version.NativeContent = cloneRuntimeValues(version.NativeContent)
 			return version, nil
 		}
 	}
@@ -700,4 +774,105 @@ func (r *Repository) ReleaseDocumentEditLock(_ context.Context, documentID, lock
 	}
 	delete(r.editLocks, documentID)
 	return nil
+}
+
+func normalizeDocumentTypeDefinition(item domain.DocumentTypeDefinition) (domain.DocumentTypeDefinition, error) {
+	item.Key = strings.ToLower(strings.TrimSpace(item.Key))
+	item.Name = strings.TrimSpace(item.Name)
+	if item.Key == "" || item.Name == "" {
+		return domain.DocumentTypeDefinition{}, domain.ErrInvalidCommand
+	}
+	if item.ActiveVersion <= 0 {
+		item.ActiveVersion = 1
+	}
+	item.Schema = cloneDocumentTypeSchema(item.Schema)
+	return item, nil
+}
+
+func cloneDocumentTypeDefinition(item domain.DocumentTypeDefinition) domain.DocumentTypeDefinition {
+	item.Schema = cloneDocumentTypeSchema(item.Schema)
+	return item
+}
+
+func cloneDocumentTypeSchema(schema domain.DocumentTypeSchema) domain.DocumentTypeSchema {
+	if len(schema.Sections) == 0 {
+		return domain.DocumentTypeSchema{}
+	}
+	out := domain.DocumentTypeSchema{Sections: make([]domain.SectionDef, len(schema.Sections))}
+	for i, section := range schema.Sections {
+		out.Sections[i] = cloneSectionDef(section)
+	}
+	return out
+}
+
+func cloneSectionDef(section domain.SectionDef) domain.SectionDef {
+	out := domain.SectionDef{
+		Key:   section.Key,
+		Num:   section.Num,
+		Title: section.Title,
+		Color: section.Color,
+	}
+	if len(section.Fields) > 0 {
+		out.Fields = make([]domain.FieldDef, len(section.Fields))
+		for i, field := range section.Fields {
+			out.Fields[i] = cloneFieldDef(field)
+		}
+	}
+	return out
+}
+
+func cloneFieldDef(field domain.FieldDef) domain.FieldDef {
+	out := domain.FieldDef{
+		Key:   field.Key,
+		Label: field.Label,
+		Type:  field.Type,
+	}
+	if len(field.Options) > 0 {
+		out.Options = append([]string(nil), field.Options...)
+	}
+	if len(field.Columns) > 0 {
+		out.Columns = make([]domain.FieldDef, len(field.Columns))
+		for i, column := range field.Columns {
+			out.Columns[i] = cloneFieldDef(column)
+		}
+	}
+	if len(field.ItemFields) > 0 {
+		out.ItemFields = make([]domain.FieldDef, len(field.ItemFields))
+		for i, itemField := range field.ItemFields {
+			out.ItemFields[i] = cloneFieldDef(itemField)
+		}
+	}
+	return out
+}
+
+func cloneRuntimeValues(values map[string]any) map[string]any {
+	if len(values) == 0 {
+		return map[string]any{}
+	}
+	out := make(map[string]any, len(values))
+	for key, value := range values {
+		out[key] = cloneRuntimeValue(value)
+	}
+	return out
+}
+
+func cloneRuntimeValue(value any) any {
+	switch typed := value.(type) {
+	case map[string]any:
+		return cloneRuntimeValues(typed)
+	case []any:
+		out := make([]any, len(typed))
+		for i, item := range typed {
+			out[i] = cloneRuntimeValue(item)
+		}
+		return out
+	case []map[string]any:
+		out := make([]map[string]any, len(typed))
+		for i, item := range typed {
+			out[i] = cloneRuntimeValues(item)
+		}
+		return out
+	default:
+		return typed
+	}
 }

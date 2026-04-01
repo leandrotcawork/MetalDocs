@@ -733,12 +733,12 @@ Correct: Resolve workspace files with a root-relative path such as `filepath.Joi
 Rule:    Tests that validate repository artifacts must use a stable repo-root path instead of assuming the package working directory.
 Layer:   process
 
-## Lesson CE - Draft versions may be edited in place
-Date: 2026-03-31 | Trigger: correction
-Wrong:   Treating draft versions as immutable and always creating a new version on edit
-Correct: Allow in-place updates when the version is in DRAFT
-Rule:    Immutability applies to non-draft versions only; draft updates can be in-place
-Layer:   process
+## Lesson CZ - docx option objects must match supported keys and enum values exactly
+Date: 2026-04-01 | Trigger: build failure
+Wrong:   Passed unsupported table border keys and used enum key unions where docx expected enum values
+Correct: Use only documented docx option keys, and type alignment/border values from the enum value union instead of the key names
+Rule:    Third-party renderers validate option shapes strictly, so wrappers must mirror the library's declared value contracts exactly.
+Layer:   infrastructure
 
 ## Lesson CX - Never implement on main without explicit consent
 Date: 2026-04-01 | Trigger: correction
@@ -747,9 +747,58 @@ Correct: Create a feature branch/worktree for any implementation work unless the
 Rule:    Production branches are protected by policy; do not commit to `main` without explicit user consent.
 Layer:   process
 
-## Lesson CY - Shared table width constants must sum to the declared table width
+## Lesson CY - Export chrome should derive from authored runtime data
 Date: 2026-04-01 | Trigger: correction
-Wrong:   Header cell widths were split as `6000 + 2220 + 2220` and `6000 + 4440`, which exceeded the `9360` DXA content width
-Correct: Define the shared row constants so every header row totals the declared table width, and use the same constants in generator and runtime helpers
-Rule:    Shared table width constants must be audited against the table's declared width before shipping rendered documents.
+Wrong:   Repeat items rendered as generic "Item N" blocks and the footer carried boilerplate text unrelated to the payload
+Correct: Derive repeat item headings from item data when available and keep footer copy limited to authored metadata such as elaborator and page number
+Rule:    User-facing export chrome should come from the runtime payload, not hardcoded filler labels.
 Layer:   infrastructure
+
+## Lesson DA - Header row constants must sum to the declared content width
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Header cells were sized `6000 + 2220 + 2220` and `6000 + 4440`, which exceeded the `9360` DXA content width
+Correct: Keep the shared header row constants aligned to the declared content width and reuse them in both generator and runtime helpers
+Rule:    Any shared table row constants must be verified against the table's declared width before release.
+Layer:   infrastructure
+
+## Lesson DB - Repeat item headings should inherit section color
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Repeat item headers used white text on a lightened section fill, which reduced contrast and ignored the section color family
+Correct: Render repeat item headings in the section color itself while keeping the lightened background fill
+Rule:    Tone-on-tone repeat headers should keep the foreground on the section color family instead of forcing white text.
+Layer:   infrastructure
+
+## Lesson DC - Rich image inserts should use local base64 inputs
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Rich editor image insertion relied on URL prompts, which create external dependencies and break offline/local workflows
+Correct: Insert images from local files using FileReader data URLs at the editor boundary
+Rule:    Rich editors should own image ingestion and emit self-contained image sources suitable for export.
+Layer:   frontend
+
+## Lesson DE - Seeded schemas must match the approved runtime contract exactly
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Seed migration used a PO schema variant that differed from the approved runtime schema (field keys, repeat shapes, and sections drifted)
+Correct: Keep seed migrations aligned to the exact schema contract approved in the spec, even if it differs from legacy shapes
+Rule:    Schema seeds are part of the contract and must not drift from the agreed runtime definition.
+Layer:   infrastructure
+
+## Lesson DF - Bootstrap defaults must match database seeds
+Date: 2026-04-01 | Trigger: correction
+Wrong:   In-memory default schemas diverged from the SQL seed, causing different contracts in memory vs Postgres
+Correct: Keep DefaultDocumentTypeDefinitions aligned to the same minimal schema used in seed migrations
+Rule:    Fallback defaults must mirror seeded schema definitions to avoid environment-specific behavior.
+Layer:   domain
+
+## Lesson DD - Seed bootstrap versions should stay minimal and versioned expansions should be additive
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Folding the richer PO schema into the initial seed instead of separating bootstrap and runtime expansion
+Correct: Keep version 1 minimal for bootstrap, then add the full schema as a later additive version that flips `active_version`
+Rule:    Seed migrations should preserve a stable bootstrap contract and move schema growth into explicit versioned follow-up migrations.
+Layer:   infrastructure
+
+## Lesson CE - Draft versions may be edited in place
+Date: 2026-03-31 | Trigger: correction
+Wrong:   Treating draft versions as immutable and always creating a new version on edit
+Correct: Allow in-place updates when the version is in DRAFT
+Rule:    Immutability applies to non-draft versions only; draft updates can be in-place
+Layer:   process

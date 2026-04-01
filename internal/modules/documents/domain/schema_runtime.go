@@ -110,10 +110,161 @@ func DefaultDocumentTypeDefinitions() []DocumentTypeDefinition {
 		{
 			Key:           "po",
 			Name:          "Procedimento Operacional",
-			ActiveVersion: 1,
+			ActiveVersion: 2,
 			Schema: DocumentTypeSchema{
 				Sections: []SectionDef{
-					{Key: "identificacao", Num: "1", Title: "Identificacao"},
+					{
+						Key:   "identificacao",
+						Num:   "1",
+						Title: "Identificação",
+						Color: "#0F6E56",
+						Fields: []FieldDef{
+							{Key: "elaboradoPor", Label: "Elaborado por", Type: "text"},
+							{Key: "aprovadoPor", Label: "Aprovado por", Type: "text"},
+							{Key: "createdAt", Label: "Data de criação", Type: "date"},
+							{Key: "approvedAt", Label: "Data de aprovação", Type: "date"},
+						},
+					},
+					{
+						Key:   "identificacaoProcesso",
+						Num:   "2",
+						Title: "Identificação do Processo",
+						Color: "#0F6E56",
+						Fields: []FieldDef{
+							{Key: "objetivo", Label: "Objetivo", Type: "textarea"},
+							{Key: "escopo", Label: "Escopo", Type: "textarea"},
+							{Key: "responsavel", Label: "Cargo responsável", Type: "text"},
+							{Key: "canal", Label: "Canal / Contexto", Type: "text"},
+							{Key: "participantes", Label: "Participantes", Type: "textarea"},
+						},
+					},
+					{
+						Key:   "entradasSaidas",
+						Num:   "3",
+						Title: "Entradas e Saídas",
+						Color: "#0F6E56",
+						Fields: []FieldDef{
+							{Key: "entradas", Label: "Entradas", Type: "textarea"},
+							{Key: "saidas", Label: "Saídas", Type: "textarea"},
+							{Key: "documentos", Label: "Documentos relacionados", Type: "textarea"},
+							{Key: "sistemas", Label: "Sistemas utilizados", Type: "textarea"},
+						},
+					},
+					{
+						Key:   "visaoGeral",
+						Num:   "4",
+						Title: "Visão Geral do Processo",
+						Color: "#BA7517",
+						Fields: []FieldDef{
+							{Key: "descricaoProcesso", Label: "Descrição do processo", Type: "textarea"},
+							{Key: "fluxogramaFerramenta", Label: "Ferramenta do fluxograma", Type: "text"},
+							{Key: "fluxogramaUrl", Label: "Link do fluxograma", Type: "text"},
+						},
+					},
+					{
+						Key:   "etapas",
+						Num:   "5",
+						Title: "Detalhamento das Etapas",
+						Color: "#993C1D",
+						Fields: []FieldDef{
+							{
+								Key:   "etapas",
+								Label: "Etapas",
+								Type:  "repeat",
+								ItemFields: []FieldDef{
+									{Key: "num", Label: "Número", Type: "text"},
+									{Key: "titulo", Label: "Título", Type: "text"},
+									{Key: "responsavel", Label: "Responsável", Type: "text"},
+									{Key: "prazo", Label: "Prazo / SLA", Type: "text"},
+									{Key: "descricao", Label: "Descrição", Type: "rich"},
+									{Key: "observacao", Label: "Observações", Type: "textarea"},
+									{Key: "alerta", Label: "Alertas / Desvios", Type: "textarea"},
+								},
+							},
+						},
+					},
+					{
+						Key:   "controle",
+						Num:   "6",
+						Title: "Controle e Exceções",
+						Color: "#0F6E56",
+						Fields: []FieldDef{
+							{Key: "pontosControle", Label: "Pontos de controle", Type: "textarea"},
+							{Key: "excecoes", Label: "Exceções e desvios", Type: "textarea"},
+						},
+					},
+					{
+						Key:   "kpis",
+						Num:   "7",
+						Title: "Indicadores de Desempenho",
+						Color: "#0F6E56",
+						Fields: []FieldDef{
+							{
+								Key:   "kpis",
+								Label: "KPIs",
+								Type:  "table",
+								Columns: []FieldDef{
+									{Key: "indicador", Label: "Indicador / KPI", Type: "text"},
+									{Key: "meta", Label: "Meta", Type: "text"},
+									{Key: "frequencia", Label: "Frequência", Type: "text"},
+								},
+							},
+						},
+					},
+					{
+						Key:   "referencias",
+						Num:   "8",
+						Title: "Documentos e Referências",
+						Color: "#185FA5",
+						Fields: []FieldDef{
+							{
+								Key:   "referencias",
+								Label: "Referências",
+								Type:  "table",
+								Columns: []FieldDef{
+									{Key: "codigo", Label: "Código", Type: "text"},
+									{Key: "titulo", Label: "Título / Descrição", Type: "text"},
+									{Key: "url", Label: "Link", Type: "text"},
+								},
+							},
+						},
+					},
+					{
+						Key:   "glossario",
+						Num:   "9",
+						Title: "Glossário",
+						Color: "#185FA5",
+						Fields: []FieldDef{
+							{
+								Key:   "glossario",
+								Label: "Glossário",
+								Type:  "table",
+								Columns: []FieldDef{
+									{Key: "termo", Label: "Termo", Type: "text"},
+									{Key: "definicao", Label: "Definição", Type: "text"},
+								},
+							},
+						},
+					},
+					{
+						Key:   "historico",
+						Num:   "10",
+						Title: "Histórico de Revisões",
+						Color: "#444441",
+						Fields: []FieldDef{
+							{
+								Key:   "revisoes",
+								Label: "Revisões",
+								Type:  "table",
+								Columns: []FieldDef{
+									{Key: "versao", Label: "Versão", Type: "text"},
+									{Key: "data", Label: "Data", Type: "date"},
+									{Key: "descricao", Label: "O que foi alterado", Type: "text"},
+									{Key: "por", Label: "Por", Type: "text"},
+								},
+							},
+						},
+					},
 				},
 			},
 		},

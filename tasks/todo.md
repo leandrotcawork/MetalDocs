@@ -526,3 +526,8 @@ Area: `apps/api/` + `frontend/apps/web/` + `apps/docgen/`  |  Risk: medium  |  G
 
 commit: `chore(runtime): record schema runtime migration completion`
 
+## PO Schema Seed Fix
+- [x] Fix 1: Keep PO seed version 1 minimal with one section and one text field.
+- [x] Fix 2: Add PO schema version 2 as an additive migration and set `active_version = 2`.
+- [x] Fix 3: Record the migration lesson and task tracking update.
+

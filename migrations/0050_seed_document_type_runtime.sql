@@ -15,7 +15,7 @@ VALUES
   (
     'po',
     1,
-    '{"sections":[{"key":"identificacao","num":"1","title":"Identificacao"}]}'::jsonb,
+    $${"sections":[{"key":"identificacao","num":"1","title":"Identificação","fields":[{"key":"elaboradoPor","label":"Elaborado por","type":"text"}]}]}$$::jsonb,
     '{}'::jsonb
   ),
   (

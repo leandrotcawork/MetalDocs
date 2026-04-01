@@ -1,5 +1,24 @@
-import { Document, Packer, Paragraph, TextRun } from "docx";
+import { AlignmentType, BorderStyle, Document, Footer, Packer, Paragraph, Table, TableRow } from "docx";
 import { renderSection } from "./runtime/renderSection.js";
+import {
+  C,
+  CONTENT_WIDTH,
+  DEFAULT_FONT,
+  DEFAULT_FONT_SIZE,
+  HEADER_ROW_1,
+  HEADER_ROW_2,
+  HEADER_TITLE_WIDTH,
+  PAGE_HEIGHT,
+  PAGE_MARGIN,
+  PAGE_WIDTH,
+  cellBorder,
+  makeCell,
+  makePageNumberField,
+  makeTable,
+  paragraph,
+  run,
+  tableBorder,
+} from "./runtime/docx.js";
 import type {
   ColumnDef,
   DocumentPayload,
@@ -232,7 +251,7 @@ function normalizeDocumentPayload(input: unknown): DocumentPayload {
     invalid("DOCGEN_INVALID_PAYLOAD");
   }
 
-  const { documentType, documentCode, title, schema, values } = input;
+  const { documentType, documentCode, title, version, status, schema, values } = input;
 
   if (
     typeof documentType !== "string" ||
@@ -249,6 +268,8 @@ function normalizeDocumentPayload(input: unknown): DocumentPayload {
     documentType,
     documentCode,
     title,
+    version: typeof version === "string" && version.trim() ? version.trim() : undefined,
+    status: typeof status === "string" && status.trim() ? status.trim() : undefined,
     schema: { sections: schema.sections as DocumentTypeSchema["sections"] },
     values: values as DocumentValues,
   } satisfies DocumentPayload;
@@ -267,34 +288,141 @@ function normalizeDocumentPayload(input: unknown): DocumentPayload {
   return payload;
 }
 
+function buildHeader(runtime: DocumentPayload): Table {
+  const docVersion = runtime.version ?? "1.0";
+  const docStatus = runtime.status ?? "Ativo";
+
+  return makeTable(
+    [
+      new TableRow({
+        children: [
+          makeCell({
+            width: HEADER_TITLE_WIDTH,
+            fill: C.purple,
+            children: [
+              paragraph([run("PROCEDIMENTO OPERACIONAL", { bold: true, color: C.white })], {
+                alignment: AlignmentType.CENTER,
+              }),
+              paragraph([run(runtime.title, { color: C.purpleLight, size: 19 })], {
+                alignment: AlignmentType.CENTER,
+              }),
+            ],
+          }),
+          makeCell({
+            width: HEADER_ROW_1[1],
+            fill: C.purpleLight,
+            children: [
+              paragraph([run("C\u00F3digo", { color: C.purple })], { alignment: AlignmentType.CENTER }),
+              paragraph([run(runtime.documentCode, { bold: true, color: C.purple })], {
+                alignment: AlignmentType.CENTER,
+              }),
+            ],
+          }),
+          makeCell({
+            width: HEADER_ROW_1[2],
+            fill: C.purpleLight,
+            children: [
+              paragraph([run("Vers\u00E3o", { color: C.purple })], { alignment: AlignmentType.CENTER }),
+              paragraph([run(docVersion, { bold: true, color: C.purple })], {
+                alignment: AlignmentType.CENTER,
+              }),
+            ],
+          }),
+        ],
+      }),
+      new TableRow({
+        children: [
+          makeCell({
+            width: HEADER_TITLE_WIDTH,
+            fill: C.teal,
+            children: [paragraph([run(runtime.documentType, { bold: true, color: C.white })], { alignment: AlignmentType.CENTER })],
+          }),
+          makeCell({
+            width: HEADER_ROW_2[1],
+            columnSpan: 2,
+            fill: C.tealLight,
+            children: [
+              paragraph([run("Status", { color: C.teal })], { alignment: AlignmentType.CENTER }),
+              paragraph([run(docStatus, { bold: true, color: C.teal })], { alignment: AlignmentType.CENTER }),
+            ],
+          }),
+        ],
+      }),
+    ],
+    HEADER_ROW_1,
+    {
+      width: CONTENT_WIDTH,
+      borders: tableBorder(BorderStyle.NONE),
+    }
+  );
+}
+
+function buildFooter(runtime: DocumentPayload): Footer {
+  const elaboradoPor = isObject(runtime.values.identificacao)
+    ? asString(runtime.values.identificacao.elaboradoPor) ?? "\u2014"
+    : "\u2014";
+
+  return new Footer({
+    children: [
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        border: {
+          top: { style: BorderStyle.SINGLE, size: 4, color: C.grayMid },
+        },
+        children: [
+          run(`Elaborado por: ${elaboradoPor}  |  P\u00E1gina `, {
+            font: DEFAULT_FONT,
+            size: DEFAULT_FONT_SIZE,
+          }),
+          ...(makePageNumberField() as any[]),
+        ],
+      }),
+    ],
+  });
+}
+
 export async function generateDocx(payload: unknown): Promise<Uint8Array> {
   const runtime = normalizeDocumentPayload(payload);
-
-  const children = [
-    new Paragraph({
-      children: [new TextRun({ text: runtime.title, bold: true, size: 30 })],
-    }),
-    new Paragraph({
-      children: [
-        new TextRun({
-          text: `${runtime.documentType} | ${runtime.documentCode}`,
-          italics: true,
-          size: 20,
-        }),
-      ],
-    }),
-    ...runtime.schema.sections.flatMap((section) =>
-      renderSection(section, runtime.values[section.key] ?? {})
-    ),
-  ];
 
   const doc = new Document({
     sections: [
       {
-        properties: {},
-        children,
+        footers: {
+          default: buildFooter(runtime),
+        },
+        properties: {
+          page: {
+            size: { width: PAGE_WIDTH, height: PAGE_HEIGHT },
+            margin: {
+              top: PAGE_MARGIN,
+              right: PAGE_MARGIN,
+              bottom: PAGE_MARGIN,
+              left: PAGE_MARGIN,
+              header: PAGE_MARGIN,
+              footer: PAGE_MARGIN,
+              gutter: 0,
+            },
+          },
+        },
+        children: [
+          buildHeader(runtime),
+          ...runtime.schema.sections.flatMap((section) => renderSection(section, runtime.values[section.key] ?? {})),
+        ],
       },
     ],
+    features: {
+      updateFields: true,
+    },
+    styles: {
+      default: {
+        document: {
+          run: {
+            font: DEFAULT_FONT,
+            size: DEFAULT_FONT_SIZE,
+          },
+        },
+      },
+    },
   });
 
   return Packer.toBuffer(doc);

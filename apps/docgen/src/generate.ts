@@ -79,11 +79,82 @@ function validateSectionDef(section: SectionDef, values: DocumentValues): void {
   if (!Array.isArray(section.fields)) {
     invalid("DOCGEN_INVALID_SCHEMA");
   }
+  if (section.fields.length === 0) {
+    invalid("DOCGEN_INVALID_SCHEMA");
+  }
   section.fields.forEach(validateFieldDef);
 
   const value = values[section.key];
   if (value !== undefined && !isObject(value)) {
     invalid("DOCGEN_INVALID_VALUES");
+  }
+
+  if (value !== undefined) {
+    section.fields.forEach((field) => validateFieldValue(field, value as Record<string, unknown>));
+  }
+}
+
+function validateFieldValue(field: FieldDef, container: Record<string, unknown>): void {
+  const rawValue = container[field.key];
+  if (rawValue === undefined || rawValue === null) {
+    return;
+  }
+
+  switch (field.type) {
+    case "text":
+    case "textarea":
+    case "select":
+      if (typeof rawValue !== "string") {
+        invalid("DOCGEN_INVALID_VALUES");
+      }
+      return;
+    case "number":
+      if (typeof rawValue !== "number") {
+        invalid("DOCGEN_INVALID_VALUES");
+      }
+      return;
+    case "checkbox":
+      if (typeof rawValue !== "boolean") {
+        invalid("DOCGEN_INVALID_VALUES");
+      }
+      return;
+    case "date":
+      if (typeof rawValue !== "string") {
+        invalid("DOCGEN_INVALID_VALUES");
+      }
+      return;
+    case "table":
+      if (!Array.isArray(rawValue)) {
+        invalid("DOCGEN_INVALID_VALUES");
+      }
+      rawValue.forEach((row) => {
+        if (!isObject(row)) {
+          invalid("DOCGEN_INVALID_VALUES");
+        }
+        field.columns.forEach((column) => validateFieldValue(column, row as Record<string, unknown>));
+      });
+      return;
+    case "repeat":
+      if (!Array.isArray(rawValue)) {
+        invalid("DOCGEN_INVALID_VALUES");
+      }
+      rawValue.forEach((item) => {
+        if (!isObject(item)) {
+          invalid("DOCGEN_INVALID_VALUES");
+        }
+        field.itemFields.forEach((nested) => validateFieldValue(nested, item as Record<string, unknown>));
+      });
+      return;
+    case "rich":
+      if (!Array.isArray(rawValue)) {
+        invalid("DOCGEN_INVALID_VALUES");
+      }
+      rawValue.forEach((block) => {
+        if (!isObject(block) || typeof block.type !== "string") {
+          invalid("DOCGEN_INVALID_VALUES");
+        }
+      });
+      return;
   }
 }
 
@@ -112,6 +183,10 @@ function normalizeDocumentPayload(input: unknown): DocumentPayload {
     schema: { sections: schema.sections as DocumentTypeSchema["sections"] },
     values: values as DocumentValues,
   } satisfies DocumentPayload;
+
+  if (payload.schema.sections.length === 0) {
+    invalid("DOCGEN_INVALID_SCHEMA");
+  }
 
   payload.schema.sections.forEach((section) => validateSectionDef(section, payload.values));
 

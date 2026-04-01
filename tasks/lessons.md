@@ -654,3 +654,10 @@ Wrong:   Rendering docx payloads without validating nested schema/values and ret
 Correct: Validate schema/values upfront and return 400 for invalid payloads before rendering
 Rule:    Renderer services should fail fast with client errors for invalid inputs to avoid opaque server failures.
 Layer:   infrastructure
+
+## Lesson CM - Docgen validation must reject empty schemas and invalid values
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Allowing empty sections/fields or mismatched values to render produced silent invalid documents
+Correct: Fail closed on empty schema definitions and validate values by field type before rendering
+Rule:    Rendering services must validate both schema shape and values to prevent corrupted output.
+Layer:   infrastructure

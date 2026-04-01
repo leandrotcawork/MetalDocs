@@ -10,6 +10,7 @@ type AutoSaveOptions = {
 
 type AutoSaveResult = {
   isSaving: boolean;
+  hasPendingChanges: boolean;
   lastSavedPdfUrl: string;
   lastSavedAt: Date | null;
   error: string;
@@ -21,6 +22,7 @@ export function useAutoSave(options: AutoSaveOptions): AutoSaveResult {
   const { documentId, contentDraft, saveFn, debounceMs = 3000, enabled = true } = options;
 
   const [isSaving, setIsSaving] = useState(false);
+  const [lastSavedContent, setLastSavedContent] = useState<string>("");
   const [lastSavedPdfUrl, setLastSavedPdfUrl] = useState("");
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [error, setError] = useState("");
@@ -54,6 +56,7 @@ export function useAutoSave(options: AutoSaveOptions): AutoSaveResult {
       if (controller.signal.aborted || version !== saveVersionRef.current) return;
 
       lastSavedJsonRef.current = currentJson;
+      setLastSavedContent(currentJson);
       setLastSavedPdfUrl(response.pdfUrl);
       setLastSavedAt(new Date());
     } catch (err) {
@@ -81,6 +84,7 @@ export function useAutoSave(options: AutoSaveOptions): AutoSaveResult {
     }
     const currentJson = JSON.stringify(content);
     lastSavedJsonRef.current = currentJson;
+    setLastSavedContent(currentJson);
     setLastSavedPdfUrl(pdfUrl);
     setLastSavedAt(new Date());
     setError("");
@@ -118,5 +122,7 @@ export function useAutoSave(options: AutoSaveOptions): AutoSaveResult {
     };
   }, []);
 
-  return { isSaving, lastSavedPdfUrl, lastSavedAt, error, saveNow, acknowledgeSave };
+  const hasPendingChanges = lastSavedContent !== "" && JSON.stringify(contentDraft) !== lastSavedContent;
+
+  return { isSaving, hasPendingChanges, lastSavedPdfUrl, lastSavedAt, error, saveNow, acknowledgeSave };
 }

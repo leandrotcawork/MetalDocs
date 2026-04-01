@@ -1,14 +1,95 @@
 import { Document, Packer, Paragraph, TextRun } from "docx";
 import { renderSection } from "./runtime/renderSection.js";
-import type { DocumentPayload, DocumentTypeSchema, DocumentValues } from "./runtime/types.js";
+import type {
+  ColumnDef,
+  DocumentPayload,
+  DocumentTypeSchema,
+  DocumentValues,
+  FieldDef,
+  ScalarFieldType,
+  SectionDef,
+} from "./runtime/types.js";
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+const scalarTypes: ScalarFieldType[] = ["text", "textarea", "number", "date", "select", "checkbox"];
+
+function asString(value: unknown): string | null {
+  return typeof value === "string" ? value.trim() : null;
+}
+
+function invalid(code: string): never {
+  throw new Error(code);
+}
+
+function assertNonEmptyString(value: unknown, code: string): string {
+  const out = asString(value);
+  if (!out) {
+    invalid(code);
+  }
+  return out;
+}
+
+function validateColumnDef(column: ColumnDef): void {
+  assertNonEmptyString(column.key, "DOCGEN_INVALID_SCHEMA");
+  assertNonEmptyString(column.label, "DOCGEN_INVALID_SCHEMA");
+  if (!scalarTypes.includes(column.type)) {
+    invalid("DOCGEN_INVALID_SCHEMA");
+  }
+}
+
+function validateFieldDef(field: FieldDef): void {
+  assertNonEmptyString(field.key, "DOCGEN_INVALID_SCHEMA");
+  assertNonEmptyString(field.label, "DOCGEN_INVALID_SCHEMA");
+  if (!field.type) {
+    invalid("DOCGEN_INVALID_SCHEMA");
+  }
+
+  if (field.type === "table") {
+    if (!Array.isArray(field.columns) || field.columns.length === 0) {
+      invalid("DOCGEN_INVALID_SCHEMA");
+    }
+    field.columns.forEach(validateColumnDef);
+    return;
+  }
+  if (field.type === "repeat") {
+    if (!Array.isArray(field.itemFields) || field.itemFields.length === 0) {
+      invalid("DOCGEN_INVALID_SCHEMA");
+    }
+    field.itemFields.forEach(validateFieldDef);
+    return;
+  }
+
+  if (field.type === "rich") {
+    return;
+  }
+
+  if (!scalarTypes.includes(field.type)) {
+    invalid("DOCGEN_INVALID_SCHEMA");
+  }
+}
+
+function validateSectionDef(section: SectionDef, values: DocumentValues): void {
+  assertNonEmptyString(section.key, "DOCGEN_INVALID_SCHEMA");
+  assertNonEmptyString(section.num, "DOCGEN_INVALID_SCHEMA");
+  assertNonEmptyString(section.title, "DOCGEN_INVALID_SCHEMA");
+
+  if (!Array.isArray(section.fields)) {
+    invalid("DOCGEN_INVALID_SCHEMA");
+  }
+  section.fields.forEach(validateFieldDef);
+
+  const value = values[section.key];
+  if (value !== undefined && !isObject(value)) {
+    invalid("DOCGEN_INVALID_VALUES");
+  }
+}
+
 function normalizeDocumentPayload(input: unknown): DocumentPayload {
   if (!isObject(input)) {
-    throw new Error("DOCGEN_INVALID_PAYLOAD");
+    invalid("DOCGEN_INVALID_PAYLOAD");
   }
 
   const { documentType, documentCode, title, schema, values } = input;
@@ -21,16 +102,20 @@ function normalizeDocumentPayload(input: unknown): DocumentPayload {
     !Array.isArray(schema.sections) ||
     !isObject(values)
   ) {
-    throw new Error("DOCGEN_INVALID_PAYLOAD");
+    invalid("DOCGEN_INVALID_PAYLOAD");
   }
 
-  return {
+  const payload = {
     documentType,
     documentCode,
     title,
     schema: { sections: schema.sections as DocumentTypeSchema["sections"] },
     values: values as DocumentValues,
   } satisfies DocumentPayload;
+
+  payload.schema.sections.forEach((section) => validateSectionDef(section, payload.values));
+
+  return payload;
 }
 
 export async function generateDocx(payload: unknown): Promise<Uint8Array> {

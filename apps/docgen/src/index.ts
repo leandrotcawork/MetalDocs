@@ -17,6 +17,11 @@ app.post("/generate", async (req, res) => {
     );
     res.send(Buffer.from(buf));
   } catch (err) {
+    const message = err instanceof Error ? err.message : "DOCGEN_GENERATE_FAILED";
+    if (message.startsWith("DOCGEN_INVALID_")) {
+      res.status(400).json({ error: message });
+      return;
+    }
     console.error("DOCGEN_GENERATE_FAILED", err);
     res.status(500).json({ error: "DOCGEN_GENERATE_FAILED" });
   }

@@ -647,3 +647,10 @@ Wrong:   Accepting empty `sections`, `fields`, `table.columns`, or `repeat.itemF
 Correct: Reject empty top-level and nested schema definitions explicitly and return structured domain codes for each invalid shape
 Rule:    Runtime schema validation should treat missing structure as a hard error, not as a no-op.
 Layer:   domain
+
+## Lesson CL - Docgen must validate payloads before rendering
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Rendering docx payloads without validating nested schema/values and returning only 500 errors on failures
+Correct: Validate schema/values upfront and return 400 for invalid payloads before rendering
+Rule:    Renderer services should fail fast with client errors for invalid inputs to avoid opaque server failures.
+Layer:   infrastructure

@@ -93,8 +93,6 @@ export interface DocumentPayload {
   documentType: string;
   documentCode: string;
   title: string;
-  version?: string;
-  status?: string;
   schema: DocumentTypeSchema;
   values: DocumentValues;
 }

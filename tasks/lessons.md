@@ -739,10 +739,3 @@ Wrong:   Treating draft versions as immutable and always creating a new version 
 Correct: Allow in-place updates when the version is in DRAFT
 Rule:    Immutability applies to non-draft versions only; draft updates can be in-place
 Layer:   process
-
-## Lesson CZ - docx option objects must match supported keys and enum values exactly
-Date: 2026-04-01 | Trigger: build failure
-Wrong:   Passed unsupported table border keys and used enum key unions where docx expected enum values
-Correct: Use only documented docx option keys, and type alignment/border values from the enum value union instead of the key names
-Rule:    Third-party renderers validate option shapes strictly, so wrappers must mirror the library's declared value contracts exactly.
-Layer:   infrastructure

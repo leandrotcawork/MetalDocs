@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { fetchDocumentEditorBundle, fetchDocumentTypeBundle, saveDocumentContent } from "../../../api/documents";
 import { useDocumentsStore } from "../../../store/documents.store";
 import { createSchemaDocumentEditorState, normalizeSchemaDocumentEditorBundle } from "./schemaRuntimeAdapters";
@@ -15,6 +15,7 @@ export function useSchemaDocumentEditor(options: UseSchemaDocumentEditorOptions 
   const selectedDocumentTypeKey = useDocumentsStore((state) => state.selectedDocumentTypeKey);
   const setSchemaDocumentEditor = useDocumentsStore((state) => state.setSchemaDocumentEditor);
   const setSelectedDocumentTypeKey = useDocumentsStore((state) => state.setSelectedDocumentTypeKey);
+  const initialValuesRef = useRef<Record<string, unknown>>(options.initialValues ?? {});
 
   useEffect(() => {
     const nextTypeKey = options.typeKey ?? "";
@@ -73,7 +74,7 @@ export function useSchemaDocumentEditor(options: UseSchemaDocumentEditorOptions 
     if (!typeKey) {
       setSchemaDocumentEditor(
         createSchemaDocumentEditorState({
-          values: options.initialValues ?? {},
+          values: initialValuesRef.current,
         }),
       );
       return;
@@ -83,7 +84,7 @@ export function useSchemaDocumentEditor(options: UseSchemaDocumentEditorOptions 
       createSchemaDocumentEditorState({
         documentId: "",
         typeKey,
-        values: options.initialValues ?? {},
+        values: initialValuesRef.current,
         status: "loading",
       }),
     );
@@ -98,7 +99,7 @@ export function useSchemaDocumentEditor(options: UseSchemaDocumentEditorOptions 
           documentId: "",
           typeKey: bundle.typeKey || typeKey,
           schema: bundle.schema,
-          values: options.initialValues ?? {},
+          values: initialValuesRef.current,
           status: "idle",
           bundle,
         }),
@@ -111,13 +112,13 @@ export function useSchemaDocumentEditor(options: UseSchemaDocumentEditorOptions 
         createSchemaDocumentEditorState({
           documentId: "",
           typeKey,
-          values: options.initialValues ?? {},
+          values: initialValuesRef.current,
           status: "error",
           error: error instanceof Error ? error.message : "Falha ao carregar o schema do documento.",
         }),
       );
     }
-  }, [options.documentId, options.initialValues, options.typeKey, setSchemaDocumentEditor]);
+  }, [options.documentId, options.typeKey, setSchemaDocumentEditor]);
 
   useEffect(() => {
     if (options.autoLoad === false) {

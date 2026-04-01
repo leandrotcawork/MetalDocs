@@ -682,3 +682,10 @@ Wrong:   Allowing non-hex color strings for section or rich text colors caused d
 Correct: Validate optional color fields as 6-digit hex (with or without #) before rendering
 Rule:    Renderer validation must include format checks for values passed into strict libraries.
 Layer:   infrastructure
+
+## Lesson CQ - Editor hooks should not reload on initialValues identity changes
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Using `initialValues` in hook dependencies caused refetches when callers passed new object instances
+Correct: Treat `initialValues` as one-time initialization data held in a ref
+Rule:    Editor hooks must avoid reloading on unstable object identities to prevent state churn.
+Layer:   frontend

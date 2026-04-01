@@ -1,8 +1,5 @@
 import { create } from "zustand";
-import type {
-  SchemaDocumentEditorState,
-  SchemaDocumentTypeBundleResponse,
-} from "../features/documents/runtime/schemaRuntimeTypes";
+import type { SchemaDocumentEditorState } from "../features/documents/runtime/schemaRuntimeTypes";
 import type {
   AccessPolicyItem,
   AttachmentItem,
@@ -95,7 +92,6 @@ interface DocumentsStore {
   policyResourceId: string;
   selectedDocumentTypeKey: string;
   schemaDocumentEditor: SchemaDocumentEditorState;
-  schemaDocumentTypeBundle: SchemaDocumentTypeBundleResponse | null;
   setLoadState: (loadState: LoadState) => void;
   setDocuments: (documents: SearchDocumentItem[]) => void;
   setSelectedDocument: (selectedDocument: DocumentListItem | null) => void;
@@ -128,7 +124,6 @@ interface DocumentsStore {
       | SchemaDocumentEditorState
       | ((current: SchemaDocumentEditorState) => SchemaDocumentEditorState),
   ) => void;
-  setSchemaDocumentTypeBundle: (schemaDocumentTypeBundle: SchemaDocumentTypeBundleResponse | null) => void;
 }
 
 export const useDocumentsStore = create<DocumentsStore>((set) => ({
@@ -171,7 +166,6 @@ export const useDocumentsStore = create<DocumentsStore>((set) => ({
     bundle: null,
     document: null,
   },
-  schemaDocumentTypeBundle: null,
   setLoadState: (loadState) => set({ loadState }),
   setDocuments: (documents) => set({ documents }),
   setSelectedDocument: (selectedDocument) => set({ selectedDocument }),
@@ -207,7 +201,6 @@ export const useDocumentsStore = create<DocumentsStore>((set) => ({
       schemaDocumentEditor:
         typeof schemaDocumentEditor === "function" ? schemaDocumentEditor(state.schemaDocumentEditor) : schemaDocumentEditor,
     })),
-  setSchemaDocumentTypeBundle: (schemaDocumentTypeBundle) => set({ schemaDocumentTypeBundle }),
 }));
 
 export type { DocumentFormState, DocumentsHubMode, DocumentsHubStatus, DocumentsHubView, RecentDocumentItem };

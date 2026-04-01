@@ -746,3 +746,10 @@ Wrong:   Applying Fix 1 directly on the `main` branch before user approval
 Correct: Create a feature branch/worktree for any implementation work unless the user explicitly requests main
 Rule:    Production branches are protected by policy; do not commit to `main` without explicit user consent.
 Layer:   process
+
+## Lesson CY - Shared table width constants must sum to the declared table width
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Header cell widths were split as `6000 + 2220 + 2220` and `6000 + 4440`, which exceeded the `9360` DXA content width
+Correct: Define the shared row constants so every header row totals the declared table width, and use the same constants in generator and runtime helpers
+Rule:    Shared table width constants must be audited against the table's declared width before shipping rendered documents.
+Layer:   infrastructure

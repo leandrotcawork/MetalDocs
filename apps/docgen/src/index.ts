@@ -4,6 +4,10 @@ import { generateDocx } from "./generate.js";
 const app = express();
 app.use(express.json({ limit: "10mb" }));
 
+app.get("/", (_req, res) => {
+  res.status(200).json({ ok: true });
+});
+
 app.post("/generate", async (req, res) => {
   try {
     const buf = await generateDocx(req.body);
@@ -12,7 +16,8 @@ app.post("/generate", async (req, res) => {
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     );
     res.send(Buffer.from(buf));
-  } catch {
+  } catch (err) {
+    console.error("DOCGEN_GENERATE_FAILED", err);
     res.status(500).json({ error: "DOCGEN_GENERATE_FAILED" });
   }
 });

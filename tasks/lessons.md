@@ -634,3 +634,16 @@ Wrong:   Assuming runtime values should be rejected even when a document type sc
 Correct: Skip value validation until the schema defines fields; once fields exist, validate only those declared fields
 Rule:    Runtime schema enforcement must be permissive by default and only activate where the schema explicitly declares structure.
 Layer:   application
+## Lesson CJ - docx option objects must match library shapes exactly
+Date: 2026-04-01 | Trigger: build failure
+Wrong:   Passing `underline: true` and partial image alt text objects into `docx` helpers
+Correct: Use the library's expected option objects, including `UnderlineType` and full `DocPropertiesOptions` fields such as `name`
+Rule:    Third-party renderers often validate nested option shapes strictly, so wrappers must follow the exact documented object contract.
+Layer:   infrastructure
+
+## Lesson CK - Schema validation must fail closed on empty nested definitions
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Accepting empty `sections`, `fields`, `table.columns`, or `repeat.itemFields` let invalid runtime schemas pass validation
+Correct: Reject empty top-level and nested schema definitions explicitly and return structured domain codes for each invalid shape
+Rule:    Runtime schema validation should treat missing structure as a hard error, not as a no-op.
+Layer:   domain

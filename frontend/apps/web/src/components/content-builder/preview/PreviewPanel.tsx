@@ -29,7 +29,7 @@ export function PreviewPanel({
     });
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [collapsed]);
 
   if (collapsed) {
     return (

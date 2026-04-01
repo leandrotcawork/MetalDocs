@@ -49,7 +49,7 @@ export function DynamicPreview({
             <section
               key={section.key}
               data-preview-section={section.key}
-              className={`${styles.section} ${isActive ? styles.sectionActive : ""}`}
+              className={`${styles.section} ${styles.previewSectionMode} ${isActive ? styles.sectionActive : ""}`}
             >
               <div className={styles.sectionHeader}>
                 <div className={styles.sectionHeading}>

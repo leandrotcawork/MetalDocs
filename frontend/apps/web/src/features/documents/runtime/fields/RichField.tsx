@@ -29,28 +29,51 @@ const RICH_PREVIEW_ALLOWED_TAGS = [
   "blockquote",
   "br",
   "code",
+  "col",
+  "colgroup",
   "em",
   "h1",
   "h2",
   "h3",
+  "h4",
+  "h5",
+  "h6",
   "hr",
   "img",
   "li",
   "ol",
   "p",
   "pre",
+  "s",
   "span",
   "strong",
-  "s",
+  "sub",
+  "sup",
   "table",
   "tbody",
   "td",
   "th",
   "thead",
   "tr",
+  "u",
   "ul",
 ];
-const RICH_PREVIEW_ALLOWED_ATTR = ["alt", "colspan", "height", "href", "rel", "rowspan", "src", "style", "target", "title", "width"];
+const RICH_PREVIEW_ALLOWED_ATTR = [
+  "alt",
+  "colspan",
+  "colwidth",
+  "height",
+  "href",
+  "loading",
+  "rel",
+  "rowspan",
+  "span",
+  "src",
+  "style",
+  "target",
+  "title",
+  "width",
+];
 
 export function RichField({ field, value, mode, onChange }: RichFieldProps) {
   const content = useMemo(() => normalizeRichValue(value), [value]);
@@ -318,3 +341,4 @@ function normalizeRichValue(value: unknown) {
 
   return EMPTY_HTML;
 }
+

@@ -11,10 +11,6 @@ import (
 	"metaldocs/internal/platform/authn"
 )
 
-type DocumentRuntimeContentRequest struct {
-	Values map[string]any `json:"values"`
-}
-
 func (h *Handler) handleDocumentRuntimeContentPut(w http.ResponseWriter, r *http.Request, documentID string) {
 	traceID := requestTraceID(r)
 	userID := strings.TrimSpace(authn.UserIDFromContext(r.Context()))
@@ -23,15 +19,24 @@ func (h *Handler) handleDocumentRuntimeContentPut(w http.ResponseWriter, r *http
 		return
 	}
 
-	var req DocumentRuntimeContentRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && !errors.Is(err, io.EOF) {
+	var payload map[string]any
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil && !errors.Is(err, io.EOF) {
 		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid JSON payload", traceID)
 		return
+	}
+	values := payload
+	if rawValues, ok := payload["values"]; ok {
+		if typed, ok := rawValues.(map[string]any); ok {
+			values = typed
+		} else {
+			writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid values payload", traceID)
+			return
+		}
 	}
 
 	_, err := h.service.SaveDocumentValuesAuthorized(r.Context(), domain.SaveDocumentValuesCommand{
 		DocumentID: documentID,
-		Values:     req.Values,
+		Values:     values,
 		TraceID:    traceID,
 	})
 	if err != nil {

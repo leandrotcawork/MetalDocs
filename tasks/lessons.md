@@ -607,6 +607,13 @@ Correct: Reject empty `table.columns` and `repeat.itemFields` when validating sc
 Rule:    Nested runtime field definitions must be non-empty to avoid invalid schemas reaching persistence and rendering.
 Layer:   application
 
+## Lesson CH - Handler payloads must match OpenAPI shapes
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Handler accepted only `{ "values": {...} }` while OpenAPI defined a plain JSON object body
+Correct: Accept the OpenAPI shape (plain object) or update the spec and tests together
+Rule:    Handler request parsing must match the OpenAPI contract to avoid client/server drift.
+Layer:   delivery
+
 ## Lesson CF - Worktree edits must target the active git root explicitly
 Date: 2026-03-31 | Trigger: correction
 Wrong:   Applying a patch without an explicit worktree path wrote changes into the parent checkout copy instead of the isolated worktree

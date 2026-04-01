@@ -166,7 +166,7 @@ func TestCreateAndListVersionsFlow(t *testing.T) {
 func TestDocumentsHandler_PutRuntimeContent(t *testing.T) {
 	mux := newRuntimeContentTestMux(t)
 
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/documents/doc-1/content", strings.NewReader(`{"values":{"objetivo":"Texto"}}`))
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/documents/doc-1/content", strings.NewReader(`{"objetivo":"Texto"}`))
 	req.Header.Set("Content-Type", "application/json")
 	req = req.WithContext(iamdomain.WithAuthContext(req.Context(), "editor-local", []iamdomain.Role{iamdomain.RoleEditor}))
 	rec := httptest.NewRecorder()

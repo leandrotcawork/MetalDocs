@@ -15,7 +15,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
 }
 
 const scalarTypes: ScalarFieldType[] = ["text", "textarea", "number", "date", "select", "checkbox"];
-const hexColor = /^#?[0-9a-fA-F]{6}$|^#?[0-9a-fA-F]{3}$/;
+const hexColor = /^#?[0-9a-fA-F]{6}$/;
 
 function asString(value: unknown): string | null {
   return typeof value === "string" ? value.trim() : null;

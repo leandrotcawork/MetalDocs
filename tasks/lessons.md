@@ -679,6 +679,6 @@ Layer:   infrastructure
 ## Lesson CP - Docgen should validate hex colors
 Date: 2026-04-01 | Trigger: correction
 Wrong:   Allowing non-hex color strings for section or rich text colors caused docx render failures
-Correct: Validate optional color fields as 3/6-digit hex (with or without #) before rendering
+Correct: Validate optional color fields as 6-digit hex (with or without #) before rendering
 Rule:    Renderer validation must include format checks for values passed into strict libraries.
 Layer:   infrastructure

@@ -23,7 +23,7 @@ export function renderSection(section: SectionDef, values: SectionValues): Array
             borders: cellBorder(BorderStyle.NONE),
             alignment: AlignmentType.CENTER,
             children: [
-              fieldParagraph(`${section.num}  —  ${section.title.toUpperCase()}`, {
+              fieldParagraph(`${section.num} — ${section.title.toUpperCase()}`, {
                 bold: true,
                 color: C.white,
                 size: 20,

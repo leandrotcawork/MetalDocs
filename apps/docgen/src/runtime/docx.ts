@@ -42,8 +42,11 @@ export const PAGE_MARGIN = 900;
 export const CONTENT_WIDTH = 9360;
 export const DEFAULT_FONT = "Arial";
 export const DEFAULT_FONT_SIZE = 20;
-export const HEADER_ROW_1 = [6000, 2220, 2220] as const;
-export const HEADER_ROW_2 = [6000, 4440] as const;
+export const HEADER_TITLE_WIDTH = 6000;
+export const HEADER_META_WIDTH = CONTENT_WIDTH - HEADER_TITLE_WIDTH;
+export const HEADER_META_COLUMN_WIDTH = HEADER_META_WIDTH / 2;
+export const HEADER_ROW_1 = [HEADER_TITLE_WIDTH, HEADER_META_COLUMN_WIDTH, HEADER_META_COLUMN_WIDTH] as const;
+export const HEADER_ROW_2 = [HEADER_TITLE_WIDTH, HEADER_META_WIDTH] as const;
 export const LABEL_VALUE_ROW = [2200, 7160] as const;
 export const REPEAT_ROW = [4680, 4680] as const;
 

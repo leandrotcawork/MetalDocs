@@ -5,6 +5,9 @@ import {
   CONTENT_WIDTH,
   DEFAULT_FONT,
   DEFAULT_FONT_SIZE,
+  HEADER_ROW_1,
+  HEADER_ROW_2,
+  HEADER_TITLE_WIDTH,
   PAGE_HEIGHT,
   PAGE_MARGIN,
   PAGE_WIDTH,
@@ -294,7 +297,7 @@ function buildHeader(runtime: DocumentPayload): Table {
       new TableRow({
         children: [
           makeCell({
-            width: 6000,
+            width: HEADER_TITLE_WIDTH,
             fill: C.purple,
             children: [
               paragraph([run("PROCEDIMENTO OPERACIONAL", { bold: true, color: C.white })], {
@@ -306,7 +309,7 @@ function buildHeader(runtime: DocumentPayload): Table {
             ],
           }),
           makeCell({
-            width: 2220,
+            width: HEADER_ROW_1[1],
             fill: C.purpleLight,
             children: [
               paragraph([run("C\u00F3digo", { color: C.purple })], { alignment: AlignmentType.CENTER }),
@@ -316,7 +319,7 @@ function buildHeader(runtime: DocumentPayload): Table {
             ],
           }),
           makeCell({
-            width: 2220,
+            width: HEADER_ROW_1[2],
             fill: C.purpleLight,
             children: [
               paragraph([run("Vers\u00E3o", { color: C.purple })], { alignment: AlignmentType.CENTER }),
@@ -330,12 +333,12 @@ function buildHeader(runtime: DocumentPayload): Table {
       new TableRow({
         children: [
           makeCell({
-            width: 6000,
+            width: HEADER_TITLE_WIDTH,
             fill: C.teal,
             children: [paragraph([run(runtime.documentType, { bold: true, color: C.white })], { alignment: AlignmentType.CENTER })],
           }),
           makeCell({
-            width: 4440,
+            width: HEADER_ROW_2[1],
             columnSpan: 2,
             fill: C.tealLight,
             children: [
@@ -346,7 +349,7 @@ function buildHeader(runtime: DocumentPayload): Table {
         ],
       }),
     ],
-    [6000, 2220, 2220],
+    HEADER_ROW_1,
     {
       width: CONTENT_WIDTH,
       borders: tableBorder(BorderStyle.NONE),
@@ -367,7 +370,7 @@ function buildFooter(runtime: DocumentPayload): Footer {
           top: { style: BorderStyle.SINGLE, size: 4, color: C.grayMid },
         },
         children: [
-          run(`Documento de uso interno  |  Elaborado por: ${elaboradoPor}  |  P\u00E1gina `, {
+          run(`Elaborado por: ${elaboradoPor}  |  P\u00E1gina `, {
             font: DEFAULT_FONT,
             size: DEFAULT_FONT_SIZE,
           }),

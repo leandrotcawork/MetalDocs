@@ -101,8 +101,25 @@ function renderTableField(field: TableFieldDef, value: unknown): Array<Paragraph
   ];
 }
 
-function renderRepeatScalarGrid(fields: readonly FieldDef[], record: Record<string, unknown>): Array<Paragraph | Table> {
-  const scalarFields = fields.filter(isScalarField);
+function repeatItemHeading(field: RepeatFieldDef, record: Record<string, unknown>, index: number): { text: string; sourceKey?: string } {
+  const candidates = ["titulo", "title", "nome", "name"] as const;
+  for (const key of candidates) {
+    if (record[key] !== undefined && record[key] !== null) {
+      const heading = renderScalarValue(record[key]);
+      if (heading && heading !== "N/A") {
+        return { text: heading, sourceKey: key };
+      }
+    }
+  }
+  return { text: `${field.label} ${index + 1}` };
+}
+
+function renderRepeatScalarGrid(
+  fields: readonly FieldDef[],
+  record: Record<string, unknown>,
+  excludedKeys: readonly string[] = []
+): Array<Paragraph | Table> {
+  const scalarFields = fields.filter((field) => isScalarField(field) && !excludedKeys.includes(field.key));
   const nodes: Array<Paragraph | Table> = [];
 
   for (let index = 0; index < scalarFields.length; index += 2) {
@@ -184,11 +201,10 @@ function renderRepeatField(field: RepeatFieldDef, value: unknown, context: Rende
   const items = Array.isArray(value) ? value : [];
   const nodes: Array<Paragraph | Table> = [];
   const sectionColor = (context.sectionColor ?? C.gray).replace(/^#/, "").toUpperCase();
-  const headerTextColor = sectionColor === C.coral ? C.coral : sectionColor;
-  const headerBold = sectionColor === C.coral;
 
   items.forEach((item, index) => {
     const record = typeof item === "object" && item !== null ? (item as Record<string, unknown>) : {};
+    const heading = repeatItemHeading(field, record, index);
     nodes.push(
       makeTable(
         [
@@ -198,9 +214,9 @@ function renderRepeatField(field: RepeatFieldDef, value: unknown, context: Rende
                 width: CONTENT_WIDTH,
                 fill: mixWithWhite(sectionColor, 0.3),
                 children: [
-                  fieldParagraph(`Item ${index + 1}`, {
-                    bold: headerBold,
-                    color: headerTextColor,
+                  fieldParagraph(heading.text, {
+                    bold: true,
+                    color: sectionColor,
                     size: 18,
                   }),
                 ],
@@ -213,7 +229,7 @@ function renderRepeatField(field: RepeatFieldDef, value: unknown, context: Rende
       )
     );
 
-    nodes.push(...renderRepeatScalarGrid(field.itemFields, record));
+    nodes.push(...renderRepeatScalarGrid(field.itemFields, record, heading.sourceKey ? [heading.sourceKey] : []));
 
     field.itemFields
       .filter((nestedField) => !isScalarField(nestedField))
@@ -226,6 +242,7 @@ function renderRepeatField(field: RepeatFieldDef, value: unknown, context: Rende
 }
 
 function renderRichField(field: RichFieldDef, value: unknown): Array<Paragraph | Table> {
+  void field;
   if (!Array.isArray(value)) {
     return [fieldParagraph("N/A", { color: C.gray, italic: true, size: 18 })];
   }

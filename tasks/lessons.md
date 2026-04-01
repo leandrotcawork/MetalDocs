@@ -746,3 +746,31 @@ Wrong:   Passed unsupported table border keys and used enum key unions where doc
 Correct: Use only documented docx option keys, and type alignment/border values from the enum value union instead of the key names
 Rule:    Third-party renderers validate option shapes strictly, so wrappers must mirror the library's declared value contracts exactly.
 Layer:   infrastructure
+
+## Lesson CX - Never implement on main without explicit consent
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Applying Fix 1 directly on the `main` branch before user approval
+Correct: Create a feature branch/worktree for any implementation work unless the user explicitly requests main
+Rule:    Production branches are protected by policy; do not commit to `main` without explicit user consent.
+Layer:   process
+
+## Lesson CY - Export chrome should derive from authored runtime data
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Repeat items rendered as generic "Item N" blocks and the footer carried boilerplate text unrelated to the payload
+Correct: Derive repeat item headings from item data when available and keep footer copy limited to authored metadata such as elaborator and page number
+Rule:    User-facing export chrome should come from the runtime payload, not hardcoded filler labels.
+Layer:   infrastructure
+
+## Lesson DA - Header row constants must sum to the declared content width
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Header cells were sized `6000 + 2220 + 2220` and `6000 + 4440`, which exceeded the `9360` DXA content width
+Correct: Keep the shared header row constants aligned to the declared content width and reuse them in both generator and runtime helpers
+Rule:    Any shared table row constants must be verified against the table's declared width before release.
+Layer:   infrastructure
+
+## Lesson DB - Repeat item headings should inherit section color
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Repeat item headers used white text on a lightened section fill, which reduced contrast and ignored the section color family
+Correct: Render repeat item headings in the section color itself while keeping the lightened background fill
+Rule:    Tone-on-tone repeat headers should keep the foreground on the section color family instead of forcing white text.
+Layer:   infrastructure

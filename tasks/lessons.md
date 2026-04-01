@@ -614,6 +614,13 @@ Correct: Install and import the specific Tiptap subpackages that own each node/e
 Rule:    Rich-text editor integrations should follow the library's package boundaries exactly instead of assuming a monolithic export surface.
 Layer:   frontend
 
+## Lesson CL - Preview sanitizers must preserve editor-rendered table structure
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Stripping `colgroup`, `col`, and width-related table attributes from rich preview HTML removed Tiptap's sizing output
+Correct: Keep the table wrapper tags and the column sizing attributes/styles that the editor emits
+Rule:    Preview sanitizers must preserve the structural tags and metadata required for editor-rendered table layout to remain faithful.
+Layer:   frontend
+
 ## Lesson CH - docx option objects must match library shapes exactly
 Date: 2026-04-01 | Trigger: build failure
 Wrong:   Passing `underline: true` and partial image alt text objects into `docx` helpers

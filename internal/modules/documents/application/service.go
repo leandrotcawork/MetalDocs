@@ -11,6 +11,7 @@ import (
 	"metaldocs/internal/modules/documents/domain"
 	"metaldocs/internal/platform/messaging"
 	"metaldocs/internal/platform/render/carbone"
+	"metaldocs/internal/platform/render/docgen"
 )
 
 type Clock interface {
@@ -31,6 +32,7 @@ type Service struct {
 	clock            Clock
 	carboneClient    *carbone.Client
 	carboneTemplates *carbone.TemplateRegistry
+	docgenClient     *docgen.Client
 }
 
 func NewService(repo domain.Repository, publisher messaging.Publisher, clock Clock) *Service {
@@ -53,6 +55,11 @@ func (s *Service) WithAuditWriter(writer auditdomain.Writer) *Service {
 func (s *Service) WithCarbone(client *carbone.Client, registry *carbone.TemplateRegistry) *Service {
 	s.carboneClient = client
 	s.carboneTemplates = registry
+	return s
+}
+
+func (s *Service) WithDocgenClient(client *docgen.Client) *Service {
+	s.docgenClient = client
 	return s
 }
 

@@ -1357,8 +1357,16 @@ func (h *Handler) handleDocumentSubRoutes(w http.ResponseWriter, r *http.Request
 		}
 		return
 	}
+	if len(parts) == 2 && strings.TrimSpace(parts[0]) != "" && parts[1] == "content" && r.Method == http.MethodPut {
+		h.handleDocumentRuntimeContentPut(w, r, parts[0])
+		return
+	}
 	if len(parts) == 3 && strings.TrimSpace(parts[0]) != "" && parts[1] == "content" && parts[2] == "render-pdf" && r.Method == http.MethodPost {
 		h.handleDocumentContentRenderPDF(w, r, parts[0])
+		return
+	}
+	if len(parts) == 3 && strings.TrimSpace(parts[0]) != "" && parts[1] == "export" && parts[2] == "docx" && r.Method == http.MethodPost {
+		h.handleDocumentExportDocx(w, r, parts[0])
 		return
 	}
 	if len(parts) == 3 && strings.TrimSpace(parts[0]) != "" && parts[1] == "content" && parts[2] == "pdf" && r.Method == http.MethodGet {

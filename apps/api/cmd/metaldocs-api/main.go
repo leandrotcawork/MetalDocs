@@ -69,7 +69,8 @@ func main() {
 	docService := docapp.NewService(deps.DocumentsRepo, deps.Publisher, nil).
 		WithAttachmentStore(deps.AttachmentStore).
 		WithAuditWriter(deps.AuditWriter).
-		WithCarbone(deps.CarboneClient, deps.CarboneTemplates)
+		WithCarbone(deps.CarboneClient, deps.CarboneTemplates).
+		WithDocgenClient(deps.DocgenClient)
 	auditHandler := auditdelivery.NewHandler(auditService)
 	docHandler := docdelivery.NewHandler(docService).
 		WithAttachmentDownloads(security.NewAttachmentSigner(attachmentsCfg.DownloadSecret), time.Duration(attachmentsCfg.DownloadTTLSeconds)*time.Second)

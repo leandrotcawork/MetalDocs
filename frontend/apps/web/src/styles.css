@@ -3296,44 +3296,6 @@ td small {
   background: var(--surface-2);
 }
 
-.preview-panel-tabs {
-  display: flex;
-  gap: 2px;
-  flex: 1;
-}
-
-.preview-panel-tab {
-  padding: 5px 14px;
-  border: none;
-  background: none;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-muted);
-  border-bottom: 2px solid transparent;
-  transition: color 0.15s, border-color 0.15s;
-  position: relative;
-  font-family: inherit;
-}
-
-.preview-panel-tab:hover {
-  color: var(--text-soft);
-}
-
-.preview-panel-tab.is-active {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
-}
-
-.preview-panel-tab-badge {
-  position: absolute;
-  top: 4px;
-  right: 2px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--warning);
-}
 
 .preview-panel-body {
   flex: 1;
@@ -3341,7 +3303,65 @@ td small {
   overflow-x: hidden;
   padding: 16px;
   background: var(--bg);
-  container-type: inline-size;
+}
+
+.preview-panel-title-text {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--vinho-d);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.preview-panel-pdf-wrapper {
+  position: relative;
+  min-height: 200px;
+}
+
+.preview-panel-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.preview-panel-overlay.is-saving {
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--vinho-d);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.preview-panel-overlay.is-stale {
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 8px 10px;
+}
+
+.preview-panel-stale-badge {
+  background: rgba(61, 28, 30, 0.75);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.preview-panel-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid color-mix(in srgb, var(--vinho) 25%, transparent);
+  border-top-color: var(--vinho);
+  border-radius: 50%;
+  animation: preview-spin 0.6s linear infinite;
+}
+
+@keyframes preview-spin {
+  to { transform: rotate(360deg); }
 }
 
 .preview-panel-pdf {
@@ -3350,126 +3370,6 @@ td small {
   align-items: center;
 }
 
-/* ================================================================
-   LIVE EDITOR — Document Preview (A4 page rendering)
-   ================================================================ */
-
-.preview-document {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-}
-
-.preview-document-page {
-  background: var(--surface);
-  border-radius: 4px;
-  box-shadow: 0 2px 12px rgba(74, 33, 33, 0.08);
-  padding: 32px 28px 24px;
-  width: 700px;
-  max-width: none;
-  font-size: 11px;
-  line-height: 1.55;
-  color: var(--text);
-  position: relative;
-  zoom: 0.6;
-  margin: 0 auto;
-}
-
-@container (min-width: 650px) {
-  .preview-document-page {
-    zoom: 0.88;
-  }
-}
-
-.preview-doc-header-wrapper {
-  margin-bottom: 1.25rem;
-}
-
-.preview-doc-header-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.82rem;
-}
-
-.preview-doc-cell {
-  padding: 0.4rem 0.6rem;
-  vertical-align: top;
-  border: 1px solid #ccc;
-}
-
-.preview-doc-cell--purple {
-  background: #5b2d82;
-  color: #fff;
-  width: 60%;
-}
-
-.preview-doc-cell--teal {
-  background: #008080;
-  color: #fff;
-  width: 60%;
-}
-
-.preview-doc-cell--meta {
-  width: 20%;
-}
-
-.preview-doc-cell--status {
-  /* spans 2 cols */
-}
-
-.preview-doc-type-label {
-  display: block;
-  font-size: 0.7rem;
-  opacity: 0.85;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-bottom: 0.15rem;
-}
-
-.preview-doc-title {
-  display: block;
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
-.preview-doc-profile-label {
-  display: block;
-  font-weight: 600;
-  font-size: 0.85rem;
-}
-
-.preview-doc-meta-label {
-  display: block;
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #666;
-  margin-bottom: 0.1rem;
-}
-
-.preview-doc-meta-value {
-  display: block;
-  font-weight: 600;
-  font-size: 0.82rem;
-}
-
-.preview-document-content {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.preview-document-footer {
-  display: flex;
-  justify-content: space-between;
-  padding-top: 10px;
-  margin-top: 20px;
-  border-top: 1px solid var(--border);
-  font-size: 8px;
-  color: var(--text-muted);
-  font-family: "DM Mono", monospace;
-}
 
 /* ================================================================
    LIVE EDITOR — Preview Section Blocks

@@ -2,17 +2,14 @@ import type { ReactNode } from "react";
 import styles from "../DynamicEditor.module.css";
 import type { RuntimeField, RuntimeRepeatField } from "../schemaRuntimeTypes";
 
-type RuntimeMode = "edit" | "preview";
-
 type RepeatFieldProps = {
   field: RuntimeRepeatField;
   value: unknown;
-  mode: RuntimeMode;
   onChange?: (next: unknown) => void;
   renderField: (field: RuntimeField, value: unknown, onChange?: (next: unknown) => void) => ReactNode;
 };
 
-export function RepeatField({ field, value, mode, onChange, renderField }: RepeatFieldProps) {
+export function RepeatField({ field, value, onChange, renderField }: RepeatFieldProps) {
   const items = normalizeItems(value);
   const itemLabel = field.itemLabel ?? field.label ?? field.key;
   const singleValueField = field.itemFields.length === 1 && field.itemFields[0].kind === "scalar";
@@ -26,7 +23,7 @@ export function RepeatField({ field, value, mode, onChange, renderField }: Repea
       {field.description && <div className={styles.fieldDescription}>{field.description}</div>}
       <div className={styles.repeatShell}>
         {items.length === 0 ? (
-          <div className={styles.repeatEmpty}>{mode === "edit" ? "Nenhum item adicionado." : "—"}</div>
+          <div className={styles.repeatEmpty}>Nenhum item adicionado.</div>
         ) : (
           items.map((item, index) => (
             <div key={`${field.key}-${index}`} className={styles.repeatItem}>
@@ -34,15 +31,13 @@ export function RepeatField({ field, value, mode, onChange, renderField }: Repea
                 <span className={styles.repeatItemTitle}>
                   {itemLabel} {index + 1}
                 </span>
-                {mode === "edit" && (
-                  <button
-                    type="button"
-                    className={`${styles.repeatButton} ${styles.repeatButtonDanger}`}
-                    onClick={() => onChange?.(items.filter((_, itemIndex) => itemIndex !== index).map(serializeRepeatItem))}
-                  >
-                    Remover
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className={`${styles.repeatButton} ${styles.repeatButtonDanger}`}
+                  onClick={() => onChange?.(items.filter((_, itemIndex) => itemIndex !== index).map(serializeRepeatItem))}
+                >
+                  Remover
+                </button>
               </div>
               <div className={styles.repeatFields}>
                 {field.itemFields.map((itemField) => {
@@ -52,13 +47,11 @@ export function RepeatField({ field, value, mode, onChange, renderField }: Repea
                       {renderField(
                         itemField,
                         itemValue,
-                        mode === "edit"
-                          ? (nextValue) => {
-                              const nextItems = items.slice();
-                              nextItems[index] = setItemFieldValue(item, itemField.key, singleValueField, nextValue);
-                              onChange?.(nextItems.map(serializeRepeatItem));
-                            }
-                          : undefined,
+                        (nextValue) => {
+                          const nextItems = items.slice();
+                          nextItems[index] = setItemFieldValue(item, itemField.key, singleValueField, nextValue);
+                          onChange?.(nextItems.map(serializeRepeatItem));
+                        },
                       )}
                     </div>
                   );
@@ -67,17 +60,15 @@ export function RepeatField({ field, value, mode, onChange, renderField }: Repea
             </div>
           ))
         )}
-        {mode === "edit" && (
-          <div className={styles.repeatActions}>
-            <button
-              type="button"
-              className={styles.repeatButton}
-              onClick={() => onChange?.([...items, createBlankItem(field.itemFields, singleValueField)].map(serializeRepeatItem))}
-            >
-              Adicionar item
-            </button>
-          </div>
-        )}
+        <div className={styles.repeatActions}>
+          <button
+            type="button"
+            className={styles.repeatButton}
+            onClick={() => onChange?.([...items, createBlankItem(field.itemFields, singleValueField)].map(serializeRepeatItem))}
+          >
+            Adicionar item
+          </button>
+        </div>
       </div>
     </div>
   );

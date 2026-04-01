@@ -117,22 +117,21 @@ export function DynamicEditor({ schema, value, activeSectionKey, onChange }: Dyn
   function renderRuntimeField(field: RuntimeField, fieldValue: unknown, onFieldChange?: (next: unknown) => void): ReactNode {
     switch (field.kind) {
       case "table":
-        return <TableField field={field as RuntimeTableField} value={fieldValue} mode="edit" onChange={onFieldChange} />;
+        return <TableField field={field as RuntimeTableField} value={fieldValue} onChange={onFieldChange} />;
       case "repeat":
         return (
           <RepeatField
             field={field as RuntimeRepeatField}
             value={fieldValue}
-            mode="edit"
             onChange={onFieldChange}
             renderField={renderRuntimeField}
           />
         );
       case "rich":
-        return <RichField field={field as RuntimeRichField} value={fieldValue} mode="edit" onChange={onFieldChange} />;
+        return <RichField field={field as RuntimeRichField} value={fieldValue} onChange={onFieldChange} />;
       case "scalar":
       default:
-        return <ScalarField field={field as RuntimeScalarField} value={fieldValue} mode="edit" onChange={onFieldChange} />;
+        return <ScalarField field={field as RuntimeScalarField} value={fieldValue} onChange={onFieldChange} />;
     }
   }
 }

@@ -159,17 +159,6 @@
   accent-color: var(--vinho);
 }
 
-.previewValue {
-  display: block;
-  padding: 0.15rem 0 0.35rem;
-  color: var(--vinho-d);
-  font-size: 0.88rem;
-  line-height: 1.5;
-}
-
-.previewEmpty {
-  color: var(--cinza-500);
-}
 
 .tableShell {
   overflow: hidden;
@@ -389,25 +378,6 @@
   color: var(--vinho-d);
 }
 
-.previewSectionMode.section {
-  border: none;
-  box-shadow: none;
-  background: transparent;
-  padding: 0;
-  margin-bottom: 1.5rem;
-  border-left: 3px solid var(--vinho);
-  padding-left: 0.75rem;
-}
-
-.previewSectionMode .sectionHeader {
-  background: transparent;
-  border-bottom: none;
-  padding: 0.25rem 0 0.5rem;
-}
-
-.previewSectionMode .sectionBadge {
-  display: none;
-}
 
 @media (max-width: 980px) {
   .sectionHeader {

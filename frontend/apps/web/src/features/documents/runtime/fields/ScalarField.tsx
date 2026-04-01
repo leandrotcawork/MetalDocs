@@ -1,18 +1,14 @@
 import styles from "../DynamicEditor.module.css";
 import type { RuntimeScalarField } from "../schemaRuntimeTypes";
 
-type RuntimeMode = "edit" | "preview";
-
 type ScalarFieldProps = {
   field: RuntimeScalarField;
   value: unknown;
-  mode: RuntimeMode;
   onChange?: (next: unknown) => void;
 };
 
-export function ScalarField({ field, value, mode, onChange }: ScalarFieldProps) {
+export function ScalarField({ field, value, onChange }: ScalarFieldProps) {
   const label = field.label ?? field.key;
-  const displayValue = getScalarDisplayValue(field, value);
 
   return (
     <div className={styles.field}>
@@ -21,9 +17,7 @@ export function ScalarField({ field, value, mode, onChange }: ScalarFieldProps) 
         {field.required && <span className={styles.requiredMark}>*</span>}
       </div>
       {field.description && <div className={styles.fieldDescription}>{field.description}</div>}
-      {mode === "preview" ? (
-        <div className={`${styles.previewValue} ${displayValue ? "" : styles.previewEmpty}`}>{displayValue || "—"}</div>
-      ) : field.input === "textarea" ? (
+      {field.input === "textarea" ? (
         <textarea
           className={`${styles.control} ${styles.textarea}`}
           value={String(value ?? "")}
@@ -74,12 +68,3 @@ export function ScalarField({ field, value, mode, onChange }: ScalarFieldProps) 
   );
 }
 
-function getScalarDisplayValue(field: RuntimeScalarField, value: unknown) {
-  if (field.input === "checkbox") {
-    return Boolean(value) ? "Sim" : "Nao";
-  }
-  if (value === null || value === undefined || value === "") {
-    return "";
-  }
-  return String(value);
-}

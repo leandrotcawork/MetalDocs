@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, type ChangeEvent } from "react";
-import DOMPurify from "dompurify";
 import type { Editor } from "@tiptap/react";
 import { Color } from "@tiptap/extension-color";
 import Image from "@tiptap/extension-image";
@@ -14,94 +13,17 @@ import type { RuntimeRichField } from "../schemaRuntimeTypes";
 import editorStyles from "../DynamicEditor.module.css";
 import styles from "../RichField.module.css";
 
-type RuntimeMode = "edit" | "preview";
-
 type RichFieldProps = {
   field: RuntimeRichField;
   value: unknown;
-  mode: RuntimeMode;
   onChange?: (next: unknown) => void;
 };
 
 const EMPTY_HTML = "<p></p>";
-const RICH_PREVIEW_ALLOWED_TAGS = [
-  "a",
-  "blockquote",
-  "br",
-  "code",
-  "col",
-  "colgroup",
-  "em",
-  "h1",
-  "h2",
-  "h3",
-  "h4",
-  "h5",
-  "h6",
-  "hr",
-  "img",
-  "li",
-  "ol",
-  "p",
-  "pre",
-  "s",
-  "span",
-  "strong",
-  "sub",
-  "sup",
-  "table",
-  "tbody",
-  "td",
-  "th",
-  "thead",
-  "tr",
-  "u",
-  "ul",
-];
-const RICH_PREVIEW_ALLOWED_ATTR = [
-  "alt",
-  "colspan",
-  "colwidth",
-  "height",
-  "href",
-  "loading",
-  "rel",
-  "rowspan",
-  "span",
-  "src",
-  "style",
-  "target",
-  "title",
-  "width",
-];
 
-export function RichField({ field, value, mode, onChange }: RichFieldProps) {
+export function RichField({ field, value, onChange }: RichFieldProps) {
   const content = useMemo(() => normalizeRichValue(value), [value]);
-  const safeContent = useMemo(
-    () =>
-      DOMPurify.sanitize(content || EMPTY_HTML, {
-        ALLOWED_ATTR: RICH_PREVIEW_ALLOWED_ATTR,
-        ALLOWED_TAGS: RICH_PREVIEW_ALLOWED_TAGS,
-        KEEP_CONTENT: true,
-      }),
-    [content],
-  );
   const label = field.label ?? field.key;
-
-  if (mode === "preview") {
-    return (
-      <div className={styles.richRoot}>
-        <div className={editorStyles.fieldLabel}>
-          <span>{label}</span>
-          {field.required && <span className={editorStyles.requiredMark}>*</span>}
-        </div>
-        {field.description && <div className={editorStyles.fieldDescription}>{field.description}</div>}
-        <div className={styles.editorShell}>
-          <div className={styles.previewBody} dangerouslySetInnerHTML={{ __html: safeContent }} />
-        </div>
-      </div>
-    );
-  }
 
   return <RichEditor field={field} value={content} onChange={onChange} label={label} />;
 }

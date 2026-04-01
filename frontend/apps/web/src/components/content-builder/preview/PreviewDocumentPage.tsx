@@ -13,28 +13,34 @@ export function PreviewDocumentPage({ profileCode, documentCode, title, document
   return (
     <div className="preview-document">
       <div className="preview-document-page">
-        <header className="preview-document-header">
-          <div className="preview-document-header-left">
-            <div className="preview-document-logo-area">
-              <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="var(--vinho)" strokeWidth="1.5">
-                <rect x="3" y="3" width="22" height="22" rx="4" />
-                <path d="M8 10h12M8 14h12M8 18h8" strokeLinecap="round" />
-              </svg>
-            </div>
-            <div className="preview-document-header-info">
-              <span className="preview-document-header-brand">MetalDocs</span>
-              <span className="preview-document-header-profile">{profileCode.toUpperCase()}</span>
-            </div>
-          </div>
-          <div className="preview-document-header-right">
-            <span className="preview-document-header-status">{documentStatus}</span>
-            <span className="preview-document-header-code">{documentCode}</span>
-            <span className="preview-document-header-version">v{version ?? "-"}</span>
-          </div>
-        </header>
-
-        <div className="preview-document-title-block">
-          <h1 className="preview-document-title">{title || "Sem titulo"}</h1>
+        <div className="preview-doc-header-wrapper">
+          <table className="preview-doc-header-table">
+            <tbody>
+              <tr>
+                <td className="preview-doc-cell preview-doc-cell--purple preview-doc-cell--title">
+                  <span className="preview-doc-type-label">{profileCode.toUpperCase()}</span>
+                  <span className="preview-doc-title">{title || "Sem titulo"}</span>
+                </td>
+                <td className="preview-doc-cell preview-doc-cell--meta">
+                  <span className="preview-doc-meta-label">Código</span>
+                  <span className="preview-doc-meta-value">{documentCode}</span>
+                </td>
+                <td className="preview-doc-cell preview-doc-cell--meta">
+                  <span className="preview-doc-meta-label">Versão</span>
+                  <span className="preview-doc-meta-value">{version ?? "-"}</span>
+                </td>
+              </tr>
+              <tr>
+                <td className="preview-doc-cell preview-doc-cell--teal">
+                  <span className="preview-doc-profile-label">{profileCode.toUpperCase()}</span>
+                </td>
+                <td className="preview-doc-cell preview-doc-cell--status" colSpan={2}>
+                  <span className="preview-doc-meta-label">Status</span>
+                  <span className="preview-doc-meta-value">{documentStatus}</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
         <div className="preview-document-content">{children}</div>

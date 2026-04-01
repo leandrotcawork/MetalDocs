@@ -593,6 +593,13 @@ Correct: Resolve workspace files with a root-relative path such as `filepath.Joi
 Rule:    Tests that validate repository artifacts must use a stable repo-root path instead of assuming the package working directory.
 Layer:   process
 
+## Lesson CM - Export actions must flush dirty drafts before server export
+Date: 2026-04-01 | Trigger: correction
+Wrong:   DOCX export called the export endpoint while the editor still had unsaved draft changes
+Correct: Save the draft first when the editor is dirty, and only then call the export endpoint
+Rule:    Any export action that depends on editor content must flush pending draft changes before generating server-side output.
+Layer:   frontend
+
 ## Lesson CQ - Editor hooks should not reload on initialValues identity changes
 Date: 2026-04-01 | Trigger: correction
 Wrong:   Using `initialValues` in hook dependencies caused refetches when callers passed new object instances

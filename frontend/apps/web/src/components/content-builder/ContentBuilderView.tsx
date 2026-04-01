@@ -272,7 +272,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
   }
 
   async function handleSave() {
-    if (!documentId) return;
+    if (!documentId) return false;
     dispatch({ type: "set_error", payload: { message: "" } });
     dispatch({ type: "set_status", payload: { status: "saving" } });
     try {
@@ -280,8 +280,10 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
       dispatch({ type: "set_pdf", payload: { pdfUrl: response.pdfUrl } });
       dispatch({ type: "load_success", payload: { contentDraft: contentDraft ?? {}, schema, version: response.version ?? null, pdfUrl: response.pdfUrl } });
       setLastSavedAt(new Date());
+      return true;
     } catch {
       dispatch({ type: "load_error", payload: { message: "Falha ao salvar o conteudo." } });
+      return false;
     }
   }
 
@@ -290,6 +292,10 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
     setIsExporting(true);
     dispatch({ type: "set_error", payload: { message: "" } });
     try {
+      if (status === "dirty") {
+        const saved = await handleSave();
+        if (!saved) return;
+      }
       const blob = await api.exportDocumentDocx(documentId);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");

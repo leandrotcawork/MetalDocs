@@ -781,3 +781,24 @@ Wrong:   Rich editor image insertion relied on URL prompts, which create externa
 Correct: Insert images from local files using FileReader data URLs at the editor boundary
 Rule:    Rich editors should own image ingestion and emit self-contained image sources suitable for export.
 Layer:   frontend
+
+## Lesson DE - Seeded schemas must match the approved runtime contract exactly
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Seed migration used a PO schema variant that differed from the approved runtime schema (field keys, repeat shapes, and sections drifted)
+Correct: Keep seed migrations aligned to the exact schema contract approved in the spec, even if it differs from legacy shapes
+Rule:    Schema seeds are part of the contract and must not drift from the agreed runtime definition.
+Layer:   infrastructure
+
+## Lesson DF - Bootstrap defaults must match database seeds
+Date: 2026-04-01 | Trigger: correction
+Wrong:   In-memory default schemas diverged from the SQL seed, causing different contracts in memory vs Postgres
+Correct: Keep DefaultDocumentTypeDefinitions aligned to the same minimal schema used in seed migrations
+Rule:    Fallback defaults must mirror seeded schema definitions to avoid environment-specific behavior.
+Layer:   domain
+
+## Lesson DD - Seed bootstrap versions should stay minimal and versioned expansions should be additive
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Folding the richer PO schema into the initial seed instead of separating bootstrap and runtime expansion
+Correct: Keep version 1 minimal for bootstrap, then add the full schema as a later additive version that flips `active_version`
+Rule:    Seed migrations should preserve a stable bootstrap contract and move schema growth into explicit versioned follow-up migrations.
+Layer:   infrastructure

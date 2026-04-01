@@ -9,10 +9,10 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
+	"gopkg.in/yaml.v3"
 	auditapp "metaldocs/internal/modules/audit/application"
 	auditdelivery "metaldocs/internal/modules/audit/delivery/http"
 	auditmemory "metaldocs/internal/modules/audit/infrastructure/memory"
@@ -47,18 +47,50 @@ func TestOpenAPIContainsSchemaRuntimeEndpoints(t *testing.T) {
 		t.Fatalf("read openapi: %v", err)
 	}
 
-	required := []string{
-		"/document-types/{typeKey}/bundle:",
-		"/documents/{documentId}/editor-bundle:",
-		"/documents/{documentId}/content:",
-		"/documents/{documentId}/export/docx:",
+	var root yaml.Node
+	if err := yaml.Unmarshal(data, &root); err != nil {
+		t.Fatalf("parse openapi yaml: %v", err)
 	}
 
-	for _, needle := range required {
-		if !strings.Contains(string(data), needle) {
-			t.Fatalf("missing path %s", needle)
+	paths := findMappingValue(&root, "paths")
+	if paths == nil {
+		t.Fatal("missing paths section")
+	}
+
+	required := map[string]string{
+		"/document-types/{typeKey}/bundle":      "get",
+		"/documents/{documentId}/editor-bundle": "get",
+		"/documents/{documentId}/content":       "put",
+		"/documents/{documentId}/export/docx":   "post",
+	}
+
+	for path, method := range required {
+		pathNode := findMappingValue(paths, path)
+		if pathNode == nil {
+			t.Fatalf("missing path %s", path)
+		}
+		if findMappingValue(pathNode, method) == nil {
+			t.Fatalf("missing method %s for path %s", method, path)
 		}
 	}
+}
+
+func findMappingValue(node *yaml.Node, key string) *yaml.Node {
+	if node == nil {
+		return nil
+	}
+	if node.Kind == yaml.DocumentNode && len(node.Content) > 0 {
+		node = node.Content[0]
+	}
+	if node.Kind != yaml.MappingNode {
+		return nil
+	}
+	for i := 0; i < len(node.Content)-1; i += 2 {
+		if node.Content[i].Value == key {
+			return node.Content[i+1]
+		}
+	}
+	return nil
 }
 
 func TestAPIContractSmoke(t *testing.T) {

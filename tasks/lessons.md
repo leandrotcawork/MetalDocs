@@ -588,7 +588,7 @@ Layer:   process
 
 ## Lesson CE - Contract tests that read repo artifacts must resolve from the repo root
 Date: 2026-03-31 | Trigger: correction
-Wrong:   os.ReadFile("api/openapi/v1/openapi.yaml") failed when the test ran from 	ests/contract
-Correct: Resolve workspace files with a root-relative path such as ilepath.Join("..", "..", "api", "openapi", "v1", "openapi.yaml")
+Wrong:   `os.ReadFile("api/openapi/v1/openapi.yaml")` failed when the test ran from `tests/contract`
+Correct: Resolve workspace files with a root-relative path such as `filepath.Join("..", "..", "api", "openapi", "v1", "openapi.yaml")`
 Rule:    Tests that validate repository artifacts must use a stable repo-root path instead of assuming the package working directory.
 Layer:   process

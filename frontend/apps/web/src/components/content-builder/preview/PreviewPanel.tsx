@@ -12,6 +12,7 @@ type PreviewPanelProps = {
   profileCode: string;
   documentCode: string;
   documentTitle: string;
+  documentStatus: string;
   version: number | null;
   activeSectionKey?: string | null;
   isDirty: boolean;
@@ -29,6 +30,7 @@ export function PreviewPanel(props: PreviewPanelProps) {
     profileCode,
     documentCode,
     documentTitle,
+    documentStatus,
     version,
     activeSectionKey,
     isDirty,
@@ -109,6 +111,7 @@ export function PreviewPanel(props: PreviewPanelProps) {
               profileCode={profileCode}
               documentCode={documentCode}
               title={documentTitle}
+              documentStatus={documentStatus}
               version={version}
               activeSectionKey={activeSectionKey}
             />

@@ -4,11 +4,12 @@ type PreviewDocumentPageProps = {
   profileCode: string;
   documentCode: string;
   title: string;
+  documentStatus: string;
   version: number | null;
   children: ReactNode;
 };
 
-export function PreviewDocumentPage({ profileCode, documentCode, title, version, children }: PreviewDocumentPageProps) {
+export function PreviewDocumentPage({ profileCode, documentCode, title, documentStatus, version, children }: PreviewDocumentPageProps) {
   return (
     <div className="preview-document">
       <div className="preview-document-page">
@@ -26,6 +27,7 @@ export function PreviewDocumentPage({ profileCode, documentCode, title, version,
             </div>
           </div>
           <div className="preview-document-header-right">
+            <span className="preview-document-header-status">{documentStatus}</span>
             <span className="preview-document-header-code">{documentCode}</span>
             <span className="preview-document-header-version">v{version ?? "-"}</span>
           </div>

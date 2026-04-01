@@ -7,6 +7,7 @@ type DocumentPreviewRendererProps = {
   profileCode: string;
   documentCode: string;
   title: string;
+  documentStatus: string;
   version: number | null;
   activeSectionKey?: string | null;
 };
@@ -17,6 +18,7 @@ export function DocumentPreviewRenderer({
   profileCode,
   documentCode,
   title,
+  documentStatus,
   version,
   activeSectionKey,
 }: DocumentPreviewRendererProps) {
@@ -27,6 +29,7 @@ export function DocumentPreviewRenderer({
       profileCode={profileCode}
       documentCode={documentCode}
       title={title}
+      documentStatus={documentStatus}
       version={version}
       activeSectionKey={activeSectionKey}
     />

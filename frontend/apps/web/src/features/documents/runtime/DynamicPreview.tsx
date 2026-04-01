@@ -21,6 +21,7 @@ type DynamicPreviewProps = {
   profileCode: string;
   documentCode: string;
   title: string;
+  documentStatus: string;
   version: number | null;
   activeSectionKey?: string | null;
 };
@@ -31,13 +32,14 @@ export function DynamicPreview({
   profileCode,
   documentCode,
   title,
+  documentStatus,
   version,
   activeSectionKey,
 }: DynamicPreviewProps) {
   const runtimeSchema = toRuntimeDocumentSchema(schema?.contentSchema);
 
   return (
-    <PreviewDocumentPage profileCode={profileCode} documentCode={documentCode} title={title} version={version}>
+    <PreviewDocumentPage profileCode={profileCode} documentCode={documentCode} title={title} documentStatus={documentStatus} version={version}>
       <div className={styles.editorRoot}>
         {runtimeSchema.sections.map((section, index) => {
           const sectionValue = getSectionValue(content, section.key);

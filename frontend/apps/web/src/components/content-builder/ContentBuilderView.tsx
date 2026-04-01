@@ -446,6 +446,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
       profileCode={profileCode}
       documentCode={documentCode}
       documentTitle={documentTitle}
+      documentStatus={props.document?.status ?? "DRAFT"}
       version={version}
       activeSectionKey={activeSectionKey}
       isDirty={status === "dirty"}

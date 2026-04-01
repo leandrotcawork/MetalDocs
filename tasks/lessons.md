@@ -592,3 +592,10 @@ Wrong:   `os.ReadFile("api/openapi/v1/openapi.yaml")` failed when the test ran f
 Correct: Resolve workspace files with a root-relative path such as `filepath.Join("..", "..", "api", "openapi", "v1", "openapi.yaml")`
 Rule:    Tests that validate repository artifacts must use a stable repo-root path instead of assuming the package working directory.
 Layer:   process
+
+## Lesson CF - Backfill lookup keys before adding dependent foreign keys
+Date: 2026-03-31 | Trigger: correction
+Wrong:   Adding a foreign key on `document_types.type_key` to `document_types.type_key` itself during the runtime backfill
+Correct: Backfill and index the lookup key first, then point dependent tables at that key; the lookup table itself should not self-reference
+Rule:    When introducing a new runtime identifier, enforce referential integrity only from dependent tables, never by making the lookup table depend on itself.
+Layer:   infrastructure

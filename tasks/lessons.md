@@ -668,3 +668,10 @@ Wrong:   Accepting rich blocks with only a `type` string let malformed blocks cr
 Correct: Validate rich block payloads per type (runs, image data, table rows, list items) before rendering
 Rule:    Renderer validation must be deep enough to prevent runtime crashes from malformed rich blocks.
 Layer:   infrastructure
+
+## Lesson CO - Docgen should guard top-level schema entries
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Assuming all `schema.sections` entries are objects let nulls crash validation
+Correct: Validate each section entry is an object before validating its fields
+Rule:    Schema validators should guard against malformed array entries at every level.
+Layer:   infrastructure

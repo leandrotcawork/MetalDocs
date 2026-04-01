@@ -177,6 +177,9 @@ function validateFieldValue(field: FieldDef, container: Record<string, unknown>)
               if (!isObject(run) || typeof run.text !== "string") {
                 invalid("DOCGEN_INVALID_VALUES");
               }
+              if (run.color !== undefined && typeof run.color !== "string") {
+                invalid("DOCGEN_INVALID_VALUES");
+              }
             });
             return;
           case "image":
@@ -245,7 +248,12 @@ function normalizeDocumentPayload(input: unknown): DocumentPayload {
     invalid("DOCGEN_INVALID_SCHEMA");
   }
 
-  payload.schema.sections.forEach((section) => validateSectionDef(section, payload.values));
+  payload.schema.sections.forEach((section) => {
+    if (!isObject(section)) {
+      invalid("DOCGEN_INVALID_SCHEMA");
+    }
+    validateSectionDef(section as SectionDef, payload.values);
+  });
 
   return payload;
 }

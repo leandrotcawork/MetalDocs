@@ -371,7 +371,7 @@ export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
               title={sidebarCollapsed ? "Expandir sidebar" : "Recolher sidebar"}
               aria-label={sidebarCollapsed ? "Expandir sidebar" : "Recolher sidebar"}
             >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <svg width="16" height="16" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.75">
                 {sidebarCollapsed
                   ? <path d="M3 11L11 3M7 3h4v4" strokeLinecap="round" strokeLinejoin="round" />
                   : <path d="M11 3L3 11M7 11H3V7" strokeLinecap="round" strokeLinejoin="round" />}

@@ -3362,7 +3362,7 @@ td small {
   zoom: 0.6;
 }
 
-@container (min-width: 520px) {
+@container (min-width: 650px) {
   .preview-document {
     zoom: 0.88;
   }

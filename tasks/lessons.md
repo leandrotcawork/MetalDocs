@@ -661,3 +661,10 @@ Wrong:   Allowing empty sections/fields or mismatched values to render produced 
 Correct: Fail closed on empty schema definitions and validate values by field type before rendering
 Rule:    Rendering services must validate both schema shape and values to prevent corrupted output.
 Layer:   infrastructure
+
+## Lesson CN - Docgen validation must be deep for rich blocks
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Accepting rich blocks with only a `type` string let malformed blocks crash rendering
+Correct: Validate rich block payloads per type (runs, image data, table rows, list items) before rendering
+Rule:    Renderer validation must be deep enough to prevent runtime crashes from malformed rich blocks.
+Layer:   infrastructure

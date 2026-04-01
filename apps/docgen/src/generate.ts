@@ -51,14 +51,24 @@ function validateFieldDef(field: FieldDef): void {
     if (!Array.isArray(field.columns) || field.columns.length === 0) {
       invalid("DOCGEN_INVALID_SCHEMA");
     }
-    field.columns.forEach(validateColumnDef);
+    field.columns.forEach((column) => {
+      if (!isObject(column)) {
+        invalid("DOCGEN_INVALID_SCHEMA");
+      }
+      validateColumnDef(column as ColumnDef);
+    });
     return;
   }
   if (field.type === "repeat") {
     if (!Array.isArray(field.itemFields) || field.itemFields.length === 0) {
       invalid("DOCGEN_INVALID_SCHEMA");
     }
-    field.itemFields.forEach(validateFieldDef);
+    field.itemFields.forEach((itemField) => {
+      if (!isObject(itemField)) {
+        invalid("DOCGEN_INVALID_SCHEMA");
+      }
+      validateFieldDef(itemField as FieldDef);
+    });
     return;
   }
 
@@ -82,7 +92,12 @@ function validateSectionDef(section: SectionDef, values: DocumentValues): void {
   if (section.fields.length === 0) {
     invalid("DOCGEN_INVALID_SCHEMA");
   }
-  section.fields.forEach(validateFieldDef);
+  section.fields.forEach((field) => {
+    if (!isObject(field)) {
+      invalid("DOCGEN_INVALID_SCHEMA");
+    }
+    validateFieldDef(field as FieldDef);
+  });
 
   const value = values[section.key];
   if (value !== undefined && !isObject(value)) {
@@ -90,7 +105,7 @@ function validateSectionDef(section: SectionDef, values: DocumentValues): void {
   }
 
   if (value !== undefined) {
-    section.fields.forEach((field) => validateFieldValue(field, value as Record<string, unknown>));
+    section.fields.forEach((field) => validateFieldValue(field as FieldDef, value as Record<string, unknown>));
   }
 }
 
@@ -152,6 +167,48 @@ function validateFieldValue(field: FieldDef, container: Record<string, unknown>)
       rawValue.forEach((block) => {
         if (!isObject(block) || typeof block.type !== "string") {
           invalid("DOCGEN_INVALID_VALUES");
+        }
+        switch (block.type) {
+          case "text":
+            if (!Array.isArray(block.runs)) {
+              invalid("DOCGEN_INVALID_VALUES");
+            }
+            block.runs.forEach((run) => {
+              if (!isObject(run) || typeof run.text !== "string") {
+                invalid("DOCGEN_INVALID_VALUES");
+              }
+            });
+            return;
+          case "image":
+            if (typeof block.data !== "string") {
+              invalid("DOCGEN_INVALID_VALUES");
+            }
+            if (block.mimeType !== undefined && typeof block.mimeType !== "string") {
+              invalid("DOCGEN_INVALID_VALUES");
+            }
+            return;
+          case "table":
+            if (!Array.isArray(block.rows)) {
+              invalid("DOCGEN_INVALID_VALUES");
+            }
+            block.rows.forEach((row) => {
+              if (!Array.isArray(row)) {
+                invalid("DOCGEN_INVALID_VALUES");
+              }
+            });
+            return;
+          case "list":
+            if (!Array.isArray(block.items)) {
+              invalid("DOCGEN_INVALID_VALUES");
+            }
+            block.items.forEach((item) => {
+              if (typeof item !== "string") {
+                invalid("DOCGEN_INVALID_VALUES");
+              }
+            });
+            return;
+          default:
+            invalid("DOCGEN_INVALID_VALUES");
         }
       });
       return;

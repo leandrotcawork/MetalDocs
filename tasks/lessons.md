@@ -593,6 +593,13 @@ Correct: Resolve workspace files with a root-relative path such as `filepath.Joi
 Rule:    Tests that validate repository artifacts must use a stable repo-root path instead of assuming the package working directory.
 Layer:   process
 
+## Lesson CV - Saved timestamp must have a single owner
+Date: 2026-04-01 | Trigger: correction
+Wrong:   ContentBuilderView kept a local saved-at mirror instead of reading the autosave timestamp directly
+Correct: Read saved-at from `useAutoSave` only and let `acknowledgeSave(...)` update the hook state after a successful save
+Rule:    Shared save metadata should have one owner so callers observe state rather than reassigning it.
+Layer:   frontend
+
 ## Lesson CT - Manual persistence paths must sync autosave state
 Date: 2026-04-01 | Trigger: correction
 Wrong:   Draft-create persistence updated the document but left autosave unaware of the saved content and PDF URL

@@ -94,7 +94,6 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
   const { status, error, pdfUrl, version, contentDraft, schema, previewCollapsed, sidebarCollapsed } = state;
   const editorRef = useRef<HTMLDivElement | null>(null);
   const [activeSectionKey, setActiveSectionKey] = useState<string | null>(null);
-  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [autosaveLabel, setAutosaveLabel] = useState("Nao salvo");
   const [isExporting, setIsExporting] = useState(false);
 
@@ -144,6 +143,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
     debounceMs: 3000,
     enabled: !!documentId && status !== "loading",
   });
+  const lastSavedAt = autoSave.lastSavedAt;
 
   // Sync auto-save results back into reducer
   useEffect(() => {
@@ -153,13 +153,10 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
   }, [autoSave.lastSavedPdfUrl, pdfUrl]);
 
   useEffect(() => {
-    if (autoSave.lastSavedAt && autoSave.lastSavedAt !== lastSavedAt) {
-      setLastSavedAt(autoSave.lastSavedAt);
-      if (status === "dirty") {
-        dispatch({ type: "set_status", payload: { status: "idle" } });
-      }
+    if (lastSavedAt && status === "dirty") {
+      dispatch({ type: "set_status", payload: { status: "idle" } });
     }
-  }, [autoSave.lastSavedAt, lastSavedAt, status]);
+  }, [lastSavedAt, status]);
 
   // --- Data loading ---
   useEffect(() => {

@@ -286,21 +286,44 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
   }
 
   async function handleExportDocx() {
-    if (!documentId || isExporting) return;
+    if (isExporting) return;
     setIsExporting(true);
     dispatch({ type: "set_error", payload: { message: "" } });
     try {
-      if (status === "dirty") {
+      let exportId = documentId;
+      if (!exportId) {
+        if (!props.onCreateFromDraft) {
+          dispatch({
+            type: "set_error",
+            payload: { message: "Salve o rascunho antes de exportar." },
+          });
+          return;
+        }
+        dispatch({ type: "set_status", payload: { status: "saving" } });
+        const created = await props.onCreateFromDraft(contentDraft ?? {});
+        autoSave.acknowledgeSave(contentDraft ?? {}, created.pdfUrl);
+        dispatch({
+          type: "load_success",
+          payload: {
+            contentDraft: contentDraft ?? {},
+            schema,
+            version: created.version ?? null,
+            pdfUrl: created.pdfUrl,
+          },
+        });
+        exportId = created.documentId;
+      } else if (status === "dirty") {
         const saved = await handleSave();
         if (!saved) return;
       }
-      const blob = await api.exportDocumentDocx(documentId);
+      const blob = await api.exportDocumentDocx(exportId);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
-      const downloadName = `${(documentCode || documentId || "documento")
+      const nameBase = documentCode && documentCode !== "--" ? documentCode : exportId;
+      const downloadName = `documento-${(nameBase || "documento")
         .toLowerCase()
-        .replace(/[^a-z0-9._-]+/gi, "-")
-        .replace(/^-+|-+$/g, "") || "documento"}.docx`;
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")}.docx`;
       link.href = url;
       link.download = downloadName;
       document.body.appendChild(link);
@@ -309,6 +332,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
       window.URL.revokeObjectURL(url);
     } catch {
       dispatch({ type: "set_error", payload: { message: "Nao foi possivel exportar o DOCX." } });
+      dispatch({ type: "set_status", payload: { status: "idle" } });
     } finally {
       setIsExporting(false);
     }

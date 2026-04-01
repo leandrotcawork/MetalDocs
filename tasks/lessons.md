@@ -593,6 +593,13 @@ Correct: Resolve workspace files with a root-relative path such as `filepath.Joi
 Rule:    Tests that validate repository artifacts must use a stable repo-root path instead of assuming the package working directory.
 Layer:   process
 
+## Lesson CW - Keep one canonical schema contract across runtime layers
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Letting backend runtime types, frontend renderers, and docgen harnesses each infer their own schema shape
+Correct: Keep one canonical schema contract and adapt every consumer to that same shape before cutover
+Rule:    Runtime migrations stay safe only when all layers read the same contract instead of parallel interpretations.
+Layer:   process
+
 ## Lesson CV - Saved timestamp must have a single owner
 Date: 2026-04-01 | Trigger: correction
 Wrong:   ContentBuilderView kept a local saved-at mirror instead of reading the autosave timestamp directly

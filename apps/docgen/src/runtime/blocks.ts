@@ -1,14 +1,5 @@
-import {
-  AlignmentType,
-  ImageRun,
-  Paragraph,
-  Table,
-  TableCell,
-  TableRow,
-  TextRun,
-  UnderlineType,
-  WidthType,
-} from "docx";
+import { AlignmentType, BorderStyle, ImageRun, Paragraph, Table, TableRow, TextRun, UnderlineType } from "docx";
+import { CONTENT_WIDTH, makeCell, makeTable, paragraph, run, tableBorder } from "./docx.js";
 import type { RichBlock, RichTextRun } from "./types.js";
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -36,13 +27,15 @@ function asText(value: unknown): string {
 
 function renderRuns(runs: RichTextRun[]): TextRun[] {
   return runs.map(
-    (run) =>
+    (richRun) =>
       new TextRun({
-        text: run.text,
-        bold: run.bold,
-        italics: run.italic,
-        underline: run.underline ? { type: UnderlineType.SINGLE } : undefined,
-        color: run.color?.replace(/^#/, ""),
+        text: richRun.text,
+        bold: richRun.bold,
+        italics: richRun.italic,
+        underline: richRun.underline ? { type: UnderlineType.SINGLE } : undefined,
+        color: richRun.color?.replace(/^#/, ""),
+        font: "Arial",
+        size: 20,
       })
   );
 }
@@ -66,73 +59,75 @@ function imageTypeFromMimeType(mimeType?: string): "jpg" | "png" | "gif" | "bmp"
   }
 }
 
+function renderTableBlock(block: Extract<RichBlock, { type: "table" }>): Table {
+  const columnCount = block.rows.reduce((max, row) => Math.max(max, row.length), 0);
+  const columnWidth = Math.floor(CONTENT_WIDTH / Math.max(columnCount, 1));
+  const columnWidths = Array.from({ length: columnCount || 1 }, () => columnWidth);
+
+  const rows = block.rows.map(
+    (row, index) =>
+      new TableRow({
+        children: row.map((cell) =>
+          makeCell({
+            width: columnWidth,
+            children: [
+              paragraph([
+                new TextRun({
+                  text: asText(cell),
+                  bold: block.header && index === 0,
+                  font: "Arial",
+                  size: 20,
+                }),
+              ]),
+            ],
+          })
+        ),
+      })
+  );
+
+  return makeTable(rows, columnWidths, {
+    width: CONTENT_WIDTH,
+    borders: tableBorder(BorderStyle.NONE),
+  });
+}
+
 export function renderRichBlocks(blocks: RichBlock[]): Array<Paragraph | Table> {
   return blocks.flatMap((block) => {
     if (block.type === "text") {
       return [
-        new Paragraph({
-          children: renderRuns(block.runs),
-        }),
+        paragraph(renderRuns(block.runs)),
       ];
     }
 
     if (block.type === "image") {
       return [
-        new Paragraph({
+        paragraph([
+          new ImageRun({
+            type: imageTypeFromMimeType(block.mimeType),
+            data: decodeBase64(block.data),
+            transformation: {
+              width: block.width ?? 160,
+              height: block.height ?? 160,
+            },
+            altText: block.altText ? { name: block.altText, title: block.altText } : undefined,
+          }),
+        ], {
           alignment: AlignmentType.CENTER,
-          children: [
-            new ImageRun({
-              type: imageTypeFromMimeType(block.mimeType),
-              data: decodeBase64(block.data),
-              transformation: {
-                width: block.width ?? 160,
-                height: block.height ?? 160,
-              },
-              altText: block.altText ? { name: block.altText, title: block.altText } : undefined,
-            }),
-          ],
         }),
       ];
     }
 
     if (block.type === "table") {
-      const rows = block.rows.map(
-        (row, index) =>
-          new TableRow({
-            children: row.map(
-              (cell) =>
-                new TableCell({
-                  children: [
-                    new Paragraph({
-                      children: [
-                        new TextRun({
-                          text: asText(cell),
-                          bold: block.header && index === 0,
-                        }),
-                      ],
-                    }),
-                  ],
-                })
-            ),
-          })
-      );
-
-      return [
-        new Table({
-          width: { size: 100, type: WidthType.PERCENTAGE },
-          rows,
-        }),
-      ];
+      return [renderTableBlock(block)];
     }
 
-    const rows = block.items.map((item, index) =>
-      new Paragraph({
+    return block.items.map((item, index) =>
+      paragraph([
+        run(block.ordered ? `${index + 1}. ${item}` : item),
+      ], {
         bullet: block.ordered ? undefined : { level: 0 },
-        children: [new TextRun({ text: block.ordered ? `${index + 1}. ${item}` : item })],
       })
     );
-
-    return rows;
   });
 }
 

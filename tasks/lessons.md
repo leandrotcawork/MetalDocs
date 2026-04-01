@@ -739,3 +739,10 @@ Wrong:   Treating draft versions as immutable and always creating a new version 
 Correct: Allow in-place updates when the version is in DRAFT
 Rule:    Immutability applies to non-draft versions only; draft updates can be in-place
 Layer:   process
+
+## Lesson CX - Never implement on main without explicit consent
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Applying Fix 1 directly on the `main` branch before user approval
+Correct: Create a feature branch/worktree for any implementation work unless the user explicitly requests main
+Rule:    Production branches are protected by policy; do not commit to `main` without explicit user consent.
+Layer:   process

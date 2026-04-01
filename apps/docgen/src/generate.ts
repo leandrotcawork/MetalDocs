@@ -15,6 +15,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
 }
 
 const scalarTypes: ScalarFieldType[] = ["text", "textarea", "number", "date", "select", "checkbox"];
+const hexColor = /^#?[0-9a-fA-F]{6}$|^#?[0-9a-fA-F]{3}$/;
 
 function asString(value: unknown): string | null {
   return typeof value === "string" ? value.trim() : null;
@@ -30,6 +31,15 @@ function assertNonEmptyString(value: unknown, code: string): string {
     invalid(code);
   }
   return out;
+}
+
+function assertHexColor(value: unknown, code: string): void {
+  if (value === undefined || value === null) {
+    return;
+  }
+  if (typeof value !== "string" || !hexColor.test(value)) {
+    invalid(code);
+  }
 }
 
 function validateColumnDef(column: ColumnDef): void {
@@ -85,6 +95,7 @@ function validateSectionDef(section: SectionDef, values: DocumentValues): void {
   assertNonEmptyString(section.key, "DOCGEN_INVALID_SCHEMA");
   assertNonEmptyString(section.num, "DOCGEN_INVALID_SCHEMA");
   assertNonEmptyString(section.title, "DOCGEN_INVALID_SCHEMA");
+  assertHexColor(section.color, "DOCGEN_INVALID_SCHEMA");
 
   if (!Array.isArray(section.fields)) {
     invalid("DOCGEN_INVALID_SCHEMA");
@@ -177,9 +188,7 @@ function validateFieldValue(field: FieldDef, container: Record<string, unknown>)
               if (!isObject(run) || typeof run.text !== "string") {
                 invalid("DOCGEN_INVALID_VALUES");
               }
-              if (run.color !== undefined && typeof run.color !== "string") {
-                invalid("DOCGEN_INVALID_VALUES");
-              }
+              assertHexColor(run.color, "DOCGEN_INVALID_VALUES");
             });
             return;
           case "image":

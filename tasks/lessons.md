@@ -592,3 +592,10 @@ Wrong:   `os.ReadFile("api/openapi/v1/openapi.yaml")` failed when the test ran f
 Correct: Resolve workspace files with a root-relative path such as `filepath.Join("..", "..", "api", "openapi", "v1", "openapi.yaml")`
 Rule:    Tests that validate repository artifacts must use a stable repo-root path instead of assuming the package working directory.
 Layer:   process
+
+## Lesson CF - Worktree edits must target the active git root explicitly
+Date: 2026-03-31 | Trigger: correction
+Wrong:   Applying a patch without an explicit worktree path wrote changes into the parent checkout copy instead of the isolated worktree
+Correct: Use absolute paths rooted at the active worktree when editing files so the intended git root receives the change
+Rule:    In multi-checkout environments, file edits must name the active worktree explicitly or they can land in the wrong repository copy.
+Layer:   process

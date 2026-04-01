@@ -470,6 +470,26 @@ func TestValidateDocumentProfileAlias(t *testing.T) {
 	}
 }
 
+func TestValidateDocumentTypeSchema_RejectsUnknownFieldType(t *testing.T) {
+	schema := domain.DocumentTypeSchema{
+		Sections: []domain.SectionDef{
+			{
+				Key:   "s1",
+				Num:   "1",
+				Title: "Section 1",
+				Fields: []domain.FieldDef{
+					{Key: "x", Label: "X", Type: "unknown"},
+				},
+			},
+		},
+	}
+
+	err := domain.ValidateDocumentTypeSchema(schema)
+	if !errors.Is(err, domain.ErrDocumentSchemaInvalidField) {
+		t.Fatalf("expected schema field error, got %v", err)
+	}
+}
+
 func TestDiffVersionsDetectsContentChange(t *testing.T) {
 	repo := memory.NewRepository()
 	svc := application.NewService(repo, nil, fixedClock{now: time.Date(2026, 3, 16, 10, 0, 0, 0, time.UTC)})

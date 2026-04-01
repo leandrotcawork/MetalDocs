@@ -62,6 +62,12 @@ type AtomicCreateRepositoryWithPolicies interface {
 	CreateDocumentWithInitialVersionAndPolicies(ctx context.Context, document Document, version Version, policies []AccessPolicy) error
 }
 
+type DocumentTypeDefinitionRepository interface {
+	ListDocumentTypeDefinitions(ctx context.Context) ([]DocumentTypeDefinition, error)
+	GetDocumentTypeDefinition(ctx context.Context, key string) (DocumentTypeDefinition, error)
+	UpsertDocumentTypeDefinition(ctx context.Context, item DocumentTypeDefinition) error
+}
+
 type AttachmentStore interface {
 	Save(ctx context.Context, storageKey string, content []byte) error
 	Open(ctx context.Context, storageKey string) (io.ReadCloser, error)

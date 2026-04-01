@@ -169,6 +169,13 @@ type DocumentType struct {
 	ReviewIntervalDays int
 }
 
+type DocumentTypeDefinition struct {
+	Key           string
+	Name          string
+	ActiveVersion int
+	Schema        DocumentTypeSchema
+}
+
 type DocumentFamily struct {
 	Code        string
 	Name        string

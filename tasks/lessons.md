@@ -705,6 +705,13 @@ Correct: Let `autoSave.acknowledgeSave(...)` be the single owner of saved timest
 Rule:    When a helper already synchronizes saved-state metadata, do not duplicate that state write in the caller.
 Layer:   frontend
 
+## Lesson CW - TypeScript deps require types for imports
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Adding a runtime dependency without its TypeScript types broke `tsc --noEmit`
+Correct: Add the corresponding `@types/*` package (or verify bundled types) when introducing new TS imports
+Rule:    Every new TS import must compile under `tsc --noEmit` without relying on implicit any modules.
+Layer:   frontend
+
 ## Lesson CH - docx option objects must match library shapes exactly
 Date: 2026-04-01 | Trigger: build failure
 Wrong:   Passing `underline: true` and partial image alt text objects into `docx` helpers

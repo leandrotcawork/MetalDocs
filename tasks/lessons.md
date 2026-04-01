@@ -593,6 +593,13 @@ Correct: Resolve workspace files with a root-relative path such as `filepath.Joi
 Rule:    Tests that validate repository artifacts must use a stable repo-root path instead of assuming the package working directory.
 Layer:   process
 
+## Lesson CT - Manual persistence paths must sync autosave state
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Draft-create persistence updated the document but left autosave unaware of the saved content and PDF URL
+Correct: After any manual persistence path, call `autoSave.acknowledgeSave(content, pdfUrl)` with the persisted content and returned PDF URL
+Rule:    Autosave state must be acknowledged after every successful manual save path so the dirty indicator and last-saved metadata stay in sync.
+Layer:   frontend
+
 ## Lesson CP - Manual saves must acknowledge autosave state before leaving the view
 Date: 2026-04-01 | Trigger: correction
 Wrong:   Manual saves updated the document but left a pending autosave timer and stale last-saved refs, so the same content could be written twice

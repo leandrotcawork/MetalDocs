@@ -324,6 +324,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
       dispatch({ type: "set_status", payload: { status: "rendering" } });
       try {
         const created = await props.onCreateFromDraft(contentDraft ?? {});
+        autoSave.acknowledgeSave(contentDraft ?? {}, created.pdfUrl);
         dispatch({
           type: "load_success",
           payload: { contentDraft: contentDraft ?? {}, schema, version: created.version ?? null, pdfUrl: created.pdfUrl },

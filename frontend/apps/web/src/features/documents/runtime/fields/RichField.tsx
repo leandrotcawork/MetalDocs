@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef, type ChangeEvent } from "react";
 import DOMPurify from "dompurify";
 import type { Editor } from "@tiptap/react";
 import { Color } from "@tiptap/extension-color";
@@ -112,6 +112,7 @@ function RichEditor({
   field,
   label,
 }: Pick<RichFieldProps, "value" | "onChange" | "field"> & { label: string }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -133,6 +134,24 @@ function RichEditor({
       onChange?.(tiptapEditor.getHTML());
     },
   });
+
+  const handleImageFile = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0];
+    if (!file || !editor) {
+      event.currentTarget.value = "";
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const src = reader.result;
+      if (typeof src === "string") {
+        editor.chain().focus().setImage({ src }).run();
+      }
+    };
+    reader.readAsDataURL(file);
+    event.currentTarget.value = "";
+  };
 
   useEffect(() => {
     if (!editor) return;
@@ -191,7 +210,11 @@ function RichEditor({
             <ToolbarButton editor={editor} command="insertTable">
               Tabela
             </ToolbarButton>
-            <ToolbarButton editor={editor} command="image">
+            <ToolbarButton
+              editor={editor}
+              command="image"
+              onClick={() => fileInputRef.current?.click()}
+            >
               Imagem
             </ToolbarButton>
             <ToolbarButton editor={editor} command="undo">
@@ -215,6 +238,13 @@ function RichEditor({
               Cor padrao
             </ToolbarButton>
           </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/jpg"
+            style={{ display: "none" }}
+            onChange={handleImageFile}
+          />
         </div>
         <div className={styles.editorBody}>
           <EditorContent editor={editor} />
@@ -243,10 +273,11 @@ type ToolbarButtonProps = {
   editor: Editor | null;
   command: ToolbarCommand;
   level?: 1 | 2 | 3 | 4 | 5 | 6;
+  onClick?: () => void;
   children: string;
 };
 
-function ToolbarButton({ editor, command, level, children }: ToolbarButtonProps) {
+function ToolbarButton({ editor, command, level, onClick, children }: ToolbarButtonProps) {
   if (!editor) {
     return (
       <button type="button" className={styles.toolbarButton} disabled>
@@ -271,6 +302,10 @@ function ToolbarButton({ editor, command, level, children }: ToolbarButtonProps)
       className={`${styles.toolbarButton} ${active ? styles.toolbarButtonActive : ""}`}
       onMouseDown={(event) => event.preventDefault()}
       onClick={() => {
+        if (command === "image") {
+          onClick?.();
+          return;
+        }
         if (!editor) return;
         switch (command) {
           case "bold":
@@ -300,13 +335,6 @@ function ToolbarButton({ editor, command, level, children }: ToolbarButtonProps)
           case "insertTable":
             editor.chain().focus().insertTable({ rows: 2, cols: 2, withHeaderRow: true }).run();
             break;
-          case "image": {
-            const src = window.prompt("URL da imagem");
-            if (src) {
-              editor.chain().focus().setImage({ src }).run();
-            }
-            break;
-          }
           case "undo":
             editor.chain().focus().undo().run();
             break;

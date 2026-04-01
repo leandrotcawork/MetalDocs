@@ -774,3 +774,10 @@ Wrong:   Repeat item headers used white text on a lightened section fill, which 
 Correct: Render repeat item headings in the section color itself while keeping the lightened background fill
 Rule:    Tone-on-tone repeat headers should keep the foreground on the section color family instead of forcing white text.
 Layer:   infrastructure
+
+## Lesson DC - Rich image inserts should use local base64 inputs
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Rich editor image insertion relied on URL prompts, which create external dependencies and break offline/local workflows
+Correct: Insert images from local files using FileReader data URLs at the editor boundary
+Rule:    Rich editors should own image ingestion and emit self-contained image sources suitable for export.
+Layer:   frontend

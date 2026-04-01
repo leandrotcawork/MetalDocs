@@ -421,6 +421,8 @@
 .workspace-sidebar.is-collapsed .workspace-sidebar-header {
   justify-content: center;
   padding: 10px 0 6px;
+  align-items: flex-start;
+  align-self: start;
 }
 
 .workspace-sidebar-footer {

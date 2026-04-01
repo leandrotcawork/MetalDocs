@@ -139,7 +139,7 @@ export function useSchemaDocumentEditor(options: UseSchemaDocumentEditorOptions 
 
   const setValues = useCallback(
     (nextValues: Record<string, unknown> | ((current: Record<string, unknown>) => Record<string, unknown>)) => {
-      setSchemaDocumentEditor((current) => {
+      setSchemaDocumentEditor((current: typeof editor) => {
         const values = typeof nextValues === "function" ? nextValues(current.values) : nextValues;
         return {
           ...current,
@@ -158,10 +158,10 @@ export function useSchemaDocumentEditor(options: UseSchemaDocumentEditorOptions 
       }
 
       const values = nextValues ?? editor.values;
-      setSchemaDocumentEditor((current) => ({ ...current, status: "saving", error: "" }));
+      setSchemaDocumentEditor((current: typeof editor) => ({ ...current, status: "saving", error: "" }));
       try {
         const response = await saveDocumentContent(documentId, values);
-        setSchemaDocumentEditor((current) => ({
+        setSchemaDocumentEditor((current: typeof editor) => ({
           ...current,
           values,
           version: response.version ?? current.version,
@@ -170,7 +170,7 @@ export function useSchemaDocumentEditor(options: UseSchemaDocumentEditorOptions 
         }));
         return response;
       } catch (error) {
-        setSchemaDocumentEditor((current) => ({
+        setSchemaDocumentEditor((current: typeof editor) => ({
           ...current,
           status: "error",
           error: error instanceof Error ? error.message : "Falha ao salvar o schema runtime.",

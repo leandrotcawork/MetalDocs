@@ -593,99 +593,58 @@ Correct: Resolve workspace files with a root-relative path such as `filepath.Joi
 Rule:    Tests that validate repository artifacts must use a stable repo-root path instead of assuming the package working directory.
 Layer:   process
 
-## Lesson CF - Domain validation errors must be structured codes
-Date: 2026-04-01 | Trigger: correction
-Wrong:   Returning `errors.New("document schema invalid field")` from schema runtime validation
-Correct: Return structured error codes like `DOCUMENT_SCHEMA_INVALID_FIELD` and validate empty table/repeat definitions
-Rule:    Domain validation must emit structured error codes and reject empty structural definitions to protect downstream runtimes.
-Layer:   domain
-
-## Lesson CG - Runtime field validators must fail closed on nested definitions
-Date: 2026-04-01 | Trigger: correction
-Wrong:   Accepting `table` fields without columns or `repeat` fields without item fields in runtime validation
-Correct: Reject empty `table.columns` and `repeat.itemFields` when validating schema fields
-Rule:    Nested runtime field definitions must be non-empty to avoid invalid schemas reaching persistence and rendering.
-Layer:   application
-
-## Lesson CH - Handler payloads must match OpenAPI shapes
-Date: 2026-04-01 | Trigger: correction
-Wrong:   Handler accepted only `{ "values": {...} }` while OpenAPI defined a plain JSON object body
-Correct: Accept the OpenAPI shape (plain object) or update the spec and tests together
-Rule:    Handler request parsing must match the OpenAPI contract to avoid client/server drift.
-Layer:   delivery
-
-## Lesson CI - Draft edits are in-place by product decision
-Date: 2026-04-01 | Trigger: correction
-Wrong:   Treating all versions as immutable even for draft edits, conflicting with product requirement
-Correct: Allow in-place updates for draft versions; only non-draft edits create new versions
-Rule:    Product rules can override immutability for drafts, but only when explicitly documented.
-Layer:   process
-
-## Lesson CF - Worktree edits must target the active git root explicitly
-Date: 2026-03-31 | Trigger: correction
-Wrong:   Applying a patch without an explicit worktree path wrote changes into the parent checkout copy instead of the isolated worktree
-Correct: Use absolute paths rooted at the active worktree when editing files so the intended git root receives the change
-Rule:    In multi-checkout environments, file edits must name the active worktree explicitly or they can land in the wrong repository copy.
-Layer:   process
-
-## Lesson CG - Runtime value validation is schema-field gated
-Date: 2026-04-01 | Trigger: correction
-Wrong:   Assuming runtime values should be rejected even when a document type schema only defines sections
-Correct: Skip value validation until the schema defines fields; once fields exist, validate only those declared fields
-Rule:    Runtime schema enforcement must be permissive by default and only activate where the schema explicitly declares structure.
-Layer:   application
-## Lesson CJ - docx option objects must match library shapes exactly
-Date: 2026-04-01 | Trigger: build failure
-Wrong:   Passing `underline: true` and partial image alt text objects into `docx` helpers
-Correct: Use the library's expected option objects, including `UnderlineType` and full `DocPropertiesOptions` fields such as `name`
-Rule:    Third-party renderers often validate nested option shapes strictly, so wrappers must follow the exact documented object contract.
-Layer:   infrastructure
-
-## Lesson CK - Schema validation must fail closed on empty nested definitions
-Date: 2026-04-01 | Trigger: correction
-Wrong:   Accepting empty `sections`, `fields`, `table.columns`, or `repeat.itemFields` let invalid runtime schemas pass validation
-Correct: Reject empty top-level and nested schema definitions explicitly and return structured domain codes for each invalid shape
-Rule:    Runtime schema validation should treat missing structure as a hard error, not as a no-op.
-Layer:   domain
-
-## Lesson CL - Docgen must validate payloads before rendering
-Date: 2026-04-01 | Trigger: correction
-Wrong:   Rendering docx payloads without validating nested schema/values and returning only 500 errors on failures
-Correct: Validate schema/values upfront and return 400 for invalid payloads before rendering
-Rule:    Renderer services should fail fast with client errors for invalid inputs to avoid opaque server failures.
-Layer:   infrastructure
-
-## Lesson CM - Docgen validation must reject empty schemas and invalid values
-Date: 2026-04-01 | Trigger: correction
-Wrong:   Allowing empty sections/fields or mismatched values to render produced silent invalid documents
-Correct: Fail closed on empty schema definitions and validate values by field type before rendering
-Rule:    Rendering services must validate both schema shape and values to prevent corrupted output.
-Layer:   infrastructure
-
-## Lesson CN - Docgen validation must be deep for rich blocks
-Date: 2026-04-01 | Trigger: correction
-Wrong:   Accepting rich blocks with only a `type` string let malformed blocks crash rendering
-Correct: Validate rich block payloads per type (runs, image data, table rows, list items) before rendering
-Rule:    Renderer validation must be deep enough to prevent runtime crashes from malformed rich blocks.
-Layer:   infrastructure
-
-## Lesson CO - Docgen should guard top-level schema entries
-Date: 2026-04-01 | Trigger: correction
-Wrong:   Assuming all `schema.sections` entries are objects let nulls crash validation
-Correct: Validate each section entry is an object before validating its fields
-Rule:    Schema validators should guard against malformed array entries at every level.
-Layer:   infrastructure
-
-## Lesson CP - Docgen should validate hex colors
-Date: 2026-04-01 | Trigger: correction
-Wrong:   Allowing non-hex color strings for section or rich text colors caused docx render failures
-Correct: Validate optional color fields as 6-digit hex (with or without #) before rendering
-Rule:    Renderer validation must include format checks for values passed into strict libraries.
-Layer:   infrastructure
-
 ## Lesson CQ - Editor hooks should not reload on initialValues identity changes
 Date: 2026-04-01 | Trigger: correction
 Wrong:   Using `initialValues` in hook dependencies caused refetches when callers passed new object instances
 Correct: Stabilize `initialValues` with a ref and update it when the semantic input changes
 Rule:    Editor hooks must avoid reload loops while still honoring updated initial values.
 Layer:   frontend
+
+## Lesson CR - Rich fields must display metadata like other fields
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Rich field rendering omitted label/description, unlike scalar/table/repeat fields
+Correct: Render label, required mark, and description for rich fields in both edit and preview modes
+Rule:    All field types should surface the same metadata to keep the editor consistent.
+Layer:   frontend
+
+## Lesson CI - Schema runtime migrations must preserve legacy discriminants until renderers move
+Date: 2026-04-01 | Trigger: build failure
+Wrong:   Replacing the shallow schema field union with a runtime union that dropped still-live discriminants like `array`
+Correct: Keep legacy field discriminants available in the runtime type layer until the rendering components are migrated, or isolate them behind an adapter layer
+Rule:    Contract migrations must remain compatible with currently deployed renderers until those consumers are updated in the same change.
+Layer:   frontend
+
+## Lesson CJ - Runtime adapters must synthesize legacy repeat shapes explicitly
+Date: 2026-04-01 | Trigger: build failure
+Wrong:   Mapping legacy `array` and `checklist` schema fields to repeat fields without rebuilding their expected nested item structure
+Correct: Detect legacy repeat-like discriminants and synthesize the item field shape the renderer expects before handing values to the UI
+Rule:    Compatibility adapters should preserve both the field kind and the value shape, not only the top-level discriminant.
+Layer:   frontend
+
+## Lesson CK - Tiptap table support comes from the exact subpackages
+Date: 2026-04-01 | Trigger: build failure
+Wrong:   Importing table row, header, and cell nodes from the main table package even though the editor exposes them through separate modules
+Correct: Install and import the specific Tiptap subpackages that own each node/extension required by the editor
+Rule:    Rich-text editor integrations should follow the library's package boundaries exactly instead of assuming a monolithic export surface.
+Layer:   frontend
+
+## Lesson CH - docx option objects must match library shapes exactly
+Date: 2026-04-01 | Trigger: build failure
+Wrong:   Passing `underline: true` and partial image alt text objects into `docx` helpers
+Correct: Use the library's expected option objects, including `UnderlineType` and full `DocPropertiesOptions` fields such as `name`
+Rule:    Third-party renderers often validate nested option shapes strictly, so wrappers must follow the exact documented object contract.
+Layer:   infrastructure
+
+## Lesson CG - Schema validation must fail closed on empty nested definitions
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Accepting empty `sections`, `fields`, `table.columns`, or `repeat.itemFields` let invalid runtime schemas pass validation
+Correct: Reject empty top-level and nested schema definitions explicitly and return structured domain codes for each invalid shape
+Rule:    Runtime schema validation should treat missing structure as a hard error, not as a no-op.
+Layer:   domain
+
+## Lesson CE - Contract tests that read repo artifacts must resolve from the repo root
+Date: 2026-03-31 | Trigger: correction
+Wrong:   `os.ReadFile("api/openapi/v1/openapi.yaml")` failed when the test ran from `tests/contract`
+Correct: Resolve workspace files with a root-relative path such as `filepath.Join("..", "..", "api", "openapi", "v1", "openapi.yaml")`
+Rule:    Tests that validate repository artifacts must use a stable repo-root path instead of assuming the package working directory.
+Layer:   process

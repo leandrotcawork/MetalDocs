@@ -1,0 +1,151 @@
+.richRoot {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.editorShell {
+  border: 1px solid color-mix(in srgb, var(--vinho) 14%, var(--cinza-300) 86%);
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--white);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0.7rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--vinho) 10%, transparent);
+  background: color-mix(in srgb, var(--vinho-soft) 68%, white 32%);
+}
+
+.toolbarGroup {
+  display: inline-flex;
+  gap: 0.35rem;
+  padding-right: 0.5rem;
+  border-right: 1px solid color-mix(in srgb, var(--vinho) 10%, transparent);
+}
+
+.toolbarGroup:last-child {
+  padding-right: 0;
+  border-right: 0;
+}
+
+.toolbarButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border: 1px solid color-mix(in srgb, var(--vinho) 14%, var(--cinza-300) 86%);
+  border-radius: 999px;
+  padding: 0.55rem 0.85rem;
+  background: color-mix(in srgb, var(--white) 92%, var(--vinho) 8%);
+  color: var(--vinho-d);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.toolbarButton:hover {
+  transform: translateY(-1px);
+  border-color: var(--vinho);
+  box-shadow: 0 8px 18px rgba(61, 28, 30, 0.12);
+}
+
+.toolbarButtonActive {
+  border-color: var(--vinho);
+  background: var(--vinho-soft);
+  color: var(--vinho);
+}
+
+.colorInput {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.editorBody {
+  padding: 0.95rem 1rem 1.05rem;
+}
+
+.editorBody :global(.ProseMirror) {
+  min-height: 7.5rem;
+  outline: none;
+  color: var(--vinho-d);
+}
+
+.editorBody :global(.ProseMirror p) {
+  margin: 0 0 0.75rem;
+}
+
+.editorBody :global(.ProseMirror ul),
+.editorBody :global(.ProseMirror ol) {
+  margin: 0 0 0.75rem;
+  padding-left: 1.35rem;
+}
+
+.editorBody :global(.ProseMirror table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 0.75rem;
+}
+
+.editorBody :global(.ProseMirror th),
+.editorBody :global(.ProseMirror td) {
+  border: 1px solid color-mix(in srgb, var(--vinho) 14%, var(--cinza-300) 86%);
+  padding: 0.5rem 0.65rem;
+}
+
+.editorBody :global(.ProseMirror img) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 12px;
+}
+
+.previewBody {
+  min-height: 7.5rem;
+  padding: 0.95rem 1rem 1.05rem;
+  color: var(--vinho-d);
+}
+
+.previewBody :global(p) {
+  margin: 0 0 0.75rem;
+}
+
+.previewBody :global(ul),
+.previewBody :global(ol) {
+  margin: 0 0 0.75rem;
+  padding-left: 1.35rem;
+}
+
+.previewBody :global(table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 0.75rem;
+}
+
+.previewBody :global(th),
+.previewBody :global(td) {
+  border: 1px solid color-mix(in srgb, var(--vinho) 14%, var(--cinza-300) 86%);
+  padding: 0.5rem 0.65rem;
+}
+
+.previewBody :global(img) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 12px;
+}
+
+.previewBody :global(h1),
+.previewBody :global(h2),
+.previewBody :global(h3) {
+  margin: 0 0 0.65rem;
+  color: var(--vinho-d);
+}

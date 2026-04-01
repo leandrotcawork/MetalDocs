@@ -1,6 +1,12 @@
 package domain
 
-import "strings"
+import (
+	"encoding/json"
+	"strings"
+)
+
+type DocumentValues = map[string]any
+type RichBlock = json.RawMessage
 
 var allowedFieldTypes = map[string]struct{}{
 	"text":     {},
@@ -36,6 +42,9 @@ type FieldDef struct {
 }
 
 func ValidateDocumentTypeSchema(schema DocumentTypeSchema) error {
+	if len(schema.Sections) == 0 {
+		return ErrDocumentSchemaInvalid
+	}
 	for _, section := range schema.Sections {
 		if err := validateSectionDef(section); err != nil {
 			return err
@@ -45,6 +54,12 @@ func ValidateDocumentTypeSchema(schema DocumentTypeSchema) error {
 }
 
 func validateSectionDef(section SectionDef) error {
+	if strings.TrimSpace(section.Key) == "" || strings.TrimSpace(section.Num) == "" || strings.TrimSpace(section.Title) == "" {
+		return ErrDocumentSchemaInvalidSection
+	}
+	if len(section.Fields) == 0 {
+		return ErrDocumentSchemaInvalidSection
+	}
 	for _, field := range section.Fields {
 		if err := validateFieldDef(field); err != nil {
 			return err
@@ -54,6 +69,10 @@ func validateSectionDef(section SectionDef) error {
 }
 
 func validateFieldDef(field FieldDef) error {
+	if strings.TrimSpace(field.Key) == "" || strings.TrimSpace(field.Label) == "" {
+		return ErrDocumentSchemaInvalidField
+	}
+
 	fieldType := strings.ToLower(strings.TrimSpace(field.Type))
 	if fieldType == "" {
 		return ErrDocumentSchemaInvalidField
@@ -64,12 +83,18 @@ func validateFieldDef(field FieldDef) error {
 
 	switch fieldType {
 	case "table":
+		if len(field.Columns) == 0 {
+			return ErrDocumentSchemaInvalidField
+		}
 		for _, column := range field.Columns {
 			if err := validateFieldDef(column); err != nil {
 				return err
 			}
 		}
 	case "repeat":
+		if len(field.ItemFields) == 0 {
+			return ErrDocumentSchemaInvalidField
+		}
 		for _, itemField := range field.ItemFields {
 			if err := validateFieldDef(itemField); err != nil {
 				return err

@@ -62,6 +62,7 @@ type AtomicCreateRepositoryWithPolicies interface {
 	CreateDocumentWithInitialVersionAndPolicies(ctx context.Context, document Document, version Version, policies []AccessPolicy) error
 }
 
+// DocumentTypeDefinitionRepository persists canonical runtime schema definitions.
 type DocumentTypeDefinitionRepository interface {
 	ListDocumentTypeDefinitions(ctx context.Context) ([]DocumentTypeDefinition, error)
 	GetDocumentTypeDefinition(ctx context.Context, key string) (DocumentTypeDefinition, error)

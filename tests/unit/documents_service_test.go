@@ -488,6 +488,69 @@ func TestValidateDocumentTypeSchema_RejectsUnknownFieldType(t *testing.T) {
 	if !errors.Is(err, domain.ErrDocumentSchemaInvalidField) {
 		t.Fatalf("expected schema field error, got %v", err)
 	}
+	if got := err.Error(); got != "DOCUMENT_SCHEMA_INVALID_FIELD" {
+		t.Fatalf("expected structured error code, got %s", got)
+	}
+}
+
+func TestValidateDocumentTypeSchema_RejectsEmptySchema(t *testing.T) {
+	err := domain.ValidateDocumentTypeSchema(domain.DocumentTypeSchema{})
+	if !errors.Is(err, domain.ErrDocumentSchemaInvalid) {
+		t.Fatalf("expected schema invalid error, got %v", err)
+	}
+}
+
+func TestValidateDocumentTypeSchema_RejectsEmptySectionDefinition(t *testing.T) {
+	schema := domain.DocumentTypeSchema{
+		Sections: []domain.SectionDef{
+			{},
+		},
+	}
+
+	err := domain.ValidateDocumentTypeSchema(schema)
+	if !errors.Is(err, domain.ErrDocumentSchemaInvalidSection) {
+		t.Fatalf("expected section error, got %v", err)
+	}
+}
+
+func TestValidateDocumentTypeSchema_RejectsEmptyTableColumns(t *testing.T) {
+	schema := domain.DocumentTypeSchema{
+		Sections: []domain.SectionDef{
+			{
+				Key:   "s1",
+				Num:   "1",
+				Title: "Section 1",
+				Fields: []domain.FieldDef{
+					{Key: "table", Label: "Table", Type: "table"},
+				},
+			},
+		},
+	}
+
+	err := domain.ValidateDocumentTypeSchema(schema)
+	if !errors.Is(err, domain.ErrDocumentSchemaInvalidField) {
+		t.Fatalf("expected field error for empty table columns, got %v", err)
+	}
+}
+
+func TestValidateDocumentTypeSchema_RejectsEmptyRepeatItemFields(t *testing.T) {
+	schema := domain.DocumentTypeSchema{
+		Sections: []domain.SectionDef{
+			{
+				Key:   "s1",
+				Num:   "1",
+				Title: "Section 1",
+				Fields: []domain.FieldDef{
+					{Key: "repeat", Label: "Repeat", Type: "repeat"},
+				},
+			},
+		},
+	}
+
+	err := domain.ValidateDocumentTypeSchema(schema)
+	if !errors.Is(err, domain.ErrDocumentSchemaInvalidField) {
+		t.Fatalf("expected field error for empty repeat item fields, got %v", err)
+	}
 }
 
 func TestDiffVersionsDetectsContentChange(t *testing.T) {

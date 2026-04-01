@@ -593,6 +593,13 @@ Correct: Resolve workspace files with a root-relative path such as `filepath.Joi
 Rule:    Tests that validate repository artifacts must use a stable repo-root path instead of assuming the package working directory.
 Layer:   process
 
+## Lesson CF - Domain validation errors must be structured codes
+Date: 2026-04-01 | Trigger: correction
+Wrong:   Returning `errors.New("document schema invalid field")` from schema runtime validation
+Correct: Return structured error codes like `DOCUMENT_SCHEMA_INVALID_FIELD` and validate empty table/repeat definitions
+Rule:    Domain validation must emit structured error codes and reject empty structural definitions to protect downstream runtimes.
+Layer:   domain
+
 ## Lesson CF - Worktree edits must target the active git root explicitly
 Date: 2026-03-31 | Trigger: correction
 Wrong:   Applying a patch without an explicit worktree path wrote changes into the parent checkout copy instead of the isolated worktree

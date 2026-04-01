@@ -684,6 +684,13 @@ Correct: Use the narrowed local `documentId` captured from the guarded prop when
 Rule:    After a prop-derived value is guarded, reuse the narrowed local instead of re-reading the nullable prop in later code.
 Layer:   frontend
 
+## Lesson CP - Autosave should own saved timestamp updates
+Date: 2026-04-01 | Trigger: correction
+Wrong:   The draft-create path called `autoSave.acknowledgeSave(...)` and then set `lastSavedAt` again manually
+Correct: Let `autoSave.acknowledgeSave(...)` be the single owner of saved timestamp updates after a successful create/save
+Rule:    When a helper already synchronizes saved-state metadata, do not duplicate that state write in the caller.
+Layer:   frontend
+
 ## Lesson CH - docx option objects must match library shapes exactly
 Date: 2026-04-01 | Trigger: build failure
 Wrong:   Passing `underline: true` and partial image alt text objects into `docx` helpers

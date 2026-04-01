@@ -329,7 +329,6 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
           type: "load_success",
           payload: { contentDraft: contentDraft ?? {}, schema, version: created.version ?? null, pdfUrl: created.pdfUrl },
         });
-        setLastSavedAt(new Date());
       } catch {
         dispatch({ type: "load_error", payload: { message: "Falha ao criar o documento." } });
       }

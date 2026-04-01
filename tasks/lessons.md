@@ -585,3 +585,10 @@ Wrong:   Rewriting a detailed migration plan into a shorter version and dropping
 Correct: Preserve the approved plan detail level and restore the full version when the user expects the original execution granularity
 Rule:    Once a migration plan has an agreed execution granularity, do not compress it unless the user explicitly asks for less detail.
 Layer:   process
+
+## Lesson CE - Contract tests that read repo artifacts must resolve from the repo root
+Date: 2026-03-31 | Trigger: correction
+Wrong:   os.ReadFile("api/openapi/v1/openapi.yaml") failed when the test ran from 	ests/contract
+Correct: Resolve workspace files with a root-relative path such as ilepath.Join("..", "..", "api", "openapi", "v1", "openapi.yaml")
+Rule:    Tests that validate repository artifacts must use a stable repo-root path instead of assuming the package working directory.
+Layer:   process

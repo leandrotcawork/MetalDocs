@@ -257,6 +257,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
+  /document-types/{typeKey}/bundle:
+    get:
+      summary: Load document type metadata, active schema, and governance
+      parameters:
+        - name: typeKey
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Runtime bundle do tipo documental
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
   /document-families:
     get:
       summary: Lista as familias documentais canonicas
@@ -1826,6 +1843,76 @@ paths:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
         '404':
           description: Documento ou DOCX nao encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+  /documents/{documentId}/content:
+    put:
+      summary: Replace the current draft content values for a document
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '204':
+          description: Conteudo do rascunho substituido
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '404':
+          description: Documento nao encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+  /documents/{documentId}/export/docx:
+    post:
+      summary: Generate a DOCX from the active schema runtime payload
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      responses:
+        '200':
+          description: DOCX gerado a partir do payload de runtime
+          content:
+            application/vnd.openxmlformats-officedocument.wordprocessingml.document:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '404':
+          description: Documento nao encontrado
           content:
             application/json:
               schema:

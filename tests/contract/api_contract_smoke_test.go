@@ -7,6 +7,9 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -32,11 +35,31 @@ import (
 	searchdocs "metaldocs/internal/modules/search/infrastructure/documents"
 	workflowapp "metaldocs/internal/modules/workflow/application"
 	workflowdelivery "metaldocs/internal/modules/workflow/delivery/http"
+	workflowmemory "metaldocs/internal/modules/workflow/infrastructure/memory"
 	"metaldocs/internal/platform/config"
 	"metaldocs/internal/platform/observability"
 	"metaldocs/internal/platform/security"
-	workflowmemory "metaldocs/internal/modules/workflow/infrastructure/memory"
 )
+
+func TestOpenAPIContainsSchemaRuntimeEndpoints(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", "api", "openapi", "v1", "openapi.yaml"))
+	if err != nil {
+		t.Fatalf("read openapi: %v", err)
+	}
+
+	required := []string{
+		"/document-types/{typeKey}/bundle:",
+		"/documents/{documentId}/editor-bundle:",
+		"/documents/{documentId}/content:",
+		"/documents/{documentId}/export/docx:",
+	}
+
+	for _, needle := range required {
+		if !strings.Contains(string(data), needle) {
+			t.Fatalf("missing path %s", needle)
+		}
+	}
+}
 
 func TestAPIContractSmoke(t *testing.T) {
 	handler := buildContractTestHandler()

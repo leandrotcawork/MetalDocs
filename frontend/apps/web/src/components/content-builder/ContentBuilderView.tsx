@@ -440,16 +440,9 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
 
   const previewPane = (
     <PreviewPanel
-      schema={schema}
-      contentDraft={contentDraft}
       pdfUrl={pdfUrl}
-      profileCode={profileCode}
-      documentCode={documentCode}
-      documentTitle={documentTitle}
-      documentStatus={props.document?.status ?? "DRAFT"}
-      version={version}
-      activeSectionKey={activeSectionKey}
       isDirty={status === "dirty"}
+      isBusy={autoSave.isSaving || status === "saving" || status === "rendering"}
       collapsed={previewCollapsed}
       onToggleCollapse={(collapsed) => dispatch({ type: "set_preview", payload: { collapsed } })}
     />

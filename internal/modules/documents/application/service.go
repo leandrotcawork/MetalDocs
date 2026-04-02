@@ -10,12 +10,22 @@ import (
 	auditdomain "metaldocs/internal/modules/audit/domain"
 	"metaldocs/internal/modules/documents/domain"
 	"metaldocs/internal/platform/messaging"
-	"metaldocs/internal/platform/render/carbone"
 	"metaldocs/internal/platform/render/docgen"
+	"metaldocs/internal/platform/render/gotenberg"
 )
 
 type Clock interface {
 	Now() time.Time
+}
+
+// UserDisplayNameResolver resolves a user ID to a display name.
+type UserDisplayNameResolver interface {
+	ResolveDisplayName(ctx context.Context, userID string) (string, error)
+}
+
+// WorkflowApprovalReader reads approval records for a document.
+type WorkflowApprovalReader interface {
+	ListApprovals(ctx context.Context, documentID string) ([]domain.ApprovalSummary, error)
 }
 
 type realClock struct{}
@@ -30,9 +40,10 @@ type Service struct {
 	audit            auditdomain.Writer
 	publisher        messaging.Publisher
 	clock            Clock
-	carboneClient    *carbone.Client
-	carboneTemplates *carbone.TemplateRegistry
 	docgenClient     *docgen.Client
+	gotenbergClient  *gotenberg.Client
+	userResolver     UserDisplayNameResolver
+	approvalReader   WorkflowApprovalReader
 }
 
 func NewService(repo domain.Repository, publisher messaging.Publisher, clock Clock) *Service {
@@ -52,14 +63,23 @@ func (s *Service) WithAuditWriter(writer auditdomain.Writer) *Service {
 	return s
 }
 
-func (s *Service) WithCarbone(client *carbone.Client, registry *carbone.TemplateRegistry) *Service {
-	s.carboneClient = client
-	s.carboneTemplates = registry
+func (s *Service) WithDocgenClient(client *docgen.Client) *Service {
+	s.docgenClient = client
 	return s
 }
 
-func (s *Service) WithDocgenClient(client *docgen.Client) *Service {
-	s.docgenClient = client
+func (s *Service) WithUserResolver(resolver UserDisplayNameResolver) *Service {
+	s.userResolver = resolver
+	return s
+}
+
+func (s *Service) WithApprovalReader(reader WorkflowApprovalReader) *Service {
+	s.approvalReader = reader
+	return s
+}
+
+func (s *Service) WithGotenberg(client *gotenberg.Client) *Service {
+	s.gotenbergClient = client
 	return s
 }
 

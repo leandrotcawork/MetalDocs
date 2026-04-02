@@ -86,6 +86,13 @@ type Attachment struct {
 	CreatedAt   time.Time
 }
 
+// ApprovalSummary is a minimal projection of a workflow approval used for document metadata.
+type ApprovalSummary struct {
+	ApproverID string
+	Status     string
+	DecidedAt  *time.Time
+}
+
 type CreateDocumentCommand struct {
 	DocumentID      string
 	Title           string
@@ -346,26 +353,26 @@ func DefaultSubjects() []Subject {
 
 func DefaultDocumentProfileSchemas() []DocumentProfileSchemaVersion {
 	return []DocumentProfileSchemaVersion{
-		DocumentProfileSchemaVersion{
+		{
 			ProfileCode:   "po",
 			Version:       1,
 			IsActive:      true,
 			MetadataRules: []MetadataFieldRule{},
-			ContentSchema: defaultContentSchemaPO(),
+			ContentSchema: map[string]any{},
 		},
-		DocumentProfileSchemaVersion{
+		{
 			ProfileCode:   "it",
 			Version:       1,
 			IsActive:      true,
 			MetadataRules: []MetadataFieldRule{},
-			ContentSchema: defaultContentSchemaIT(),
+			ContentSchema: map[string]any{},
 		},
-		DocumentProfileSchemaVersion{
+		{
 			ProfileCode:   "rg",
 			Version:       1,
 			IsActive:      true,
 			MetadataRules: []MetadataFieldRule{},
-			ContentSchema: defaultContentSchemaRG(),
+			ContentSchema: map[string]any{},
 		},
 	}
 }
@@ -459,168 +466,6 @@ func NormalizeDocumentProfileSchemaVersion(item DocumentProfileSchemaVersion) (D
 		item.ContentSchema = map[string]any{}
 	}
 	return item, nil
-}
-
-func defaultContentSchemaPO() map[string]any {
-	return map[string]any{
-		"profile": "po",
-		"sections": []map[string]any{
-			{
-				"key":         "identification",
-				"title":       "Identificacao",
-				"description": "Objetivo, escopo e responsavel.",
-				"fields": []map[string]any{
-					{"key": "objetivo", "label": "Objetivo", "type": "textarea", "required": true},
-					{"key": "escopo", "label": "Escopo", "type": "textarea"},
-					{"key": "responsavel", "label": "Responsavel", "type": "text"},
-					{"key": "participantes", "label": "Participantes", "type": "array", "itemType": "text"},
-					{"key": "canal", "label": "Canal", "type": "select", "options": []string{"Balcao", "WhatsApp", "Externo", "E-commerce"}},
-				},
-			},
-			{
-				"key":         "io",
-				"title":       "Entradas e saidas",
-				"description": "Entradas, saidas e sistemas.",
-				"fields": []map[string]any{
-					{"key": "entradas", "label": "Entradas", "type": "textarea"},
-					{"key": "saidas", "label": "Saidas", "type": "textarea"},
-					{"key": "documentos", "label": "Documentos", "type": "array", "itemType": "text"},
-					{"key": "sistemas", "label": "Sistemas", "type": "array", "itemType": "text"},
-				},
-			},
-			{
-				"key":         "process",
-				"title":       "Processo",
-				"description": "Etapas e pontos de controle.",
-				"fields": []map[string]any{
-					{
-						"key":   "etapas",
-						"label": "Etapas",
-						"type":  "table",
-						"columns": []map[string]any{
-							{"key": "num", "label": "#", "type": "number"},
-							{"key": "etapa", "label": "Etapa", "type": "text"},
-							{"key": "blocks", "label": "Blocos", "type": "rich_blocks"},
-							{"key": "responsavel", "label": "Responsavel", "type": "text"},
-							{"key": "prazo", "label": "Prazo", "type": "text"},
-							{"key": "observacao", "label": "Observacao", "type": "text"},
-						},
-					},
-					{"key": "pontos_controle", "label": "Pontos de controle", "type": "textarea"},
-					{"key": "excecoes", "label": "Excecoes", "type": "textarea"},
-				},
-			},
-			{
-				"key":         "kpis",
-				"title":       "Indicadores",
-				"description": "Indicadores e metas.",
-				"fields": []map[string]any{
-					{
-						"key":   "kpis",
-						"label": "Indicadores",
-						"type":  "table",
-						"columns": []map[string]any{
-							{"key": "indicador", "label": "Indicador", "type": "text"},
-							{"key": "meta", "label": "Meta", "type": "text"},
-							{"key": "frequencia", "label": "Frequencia", "type": "select", "options": []string{"Diario", "Semanal", "Mensal"}},
-						},
-					},
-				},
-			},
-		},
-	}
-}
-
-func defaultContentSchemaIT() map[string]any {
-	return map[string]any{
-		"profile": "it",
-		"sections": []map[string]any{
-			{
-				"key":         "context",
-				"title":       "Contexto",
-				"description": "Quando e como executar.",
-				"fields": []map[string]any{
-					{"key": "cargo_executor", "label": "Cargo executor", "type": "text"},
-					{"key": "quando_executar", "label": "Quando executar", "type": "textarea"},
-					{"key": "tempo_estimado", "label": "Tempo estimado (min)", "type": "number"},
-					{"key": "materiais", "label": "Materiais", "type": "array", "itemType": "text"},
-					{"key": "resultado_esperado", "label": "Resultado esperado", "type": "textarea"},
-				},
-			},
-			{
-				"key":         "steps",
-				"title":       "Passos",
-				"description": "Sequencia operacional.",
-				"fields": []map[string]any{
-					{
-						"key":   "passos",
-						"label": "Passos",
-						"type":  "table",
-						"columns": []map[string]any{
-							{"key": "num", "label": "#", "type": "number"},
-							{"key": "acao", "label": "Acao", "type": "text"},
-							{"key": "alerta", "label": "Alerta", "type": "text"},
-						},
-					},
-					{"key": "pontos_atencao", "label": "Pontos de atencao", "type": "textarea"},
-					{"key": "se_der_errado", "label": "Se der errado", "type": "textarea"},
-				},
-			},
-			{
-				"key":         "verification",
-				"title":       "Verificacao",
-				"description": "Checklist e registro.",
-				"fields": []map[string]any{
-					{"key": "checklist", "label": "Checklist", "type": "array", "itemType": "text"},
-					{"key": "registro_gerado", "label": "Registro gerado", "type": "text"},
-				},
-			},
-			{
-				"key":         "media",
-				"title":       "Midia",
-				"description": "Imagens, video e anexos.",
-				"fields": []map[string]any{
-					{"key": "imagens", "label": "Imagens", "type": "array", "itemType": "text"},
-					{"key": "video", "label": "Video", "type": "text"},
-					{"key": "anexos", "label": "Anexos", "type": "array", "itemType": "text"},
-				},
-			},
-		},
-	}
-}
-
-func defaultContentSchemaRG() map[string]any {
-	return map[string]any{
-		"profile": "rg",
-		"sections": []map[string]any{
-			{
-				"key":         "event",
-				"title":       "Evento",
-				"description": "Dados basicos do registro.",
-				"fields": []map[string]any{
-					{"key": "canal", "label": "Canal", "type": "select", "options": []string{"Balcao", "WhatsApp", "E-commerce"}},
-				},
-			},
-			{
-				"key":         "content",
-				"title":       "Conteudo",
-				"description": "Informacoes do registro.",
-				"fields": []map[string]any{
-					{"key": "observacoes", "label": "Observacoes", "type": "textarea"},
-				},
-			},
-			{
-				"key":         "closure",
-				"title":       "Encerramento",
-				"description": "Status e encerramento.",
-				"fields": []map[string]any{
-					{"key": "status", "label": "Status", "type": "select", "options": []string{"aberto", "concluido", "gerou_pa"}},
-					{"key": "pa_vinculado", "label": "PA vinculado", "type": "text"},
-					{"key": "data_encerramento", "label": "Data de encerramento", "type": "text"},
-				},
-			},
-		},
-	}
 }
 
 func NormalizeProcessArea(item ProcessArea) (ProcessArea, error) {

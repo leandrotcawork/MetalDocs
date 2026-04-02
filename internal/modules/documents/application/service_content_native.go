@@ -10,6 +10,7 @@ import (
 
 	"metaldocs/internal/modules/documents/domain"
 	"metaldocs/internal/platform/messaging"
+	"metaldocs/internal/platform/render/docgen"
 )
 
 func (s *Service) GetNativeContentAuthorized(ctx context.Context, documentID string) (domain.Version, error) {
@@ -87,18 +88,37 @@ func (s *Service) SaveNativeContentAuthorized(ctx context.Context, cmd domain.Sa
 		CreatedAt:     now,
 	}
 
-	pdfBytes, err := s.renderDocumentPDF(ctx, doc, version, cmd.Content, cmd.TraceID)
+	pending := &docgen.RenderRevision{
+		Versao:    fmt.Sprintf("%d", next),
+		Data:      now.Format("2006-01-02"),
+		Descricao: fmt.Sprintf("Content version %d", next),
+		Por:       doc.OwnerID,
+	}
+	docxBytes, err := s.generateDocxBytes(ctx, doc, version, contentPayload, cmd.TraceID, pending)
 	if err != nil {
+		return domain.Version{}, err
+	}
+	docxKey := documentContentStorageKey(doc.ID, next, "docx")
+	if err := s.attachmentStore.Save(ctx, docxKey, docxBytes); err != nil {
+		return domain.Version{}, err
+	}
+	version.DocxStorageKey = docxKey
+
+	pdfBytes, err := s.convertDocxToPDF(ctx, docxBytes, cmd.TraceID)
+	if err != nil {
+		_ = s.attachmentStore.Delete(ctx, docxKey)
 		return domain.Version{}, err
 	}
 	pdfKey := documentContentStorageKey(doc.ID, next, "pdf")
 	if err := s.attachmentStore.Save(ctx, pdfKey, pdfBytes); err != nil {
+		_ = s.attachmentStore.Delete(ctx, docxKey)
 		return domain.Version{}, err
 	}
 	version.PdfStorageKey = pdfKey
 
 	if err := s.repo.SaveVersion(ctx, version); err != nil {
 		_ = s.attachmentStore.Delete(ctx, pdfKey)
+		_ = s.attachmentStore.Delete(ctx, docxKey)
 		return domain.Version{}, err
 	}
 
@@ -174,7 +194,27 @@ func (s *Service) RenderContentPDFAuthorized(ctx context.Context, documentID, tr
 				content = parsed
 			}
 		}
-		pdfBytes, err = s.renderDocumentPDF(ctx, doc, version, content, traceID)
+		var docxBytes []byte
+		if strings.TrimSpace(version.DocxStorageKey) != "" {
+			docxBytes, err = s.OpenContentStorage(ctx, version.DocxStorageKey)
+			if err != nil {
+				return domain.Version{}, err
+			}
+		} else {
+			docxBytes, err = s.generateDocxBytes(ctx, doc, version, content, traceID, nil)
+			if err != nil {
+				return domain.Version{}, err
+			}
+			docxKey := documentContentStorageKey(doc.ID, version.Number, "docx")
+			if saveErr := s.attachmentStore.Save(ctx, docxKey, docxBytes); saveErr == nil {
+				if err := s.repo.UpdateVersionDocx(ctx, doc.ID, version.Number, docxKey); err != nil {
+					_ = s.attachmentStore.Delete(ctx, docxKey)
+					return domain.Version{}, err
+				}
+				version.DocxStorageKey = docxKey
+			}
+		}
+		pdfBytes, err = s.convertDocxToPDF(ctx, docxBytes, traceID)
 		if err != nil {
 			return domain.Version{}, err
 		}
@@ -194,29 +234,6 @@ func (s *Service) RenderContentPDFAuthorized(ctx context.Context, documentID, tr
 	}
 	version.PdfStorageKey = pdfKey
 	return version, nil
-}
-
-func (s *Service) RenderProfileTemplateDocx(ctx context.Context, profileCode string) ([]byte, error) {
-	return s.renderProfileTemplate(ctx, profileCode, map[string]any{}, "docx", "profile-template")
-}
-
-func (s *Service) RenderDocumentTemplateDocxAuthorized(ctx context.Context, documentID string) ([]byte, error) {
-	if strings.TrimSpace(documentID) == "" {
-		return nil, domain.ErrInvalidCommand
-	}
-	doc, err := s.repo.GetDocument(ctx, strings.TrimSpace(documentID))
-	if err != nil {
-		return nil, err
-	}
-	allowed, err := s.isAllowed(ctx, doc, domain.CapabilityDocumentView)
-	if err != nil {
-		return nil, err
-	}
-	if !allowed {
-		return nil, domain.ErrDocumentNotFound
-	}
-	data := buildDocumentTemplateData(doc, domain.Version{}, nil)
-	return s.renderProfileTemplate(ctx, doc.DocumentProfile, data, "docx", "document-template")
 }
 
 func (s *Service) OpenContentStorage(ctx context.Context, storageKey string) ([]byte, error) {
@@ -240,113 +257,6 @@ func (s *Service) OpenContentStorage(ctx context.Context, storageKey string) ([]
 	return payload, nil
 }
 
-func (s *Service) renderProfileTemplate(ctx context.Context, profileCode string, data map[string]any, convertTo, traceID string) ([]byte, error) {
-	if s.carboneClient == nil || s.carboneTemplates == nil {
-		return nil, domain.ErrRenderUnavailable
-	}
-	normalized := strings.ToLower(strings.TrimSpace(profileCode))
-	templateID, ok := s.carboneTemplates.TemplateID(normalized)
-	if !ok {
-		return nil, domain.ErrRenderUnavailable
-	}
-	renderID, err := s.carboneClient.RenderTemplate(ctx, traceID, templateID, data, convertTo)
-	if err != nil {
-		return nil, err
-	}
-	return s.carboneClient.DownloadRender(ctx, traceID, renderID)
-}
-
-func (s *Service) renderDocumentPDF(ctx context.Context, doc domain.Document, version domain.Version, content map[string]any, traceID string) ([]byte, error) {
-	data := buildDocumentTemplateData(doc, version, content)
-	data["version"] = version.Number
-	data["createdAt"] = version.CreatedAt.Format(time.RFC3339)
-	return s.renderProfileTemplate(ctx, doc.DocumentProfile, data, "pdf", traceID)
-}
-
-func buildDocumentTemplateData(doc domain.Document, version domain.Version, content map[string]any) map[string]any {
-	data := map[string]any{
-		"documentId":     doc.ID,
-		"title":          doc.Title,
-		"profile":        doc.DocumentProfile,
-		"family":         doc.DocumentFamily,
-		"processArea":    doc.ProcessArea,
-		"subject":        doc.Subject,
-		"owner":          doc.OwnerID,
-		"businessUnit":   doc.BusinessUnit,
-		"department":     doc.Department,
-		"classification": doc.Classification,
-	}
-	projectedContent := cloneContentMap(content)
-	if len(version.BodyBlocks) > 0 {
-		data["bodyBlocks"] = cloneEtapaBodies(version.BodyBlocks)
-		projectedContent = mergeEtapaBodyBlocks(projectedContent, version.BodyBlocks)
-	}
-	if len(projectedContent) > 0 {
-		data["content"] = projectedContent
-	}
-	return data
-}
-
 func documentContentStorageKey(documentID string, version int, extension string) string {
 	return fmt.Sprintf("documents/%s/versions/%d/content.%s", documentID, version, strings.TrimPrefix(extension, "."))
-}
-
-func cloneContentMap(content map[string]any) map[string]any {
-	if len(content) == 0 {
-		return map[string]any{}
-	}
-	out := make(map[string]any, len(content))
-	for key, value := range content {
-		out[key] = value
-	}
-	return out
-}
-
-func mergeEtapaBodyBlocks(content map[string]any, bodyBlocks []domain.EtapaBody) map[string]any {
-	if len(content) == 0 || len(bodyBlocks) == 0 {
-		return content
-	}
-
-	if process, ok := content["process"].(map[string]any); ok {
-		clonedProcess := cloneContentMap(process)
-		clonedProcess["etapas"] = mergeEtapaRows(clonedProcess["etapas"], bodyBlocks)
-		content["process"] = clonedProcess
-	}
-	if etapas, ok := content["etapas"]; ok {
-		content["etapas"] = mergeEtapaRows(etapas, bodyBlocks)
-	}
-	return content
-}
-
-func mergeEtapaRows(rows any, bodyBlocks []domain.EtapaBody) any {
-	switch typed := rows.(type) {
-	case []any:
-		out := make([]any, len(typed))
-		for index := range out {
-			row, ok := typed[index].(map[string]any)
-			if !ok || index >= len(bodyBlocks) {
-				out[index] = typed[index]
-				continue
-			}
-			clonedRow := cloneContentMap(row)
-			clonedRow["blocks"] = cloneRawMessages(bodyBlocks[index].Blocks)
-			out[index] = clonedRow
-		}
-		return out
-	case []map[string]any:
-		out := make([]map[string]any, len(typed))
-		for index, row := range typed {
-			cloned := make(map[string]any, len(row))
-			for key, value := range row {
-				cloned[key] = value
-			}
-			if index < len(bodyBlocks) {
-				cloned["blocks"] = cloneRawMessages(bodyBlocks[index].Blocks)
-			}
-			out[index] = cloned
-		}
-		return out
-	default:
-		return rows
-	}
 }

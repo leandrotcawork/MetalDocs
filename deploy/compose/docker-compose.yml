@@ -49,17 +49,18 @@ services:
     volumes:
       - metaldocs_minio_data:/data
 
-  carbone:
-    image: carbone/carbone-ee:full
-    container_name: metaldocs-carbone
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    container_name: metaldocs-gotenberg
     restart: unless-stopped
     ports:
-      - "4000:4000"
-    volumes:
-      - ../../carbone/templates:/app/template
-      - ../../carbone/renders:/app/render
-    environment:
-      CARBONE_EE_AUTHENTICATION: "false"
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:3000/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   api:
     build:
@@ -74,8 +75,6 @@ services:
       redis:
         condition: service_healthy
       minio:
-        condition: service_started
-      carbone:
         condition: service_started
     environment:
       APP_ENV: ${APP_ENV}
@@ -111,7 +110,7 @@ services:
       METALDOCS_MINIO_BUCKET: ${METALDOCS_MINIO_BUCKET}
       METALDOCS_MINIO_USE_SSL: ${METALDOCS_MINIO_USE_SSL}
       METALDOCS_MINIO_AUTO_CREATE_BUCKET: ${METALDOCS_MINIO_AUTO_CREATE_BUCKET}
-      METALDOCS_CARBONE_API_URL: ${METALDOCS_CARBONE_API_URL}
+      METALDOCS_GOTENBERG_URL: ${METALDOCS_GOTENBERG_URL}
       PGHOST: postgres
       PGPORT: 5432
       PGDATABASE: ${POSTGRES_DB}

@@ -4,7 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
+	"net/http"
+	"time"
 
 	auditdomain "metaldocs/internal/modules/audit/domain"
 	auditmemory "metaldocs/internal/modules/audit/infrastructure/memory"
@@ -30,8 +31,8 @@ import (
 	nooppub "metaldocs/internal/platform/messaging/noop"
 	outboxpg "metaldocs/internal/platform/messaging/outbox/postgres"
 	"metaldocs/internal/platform/observability"
-	"metaldocs/internal/platform/render/carbone"
 	docgenclient "metaldocs/internal/platform/render/docgen"
+	"metaldocs/internal/platform/render/gotenberg"
 	localstorage "metaldocs/internal/platform/storage/local"
 	miniostorage "metaldocs/internal/platform/storage/minio"
 )
@@ -40,8 +41,6 @@ type APIDependencies struct {
 	DocumentsRepo     docdomain.Repository
 	WorkflowApprovals workflowdomain.ApprovalRepository
 	AttachmentStore   docdomain.AttachmentStore
-	CarboneClient     *carbone.Client
-	CarboneTemplates  *carbone.TemplateRegistry
 	RoleProvider      iamdomain.RoleProvider
 	RoleAdminRepo     iamdomain.RoleAdminRepository
 	AuthRepo          authdomain.Repository
@@ -50,6 +49,7 @@ type APIDependencies struct {
 	AuditReader       auditdomain.Reader
 	Publisher         messaging.Publisher
 	DocgenClient      *docgenclient.Client
+	GotenbergClient   *gotenberg.Client
 	StatusProvider    observability.RuntimeStatusProvider
 	Cleanup           func()
 }
@@ -58,34 +58,12 @@ type bucketEnsurer interface {
 	EnsureBucket(ctx context.Context) error
 }
 
-func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg config.AttachmentsConfig, carboneCfg config.CarboneConfig) (APIDependencies, error) {
-	carboneClient := carbone.NewClient(carboneCfg)
-	carboneRegistry, err := carbone.BootstrapTemplates(ctx, carboneClient, carboneCfg, nil)
-	if err != nil {
-		log.Printf("carbone bootstrap degraded: %v", err)
-	}
+func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg config.AttachmentsConfig) (APIDependencies, error) {
 	docgenClient := docgenclient.NewClient(config.LoadDocgenConfig())
-	carboneCheck := observability.DependencyCheck{
-		Name: "carbone",
-		Check: func(ctx context.Context) (observability.DependencyCheckResult, error) {
-			if !carboneCfg.Enabled {
-				return observability.DependencyCheckResult{
-					Status: "skipped",
-					Detail: "carbone disabled",
-				}, nil
-			}
-			if carboneClient == nil {
-				return observability.DependencyCheckResult{}, fmt.Errorf("carbone client not configured")
-			}
-			if err := carboneClient.Ping(ctx, "health"); err != nil {
-				return observability.DependencyCheckResult{}, err
-			}
-			meta := map[string]any{}
-			if carboneRegistry != nil {
-				meta["templates"] = carboneRegistry.Count()
-			}
-			return observability.DependencyCheckResult{Status: "up", Meta: meta}, nil
-		},
+	gotenbergCfg := config.LoadGotenbergConfig()
+	var gotenbergClient *gotenberg.Client
+	if gotenbergCfg.Enabled {
+		gotenbergClient = gotenberg.NewClient(gotenbergCfg.URL)
 	}
 
 	switch repoMode {
@@ -110,8 +88,6 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 			DocumentsRepo:     pgrepo.NewRepository(db),
 			WorkflowApprovals: workflowpg.NewApprovalRepository(db),
 			AttachmentStore:   store,
-			CarboneClient:     carboneClient,
-			CarboneTemplates:  carboneRegistry,
 			RoleProvider:      iampg.NewRoleProvider(db),
 			RoleAdminRepo:     iampg.NewRoleAdminRepository(db),
 			AuthRepo:          authRepo,
@@ -120,7 +96,8 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 			AuditReader:       auditpg.NewWriter(db),
 			Publisher:         outboxpg.NewPublisher(db),
 			DocgenClient:      docgenClient,
-			StatusProvider:    observability.NewPostgresRuntimeStatusProvider(db, repoMode, attachmentsCfg.Provider, authn.Enabled(), carboneCheck),
+			GotenbergClient:   gotenbergClient,
+			StatusProvider:    observability.NewPostgresRuntimeStatusProvider(db, repoMode, attachmentsCfg.Provider, authn.Enabled(), gotenbergHealthCheck(gotenbergCfg)),
 			Cleanup:           func() { _ = closeDB(db) },
 		}, nil
 	default:
@@ -145,8 +122,6 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 			DocumentsRepo:     memoryrepo.NewRepository(),
 			WorkflowApprovals: workflowmemory.NewApprovalRepository(),
 			AttachmentStore:   store,
-			CarboneClient:     carboneClient,
-			CarboneTemplates:  carboneRegistry,
 			RoleProvider:      authRepo,
 			RoleAdminRepo:     authRepo,
 			AuthRepo:          authRepo,
@@ -155,7 +130,8 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 			AuditReader:       auditStore,
 			Publisher:         nooppub.NewPublisher(),
 			DocgenClient:      docgenClient,
-			StatusProvider:    observability.NewStaticRuntimeStatusProvider(repoMode, attachmentsCfg.Provider, authn.Enabled(), carboneCheck),
+			GotenbergClient:   gotenbergClient,
+			StatusProvider:    observability.NewStaticRuntimeStatusProvider(repoMode, attachmentsCfg.Provider, authn.Enabled(), gotenbergHealthCheck(gotenbergCfg)),
 			Cleanup:           func() {},
 		}, nil
 	}
@@ -184,4 +160,35 @@ func closeDB(db *sql.DB) error {
 		return nil
 	}
 	return db.Close()
+}
+
+func gotenbergHealthCheck(cfg config.GotenbergConfig) observability.DependencyCheck {
+	return observability.DependencyCheck{
+		Name: "gotenberg",
+		Check: func(ctx context.Context) (observability.DependencyCheckResult, error) {
+			if !cfg.Enabled || cfg.URL == "" {
+				return observability.DependencyCheckResult{
+					Status: "skipped",
+					Detail: "gotenberg not configured",
+				}, nil
+			}
+			client := &http.Client{Timeout: 2 * time.Second}
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, cfg.URL+"/health", nil)
+			if err != nil {
+				return observability.DependencyCheckResult{}, err
+			}
+			resp, err := client.Do(req)
+			if err != nil {
+				return observability.DependencyCheckResult{}, err
+			}
+			defer resp.Body.Close()
+			if resp.StatusCode != http.StatusOK {
+				return observability.DependencyCheckResult{}, fmt.Errorf("gotenberg unhealthy: status %d", resp.StatusCode)
+			}
+			return observability.DependencyCheckResult{
+				Status: "up",
+				Detail: cfg.URL,
+			}, nil
+		},
+	}
 }

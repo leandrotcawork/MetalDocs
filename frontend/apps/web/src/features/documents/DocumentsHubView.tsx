@@ -610,12 +610,15 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
   }
 
   if (documentsHubView === "detail") {
-    if (!props.selectedDocument) {
+    const routeDocumentId = route.view === "detail" ? route.documentId : "";
+    const selectedDocumentId = (props.selectedDocument?.documentId ?? "").trim();
+
+    if (!props.selectedDocument || !selectedDocumentId || selectedDocumentId !== routeDocumentId) {
       return (
         <div className={styles.page}>
           {headerShell}
           <section className={styles.hub}>
-            <div className={styles.state}>Selecione um documento para ver os detalhes.</div>
+            <div className={styles.state}>Carregando detalhes do documento...</div>
           </section>
         </div>
       );

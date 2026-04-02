@@ -21,7 +21,9 @@ import {
 } from "./runtime/docx.js";
 import type {
   ColumnDef,
+  DocumentMetadata,
   DocumentPayload,
+  DocumentRevision,
   DocumentTypeSchema,
   DocumentValues,
   FieldDef,
@@ -272,6 +274,8 @@ function normalizeDocumentPayload(input: unknown): DocumentPayload {
     status: typeof status === "string" && status.trim() ? status.trim() : undefined,
     schema: { sections: schema.sections as DocumentTypeSchema["sections"] },
     values: values as DocumentValues,
+    metadata: isObject(input.metadata) ? input.metadata as unknown as DocumentPayload["metadata"] : undefined,
+    revisions: Array.isArray(input.revisions) ? input.revisions as unknown as DocumentPayload["revisions"] : undefined,
   } satisfies DocumentPayload;
 
   if (payload.schema.sections.length === 0) {
@@ -358,9 +362,8 @@ function buildHeader(runtime: DocumentPayload): Table {
 }
 
 function buildFooter(runtime: DocumentPayload): Footer {
-  const elaboradoPor = isObject(runtime.values.identificacao)
-    ? asString(runtime.values.identificacao.elaboradoPor) ?? "\u2014"
-    : "\u2014";
+  const elaboradoPor = runtime.metadata?.elaboradoPor
+    ?? (isObject(runtime.values.identificacao) ? asString(runtime.values.identificacao.elaboradoPor) ?? "\u2014" : "\u2014");
 
   return new Footer({
     children: [
@@ -379,6 +382,156 @@ function buildFooter(runtime: DocumentPayload): Footer {
       }),
     ],
   });
+}
+
+function buildIdentificationSection(runtime: DocumentPayload): (Paragraph | Table)[] {
+  if (!runtime.metadata) {
+    return [];
+  }
+  const meta = runtime.metadata;
+  const widths = [2200, 2480, 2200, 2480] as const;
+
+  return [
+    paragraph([]),
+    makeTable(
+      [
+        new TableRow({
+          children: [
+            makeCell({
+              width: CONTENT_WIDTH,
+              columnSpan: 4,
+              fill: C.purple,
+              children: [
+                paragraph([run("1 \u2014 IDENTIFICA\u00C7\u00C3O", { bold: true, color: C.white })]),
+              ],
+            }),
+          ],
+        }),
+        new TableRow({
+          children: [
+            makeCell({
+              width: widths[0],
+              fill: C.purpleLight,
+              children: [paragraph([run("Elaborado por", { bold: true })])],
+            }),
+            makeCell({
+              width: widths[1],
+              children: [paragraph([run(meta.elaboradoPor || "\u2014")])],
+            }),
+            makeCell({
+              width: widths[2],
+              fill: C.purpleLight,
+              children: [paragraph([run("Aprovado por", { bold: true })])],
+            }),
+            makeCell({
+              width: widths[3],
+              children: [paragraph([run(meta.aprovadoPor || "\u2014")])],
+            }),
+          ],
+        }),
+        new TableRow({
+          children: [
+            makeCell({
+              width: widths[0],
+              fill: C.purpleLight,
+              children: [paragraph([run("Data de cria\u00E7\u00E3o", { bold: true })])],
+            }),
+            makeCell({
+              width: widths[1],
+              children: [paragraph([run(meta.createdAt || "\u2014")])],
+            }),
+            makeCell({
+              width: widths[2],
+              fill: C.purpleLight,
+              children: [paragraph([run("Data de aprova\u00E7\u00E3o", { bold: true })])],
+            }),
+            makeCell({
+              width: widths[3],
+              children: [paragraph([run(meta.approvedAt || "\u2014")])],
+            }),
+          ],
+        }),
+      ],
+      widths,
+      { width: CONTENT_WIDTH, borders: tableBorder(BorderStyle.NONE) },
+    ),
+  ];
+}
+
+function buildRevisionHistorySection(runtime: DocumentPayload): (Paragraph | Table)[] {
+  if (!runtime.revisions || runtime.revisions.length === 0) {
+    return [];
+  }
+  const widths = [1400, 1800, 4360, 1800] as const;
+
+  return [
+    paragraph([]),
+    makeTable(
+      [
+        new TableRow({
+          children: [
+            makeCell({
+              width: CONTENT_WIDTH,
+              columnSpan: 4,
+              fill: C.gray,
+              children: [
+                paragraph([run("10 \u2014 HIST\u00D3RICO DE REVIS\u00D5ES", { bold: true, color: C.white })]),
+              ],
+            }),
+          ],
+        }),
+        new TableRow({
+          children: [
+            makeCell({
+              width: widths[0],
+              fill: C.grayLight,
+              children: [paragraph([run("Vers\u00E3o", { bold: true })])],
+            }),
+            makeCell({
+              width: widths[1],
+              fill: C.grayLight,
+              children: [paragraph([run("Data", { bold: true })])],
+            }),
+            makeCell({
+              width: widths[2],
+              fill: C.grayLight,
+              children: [paragraph([run("O que foi alterado", { bold: true })])],
+            }),
+            makeCell({
+              width: widths[3],
+              fill: C.grayLight,
+              children: [paragraph([run("Por", { bold: true })])],
+            }),
+          ],
+        }),
+        ...runtime.revisions.map(
+          (rev) =>
+            new TableRow({
+              children: [
+                makeCell({
+                  width: widths[0],
+                  children: [paragraph([run(rev.versao || "\u2014")])],
+                }),
+                makeCell({
+                  width: widths[1],
+                  children: [paragraph([run(rev.data || "\u2014")])],
+                }),
+                makeCell({
+                  width: widths[2],
+                  children: [paragraph([run(rev.descricao || "\u2014")])],
+                }),
+                makeCell({
+                  width: widths[3],
+                  children: [paragraph([run(rev.por || "\u2014")])],
+                }),
+              ],
+            }),
+        ),
+      ],
+      widths,
+      { width: CONTENT_WIDTH, borders: tableBorder(BorderStyle.NONE) },
+    ),
+  ];
 }
 
 export async function generateDocx(payload: unknown): Promise<Uint8Array> {
@@ -406,7 +559,9 @@ export async function generateDocx(payload: unknown): Promise<Uint8Array> {
         },
         children: [
           buildHeader(runtime),
+          ...buildIdentificationSection(runtime),
           ...runtime.schema.sections.flatMap((section) => renderSection(section, runtime.values[section.key] ?? {})),
+          ...buildRevisionHistorySection(runtime),
         ],
       },
     ],

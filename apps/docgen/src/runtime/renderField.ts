@@ -6,6 +6,7 @@ import {
   LABEL_VALUE_ROW,
   REPEAT_ROW,
   fieldParagraph,
+  getLightColor,
   makeCell,
   makeTable,
   mixWithWhite,
@@ -15,6 +16,7 @@ import type { FieldDef, RepeatFieldDef, RichFieldDef, ScalarFieldType, TableFiel
 
 type RenderContext = {
   sectionColor?: string;
+  labelFill?: string;
 };
 
 const scalarTypes: ScalarFieldType[] = ["text", "textarea", "number", "date", "select", "checkbox"];
@@ -23,10 +25,14 @@ function isScalarField(field: FieldDef): field is Extract<FieldDef, { type: Scal
   return scalarTypes.includes(field.type as ScalarFieldType);
 }
 
-function renderScalarTable(field: Extract<FieldDef, { type: ScalarFieldType }>, value: unknown): Table {
+function renderScalarTable(
+  field: Extract<FieldDef, { type: ScalarFieldType }>,
+  value: unknown,
+  labelFill: string = C.grayLight
+): Table {
   const labelCell = makeCell({
     width: LABEL_VALUE_ROW[0],
-    fill: C.grayLight,
+    fill: labelFill,
     children: [
       fieldParagraph(field.label, {
         bold: true,
@@ -53,21 +59,24 @@ function renderScalarTable(field: Extract<FieldDef, { type: ScalarFieldType }>, 
   });
 }
 
-function renderTableField(field: TableFieldDef, value: unknown): Array<Paragraph | Table> {
+function renderTableField(field: TableFieldDef, value: unknown, context: RenderContext): Array<Paragraph | Table> {
   const rows = Array.isArray(value) ? value : [];
   const columns = field.columns.length;
   const columnWidth = Math.floor(CONTENT_WIDTH / columns);
   const columnWidths = Array.from({ length: columns }, () => columnWidth);
 
+  const sectionColor = context.sectionColor ?? C.gray;
+  const headerFill = getLightColor(sectionColor);
+
   const header = new TableRow({
     children: field.columns.map((column) =>
       makeCell({
         width: columnWidth,
-        fill: C.grayLight,
+        fill: headerFill,
         children: [
           fieldParagraph(column.label, {
             bold: true,
-            color: C.gray,
+            color: sectionColor,
             size: 18,
           }),
         ],
@@ -201,6 +210,7 @@ function renderRepeatField(field: RepeatFieldDef, value: unknown, context: Rende
   const items = Array.isArray(value) ? value : [];
   const nodes: Array<Paragraph | Table> = [];
   const sectionColor = (context.sectionColor ?? C.gray).replace(/^#/, "").toUpperCase();
+  const labelFill = getLightColor(sectionColor);
 
   items.forEach((item, index) => {
     const record = typeof item === "object" && item !== null ? (item as Record<string, unknown>) : {};
@@ -234,7 +244,7 @@ function renderRepeatField(field: RepeatFieldDef, value: unknown, context: Rende
     field.itemFields
       .filter((nestedField) => !isScalarField(nestedField))
       .forEach((nestedField) => {
-        nodes.push(...renderField(nestedField, record[nestedField.key], 0, context));
+        nodes.push(...renderField(nestedField, record[nestedField.key], 0, { sectionColor, labelFill }));
       });
   });
 
@@ -259,9 +269,9 @@ export function renderField(field: FieldDef, value: unknown, depth = 0, context:
     case "date":
     case "select":
     case "checkbox":
-      return [renderScalarTable(field, value)];
+      return [renderScalarTable(field, value, context.labelFill)];
     case "table":
-      return renderTableField(field, value);
+      return renderTableField(field, value, context);
     case "rich":
       return renderRichField(field, value);
     case "repeat":

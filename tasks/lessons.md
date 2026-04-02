@@ -802,3 +802,94 @@ Wrong:   Treating draft versions as immutable and always creating a new version 
 Correct: Allow in-place updates when the version is in DRAFT
 Rule:    Immutability applies to non-draft versions only; draft updates can be in-place
 Layer:   process
+
+## Lesson DG - Detail actions must be bound to the route-selected document
+Date: 2026-04-02 | Trigger: correction
+Wrong:   Rendering document detail actions from stale `selectedDocument` state before it matched the `/documents/doc/:id` route
+Correct: Render detail actions only when `selectedDocument.documentId` is non-empty and matches the route document id
+Rule:    In URL-driven detail views, action handlers must be gated by route/state identity match to avoid stale or empty resource IDs.
+Layer:   frontend
+
+## Lesson DH - Route handlers must fail closed on unmatched paths
+Date: 2026-04-02 | Trigger: correction
+Wrong:   Workflow sub-route handler returned without writing a response for unmatched paths, producing HTTP 200 with empty body
+Correct: Return explicit 404/405 responses for unmatched or wrong-method workflow routes
+Rule:    HTTP handlers must always emit an explicit non-2xx response for invalid route shapes instead of returning implicitly.
+Layer:   delivery
+
+## Lesson DI - JSON array fields must never regress to null
+Date: 2026-04-02 | Trigger: correction
+Wrong:   Building `metadataChanged` with `append([]string(nil), ...)` serialized empty diffs as `null`
+Correct: Build response arrays from a non-nil base slice so empty arrays serialize as `[]`
+Rule:    API response fields modeled as arrays must preserve array shape even when empty.
+Layer:   delivery
+
+## Lesson DJ - Profile schema listings must hydrate content from type definitions
+Date: 2026-04-02 | Trigger: correction
+Wrong:   Returning `document_profile_schema_versions.content_schema_json` directly let runtime consumers read stale profile schema payloads
+Correct: Resolve `ContentSchema` from the canonical `document_type_schema_versions` definition inside `ListDocumentProfileSchemas`
+Rule:    Shared schema readers must hydrate profile content from the canonical type schema source at the application boundary.
+Layer:   application
+
+## Lesson DK - DOCX export chrome must come from document governance data
+Date: 2026-04-02 | Trigger: correction
+Wrong:   Building the docgen export payload with only title/code/schema/values and leaving metadata and revision history empty
+Correct: Populate export metadata from document ownership and latest approval data, and build revision rows from stored document versions
+Rule:    Server-side exports must derive user-facing governance sections from canonical document, approval, and version records rather than placeholders.
+Layer:   application
+
+## Lesson DL - Internal module commands must use paths relative to the internal module root
+Date: 2026-04-02 | Trigger: correction
+Wrong:   Running `go test ./internal/platform/...` after `cd internal`, which resolves to a non-existent `internal/internal/...` path
+Correct: From `internal/`, target packages with module-root-relative paths such as `go test ./platform/config ./platform/render/gotenberg`
+Rule:    When a Go module lives in a subdirectory, verification commands must be scoped relative to that module root, not repeated from the repo root.
+Layer:   process
+
+## Lesson DM - Service dependency swaps must be wired through every construction layer
+Date: 2026-04-02 | Trigger: correction
+Wrong:   Replacing a service dependency in one method path without adding the field, bootstrap dependency, and main builder wiring for the new client
+Correct: When a backend service dependency changes, wire it end-to-end through the service struct, dependency builder, bootstrap container, and application assembly
+Rule:    Backend dependency replacements are complete only when every construction layer provides the new client explicitly.
+Layer:   process
+
+## Lesson DN - Retired routes must fail explicitly
+Date: 2026-04-02 | Trigger: correction
+Wrong:   Leaving template download handlers wired to removed Carbone service methods, which crashed once the dependency was gone
+Correct: Replace retired endpoints with an explicit deprecation response until the route itself is removed or replaced
+Rule:    When a backend capability is removed before its route disappears, handlers must fail closed with a stable non-2xx response instead of calling dead dependencies.
+Layer:   delivery
+
+## Lesson DO - Backfilled artifact blobs must persist their storage keys
+Date: 2026-04-02 | Trigger: correction
+Wrong:   Saving a regenerated DOCX blob during PDF rendering without updating the stored version metadata
+Correct: Persist the backfilled blob's storage key on the version record immediately after the blob write succeeds
+Rule:    Any lazily regenerated artifact must update its canonical storage pointer as part of the same recovery path, or later reads will behave as if the artifact does not exist.
+Layer:   application
+
+## Lesson DP - Pre-persist export payloads must accept pending revision state
+Date: 2026-04-02 | Trigger: correction
+Wrong:   Building the save-generated docgen payload only from `ListVersions`, which omits the in-flight revision before `SaveVersion`
+Correct: Thread the pending revision into the render payload whenever DOCX generation happens before the version row is persisted
+Rule:    Any render/export payload generated before persistence must be able to include the pending mutation state explicitly instead of relying only on repository reads.
+Layer:   application
+
+## Lesson DQ - Optional runtime dependencies must be registered in every status provider
+Date: 2026-04-02 | Trigger: correction
+Wrong:   Wiring the Gotenberg client for runtime use but omitting its dependency check from the memory/static and Postgres status providers
+Correct: Register the same dependency check with every runtime status provider so readiness payloads report optional services consistently across environments
+Rule:    Any optional backend dependency that affects runtime behavior must expose one shared health check through every status provider construction path.
+Layer:   process
+
+## Lesson DR - Deprecated routes must keep the contract aligned with runtime behavior
+Date: 2026-04-02 | Trigger: correction
+Wrong:   Leaving removed template DOCX routes documented as successful binary downloads after the backend capability was retired
+Correct: Mark retired routes as deprecated and describe their stable `501` error envelope until the paths are removed
+Rule:    When an API route is intentionally retired before deletion, OpenAPI must advertise the deprecation and the exact non-2xx response the handler returns.
+Layer:   process
+
+## Lesson DS - Unified export flows must delete unreachable predecessors
+Date: 2026-04-02 | Trigger: correction
+Wrong:   Keeping `exportDocumentDocxAuthorizedLegacy` alongside the unified docgen path after all live callers had moved
+Correct: Remove superseded export implementations once the replacement path is the only reachable flow, keeping only still-shared helpers
+Rule:    After service flow unification, unreachable predecessor methods should be deleted rather than left as dormant fallback code.
+Layer:   application

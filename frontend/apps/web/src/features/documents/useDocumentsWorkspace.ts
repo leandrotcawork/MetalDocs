@@ -151,15 +151,20 @@ export function useDocumentsWorkspace(applyDocumentProfile: (profileCode: string
 
   const loadDocumentDetails = useCallback(
     async (documentId: string) => {
-      startApiTrace(`open-document:${documentId}`);
-      markUx(`open-document-start:${documentId}`);
+      const normalizedDocumentID = documentId.trim();
+      if (!normalizedDocumentID) {
+        setError("Selecione um documento valido antes de abrir.");
+        return false;
+      }
+      startApiTrace(`open-document:${normalizedDocumentID}`);
+      markUx(`open-document-start:${normalizedDocumentID}`);
       try {
         const [docResponse, versionsResponse, approvalsResponse, attachmentsResponse, auditResponse] = await Promise.all([
-          api.getDocument(documentId),
-          api.listVersions(documentId),
-          api.listApprovals(documentId),
-          api.listAttachments(documentId),
-          api.listAuditEvents(new URLSearchParams({ resourceId: documentId })),
+          api.getDocument(normalizedDocumentID),
+          api.listVersions(normalizedDocumentID),
+          api.listApprovals(normalizedDocumentID),
+          api.listAttachments(normalizedDocumentID),
+          api.listAuditEvents(new URLSearchParams({ resourceId: normalizedDocumentID })),
         ]);
         const orderedVersions = [...versionsResponse.items].sort((a, b) => b.version - a.version);
         setSelectedDocument(docResponse);
@@ -169,19 +174,19 @@ export function useDocumentsWorkspace(applyDocumentProfile: (profileCode: string
         setCollaborationPresence([]);
         setDocumentEditLock(null);
         setAuditEvents(auditResponse.items);
-        setPolicyResourceId(documentId);
-        const policyResponse = await api.listAccessPolicies("document", documentId).catch((err) => {
+        setPolicyResourceId(normalizedDocumentID);
+        const policyResponse = await api.listAccessPolicies("document", normalizedDocumentID).catch((err) => {
           if (statusOf(err) === 403) {
             return { items: [] as AccessPolicyItem[] };
           }
           throw err;
         });
         const nextDiff = orderedVersions.length >= 2
-          ? await api.getVersionDiff(documentId, orderedVersions[1].version, orderedVersions[0].version)
+          ? await api.getVersionDiff(normalizedDocumentID, orderedVersions[1].version, orderedVersions[0].version)
           : null;
         setPolicies(policyResponse.items);
         setVersionDiff(nextDiff);
-        markUx(`open-document-ready:${documentId}`);
+        markUx(`open-document-ready:${normalizedDocumentID}`);
         stopApiTrace();
         return true;
       } catch (err) {

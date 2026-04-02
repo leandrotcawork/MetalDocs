@@ -1,11 +1,29 @@
 package docgen
 
 type RenderPayload struct {
-	DocumentType string         `json:"documentType"`
-	DocumentCode string         `json:"documentCode"`
-	Title        string         `json:"title"`
-	Schema       RenderSchema   `json:"schema"`
-	Values       map[string]any `json:"values"`
+	DocumentType string           `json:"documentType"`
+	DocumentCode string           `json:"documentCode"`
+	Title        string           `json:"title"`
+	Version      string           `json:"version,omitempty"`
+	Status       string           `json:"status,omitempty"`
+	Schema       RenderSchema     `json:"schema"`
+	Values       map[string]any   `json:"values"`
+	Metadata     *RenderMetadata  `json:"metadata,omitempty"`
+	Revisions    []RenderRevision `json:"revisions,omitempty"`
+}
+
+type RenderMetadata struct {
+	ElaboradoPor string `json:"elaboradoPor"`
+	AprovadoPor  string `json:"aprovadoPor"`
+	CreatedAt    string `json:"createdAt"`
+	ApprovedAt   string `json:"approvedAt"`
+}
+
+type RenderRevision struct {
+	Versao    string `json:"versao"`
+	Data      string `json:"data"`
+	Descricao string `json:"descricao"`
+	Por       string `json:"por"`
 }
 
 type RenderSchema struct {

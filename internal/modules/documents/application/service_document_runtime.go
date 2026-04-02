@@ -20,6 +20,38 @@ type DocumentRuntimeBundle struct {
 	Schema   domain.DocumentProfileSchemaVersion
 }
 
+func (s *Service) resolveUserDisplayName(ctx context.Context, userID string) string {
+	if userID == "" {
+		return "—"
+	}
+	if s.userResolver == nil {
+		return userID
+	}
+	name, err := s.userResolver.ResolveDisplayName(ctx, userID)
+	if err != nil || name == "" {
+		return userID
+	}
+	return name
+}
+
+func (s *Service) resolveLatestApproval(ctx context.Context, documentID string) (approverName string, approvedAt string) {
+	if s.approvalReader == nil {
+		return "—", ""
+	}
+	approvals, err := s.approvalReader.ListApprovals(ctx, documentID)
+	if err != nil || len(approvals) == 0 {
+		return "—", ""
+	}
+	for i := len(approvals) - 1; i >= 0; i-- {
+		a := approvals[i]
+		if strings.EqualFold(a.Status, "APPROVED") && a.DecidedAt != nil {
+			name := s.resolveUserDisplayName(ctx, a.ApproverID)
+			return name, a.DecidedAt.Format("2006-01-02")
+		}
+	}
+	return "—", ""
+}
+
 func (s *Service) GetDocumentRuntimeBundle(ctx context.Context, documentID string) (DocumentRuntimeBundle, error) {
 	doc, err := s.GetDocumentAuthorized(ctx, documentID)
 	if err != nil {
@@ -141,6 +173,55 @@ func (s *Service) SaveDocumentValuesAuthorized(ctx context.Context, cmd domain.S
 	return version, nil
 }
 
+func (s *Service) buildDocgenPayload(ctx context.Context, doc domain.Document, schema domain.DocumentProfileSchemaVersion, version domain.Version, pendingRevision *docgen.RenderRevision) (docgen.RenderPayload, error) {
+	schemaMap, err := toDocgenSchema(schema.ContentSchema)
+	if err != nil {
+		return docgen.RenderPayload{}, err
+	}
+
+	ownerName := s.resolveUserDisplayName(ctx, doc.OwnerID)
+	approverName, approvedAt := s.resolveLatestApproval(ctx, doc.ID)
+
+	payload := docgen.RenderPayload{
+		DocumentType: firstNonEmpty(doc.DocumentType, doc.DocumentProfile),
+		DocumentCode: doc.DocumentCode,
+		Title:        doc.Title,
+		Version:      fmt.Sprintf("%d", version.Number),
+		Status:       doc.Status,
+		Schema:       schemaMap,
+		Values:       cloneRuntimeValues(version.Values),
+		Metadata: &docgen.RenderMetadata{
+			ElaboradoPor: ownerName,
+			AprovadoPor:  approverName,
+			CreatedAt:    doc.CreatedAt.Format("2006-01-02"),
+			ApprovedAt:   approvedAt,
+		},
+	}
+
+	versions, err := s.repo.ListVersions(ctx, doc.ID)
+	if err == nil && len(versions) > 0 {
+		revisions := make([]docgen.RenderRevision, 0, len(versions))
+		for _, v := range versions {
+			summary := v.ChangeSummary
+			if summary == "" && v.Number == 1 {
+				summary = "Criação do documento"
+			}
+			revisions = append(revisions, docgen.RenderRevision{
+				Versao:    fmt.Sprintf("%d", v.Number),
+				Data:      v.CreatedAt.Format("2006-01-02"),
+				Descricao: summary,
+				Por:       ownerName,
+			})
+		}
+		payload.Revisions = revisions
+	}
+	if pendingRevision != nil {
+		payload.Revisions = append(payload.Revisions, *pendingRevision)
+	}
+
+	return payload, nil
+}
+
 func (s *Service) ExportDocumentDocxAuthorized(ctx context.Context, documentID, traceID string) ([]byte, error) {
 	if s.docgenClient == nil {
 		return nil, domain.ErrRenderUnavailable
@@ -151,17 +232,32 @@ func (s *Service) ExportDocumentDocxAuthorized(ctx context.Context, documentID, 
 		return nil, err
 	}
 
-	schema, err := toDocgenSchema(bundle.Schema.ContentSchema)
+	payload, err := s.buildDocgenPayload(ctx, bundle.Document, bundle.Schema, bundle.Version, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	payload := docgen.RenderPayload{
-		DocumentType: firstNonEmpty(bundle.Document.DocumentType, bundle.Document.DocumentProfile),
-		DocumentCode: bundle.Document.DocumentCode,
-		Title:        bundle.Document.Title,
-		Schema:       schema,
-		Values:       cloneRuntimeValues(bundle.Version.Values),
+	return s.docgenClient.Generate(ctx, payload, traceID)
+}
+
+func (s *Service) generateDocxBytes(ctx context.Context, doc domain.Document, version domain.Version, content map[string]any, traceID string, pendingRevision *docgen.RenderRevision) ([]byte, error) {
+	if s.docgenClient == nil {
+		return nil, domain.ErrRenderUnavailable
+	}
+
+	schema, err := s.resolveActiveProfileSchema(ctx, doc.DocumentProfile)
+	if err != nil {
+		return nil, err
+	}
+
+	versionWithValues := version
+	if len(content) > 0 {
+		versionWithValues.Values = content
+	}
+
+	payload, err := s.buildDocgenPayload(ctx, doc, schema, versionWithValues, pendingRevision)
+	if err != nil {
+		return nil, err
 	}
 
 	return s.docgenClient.Generate(ctx, payload, traceID)

@@ -49,6 +49,7 @@ export const HEADER_ROW_1 = [HEADER_TITLE_WIDTH, HEADER_META_COLUMN_WIDTH, HEADE
 export const HEADER_ROW_2 = [HEADER_TITLE_WIDTH, HEADER_META_WIDTH] as const;
 export const LABEL_VALUE_ROW = [2200, 7160] as const;
 export const REPEAT_ROW = [4680, 4680] as const;
+export const PAIRED_SCALAR_WIDTHS = [2200, 2480, 2200, 2480] as const;
 
 export const emptyBorder: ITableBordersOptions = { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } };
 
@@ -76,6 +77,22 @@ export function tableBorder(style: (typeof BorderStyle)[keyof typeof BorderStyle
 
 function normalizeHex(value: string): string {
   return value.replace(/^#/, "").toUpperCase();
+}
+
+// Maps each document section color to its pre-defined light variant from the design system.
+// Falls back to mixWithWhite if the color is not in the palette.
+const LIGHT_COLOR_MAP: Record<string, string> = {
+  "4A3DB5": "EEEDFE", // purple  → purpleLight
+  "0F6E56": "E1F5EE", // teal    → tealLight
+  "BA7517": "FAEEDA", // amber   → amberLight
+  "993C1D": "FAECE7", // coral   → coralLight
+  "185FA5": "E6F1FB", // blue    → blueLight
+  "444441": "F1EFE8", // gray    → grayLight
+};
+
+export function getLightColor(hexNoHash: string): string {
+  const key = hexNoHash.replace(/^#/, "").toUpperCase();
+  return LIGHT_COLOR_MAP[key] ?? mixWithWhite(key, 0.85);
 }
 
 export function mixWithWhite(color: string, whiteMix = 0.3): string {

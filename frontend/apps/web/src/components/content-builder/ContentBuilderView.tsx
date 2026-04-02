@@ -5,6 +5,8 @@ import { formatDocumentDisplayName } from "../../features/shared/documentDisplay
 import { ProgressSidebar } from "../create/widgets/ProgressSidebar";
 import type { StepStatus } from "../create/documentCreateTypes";
 import { DynamicEditor } from "../../features/documents/runtime/DynamicEditor";
+import { DocumentCanvas } from "../../features/documents/canvas/DocumentCanvas";
+import { normalizeGovernedCanvasTemplate } from "../../features/documents/canvas/templateAdapters";
 import type { SchemaSection } from "./contentSchemaTypes";
 import { hasAnyValue, isFieldComplete, sectionAnchorId } from "./contentBuilderUtils";
 import { useAutoSave } from "./useAutoSave";
@@ -34,7 +36,17 @@ type BuilderState = {
 
 type BuilderAction =
   | { type: "load_start" }
-  | { type: "load_success"; payload: { contentDraft: Record<string, unknown>; schema: DocumentProfileSchemaItem | null; version: number | null; pdfUrl: string; templateSnapshot: DocumentTemplateSnapshotItem | null; draftToken: string } }
+  | {
+      type: "load_success";
+      payload: {
+        contentDraft: Record<string, unknown>;
+        schema: DocumentProfileSchemaItem | null;
+        version: number | null;
+        pdfUrl: string;
+        templateSnapshot: DocumentTemplateSnapshotItem | null;
+        draftToken: string;
+      };
+    }
   | { type: "load_error"; payload: { message: string } }
   | { type: "set_draft"; payload: { contentDraft: Record<string, unknown> } }
   | { type: "set_status"; payload: { status: BuilderStatus } }
@@ -112,7 +124,13 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
     return props.document.documentCode ?? formatDocumentDisplayName(props.document);
   }, [props.document]);
 
-  const governedCanvasEnabled = Boolean(templateSnapshot);
+  const governedCanvasTemplate = useMemo(() => normalizeGovernedCanvasTemplate(templateSnapshot), [templateSnapshot]);
+  const governedCanvasProfileActive = profileCode === "po";
+  const governedCanvasReady = governedCanvasProfileActive && Boolean(governedCanvasTemplate) && draftToken.trim().length > 0;
+  const governedCanvasFailure =
+    governedCanvasProfileActive && !governedCanvasReady
+      ? "O canvas governado do PO nao pode ser aberto com metadados invalidos ou incompletos."
+      : "";
 
   const sections = useMemo(() => {
     const raw = schema?.contentSchema as { sections?: SchemaSection[] } | undefined;
@@ -137,16 +155,19 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
   // --- Auto-save integration ---
   const saveFn = useCallback(
     async (docId: string, body: { content: Record<string, unknown> }) => {
+      if (governedCanvasProfileActive && !governedCanvasReady) {
+        throw new Error("Governed canvas draft token is missing or invalid.");
+      }
       const response = await api.saveDocumentContentNative(
         docId,
-        governedCanvasEnabled && draftToken.trim() ? { ...body, draftToken: draftToken.trim() } : body,
+        governedCanvasReady ? { ...body, draftToken: draftToken.trim() } : body,
       );
       if (response.draftToken && response.draftToken !== draftToken) {
         dispatch({ type: "set_draft_token", payload: { draftToken: response.draftToken } });
       }
       return { pdfUrl: response.pdfUrl, version: response.version ?? null };
     },
-    [draftToken, governedCanvasEnabled],
+    [draftToken, governedCanvasProfileActive, governedCanvasReady],
   );
 
   const autoSave = useAutoSave({
@@ -154,7 +175,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
     contentDraft,
     saveFn,
     debounceMs: 3000,
-    enabled: !!documentId && status !== "loading",
+    enabled: !!documentId && status !== "loading" && !governedCanvasFailure,
   });
   const lastSavedAt = autoSave.lastSavedAt;
 
@@ -313,9 +334,13 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
     dispatch({ type: "set_error", payload: { message: "" } });
     dispatch({ type: "set_status", payload: { status: "saving" } });
     try {
+      if (governedCanvasProfileActive && !governedCanvasReady) {
+        dispatch({ type: "load_error", payload: { message: governedCanvasFailure } });
+        return false;
+      }
       const response = await api.saveDocumentContentNative(
         documentId,
-        governedCanvasEnabled && draftToken.trim() ? { content: savedContent, draftToken: draftToken.trim() } : { content: savedContent },
+        governedCanvasReady ? { content: savedContent, draftToken: draftToken.trim() } : { content: savedContent },
       );
       autoSave.acknowledgeSave(savedContent, response.pdfUrl);
       dispatch({ type: "set_pdf", payload: { pdfUrl: response.pdfUrl } });
@@ -484,15 +509,28 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
   const editorPane = (
     <main className="content-builder-editor" ref={editorRef}>
       <div className="content-builder-editor-inner">
-        <DynamicEditor
-          schema={schema}
-          value={contentDraft}
-          activeSectionKey={activeSectionKey}
-          onChange={(next) => {
-            dispatch({ type: "set_draft", payload: { contentDraft: next } });
-            dispatch({ type: "set_status", payload: { status: "dirty" } });
-          }}
-        />
+        {governedCanvasFailure ? (
+          <div className="content-builder-error">{governedCanvasFailure}</div>
+        ) : governedCanvasReady && governedCanvasTemplate ? (
+          <DocumentCanvas
+            template={governedCanvasTemplate}
+            values={contentDraft}
+            onChange={(next) => {
+              dispatch({ type: "set_draft", payload: { contentDraft: next } });
+              dispatch({ type: "set_status", payload: { status: "dirty" } });
+            }}
+          />
+        ) : (
+          <DynamicEditor
+            schema={schema}
+            value={contentDraft}
+            activeSectionKey={activeSectionKey}
+            onChange={(next) => {
+              dispatch({ type: "set_draft", payload: { contentDraft: next } });
+              dispatch({ type: "set_status", payload: { status: "dirty" } });
+            }}
+          />
+        )}
         {error && <div className="content-builder-error">{error}</div>}
         {autoSave.error && <div className="content-builder-error">{autoSave.error}</div>}
       </div>
@@ -508,6 +546,14 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
       onToggleCollapse={(collapsed) => dispatch({ type: "set_preview", payload: { collapsed } })}
     />
   );
+
+  const contentBuilderControlsDisabled =
+    isExporting ||
+    status === "saving" ||
+    status === "loading" ||
+    status === "rendering" ||
+    autoSave.isSaving ||
+    Boolean(governedCanvasFailure);
 
   return (
     <section className="content-builder">
@@ -627,7 +673,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
             type="button"
             className="content-builder-btn ghost"
             onClick={handleExportDocx}
-            disabled={isExporting || status === "saving" || status === "loading" || status === "rendering" || autoSave.isSaving}
+            disabled={contentBuilderControlsDisabled}
           >
             Exportar .docx
           </button>
@@ -635,7 +681,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
             type="button"
             className="content-builder-btn ghost"
             onClick={handleSave}
-            disabled={isExporting || status === "saving" || status === "loading" || status === "rendering" || autoSave.isSaving}
+            disabled={contentBuilderControlsDisabled}
           >
             Salvar rascunho
           </button>
@@ -643,7 +689,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
             type="button"
             className="content-builder-btn primary"
             onClick={handleRenderPdf}
-            disabled={isExporting || status === "saving" || status === "loading" || status === "rendering" || autoSave.isSaving}
+            disabled={contentBuilderControlsDisabled}
           >
             Gerar PDF
           </button>

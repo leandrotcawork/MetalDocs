@@ -182,8 +182,10 @@ function normalizeDocumentEditorBundle(value: DocumentEditorBundleResponse): Doc
   const document = normalizeDocumentListItem(value?.document);
   const templateSnapshot = value?.templateSnapshot ? normalizeDocumentTemplateSnapshot(value.templateSnapshot) : undefined;
   const draftToken = typeof value?.draftToken === "string" && value.draftToken.trim() ? value.draftToken.trim() : "";
+  const hasTemplateSnapshot = Boolean(templateSnapshot);
+  const hasDraftToken = Boolean(draftToken);
 
-  if (document.documentProfile === "po" && (!templateSnapshot || !draftToken)) {
+  if (hasTemplateSnapshot !== hasDraftToken) {
     throw new Error("Governed canvas bundle missing template snapshot or draft token.");
   }
 

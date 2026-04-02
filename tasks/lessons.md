@@ -914,3 +914,10 @@ Wrong:   Leaving first-release design contracts flexible with options like schem
 Correct: Lock v1 to strict one-to-one bindings, platform-owned envelopes, and one narrow pilot slice; defer broader compatibility until the first implementation is stable
 Rule:    Early architecture specs should minimize optionality so validation, migration, and debugging stay tractable in the first delivery.
 Layer:   process
+
+## Lesson DW - Review feedback must sharpen v1 instead of widening it
+Date: 2026-04-02 | Trigger: correction
+Wrong:   Treating every plausible enterprise concern from a review as required scope for the current design spec
+Correct: Add only the missing contracts that affect the first implementation directly, and explicitly push broader concerns like slot ACL, search strategy, and conditional templates out of v1
+Rule:    Architecture reviews should tighten the current delivery slice and reject scope that would dilute the first release.
+Layer:   process

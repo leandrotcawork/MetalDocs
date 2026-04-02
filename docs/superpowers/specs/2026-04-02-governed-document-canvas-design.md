@@ -103,11 +103,16 @@ This design explicitly does **not** include:
 - freeform desktop-publishing behavior
 - drag/drop layout editing by end users
 - arbitrary top-level section creation inside documents
+- concurrent multi-user co-editing of the same `DRAFT`
+- field-level or section-level ACL for editable slots
+- conditional template rendering rules in v1
+- search/indexing strategy design in this document
 - raw HTML templates as the canonical template system
 - HTML as canonical rich content persistence
 - direct DOCX or PDF editing in the browser
 - exact browser-to-PDF visual parity at every keystroke
 - admin visual template designer in the first implementation phase
+- full endpoint inventory in this design document; OpenAPI remains the source of truth during implementation
 
 ---
 
@@ -276,6 +281,80 @@ This allows:
 - deterministic rendering
 - reusable canvas components
 
+### 7.2.1 Normative v1 template DSL shape
+
+For v1, every template node must be a discriminated object with at least:
+
+- `type`
+- `id`
+
+Node families for v1:
+
+- layout nodes
+  - `page`
+  - `stack`
+  - `columns`
+  - `section-frame`
+- static nodes
+  - `label`
+  - `static-text`
+  - `divider`
+- editable nodes
+  - `field-slot`
+  - `rich-slot`
+  - `repeat-slot`
+  - `table-slot`
+  - `image-slot`
+  - `metadata-cell`
+
+Normative slot properties for v1:
+
+- `path`
+- `fieldKind`
+- `id`
+- optional presentational props owned by the template DSL
+
+Recommended TypeScript-style shape:
+
+```ts
+type TemplateNode =
+  | { type: "page"; id: string; children: TemplateNode[] }
+  | { type: "stack"; id: string; gap?: string; children: TemplateNode[] }
+  | { type: "columns"; id: string; columns: Array<{ width: string; children: TemplateNode[] }> }
+  | { type: "section-frame"; id: string; title?: string; children: TemplateNode[] }
+  | { type: "label"; id: string; text: string }
+  | { type: "static-text"; id: string; text: string }
+  | { type: "divider"; id: string }
+  | { type: "field-slot"; id: string; path: string; fieldKind: "scalar" }
+  | { type: "rich-slot"; id: string; path: string; fieldKind: "rich" }
+  | { type: "repeat-slot"; id: string; path: string; fieldKind: "repeat" }
+  | { type: "table-slot"; id: string; path: string; fieldKind: "table" }
+  | { type: "image-slot"; id: string; path: string; fieldKind: "image" }
+  | { type: "metadata-cell"; id: string; path: string; fieldKind: "scalar" };
+```
+
+Illustrative example:
+
+```json
+{
+  "type": "page",
+  "id": "po-root",
+  "children": [
+    {
+      "type": "section-frame",
+      "id": "sec-identificacao",
+      "title": "Identificacao do Processo",
+      "children": [
+        { "type": "label", "id": "lbl-objetivo", "text": "Objetivo" },
+        { "type": "field-slot", "id": "slot-objetivo", "path": "identificacaoProcesso.objetivo", "fieldKind": "scalar" },
+        { "type": "label", "id": "lbl-fluxo", "text": "Descricao do processo" },
+        { "type": "rich-slot", "id": "slot-fluxo", "path": "visaoGeralProcesso.descricaoProcesso", "fieldKind": "rich" }
+      ]
+    }
+  ]
+}
+```
+
 ### 7.3 Slot binding
 
 Editable slots are first-class nodes.
@@ -294,6 +373,23 @@ At render time, the frontend validates:
 - persisted value shape matches expected field shape
 
 This must fail visibly in development and admin modes rather than drifting silently.
+
+### 7.3.1 Compatibility validation rules
+
+Template activation compatibility must be evaluated on the backend.
+
+For v1, the rules are:
+
+- every editable slot path must resolve to an existing field in the bound schema version
+- slot `fieldKind` must match the resolved schema field kind
+- each scalar or rich schema field may be bound by exactly one editable slot
+- repeat and table fields are represented by one container slot that owns their nested rendering
+- duplicate editable bindings for the same scalar or rich field are activation errors
+- a missing schema field referenced by a slot is an activation error
+- a field-kind mismatch is an activation error
+- an editable schema field with no corresponding template slot is an activation error for v1
+
+Warnings are out of scope for v1. Compatibility evaluation is fail-closed.
 
 ### 7.4 Separation of responsibilities
 
@@ -382,6 +478,16 @@ TipTap is the right embedded rich-region tool because it supports:
 - controlled node/mark sets
 - structured extension model
 
+### 8.5 Out-of-scope editor capabilities for v1
+
+The following capabilities are explicitly out of scope for v1 even if the chosen editor technology can support them:
+
+- collaborative real-time co-editing
+- arbitrary pasted HTML as canonical persisted state
+- unrestricted styling controls
+- field-level or section-level permissions inside one document canvas
+- layout-conditional slot visibility
+
 ---
 
 ## 9. Canonical Content Model
@@ -433,6 +539,17 @@ This is preferred over HTML because it is:
 - easier to validate
 - easier to render back into the editor
 - easier to project into export blocks
+
+### 9.2.1 Rich envelope migration policy
+
+The envelope `version` is the migration boundary for incompatible structural changes.
+
+For v1:
+
+- incompatible changes to the MetalDocs rich envelope require a version bump
+- backend must own migration adapters between supported envelope versions
+- historical revisions must remain readable without in-place mutation of stored history
+- editor-library upgrades alone do not justify changing the persisted contract unless the MetalDocs envelope or allowed node subset changes
 
 ### 9.3 HTML usage
 
@@ -498,6 +615,10 @@ Asset rules for v1:
 - rich nodes reference assets by identity, never by arbitrary external URL
 - revisions reference the asset identity used at the time of save/export
 - asset metadata required for export fidelity, especially `alt` and optional `caption`, must be defined in the contract up front
+- assets referenced by historical revisions must not be hard-deleted
+- if an asset required for export cannot be resolved, render/export must fail closed with a structured backend error rather than silently omitting content
+- v1 image uploads are restricted to `image/png`, `image/jpeg`, and `image/webp`
+- v1 maximum image upload size is `10 MB`, aligned with the current attachment upload constraint already enforced by the platform
 
 Do not rely on arbitrary external image URLs as canonical document content.
 
@@ -511,6 +632,23 @@ Reasons:
 ---
 
 ## 11. End-to-End Lifecycle
+
+### 11.0 Workflow baseline
+
+The governed canvas design assumes the existing document workflow baseline:
+
+- `DRAFT`
+- `IN_REVIEW`
+- `APPROVED`
+- `PUBLISHED`
+- `ARCHIVED`
+
+Rules for v1:
+
+- only `DRAFT` may be edited in place
+- transition rules remain backend-owned
+- the governed canvas is an authoring surface for `DRAFT`, not a bypass around workflow
+- reopening or re-revisioning a non-draft document must create a new revision or draft path through the existing workflow model rather than mutating historical content
 
 ### 11.1 Create
 
@@ -543,6 +681,20 @@ Editor loads:
 - current canonical values
 
 Frontend renders the governed document canvas from those snapshots.
+
+#### Concurrency and edit ownership
+
+For v1, editing is single-writer, not collaborative co-editing.
+
+The governed canvas flow must use the existing document edit-lock capability:
+
+- opening the editable canvas acquires or verifies a document edit lock
+- only one active writer may hold the lock for a `DRAFT`
+- save requests must carry a draft freshness token or equivalent stale-write guard tied to the loaded draft snapshot
+- backend rejects stale or lockless writes with an explicit non-2xx conflict response
+- losing the lock must force the frontend back to read-only or require an explicit reload/reacquire flow
+
+Last-write-wins is not allowed for governed draft saves.
 
 ### 11.3 Save draft
 
@@ -668,6 +820,7 @@ Add:
 - explicit revision references to template version and schema version
 - explicit rich envelope contract owned by MetalDocs
 - explicit governed asset reference contract for rich content
+- draft freshness token or equivalent stale-write guard for governed draft saves
 
 ### 12.4 Avoid broad refactor
 
@@ -833,6 +986,17 @@ Mitigation:
 - define MetalDocs-owned allowed subset and validation policy
 - isolate export through backend projection layer
 
+### 14.11 Scope creep from future platform concerns
+
+Risk:
+
+- broad but real future requirements such as slot-level ACL, conditional templates, search strategy, and collaborative editing expand v1 before the core model is proven
+
+Mitigation:
+
+- explicitly mark these concerns out of scope for v1
+- keep the pilot focused on one governed authoring slice first
+
 ---
 
 ## 15. Non-Negotiable Rules
@@ -848,6 +1012,7 @@ Mitigation:
 - DOCX and PDF are derived artifacts only.
 - Frontend canvas is for authoring; generated PDF is the final visual truth.
 - The server must create the initial `DRAFT` revision snapshot before the governed canvas editor opens.
+- Governed draft saves must be protected by an edit lock and stale-write rejection.
 - Document-specific template overrides are explicit governance actions.
 - Backend remains authoritative for validation, audit, and export projection.
 
@@ -867,6 +1032,10 @@ This design is considered successfully implemented when:
 - PDF preview remains generated output through Gotenberg
 - no critical business rules move into the frontend
 - new profiles/templates can be added without hardcoded conditional logic
+- v1 pilot supports the latest desktop Chrome and Edge
+- for the pilot template, initial governed canvas render completes within 2 seconds after the editor payload is loaded on the reference workstation
+- stale or conflicting draft saves are rejected explicitly rather than silently overwritten
+- pilot save -> preview -> export succeeds end to end for the chosen profile/template slice in automated integration coverage
 
 ---
 

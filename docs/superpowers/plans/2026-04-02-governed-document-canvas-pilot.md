@@ -117,7 +117,7 @@ Add fields like:
 ```yaml
     DocumentEditorBundleResponse:
       type: object
-      required: [document, versions, schema, governance, presence, draftToken, templateSnapshot]
+      required: [document, versions, schema, governance, presence]
       properties:
         draftToken:
           type: string
@@ -125,12 +125,15 @@ Add fields like:
           $ref: '#/components/schemas/DocumentTemplateSnapshotResponse'
 ```
 
+These fields are additive and pilot-slice only: generic editor bundles may omit them, but governed-canvas-supported documents/profiles should return them, starting with the PO pilot slice.
+
 Add the new snapshot schema:
 
 ```yaml
     DocumentTemplateSnapshotResponse:
       type: object
       required: [templateKey, version, profileCode, schemaVersion, definition]
+      description: Snapshot da template DSL pilotada, limitada ao subconjunto MetalDocs do pilot.
       properties:
         templateKey:
           type: string
@@ -141,8 +144,17 @@ Add the new snapshot schema:
         schemaVersion:
           type: integer
         definition:
-          type: object
-          additionalProperties: true
+          $ref: '#/components/schemas/DocumentTemplateNodeResponse'
+
+    DocumentTemplateNodeResponse:
+      oneOf:
+        - $ref: '#/components/schemas/DocumentTemplatePageNodeResponse'
+        - $ref: '#/components/schemas/DocumentTemplateSectionFrameNodeResponse'
+        - $ref: '#/components/schemas/DocumentTemplateLabelNodeResponse'
+        - $ref: '#/components/schemas/DocumentTemplateFieldSlotNodeResponse'
+        - $ref: '#/components/schemas/DocumentTemplateRichSlotNodeResponse'
+        - $ref: '#/components/schemas/DocumentTemplateRepeatSlotNodeResponse'
+        - $ref: '#/components/schemas/DocumentTemplateTableSlotNodeResponse'
 ```
 
 Update the native save request/response:
@@ -150,7 +162,7 @@ Update the native save request/response:
 ```yaml
     DocumentContentSaveRequest:
       type: object
-      required: [content, draftToken]
+      required: [content]
       properties:
         draftToken:
           type: string
@@ -158,6 +170,8 @@ Update the native save request/response:
           type: object
           additionalProperties: true
 ```
+
+Legacy native-save callers may omit `draftToken`; governed canvas clients must send it and receive a refreshed token on success.
 
 - [ ] **Step 3: Verify the contract diff is limited to the pilot path**
 
@@ -167,7 +181,7 @@ Run:
 rg -n "draftToken|templateSnapshot|DocumentTemplateSnapshotResponse" api/openapi/v1/openapi.yaml
 ```
 
-Expected: only the existing editor bundle/native save schemas and the new snapshot schema appear.
+Expected: only the existing editor bundle/native save schemas and the new pilot-subset template node schema appear.
 
 - [ ] **Step 4: Commit**
 

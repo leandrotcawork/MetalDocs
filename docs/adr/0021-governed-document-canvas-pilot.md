@@ -31,5 +31,5 @@ Keep PDF as the final visual truth.
 
 ## Acceptance test
 ```bash
-rg -n "draftToken|templateSnapshot|DocumentTemplateSnapshotResponse" api/openapi/v1/openapi.yaml
+rg -n "draftToken|templateSnapshot|DocumentTemplateSnapshotResponse|DocumentTemplateNodeResponse|pilot subset|governed canvas" api/openapi/v1/openapi.yaml
 ```

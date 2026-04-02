@@ -907,3 +907,10 @@ Wrong:   Keeping `exportDocumentDocxAuthorizedLegacy` alongside the unified docg
 Correct: Remove superseded export implementations once the replacement path is the only reachable flow, keeping only still-shared helpers
 Rule:    After service flow unification, unreachable predecessor methods should be deleted rather than left as dormant fallback code.
 Layer:   application
+
+## Lesson DV - V1 specs should freeze contracts to the narrowest viable shape
+Date: 2026-04-02 | Trigger: correction
+Wrong:   Leaving first-release design contracts flexible with options like schema-range compatibility and editor-vendor-native payloads before proving the simpler path
+Correct: Lock v1 to strict one-to-one bindings, platform-owned envelopes, and one narrow pilot slice; defer broader compatibility until the first implementation is stable
+Rule:    Early architecture specs should minimize optionality so validation, migration, and debugging stay tractable in the first delivery.
+Layer:   process

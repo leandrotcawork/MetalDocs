@@ -165,7 +165,9 @@ Template answers:
 
 > How is this schema rendered as an editable document canvas?
 
-Each template version must be compatible with exactly one schema version or a declared compatible schema range with explicit validation.
+For the first implementation, each template version must bind to exactly one schema version.
+
+Compatibility ranges are explicitly out of scope for v1 and may be added only after the one-to-one model is proven in production.
 
 ### 5.4 Document Lineage
 
@@ -211,6 +213,8 @@ Template resolution for a new draft or revision follows this order:
 2. profile default template
 
 The resolved template version is then snapshotted into the revision context.
+
+For v1, the resolution result must always be a single concrete template version bound to a single concrete schema version.
 
 ### Important consequence
 
@@ -406,7 +410,21 @@ Canonical rich content must be structured JSON.
 
 Recommended practical choice:
 
-- TipTap / ProseMirror JSON as the stored source of truth for rich slots
+- a MetalDocs-owned rich-content envelope as the stored source of truth for rich slots
+
+Recommended envelope shape:
+
+- `format`
+- `version`
+- `content`
+
+For v1:
+
+- `format = "metaldocs.rich.tiptap"`
+- `version = 1`
+- `content = TipTap / ProseMirror JSON`
+
+This keeps the contract owned by MetalDocs while still using TipTap as the current editor implementation.
 
 This is preferred over HTML because it is:
 
@@ -448,9 +466,9 @@ Docgen should not be forced to understand arbitrary editor internals forever.
 
 Instead:
 
-1. backend receives canonical rich JSON
+1. backend receives canonical rich envelope
 2. backend validates it
-3. backend projects it into render-oriented rich blocks
+3. backend projects its `content` into render-oriented rich blocks
 4. docgen renders those blocks into `.docx`
 
 This keeps:
@@ -468,9 +486,18 @@ Images inserted into rich regions must be governed assets.
 Recommended model:
 
 - user uploads image through controlled attachment flow
-- image becomes platform-managed asset/blob
+- image becomes platform-managed immutable asset/blob
 - rich content references stable internal asset identity
+- rich references include only governed fields such as `asset_id`, `alt`, `caption`, and optional approved variant metadata
 - backend resolves binary during render/export
+
+Asset rules for v1:
+
+- each asset has a stable platform identity
+- binary payload is immutable once persisted
+- rich nodes reference assets by identity, never by arbitrary external URL
+- revisions reference the asset identity used at the time of save/export
+- asset metadata required for export fidelity, especially `alt` and optional `caption`, must be defined in the contract up front
 
 Do not rely on arbitrary external image URLs as canonical document content.
 
@@ -500,6 +527,10 @@ When the user clicks `New Document`:
    - template version
    - initial values
 6. editor opens on that revision snapshot
+
+This is a hard rule for the governed canvas flow.
+
+The frontend may keep transient unsaved local UI state after the snapshot is loaded, but it must not invent a client-only document draft lineage before the server creates the initial `DRAFT` revision snapshot.
 
 ### 11.2 Edit
 
@@ -635,6 +666,8 @@ Add:
 - backend rich JSON validator
 - backend projection from rich JSON to docgen render blocks
 - explicit revision references to template version and schema version
+- explicit rich envelope contract owned by MetalDocs
+- explicit governed asset reference contract for rich content
 
 ### 12.4 Avoid broad refactor
 
@@ -650,10 +683,11 @@ Do not:
 
 ### Phase 1 - Canonical rich content consolidation
 
-- choose canonical rich JSON format
-- make frontend rich editor persist canonical JSON
-- add backend validation for canonical JSON
+- choose canonical MetalDocs rich envelope
+- make frontend rich editor persist the envelope with TipTap content
+- add backend validation for the envelope and its TipTap payload
 - add backend projection into docgen blocks
+- define the governed asset contract for rich content before image-heavy authoring is expanded
 
 ### Phase 2 - Template model introduction
 
@@ -661,10 +695,14 @@ Do not:
 - add profile default template assignment
 - add lineage-specific template override assignment
 - add revision template snapshot references
+- keep template-to-schema compatibility strictly one-to-one
 
 ### Phase 3 - First governed canvas implementation
 
-- implement frontend document canvas renderer for one profile, preferably `PO`
+- implement frontend document canvas renderer for one profile only, preferably `PO`
+- keep scope to one schema version and one template version
+- validate one rich-slot-heavy document shape end to end
+- validate one save/render/export path end to end
 - no general admin builder yet
 - use controlled template definitions
 
@@ -803,10 +841,13 @@ Mitigation:
 - No free drag/drop layout editing for end users.
 - Schema defines content contract; template defines document composition.
 - Template activation must validate against schema compatibility.
+- For v1, each template version must bind to exactly one schema version.
 - Each revision must snapshot schema version and template version.
 - Canonical rich content must be structured JSON, not HTML.
+- Canonical rich content must be wrapped in a MetalDocs-owned envelope before persistence.
 - DOCX and PDF are derived artifacts only.
 - Frontend canvas is for authoring; generated PDF is the final visual truth.
+- The server must create the initial `DRAFT` revision snapshot before the governed canvas editor opens.
 - Document-specific template overrides are explicit governance actions.
 - Backend remains authoritative for validation, audit, and export projection.
 

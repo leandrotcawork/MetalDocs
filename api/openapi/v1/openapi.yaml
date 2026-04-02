@@ -593,7 +593,8 @@ paths:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
   /document-profiles/{profileCode}/template/docx:
     get:
-      summary: Gera template DOCX em branco para o profile
+      deprecated: true
+      summary: "[DEPRECATED] Template DOCX rendering removed — use content builder"
       parameters:
         - name: profileCode
           in: path
@@ -601,33 +602,8 @@ paths:
           schema:
             type: string
       responses:
-        '200':
-          description: Template DOCX do profile
-          content:
-            application/vnd.openxmlformats-officedocument.wordprocessingml.document:
-              schema:
-                type: string
-                format: binary
-        '400':
-          description: Requisicao invalida
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorEnvelope'
-        '401':
-          description: Nao autenticado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorEnvelope'
-        '403':
-          description: Sem permissao
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorEnvelope'
-        '404':
-          description: Profile nao encontrado
+        '501':
+          description: Template rendering removed
           content:
             application/json:
               schema:
@@ -1726,31 +1702,13 @@ paths:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
   /documents/{documentId}/template/docx:
     get:
-      summary: Gera template DOCX com metadados do documento
+      deprecated: true
+      summary: "[DEPRECATED] Template DOCX rendering removed — use content builder"
       parameters:
         - $ref: '#/components/parameters/DocumentId'
       responses:
-        '200':
-          description: Template DOCX preenchido
-          content:
-            application/vnd.openxmlformats-officedocument.wordprocessingml.document:
-              schema:
-                type: string
-                format: binary
-        '401':
-          description: Nao autenticado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorEnvelope'
-        '403':
-          description: Sem permissao
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorEnvelope'
-        '404':
-          description: Documento nao encontrado
+        '501':
+          description: Template rendering removed
           content:
             application/json:
               schema:

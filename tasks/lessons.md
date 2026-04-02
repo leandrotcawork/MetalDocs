@@ -879,3 +879,10 @@ Wrong:   Wiring the Gotenberg client for runtime use but omitting its dependency
 Correct: Register the same dependency check with every runtime status provider so readiness payloads report optional services consistently across environments
 Rule:    Any optional backend dependency that affects runtime behavior must expose one shared health check through every status provider construction path.
 Layer:   process
+
+## Lesson DR - Deprecated routes must keep the contract aligned with runtime behavior
+Date: 2026-04-02 | Trigger: correction
+Wrong:   Leaving removed template DOCX routes documented as successful binary downloads after the backend capability was retired
+Correct: Mark retired routes as deprecated and describe their stable `501` error envelope until the paths are removed
+Rule:    When an API route is intentionally retired before deletion, OpenAPI must advertise the deprecation and the exact non-2xx response the handler returns.
+Layer:   process

@@ -32,6 +32,7 @@ import (
 	"metaldocs/internal/platform/observability"
 	"metaldocs/internal/platform/render/carbone"
 	docgenclient "metaldocs/internal/platform/render/docgen"
+	"metaldocs/internal/platform/render/gotenberg"
 	localstorage "metaldocs/internal/platform/storage/local"
 	miniostorage "metaldocs/internal/platform/storage/minio"
 )
@@ -50,6 +51,7 @@ type APIDependencies struct {
 	AuditReader       auditdomain.Reader
 	Publisher         messaging.Publisher
 	DocgenClient      *docgenclient.Client
+	GotenbergClient   *gotenberg.Client
 	StatusProvider    observability.RuntimeStatusProvider
 	Cleanup           func()
 }
@@ -65,6 +67,11 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 		log.Printf("carbone bootstrap degraded: %v", err)
 	}
 	docgenClient := docgenclient.NewClient(config.LoadDocgenConfig())
+	gotenbergCfg := config.LoadGotenbergConfig()
+	var gotenbergClient *gotenberg.Client
+	if gotenbergCfg.Enabled {
+		gotenbergClient = gotenberg.NewClient(gotenbergCfg.URL)
+	}
 	carboneCheck := observability.DependencyCheck{
 		Name: "carbone",
 		Check: func(ctx context.Context) (observability.DependencyCheckResult, error) {
@@ -120,6 +127,7 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 			AuditReader:       auditpg.NewWriter(db),
 			Publisher:         outboxpg.NewPublisher(db),
 			DocgenClient:      docgenClient,
+			GotenbergClient:   gotenbergClient,
 			StatusProvider:    observability.NewPostgresRuntimeStatusProvider(db, repoMode, attachmentsCfg.Provider, authn.Enabled(), carboneCheck),
 			Cleanup:           func() { _ = closeDB(db) },
 		}, nil
@@ -155,6 +163,7 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 			AuditReader:       auditStore,
 			Publisher:         nooppub.NewPublisher(),
 			DocgenClient:      docgenClient,
+			GotenbergClient:   gotenbergClient,
 			StatusProvider:    observability.NewStaticRuntimeStatusProvider(repoMode, attachmentsCfg.Provider, authn.Enabled(), carboneCheck),
 			Cleanup:           func() {},
 		}, nil

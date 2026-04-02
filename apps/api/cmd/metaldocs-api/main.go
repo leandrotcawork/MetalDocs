@@ -71,6 +71,7 @@ func main() {
 		WithAuditWriter(deps.AuditWriter).
 		WithCarbone(deps.CarboneClient, deps.CarboneTemplates).
 		WithDocgenClient(deps.DocgenClient).
+		WithGotenberg(deps.GotenbergClient).
 		WithApprovalReader(docapp.NewWorkflowApprovalAdapter(deps.WorkflowApprovals))
 	auditHandler := auditdelivery.NewHandler(auditService)
 	docHandler := docdelivery.NewHandler(docService).

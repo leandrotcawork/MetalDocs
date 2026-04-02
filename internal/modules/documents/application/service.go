@@ -12,6 +12,7 @@ import (
 	"metaldocs/internal/platform/messaging"
 	"metaldocs/internal/platform/render/carbone"
 	"metaldocs/internal/platform/render/docgen"
+	"metaldocs/internal/platform/render/gotenberg"
 )
 
 type Clock interface {
@@ -43,6 +44,7 @@ type Service struct {
 	carboneClient    *carbone.Client
 	carboneTemplates *carbone.TemplateRegistry
 	docgenClient     *docgen.Client
+	gotenbergClient  *gotenberg.Client
 	userResolver     UserDisplayNameResolver
 	approvalReader   WorkflowApprovalReader
 }
@@ -82,6 +84,11 @@ func (s *Service) WithUserResolver(resolver UserDisplayNameResolver) *Service {
 
 func (s *Service) WithApprovalReader(reader WorkflowApprovalReader) *Service {
 	s.approvalReader = reader
+	return s
+}
+
+func (s *Service) WithGotenberg(client *gotenberg.Client) *Service {
+	s.gotenbergClient = client
 	return s
 }
 

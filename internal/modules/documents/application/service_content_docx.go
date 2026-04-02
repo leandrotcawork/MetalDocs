@@ -7,7 +7,6 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 	"time"
 
@@ -155,31 +154,8 @@ func extractDocxText(content []byte) string {
 }
 
 func (s *Service) convertDocxToPDF(ctx context.Context, content []byte, traceID string) ([]byte, error) {
-	if s.carboneClient == nil {
-		return nil, fmt.Errorf("carbone client not configured")
+	if s.gotenbergClient == nil {
+		return nil, fmt.Errorf("gotenberg client not configured: PDF conversion unavailable")
 	}
-	tmpFile, err := os.CreateTemp("", "metaldocs-docx-*.docx")
-	if err != nil {
-		return nil, fmt.Errorf("create temp docx: %w", err)
-	}
-	tempPath := tmpFile.Name()
-	if _, err := tmpFile.Write(content); err != nil {
-		_ = tmpFile.Close()
-		_ = os.Remove(tempPath)
-		return nil, fmt.Errorf("write temp docx: %w", err)
-	}
-	_ = tmpFile.Close()
-	defer func() {
-		_ = os.Remove(tempPath)
-	}()
-
-	templateID, err := s.carboneClient.RegisterTemplate(ctx, traceID, tempPath)
-	if err != nil {
-		return nil, err
-	}
-	renderID, err := s.carboneClient.RenderTemplate(ctx, traceID, templateID, map[string]any{}, "pdf")
-	if err != nil {
-		return nil, err
-	}
-	return s.carboneClient.DownloadRender(ctx, traceID, renderID)
+	return s.gotenbergClient.ConvertDocxToPDF(ctx, content)
 }

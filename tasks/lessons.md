@@ -844,3 +844,10 @@ Wrong:   Running `go test ./internal/platform/...` after `cd internal`, which re
 Correct: From `internal/`, target packages with module-root-relative paths such as `go test ./platform/config ./platform/render/gotenberg`
 Rule:    When a Go module lives in a subdirectory, verification commands must be scoped relative to that module root, not repeated from the repo root.
 Layer:   process
+
+## Lesson DM - Service dependency swaps must be wired through every construction layer
+Date: 2026-04-02 | Trigger: correction
+Wrong:   Replacing a service dependency in one method path without adding the field, bootstrap dependency, and main builder wiring for the new client
+Correct: When a backend service dependency changes, wire it end-to-end through the service struct, dependency builder, bootstrap container, and application assembly
+Rule:    Backend dependency replacements are complete only when every construction layer provides the new client explicitly.
+Layer:   process

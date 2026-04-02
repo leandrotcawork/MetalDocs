@@ -60,7 +60,7 @@ func (s *Service) GetDocumentEditorBundle(ctx context.Context, documentID string
 	}
 
 	draftToken := ""
-	if len(versions) > 0 {
+	if hasTemplate && len(versions) > 0 {
 		draftToken = draftTokenForVersion(versions[len(versions)-1])
 	}
 

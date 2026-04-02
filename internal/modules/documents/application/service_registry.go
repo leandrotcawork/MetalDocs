@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 
 	"metaldocs/internal/modules/documents/domain"
@@ -87,6 +88,24 @@ func (s *Service) ListDocumentProfileSchemas(ctx context.Context, profileCode st
 	if len(items) == 0 {
 		return filterDefaultSchemas(profileCode), nil
 	}
+
+	// Resolve ContentSchema from document_type_schema_versions if a matching type exists.
+	// This is the single point where profile schemas are enriched with the type schema.
+	// All downstream consumers (resolveActiveProfileSchema, resolveDocumentProfileSchema,
+	// editor bundle, profile bundle, runtime bundle, export) call this method.
+	if profileCode != "" {
+		typeDef, err := s.repo.GetDocumentTypeDefinition(ctx, profileCode)
+		if err == nil && typeDef.Schema.Sections != nil {
+			schemaMap, marshalErr := typeSchemaToMap(typeDef.Schema)
+			if marshalErr == nil {
+				for i := range items {
+					items[i].ContentSchema = schemaMap
+				}
+			}
+		}
+		// If type not found or marshal fails, fall back to profile's own content_schema_json (no-op).
+	}
+
 	return items, nil
 }
 
@@ -386,6 +405,18 @@ func (s *Service) resolveDocumentProfileSchema(ctx context.Context, profileCode 
 		return domain.DocumentProfileSchemaVersion{}, false, nil
 	}
 	return items[len(items)-1], true, nil
+}
+
+func typeSchemaToMap(schema domain.DocumentTypeSchema) (map[string]any, error) {
+	raw, err := json.Marshal(schema)
+	if err != nil {
+		return nil, err
+	}
+	var out map[string]any
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func filterDefaultSchemas(profileCode string) []domain.DocumentProfileSchemaVersion {

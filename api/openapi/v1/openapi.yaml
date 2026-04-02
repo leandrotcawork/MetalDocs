@@ -1602,7 +1602,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DocumentContentNativeRequest'
+              $ref: '#/components/schemas/DocumentContentSaveRequest'
       responses:
         '201':
           description: Conteudo salvo e PDF gerado
@@ -2837,13 +2837,17 @@ components:
     DocumentContentSource:
       type: string
       enum: [native, docx_upload]
-    DocumentContentNativeRequest:
+    DocumentContentSaveRequest:
       type: object
-      required: [content]
+      required: [draftToken, content]
       properties:
+        draftToken:
+          type: string
         content:
           type: object
           additionalProperties: true
+    DocumentContentNativeRequest:
+      $ref: '#/components/schemas/DocumentContentSaveRequest'
     DocumentContentNativeResponse:
       type: object
       required: [documentId, version, content, contentSource]
@@ -2856,6 +2860,21 @@ components:
         contentSource:
           $ref: '#/components/schemas/DocumentContentSource'
         content:
+          type: object
+          additionalProperties: true
+    DocumentTemplateSnapshotResponse:
+      type: object
+      required: [templateKey, version, profileCode, schemaVersion, definition]
+      properties:
+        templateKey:
+          type: string
+        version:
+          type: integer
+        profileCode:
+          type: string
+        schemaVersion:
+          type: integer
+        definition:
           type: object
           additionalProperties: true
     DocumentContentPdfResponse:
@@ -3390,7 +3409,7 @@ components:
           format: date-time
     DocumentEditorBundleResponse:
       type: object
-      required: [document, versions, schema, governance, presence]
+      required: [document, versions, schema, governance, presence, draftToken, templateSnapshot]
       properties:
         document:
           $ref: '#/components/schemas/DocumentListItem'
@@ -3406,6 +3425,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/CollaborationPresenceItem'
+        draftToken:
+          type: string
+        templateSnapshot:
+          $ref: '#/components/schemas/DocumentTemplateSnapshotResponse'
         editLock:
           $ref: '#/components/schemas/DocumentEditLock'
     AcquireDocumentEditLockRequest:

@@ -887,6 +887,20 @@ Correct: Mark retired routes as deprecated and describe their stable `501` error
 Rule:    When an API route is intentionally retired before deletion, OpenAPI must advertise the deprecation and the exact non-2xx response the handler returns.
 Layer:   process
 
+## Lesson DT - Repository test doubles must track interface growth
+Date: 2026-04-02 | Trigger: correction
+Wrong:   Leaving unit-test repository spies without new interface methods after the documents repository contract added `UpdateVersionDocx`
+Correct: Update every repository test double as soon as the shared interface changes so compile-time verification still covers tests
+Rule:    Any shared interface change must be reflected immediately in all test doubles that satisfy it.
+Layer:   process
+
+## Lesson DU - Runtime schema tests must assert canonical section keys
+Date: 2026-04-02 | Trigger: correction
+Wrong:   Keeping unit tests pinned to legacy runtime section keys like `process` after the approved PO schema moved to canonical keys such as `identificacaoProcesso`
+Correct: Assert against the canonical schema keys defined by the active type schema contract and migrations
+Rule:    Tests that validate runtime schemas must follow the current canonical contract, not historical aliases.
+Layer:   process
+
 ## Lesson DS - Unified export flows must delete unreachable predecessors
 Date: 2026-04-02 | Trigger: correction
 Wrong:   Keeping `exportDocumentDocxAuthorizedLegacy` alongside the unified docgen path after all live callers had moved

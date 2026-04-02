@@ -2839,15 +2839,13 @@ components:
       enum: [native, docx_upload]
     DocumentContentSaveRequest:
       type: object
-      required: [draftToken, content]
+      required: [content]
       properties:
         draftToken:
           type: string
         content:
           type: object
           additionalProperties: true
-    DocumentContentNativeRequest:
-      $ref: '#/components/schemas/DocumentContentSaveRequest'
     DocumentContentNativeResponse:
       type: object
       required: [documentId, version, content, contentSource]
@@ -2875,8 +2873,111 @@ components:
         schemaVersion:
           type: integer
         definition:
-          type: object
-          additionalProperties: true
+          $ref: '#/components/schemas/DocumentTemplateNodeResponse'
+    DocumentTemplateNodeResponse:
+      oneOf:
+        - $ref: '#/components/schemas/DocumentTemplatePageNodeResponse'
+        - $ref: '#/components/schemas/DocumentTemplateSectionFrameNodeResponse'
+        - $ref: '#/components/schemas/DocumentTemplateLabelNodeResponse'
+        - $ref: '#/components/schemas/DocumentTemplateFieldSlotNodeResponse'
+        - $ref: '#/components/schemas/DocumentTemplateRichSlotNodeResponse'
+        - $ref: '#/components/schemas/DocumentTemplateRepeatSlotNodeResponse'
+        - $ref: '#/components/schemas/DocumentTemplateTableSlotNodeResponse'
+    DocumentTemplatePageNodeResponse:
+      type: object
+      required: [type, id, children]
+      properties:
+        type:
+          type: string
+          enum: [page]
+        id:
+          type: string
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentTemplateNodeResponse'
+    DocumentTemplateSectionFrameNodeResponse:
+      type: object
+      required: [type, id, children]
+      properties:
+        type:
+          type: string
+          enum: [section-frame]
+        id:
+          type: string
+        title:
+          type: string
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentTemplateNodeResponse'
+    DocumentTemplateLabelNodeResponse:
+      type: object
+      required: [type, id, text]
+      properties:
+        type:
+          type: string
+          enum: [label]
+        id:
+          type: string
+        text:
+          type: string
+    DocumentTemplateFieldSlotNodeResponse:
+      type: object
+      required: [type, id, path, fieldKind]
+      properties:
+        type:
+          type: string
+          enum: [field-slot]
+        id:
+          type: string
+        path:
+          type: string
+        fieldKind:
+          type: string
+          enum: [scalar]
+    DocumentTemplateRichSlotNodeResponse:
+      type: object
+      required: [type, id, path, fieldKind]
+      properties:
+        type:
+          type: string
+          enum: [rich-slot]
+        id:
+          type: string
+        path:
+          type: string
+        fieldKind:
+          type: string
+          enum: [rich]
+    DocumentTemplateRepeatSlotNodeResponse:
+      type: object
+      required: [type, id, path, fieldKind]
+      properties:
+        type:
+          type: string
+          enum: [repeat-slot]
+        id:
+          type: string
+        path:
+          type: string
+        fieldKind:
+          type: string
+          enum: [repeat]
+    DocumentTemplateTableSlotNodeResponse:
+      type: object
+      required: [type, id, path, fieldKind]
+      properties:
+        type:
+          type: string
+          enum: [table-slot]
+        id:
+          type: string
+        path:
+          type: string
+        fieldKind:
+          type: string
+          enum: [table]
     DocumentContentPdfResponse:
       type: object
       required: [pdfUrl, expiresAt]

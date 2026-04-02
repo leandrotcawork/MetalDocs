@@ -70,7 +70,8 @@ func main() {
 		WithAttachmentStore(deps.AttachmentStore).
 		WithAuditWriter(deps.AuditWriter).
 		WithCarbone(deps.CarboneClient, deps.CarboneTemplates).
-		WithDocgenClient(deps.DocgenClient)
+		WithDocgenClient(deps.DocgenClient).
+		WithApprovalReader(docapp.NewWorkflowApprovalAdapter(deps.WorkflowApprovals))
 	auditHandler := auditdelivery.NewHandler(auditService)
 	docHandler := docdelivery.NewHandler(docService).
 		WithAttachmentDownloads(security.NewAttachmentSigner(attachmentsCfg.DownloadSecret), time.Duration(attachmentsCfg.DownloadTTLSeconds)*time.Second)

@@ -18,6 +18,16 @@ type Clock interface {
 	Now() time.Time
 }
 
+// UserDisplayNameResolver resolves a user ID to a display name.
+type UserDisplayNameResolver interface {
+	ResolveDisplayName(ctx context.Context, userID string) (string, error)
+}
+
+// WorkflowApprovalReader reads approval records for a document.
+type WorkflowApprovalReader interface {
+	ListApprovals(ctx context.Context, documentID string) ([]domain.ApprovalSummary, error)
+}
+
 type realClock struct{}
 
 func (realClock) Now() time.Time {
@@ -33,6 +43,8 @@ type Service struct {
 	carboneClient    *carbone.Client
 	carboneTemplates *carbone.TemplateRegistry
 	docgenClient     *docgen.Client
+	userResolver     UserDisplayNameResolver
+	approvalReader   WorkflowApprovalReader
 }
 
 func NewService(repo domain.Repository, publisher messaging.Publisher, clock Clock) *Service {
@@ -60,6 +72,16 @@ func (s *Service) WithCarbone(client *carbone.Client, registry *carbone.Template
 
 func (s *Service) WithDocgenClient(client *docgen.Client) *Service {
 	s.docgenClient = client
+	return s
+}
+
+func (s *Service) WithUserResolver(resolver UserDisplayNameResolver) *Service {
+	s.userResolver = resolver
+	return s
+}
+
+func (s *Service) WithApprovalReader(reader WorkflowApprovalReader) *Service {
+	s.approvalReader = reader
 	return s
 }
 

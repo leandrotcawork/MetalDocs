@@ -86,6 +86,13 @@ type Attachment struct {
 	CreatedAt   time.Time
 }
 
+// ApprovalSummary is a minimal projection of a workflow approval used for document metadata.
+type ApprovalSummary struct {
+	ApproverID string
+	Status     string
+	DecidedAt  *time.Time
+}
+
 type CreateDocumentCommand struct {
 	DocumentID      string
 	Title           string

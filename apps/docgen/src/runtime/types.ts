@@ -89,6 +89,20 @@ export type RichBlock =
 export type SectionValues = Record<string, unknown>;
 export type DocumentValues = Record<string, SectionValues>;
 
+export interface DocumentMetadata {
+  elaboradoPor: string;
+  aprovadoPor: string;
+  createdAt: string;
+  approvedAt: string;
+}
+
+export interface DocumentRevision {
+  versao: string;
+  data: string;
+  descricao: string;
+  por: string;
+}
+
 export interface DocumentPayload {
   documentType: string;
   documentCode: string;
@@ -97,4 +111,6 @@ export interface DocumentPayload {
   status?: string;
   schema: DocumentTypeSchema;
   values: DocumentValues;
+  metadata?: DocumentMetadata;
+  revisions?: DocumentRevision[];
 }

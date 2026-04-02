@@ -172,6 +172,10 @@ func (r *atomicRepoSpy) UpdateVersionPDF(context.Context, string, int, string, i
 	return nil
 }
 
+func (r *atomicRepoSpy) UpdateVersionDocx(context.Context, string, int, string) error {
+	return nil
+}
+
 func (r *atomicRepoSpy) UpdateVersionBodyBlocks(context.Context, string, int, []domain.EtapaBody) error {
 	return nil
 }

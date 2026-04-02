@@ -716,8 +716,8 @@ func TestService_ExportDocxUsesSchemaRuntimePayload(t *testing.T) {
 	for _, section := range docgenStub.LastPayload.Schema.Sections {
 		keys = append(keys, section.Key)
 	}
-	if !containsString(keys, "process") {
-		t.Fatalf("expected runtime schema sections to include process, got %v", keys)
+	if !containsString(keys, "identificacaoProcesso") {
+		t.Fatalf("expected runtime schema sections to include identificacaoProcesso, got %v", keys)
 	}
 }
 

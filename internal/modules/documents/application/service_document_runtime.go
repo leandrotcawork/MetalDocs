@@ -178,6 +178,10 @@ func (s *Service) buildDocgenPayload(ctx context.Context, doc domain.Document, s
 	if err != nil {
 		return docgen.RenderPayload{}, err
 	}
+	projectedValues, err := s.projectDocumentValuesForDocgen(schema.ContentSchema, cloneRuntimeValues(version.Values))
+	if err != nil {
+		return docgen.RenderPayload{}, err
+	}
 
 	ownerName := s.resolveUserDisplayName(ctx, doc.OwnerID)
 	approverName, approvedAt := s.resolveLatestApproval(ctx, doc.ID)
@@ -189,7 +193,7 @@ func (s *Service) buildDocgenPayload(ctx context.Context, doc domain.Document, s
 		Version:      fmt.Sprintf("%d", version.Number),
 		Status:       doc.Status,
 		Schema:       schemaMap,
-		Values:       cloneRuntimeValues(version.Values),
+		Values:       projectedValues,
 		Metadata: &docgen.RenderMetadata{
 			ElaboradoPor: ownerName,
 			AprovadoPor:  approverName,

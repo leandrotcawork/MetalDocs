@@ -208,6 +208,11 @@ func validateContentField(field map[string]any, container map[string]any) error 
 				}
 			}
 		}
+	case "rich":
+		if err := validateRichEnvelopeValue(value); err != nil {
+			return domain.ErrInvalidNativeContent
+		}
+		return nil
 	}
 
 	return nil

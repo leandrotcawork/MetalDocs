@@ -86,7 +86,7 @@ Create `docs/adr/0021-governed-document-canvas-pilot.md` with this structure:
 # ADR 0021: Governed Document Canvas Pilot
 
 ## Status
-Accepted
+Proposed
 
 ## Context
 - `docs/superpowers/specs/2026-04-02-governed-document-canvas-design.md` defines the target model.
@@ -896,7 +896,7 @@ with:
 
 `activeTemplate` should come from `bundle.templateSnapshot.definition` normalized through `templateAdapters.ts`.
 
-- [ ] **Step 2: Store and send the `draftToken` on every native save**
+- [ ] **Step 2: Store and send the `draftToken` on governed-canvas native saves**
 
 Extend the builder state:
 

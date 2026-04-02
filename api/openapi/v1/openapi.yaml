@@ -1600,7 +1600,7 @@ paths:
         - $ref: '#/components/parameters/DocumentId'
       requestBody:
         required: true
-        description: `draftToken` e opcional apenas para callers legados do native save fora do governed canvas pilot. Clients do governed canvas devem inclui-lo sempre.
+        description: "`draftToken` e opcional apenas para callers legados do native save fora do governed canvas pilot. Clients do governed canvas devem inclui-lo sempre."
         content:
           application/json:
             schema:

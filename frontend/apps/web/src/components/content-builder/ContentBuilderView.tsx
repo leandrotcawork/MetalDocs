@@ -7,6 +7,7 @@ import type { StepStatus } from "../create/documentCreateTypes";
 import { DynamicEditor } from "../../features/documents/runtime/DynamicEditor";
 import { DocumentCanvas } from "../../features/documents/canvas/DocumentCanvas";
 import { normalizeGovernedCanvasTemplate } from "../../features/documents/canvas/templateAdapters";
+import { toRuntimeDocumentSchema } from "../../features/documents/runtime/schemaRuntimeTypes";
 import type { SchemaSection } from "./contentSchemaTypes";
 import { hasAnyValue, isFieldComplete, sectionAnchorId } from "./contentBuilderUtils";
 import { useAutoSave } from "./useAutoSave";
@@ -125,6 +126,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
   }, [props.document]);
 
   const governedCanvasTemplate = useMemo(() => normalizeGovernedCanvasTemplate(templateSnapshot), [templateSnapshot]);
+  const runtimeSchema = useMemo(() => toRuntimeDocumentSchema(schema?.contentSchema), [schema?.contentSchema]);
   const governedCanvasProfileActive = profileCode === "po";
   const governedCanvasReady = governedCanvasProfileActive && Boolean(governedCanvasTemplate) && draftToken.trim().length > 0;
   const governedCanvasFailure =
@@ -514,6 +516,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
         ) : governedCanvasReady && governedCanvasTemplate ? (
           <DocumentCanvas
             template={governedCanvasTemplate}
+            schema={schema ? runtimeSchema : null}
             values={contentDraft}
             onChange={(next) => {
               dispatch({ type: "set_draft", payload: { contentDraft: next } });

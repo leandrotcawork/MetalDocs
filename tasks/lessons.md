@@ -802,3 +802,38 @@ Wrong:   Treating draft versions as immutable and always creating a new version 
 Correct: Allow in-place updates when the version is in DRAFT
 Rule:    Immutability applies to non-draft versions only; draft updates can be in-place
 Layer:   process
+
+## Lesson DG - Detail actions must be bound to the route-selected document
+Date: 2026-04-02 | Trigger: correction
+Wrong:   Rendering document detail actions from stale `selectedDocument` state before it matched the `/documents/doc/:id` route
+Correct: Render detail actions only when `selectedDocument.documentId` is non-empty and matches the route document id
+Rule:    In URL-driven detail views, action handlers must be gated by route/state identity match to avoid stale or empty resource IDs.
+Layer:   frontend
+
+## Lesson DH - Route handlers must fail closed on unmatched paths
+Date: 2026-04-02 | Trigger: correction
+Wrong:   Workflow sub-route handler returned without writing a response for unmatched paths, producing HTTP 200 with empty body
+Correct: Return explicit 404/405 responses for unmatched or wrong-method workflow routes
+Rule:    HTTP handlers must always emit an explicit non-2xx response for invalid route shapes instead of returning implicitly.
+Layer:   delivery
+
+## Lesson DI - JSON array fields must never regress to null
+Date: 2026-04-02 | Trigger: correction
+Wrong:   Building `metadataChanged` with `append([]string(nil), ...)` serialized empty diffs as `null`
+Correct: Build response arrays from a non-nil base slice so empty arrays serialize as `[]`
+Rule:    API response fields modeled as arrays must preserve array shape even when empty.
+Layer:   delivery
+
+## Lesson DJ - Profile schema listings must hydrate content from type definitions
+Date: 2026-04-02 | Trigger: correction
+Wrong:   Returning `document_profile_schema_versions.content_schema_json` directly let runtime consumers read stale profile schema payloads
+Correct: Resolve `ContentSchema` from the canonical `document_type_schema_versions` definition inside `ListDocumentProfileSchemas`
+Rule:    Shared schema readers must hydrate profile content from the canonical type schema source at the application boundary.
+Layer:   application
+
+## Lesson DK - DOCX export chrome must come from document governance data
+Date: 2026-04-02 | Trigger: correction
+Wrong:   Building the docgen export payload with only title/code/schema/values and leaving metadata and revision history empty
+Correct: Populate export metadata from document ownership and latest approval data, and build revision rows from stored document versions
+Rule:    Server-side exports must derive user-facing governance sections from canonical document, approval, and version records rather than placeholders.
+Layer:   application

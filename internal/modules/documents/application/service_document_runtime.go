@@ -20,6 +20,38 @@ type DocumentRuntimeBundle struct {
 	Schema   domain.DocumentProfileSchemaVersion
 }
 
+func (s *Service) resolveUserDisplayName(ctx context.Context, userID string) string {
+	if userID == "" {
+		return "—"
+	}
+	if s.userResolver == nil {
+		return userID
+	}
+	name, err := s.userResolver.ResolveDisplayName(ctx, userID)
+	if err != nil || name == "" {
+		return userID
+	}
+	return name
+}
+
+func (s *Service) resolveLatestApproval(ctx context.Context, documentID string) (approverName string, approvedAt string) {
+	if s.approvalReader == nil {
+		return "—", ""
+	}
+	approvals, err := s.approvalReader.ListApprovals(ctx, documentID)
+	if err != nil || len(approvals) == 0 {
+		return "—", ""
+	}
+	for i := len(approvals) - 1; i >= 0; i-- {
+		a := approvals[i]
+		if strings.EqualFold(a.Status, "APPROVED") && a.DecidedAt != nil {
+			name := s.resolveUserDisplayName(ctx, a.ApproverID)
+			return name, a.DecidedAt.Format("2006-01-02")
+		}
+	}
+	return "—", ""
+}
+
 func (s *Service) GetDocumentRuntimeBundle(ctx context.Context, documentID string) (DocumentRuntimeBundle, error) {
 	doc, err := s.GetDocumentAuthorized(ctx, documentID)
 	if err != nil {
@@ -160,8 +192,37 @@ func (s *Service) ExportDocumentDocxAuthorized(ctx context.Context, documentID, 
 		DocumentType: firstNonEmpty(bundle.Document.DocumentType, bundle.Document.DocumentProfile),
 		DocumentCode: bundle.Document.DocumentCode,
 		Title:        bundle.Document.Title,
+		Version:      fmt.Sprintf("%d", bundle.Version.Number),
+		Status:       bundle.Document.Status,
 		Schema:       schema,
 		Values:       cloneRuntimeValues(bundle.Version.Values),
+	}
+
+	ownerName := s.resolveUserDisplayName(ctx, bundle.Document.OwnerID)
+	approverName, approvedAt := s.resolveLatestApproval(ctx, documentID)
+	payload.Metadata = &docgen.RenderMetadata{
+		ElaboradoPor: ownerName,
+		AprovadoPor:  approverName,
+		CreatedAt:    bundle.Document.CreatedAt.Format("2006-01-02"),
+		ApprovedAt:   approvedAt,
+	}
+
+	versions, err := s.repo.ListVersions(ctx, documentID)
+	if err == nil && len(versions) > 0 {
+		revisions := make([]docgen.RenderRevision, 0, len(versions))
+		for _, v := range versions {
+			summary := v.ChangeSummary
+			if summary == "" && v.Number == 1 {
+				summary = "Criação do documento"
+			}
+			revisions = append(revisions, docgen.RenderRevision{
+				Versao:    fmt.Sprintf("%d", v.Number),
+				Data:      v.CreatedAt.Format("2006-01-02"),
+				Descricao: summary,
+				Por:       ownerName,
+			})
+		}
+		payload.Revisions = revisions
 	}
 
 	return s.docgenClient.Generate(ctx, payload, traceID)

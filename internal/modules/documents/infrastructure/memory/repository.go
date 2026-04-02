@@ -25,6 +25,9 @@ type Repository struct {
 	subjects            []domain.Subject
 	types               []domain.DocumentType
 	typeDefinitions     []domain.DocumentTypeDefinition
+	templateVersions    map[string]map[int]domain.DocumentTemplateVersion
+	templateDefaults    map[string]domain.DocumentTemplateVersion
+	templateAssignments map[string]domain.DocumentTemplateAssignment
 	policies            map[string][]domain.AccessPolicy
 	collabPresence      map[string]map[string]domain.CollaborationPresence
 	editLocks           map[string]domain.DocumentEditLock
@@ -32,7 +35,7 @@ type Repository struct {
 }
 
 func NewRepository() *Repository {
-	return &Repository{
+	repo := &Repository{
 		documents:           map[string]domain.Document{},
 		versions:            map[string][]domain.Version{},
 		attachments:         map[string]domain.Attachment{},
@@ -46,11 +49,26 @@ func NewRepository() *Repository {
 		subjects:            domain.DefaultSubjects(),
 		types:               domain.DefaultDocumentTypes(),
 		typeDefinitions:     domain.DefaultDocumentTypeDefinitions(),
+		templateVersions:    map[string]map[int]domain.DocumentTemplateVersion{},
+		templateDefaults:    map[string]domain.DocumentTemplateVersion{},
+		templateAssignments: map[string]domain.DocumentTemplateAssignment{},
 		policies:            map[string][]domain.AccessPolicy{},
 		collabPresence:      map[string]map[string]domain.CollaborationPresence{},
 		editLocks:           map[string]domain.DocumentEditLock{},
 		documentSequences:   map[string]int{},
 	}
+
+	for _, item := range domain.DefaultDocumentTemplateVersions() {
+		if _, ok := repo.templateVersions[item.TemplateKey]; !ok {
+			repo.templateVersions[item.TemplateKey] = map[int]domain.DocumentTemplateVersion{}
+		}
+		repo.templateVersions[item.TemplateKey][item.Version] = cloneDocumentTemplateVersion(item)
+		if item.ProfileCode != "" {
+			repo.templateDefaults[item.ProfileCode] = cloneDocumentTemplateVersion(item)
+		}
+	}
+
+	return repo
 }
 
 func (r *Repository) CreateDocument(ctx context.Context, document domain.Document) error {
@@ -602,6 +620,103 @@ func (r *Repository) UpdateVersionValues(_ context.Context, documentID string, v
 	return domain.ErrVersionNotFound
 }
 
+func (r *Repository) GetDocumentTemplateVersion(_ context.Context, templateKey string, version int) (domain.DocumentTemplateVersion, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	key := strings.TrimSpace(templateKey)
+	if key == "" || version <= 0 {
+		return domain.DocumentTemplateVersion{}, domain.ErrDocumentTemplateNotFound
+	}
+	versions, ok := r.templateVersions[key]
+	if !ok {
+		return domain.DocumentTemplateVersion{}, domain.ErrDocumentTemplateNotFound
+	}
+	item, ok := versions[version]
+	if !ok {
+		return domain.DocumentTemplateVersion{}, domain.ErrDocumentTemplateNotFound
+	}
+	return cloneDocumentTemplateVersion(item), nil
+}
+
+func (r *Repository) GetDefaultDocumentTemplate(_ context.Context, profileCode string) (domain.DocumentTemplateVersion, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	item, ok := r.templateDefaults[strings.TrimSpace(profileCode)]
+	if !ok {
+		return domain.DocumentTemplateVersion{}, domain.ErrDocumentTemplateNotFound
+	}
+	return cloneDocumentTemplateVersion(item), nil
+}
+
+func (r *Repository) GetDocumentTemplateAssignment(_ context.Context, documentID string) (domain.DocumentTemplateAssignment, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	item, ok := r.templateAssignments[strings.TrimSpace(documentID)]
+	if !ok {
+		return domain.DocumentTemplateAssignment{}, domain.ErrDocumentTemplateAssignmentNotFound
+	}
+	return item, nil
+}
+
+func (r *Repository) UpsertDocumentTemplateAssignment(_ context.Context, item domain.DocumentTemplateAssignment) error {
+	normalized := domain.DocumentTemplateAssignment{
+		DocumentID:      strings.TrimSpace(item.DocumentID),
+		TemplateKey:     strings.TrimSpace(item.TemplateKey),
+		TemplateVersion: item.TemplateVersion,
+		AssignedAt:      item.AssignedAt,
+	}
+	if normalized.DocumentID == "" || normalized.TemplateKey == "" || normalized.TemplateVersion <= 0 {
+		return domain.ErrInvalidCommand
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.templateAssignments[normalized.DocumentID] = normalized
+	return nil
+}
+
+func (r *Repository) UpsertDocumentTemplateVersionForTest(_ context.Context, item domain.DocumentTemplateVersion) error {
+	normalized := cloneDocumentTemplateVersion(item)
+	if strings.TrimSpace(normalized.TemplateKey) == "" || normalized.Version <= 0 || strings.TrimSpace(normalized.ProfileCode) == "" {
+		return domain.ErrInvalidCommand
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, ok := r.templateVersions[normalized.TemplateKey]; !ok {
+		r.templateVersions[normalized.TemplateKey] = map[int]domain.DocumentTemplateVersion{}
+	}
+	r.templateVersions[normalized.TemplateKey][normalized.Version] = normalized
+	return nil
+}
+
+func (r *Repository) UpdateDraftVersionContentCAS(_ context.Context, version domain.Version, expectedContentHash string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, exists := r.documents[version.DocumentID]; !exists {
+		return domain.ErrDocumentNotFound
+	}
+	versions := r.versions[version.DocumentID]
+	for i := range versions {
+		if versions[i].Number != version.Number {
+			continue
+		}
+		if versions[i].ContentHash != expectedContentHash {
+			return domain.ErrDraftConflict
+		}
+		versions[i] = cloneVersion(version)
+		r.versions[version.DocumentID] = versions
+		return nil
+	}
+	return domain.ErrVersionNotFound
+}
+
 func (r *Repository) UpdateVersionDocx(_ context.Context, documentID string, versionNumber int, docxStorageKey string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -624,9 +739,7 @@ func (r *Repository) saveVersionLocked(_ context.Context, version domain.Version
 	if _, exists := r.documents[version.DocumentID]; !exists {
 		return domain.ErrDocumentNotFound
 	}
-	version.Values = cloneRuntimeValues(version.Values)
-	version.NativeContent = cloneRuntimeValues(version.NativeContent)
-	r.versions[version.DocumentID] = append(r.versions[version.DocumentID], version)
+	r.versions[version.DocumentID] = append(r.versions[version.DocumentID], cloneVersion(version))
 	return nil
 }
 
@@ -893,4 +1006,18 @@ func cloneRuntimeValue(value any) any {
 	default:
 		return typed
 	}
+}
+
+func cloneVersion(item domain.Version) domain.Version {
+	item.NativeContent = cloneRuntimeValues(item.NativeContent)
+	item.Values = cloneRuntimeValues(item.Values)
+	if len(item.BodyBlocks) > 0 {
+		item.BodyBlocks = append([]domain.EtapaBody(nil), item.BodyBlocks...)
+	}
+	return item
+}
+
+func cloneDocumentTemplateVersion(item domain.DocumentTemplateVersion) domain.DocumentTemplateVersion {
+	item.Definition = cloneRuntimeValues(item.Definition)
+	return item
 }

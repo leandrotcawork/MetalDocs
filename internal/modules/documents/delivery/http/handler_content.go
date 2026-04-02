@@ -1,7 +1,9 @@
 package httpdelivery
 
 import (
+	"crypto/md5"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -45,6 +47,7 @@ func (h *Handler) handleDocumentContentNativePost(w http.ResponseWriter, r *http
 
 	version, err := h.service.SaveNativeContentAuthorized(r.Context(), domain.SaveNativeContentCommand{
 		DocumentID: documentID,
+		DraftToken: req.DraftToken,
 		Content:    req.Content,
 		TraceID:    traceID,
 	})
@@ -63,6 +66,7 @@ func (h *Handler) handleDocumentContentNativePost(w http.ResponseWriter, r *http
 		DocumentID:    documentID,
 		Version:       version.Number,
 		ContentSource: normalizeContentSource(version.ContentSource),
+		DraftToken:    draftTokenForVersion(version),
 		PdfURL:        pdfURL,
 		ExpiresAt:     expiresAt.Format(time.RFC3339),
 	})
@@ -261,4 +265,13 @@ func (h *Handler) handleDocumentContentUpload(w http.ResponseWriter, r *http.Req
 		ExpiresAt:     expiresAt.Format(time.RFC3339),
 		PageCount:     version.PageCount,
 	})
+}
+
+func draftTokenForVersion(version domain.Version) string {
+	hash := strings.TrimSpace(version.ContentHash)
+	if hash == "" {
+		sum := md5.Sum([]byte(version.Content))
+		hash = fmt.Sprintf("%x", sum[:])
+	}
+	return fmt.Sprintf("v%d:%s", version.Number, hash)
 }

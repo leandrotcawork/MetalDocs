@@ -757,14 +757,14 @@ export interface DocumentEditorBundleResponse {
   versions: VersionListItem[];
   schema: DocumentProfileSchemaItem;
   governance: DocumentProfileGovernanceItem;
-  templateSnapshot: DocumentTemplateSnapshotItem;
-  draftToken: string;
+  templateSnapshot?: DocumentTemplateSnapshotItem;
+  draftToken?: string;
   presence: CollaborationPresenceItem[];
   editLock?: DocumentEditLockItem;
 }
 ```
 
-Normalize these new fields in `frontend/apps/web/src/api/documents.ts`.
+Normalize these new fields in `frontend/apps/web/src/api/documents.ts`. The governed-canvas path should fail closed if the PO pilot bundle does not include both `templateSnapshot` and `draftToken`.
 
 - [ ] **Step 2: Add the frontend template DSL and rich-envelope helpers**
 
@@ -894,7 +894,7 @@ with:
 />
 ```
 
-`activeTemplate` should come from `bundle.templateSnapshot.definition` normalized through `templateAdapters.ts`.
+`activeTemplate` should come from `bundle.templateSnapshot.definition` normalized through `templateAdapters.ts` only after the governed-canvas support guard confirms that both `bundle.templateSnapshot` and `bundle.draftToken` are present for the PO pilot flow.
 
 - [ ] **Step 2: Store and send the `draftToken` on governed-canvas native saves**
 
@@ -910,7 +910,7 @@ type BuilderState = {
   schema: DocumentProfileSchemaItem | null;
   previewCollapsed: boolean;
   sidebarCollapsed: boolean;
-  draftToken: string;
+  draftToken: string | null;
   templateSnapshot: DocumentTemplateSnapshotItem | null;
 };
 ```
@@ -924,7 +924,7 @@ const response = await api.saveDocumentContentNative(docId, {
 });
 ```
 
-When the backend returns a new `draftToken`, store it immediately in reducer state.
+Guard this call in the governed-canvas flow: if `draftToken` is absent, fail closed and show a recoverable editor error instead of silently falling back to legacy native save semantics. When the backend returns a new `draftToken`, store it immediately in reducer state.
 
 - [ ] **Step 3: Respect the existing edit lock in the UI**
 

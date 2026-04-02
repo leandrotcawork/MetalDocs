@@ -886,3 +886,10 @@ Wrong:   Leaving removed template DOCX routes documented as successful binary do
 Correct: Mark retired routes as deprecated and describe their stable `501` error envelope until the paths are removed
 Rule:    When an API route is intentionally retired before deletion, OpenAPI must advertise the deprecation and the exact non-2xx response the handler returns.
 Layer:   process
+
+## Lesson DS - Unified export flows must delete unreachable predecessors
+Date: 2026-04-02 | Trigger: correction
+Wrong:   Keeping `exportDocumentDocxAuthorizedLegacy` alongside the unified docgen path after all live callers had moved
+Correct: Remove superseded export implementations once the replacement path is the only reachable flow, keeping only still-shared helpers
+Rule:    After service flow unification, unreachable predecessor methods should be deleted rather than left as dormant fallback code.
+Layer:   application

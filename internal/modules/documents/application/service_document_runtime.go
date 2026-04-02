@@ -263,61 +263,6 @@ func (s *Service) generateDocxBytes(ctx context.Context, doc domain.Document, ve
 	return s.docgenClient.Generate(ctx, payload, traceID)
 }
 
-func (s *Service) exportDocumentDocxAuthorizedLegacy(ctx context.Context, documentID, traceID string) ([]byte, error) {
-	if s.docgenClient == nil {
-		return nil, domain.ErrRenderUnavailable
-	}
-
-	bundle, err := s.GetDocumentRuntimeBundle(ctx, documentID)
-	if err != nil {
-		return nil, err
-	}
-
-	schema, err := toDocgenSchema(bundle.Schema.ContentSchema)
-	if err != nil {
-		return nil, err
-	}
-
-	payload := docgen.RenderPayload{
-		DocumentType: firstNonEmpty(bundle.Document.DocumentType, bundle.Document.DocumentProfile),
-		DocumentCode: bundle.Document.DocumentCode,
-		Title:        bundle.Document.Title,
-		Version:      fmt.Sprintf("%d", bundle.Version.Number),
-		Status:       bundle.Document.Status,
-		Schema:       schema,
-		Values:       cloneRuntimeValues(bundle.Version.Values),
-	}
-
-	ownerName := s.resolveUserDisplayName(ctx, bundle.Document.OwnerID)
-	approverName, approvedAt := s.resolveLatestApproval(ctx, documentID)
-	payload.Metadata = &docgen.RenderMetadata{
-		ElaboradoPor: ownerName,
-		AprovadoPor:  approverName,
-		CreatedAt:    bundle.Document.CreatedAt.Format("2006-01-02"),
-		ApprovedAt:   approvedAt,
-	}
-
-	versions, err := s.repo.ListVersions(ctx, documentID)
-	if err == nil && len(versions) > 0 {
-		revisions := make([]docgen.RenderRevision, 0, len(versions))
-		for _, v := range versions {
-			summary := v.ChangeSummary
-			if summary == "" && v.Number == 1 {
-				summary = "Criação do documento"
-			}
-			revisions = append(revisions, docgen.RenderRevision{
-				Versao:    fmt.Sprintf("%d", v.Number),
-				Data:      v.CreatedAt.Format("2006-01-02"),
-				Descricao: summary,
-				Por:       ownerName,
-			})
-		}
-		payload.Revisions = revisions
-	}
-
-	return s.docgenClient.Generate(ctx, payload, traceID)
-}
-
 func (s *Service) recordRuntimeValuesAudit(ctx context.Context, doc domain.Document, version domain.Version, valueCount int, traceID string, now time.Time) error {
 	if s.audit == nil {
 		return nil

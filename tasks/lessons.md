@@ -851,3 +851,10 @@ Wrong:   Replacing a service dependency in one method path without adding the fi
 Correct: When a backend service dependency changes, wire it end-to-end through the service struct, dependency builder, bootstrap container, and application assembly
 Rule:    Backend dependency replacements are complete only when every construction layer provides the new client explicitly.
 Layer:   process
+
+## Lesson DN - Retired routes must fail explicitly
+Date: 2026-04-02 | Trigger: correction
+Wrong:   Leaving template download handlers wired to removed Carbone service methods, which crashed once the dependency was gone
+Correct: Replace retired endpoints with an explicit deprecation response until the route itself is removed or replaced
+Rule:    When a backend capability is removed before its route disappears, handlers must fail closed with a stable non-2xx response instead of calling dead dependencies.
+Layer:   delivery

@@ -10,7 +10,6 @@ import (
 	auditdomain "metaldocs/internal/modules/audit/domain"
 	"metaldocs/internal/modules/documents/domain"
 	"metaldocs/internal/platform/messaging"
-	"metaldocs/internal/platform/render/carbone"
 	"metaldocs/internal/platform/render/docgen"
 	"metaldocs/internal/platform/render/gotenberg"
 )
@@ -41,8 +40,6 @@ type Service struct {
 	audit            auditdomain.Writer
 	publisher        messaging.Publisher
 	clock            Clock
-	carboneClient    *carbone.Client
-	carboneTemplates *carbone.TemplateRegistry
 	docgenClient     *docgen.Client
 	gotenbergClient  *gotenberg.Client
 	userResolver     UserDisplayNameResolver
@@ -63,12 +60,6 @@ func (s *Service) WithAttachmentStore(store domain.AttachmentStore) *Service {
 
 func (s *Service) WithAuditWriter(writer auditdomain.Writer) *Service {
 	s.audit = writer
-	return s
-}
-
-func (s *Service) WithCarbone(client *carbone.Client, registry *carbone.TemplateRegistry) *Service {
-	s.carboneClient = client
-	s.carboneTemplates = registry
 	return s
 }
 

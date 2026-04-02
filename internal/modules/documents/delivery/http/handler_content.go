@@ -202,29 +202,15 @@ func (h *Handler) handleDocumentContentDocx(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *Handler) handleDocumentTemplateDocx(w http.ResponseWriter, r *http.Request, documentID string) {
-	traceID := requestTraceID(r)
-	payload, err := h.service.RenderDocumentTemplateDocxAuthorized(r.Context(), documentID)
-	if err != nil {
-		h.writeDomainError(w, err, traceID)
-		return
-	}
-	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
-	w.Header().Set("Content-Disposition", `attachment; filename="document-`+documentID+`-template.docx"`)
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(payload)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusNotImplemented)
+	_, _ = w.Write([]byte(`{"error":{"code":"TEMPLATE_DEPRECATED","message":"Carbone template rendering has been removed. Use the content builder instead."}}`))
 }
 
 func (h *Handler) handleDocumentProfileTemplateDocx(w http.ResponseWriter, r *http.Request, profileCode string) {
-	traceID := requestTraceID(r)
-	payload, err := h.service.RenderProfileTemplateDocx(r.Context(), profileCode)
-	if err != nil {
-		h.writeDomainError(w, err, traceID)
-		return
-	}
-	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
-	w.Header().Set("Content-Disposition", `attachment; filename="profile-`+strings.ToLower(strings.TrimSpace(profileCode))+`-template.docx"`)
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(payload)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusNotImplemented)
+	_, _ = w.Write([]byte(`{"error":{"code":"TEMPLATE_DEPRECATED","message":"Carbone template rendering has been removed. Use the content builder instead."}}`))
 }
 
 func (h *Handler) handleDocumentContentUpload(w http.ResponseWriter, r *http.Request, documentID string) {

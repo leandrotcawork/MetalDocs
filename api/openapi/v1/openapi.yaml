@@ -1594,15 +1594,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
     post:
-      summary: Cria nova versao com conteudo nativo
+      summary: Salva conteudo nativo governado do documento
+      description: Salva o conteudo nativo atual usando `draftToken` para controle de concorrencia. `draftToken` e opcional apenas para callers legados do native save fora do governed canvas pilot; clients do governed canvas devem envia-lo. Sucesso retorna um refreshed token/token atualizado, e `409 Conflict` cobre token estale ou conflito de edicao.
       parameters:
         - $ref: '#/components/parameters/DocumentId'
       requestBody:
         required: true
+        description: "`draftToken` e opcional apenas para callers legados do native save fora do governed canvas pilot. Clients do governed canvas devem inclui-lo sempre."
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DocumentContentNativeRequest'
+              $ref: '#/components/schemas/DocumentContentSaveRequest'
       responses:
         '201':
           description: Conteudo salvo e PDF gerado
@@ -1612,6 +1614,12 @@ paths:
                 $ref: '#/components/schemas/DocumentContentSaveResponse'
         '400':
           description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '409':
+          description: Conflict por draft token expirado ou conflito de edicao
           content:
             application/json:
               schema:
@@ -2837,10 +2845,13 @@ components:
     DocumentContentSource:
       type: string
       enum: [native, docx_upload]
-    DocumentContentNativeRequest:
+    DocumentContentSaveRequest:
       type: object
       required: [content]
       properties:
+        draftToken:
+          type: string
+          description: Token de draft para saves governados; opcional apenas para callers legados do native save fora do pilot.
         content:
           type: object
           additionalProperties: true
@@ -2858,6 +2869,136 @@ components:
         content:
           type: object
           additionalProperties: true
+    DocumentTemplateSnapshotResponse:
+      type: object
+      required: [templateKey, version, profileCode, schemaVersion, definition]
+      description: Snapshot da template DSL para o pilot governado. O `definition` e o pilot subset/subconjunto pilotado da DSL MetalDocs, limitado a page, section-frame, label, field-slot, rich-slot, repeat-slot e table-slot.
+      properties:
+        templateKey:
+          type: string
+        version:
+          type: integer
+        profileCode:
+          type: string
+        schemaVersion:
+          type: integer
+        definition:
+          $ref: '#/components/schemas/DocumentTemplateNodeResponse'
+    DocumentTemplateNodeResponse:
+      oneOf:
+        - $ref: '#/components/schemas/DocumentTemplatePageNodeResponse'
+        - $ref: '#/components/schemas/DocumentTemplateSectionFrameNodeResponse'
+        - $ref: '#/components/schemas/DocumentTemplateLabelNodeResponse'
+        - $ref: '#/components/schemas/DocumentTemplateFieldSlotNodeResponse'
+        - $ref: '#/components/schemas/DocumentTemplateRichSlotNodeResponse'
+        - $ref: '#/components/schemas/DocumentTemplateRepeatSlotNodeResponse'
+        - $ref: '#/components/schemas/DocumentTemplateTableSlotNodeResponse'
+      discriminator:
+        propertyName: type
+        mapping:
+          page: '#/components/schemas/DocumentTemplatePageNodeResponse'
+          section-frame: '#/components/schemas/DocumentTemplateSectionFrameNodeResponse'
+          label: '#/components/schemas/DocumentTemplateLabelNodeResponse'
+          field-slot: '#/components/schemas/DocumentTemplateFieldSlotNodeResponse'
+          rich-slot: '#/components/schemas/DocumentTemplateRichSlotNodeResponse'
+          repeat-slot: '#/components/schemas/DocumentTemplateRepeatSlotNodeResponse'
+          table-slot: '#/components/schemas/DocumentTemplateTableSlotNodeResponse'
+      description: Pilot subset/subconjunto pilotado da MetalDocs template DSL, intencionalmente limitado a page, section-frame, label, field-slot, rich-slot, repeat-slot e table-slot.
+    DocumentTemplatePageNodeResponse:
+      type: object
+      required: [type, id, children]
+      properties:
+        type:
+          type: string
+          enum: [page]
+        id:
+          type: string
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentTemplateNodeResponse'
+    DocumentTemplateSectionFrameNodeResponse:
+      type: object
+      required: [type, id, children]
+      properties:
+        type:
+          type: string
+          enum: [section-frame]
+        id:
+          type: string
+        title:
+          type: string
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentTemplateNodeResponse'
+    DocumentTemplateLabelNodeResponse:
+      type: object
+      required: [type, id, text]
+      properties:
+        type:
+          type: string
+          enum: [label]
+        id:
+          type: string
+        text:
+          type: string
+    DocumentTemplateFieldSlotNodeResponse:
+      type: object
+      required: [type, id, path, fieldKind]
+      properties:
+        type:
+          type: string
+          enum: [field-slot]
+        id:
+          type: string
+        path:
+          type: string
+        fieldKind:
+          type: string
+          enum: [scalar]
+    DocumentTemplateRichSlotNodeResponse:
+      type: object
+      required: [type, id, path, fieldKind]
+      properties:
+        type:
+          type: string
+          enum: [rich-slot]
+        id:
+          type: string
+        path:
+          type: string
+        fieldKind:
+          type: string
+          enum: [rich]
+    DocumentTemplateRepeatSlotNodeResponse:
+      type: object
+      required: [type, id, path, fieldKind]
+      properties:
+        type:
+          type: string
+          enum: [repeat-slot]
+        id:
+          type: string
+        path:
+          type: string
+        fieldKind:
+          type: string
+          enum: [repeat]
+    DocumentTemplateTableSlotNodeResponse:
+      type: object
+      required: [type, id, path, fieldKind]
+      properties:
+        type:
+          type: string
+          enum: [table-slot]
+        id:
+          type: string
+        path:
+          type: string
+        fieldKind:
+          type: string
+          enum: [table]
     DocumentContentPdfResponse:
       type: object
       required: [pdfUrl, expiresAt]
@@ -2888,7 +3029,7 @@ components:
           format: date-time
     DocumentContentSaveResponse:
       type: object
-      required: [documentId, version, pdfUrl, expiresAt, contentSource]
+      required: [documentId, version, pdfUrl, expiresAt, contentSource, draftToken]
       properties:
         documentId:
           type: string
@@ -2897,6 +3038,9 @@ components:
           minimum: 1
         contentSource:
           $ref: '#/components/schemas/DocumentContentSource'
+        draftToken:
+          type: string
+          description: Token de draft renovado apos um save governado bem-sucedido; a rotacao do token acontece apenas em guarded saves confirmados.
         pdfUrl:
           type: string
         expiresAt:
@@ -3391,6 +3535,7 @@ components:
     DocumentEditorBundleResponse:
       type: object
       required: [document, versions, schema, governance, presence]
+      description: Bundle do editor para o draft carregado. `draftToken` e `templateSnapshot` sao campos adicionais presentes para documentos/profiles com governanca do canvas suportada, inicialmente no slice piloto de PO. Clientes do governed canvas devem esperar esses campos para o pilot slice.
       properties:
         document:
           $ref: '#/components/schemas/DocumentListItem'
@@ -3406,6 +3551,13 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/CollaborationPresenceItem'
+        draftToken:
+          type: string
+          description: Token atual do draft snapshot carregado; presente para documentos/profiles com governanca do canvas suportada. Clients do governed canvas devem enviar este valor de volta no save.
+        templateSnapshot:
+          description: Snapshot da template DSL pilotada; presente para documentos/profiles com governanca do canvas suportada, inicialmente no slice piloto de PO.
+          allOf:
+            - $ref: '#/components/schemas/DocumentTemplateSnapshotResponse'
         editLock:
           $ref: '#/components/schemas/DocumentEditLock'
     AcquireDocumentEditLockRequest:

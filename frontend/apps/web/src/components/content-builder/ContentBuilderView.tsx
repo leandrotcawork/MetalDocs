@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { api } from "../../lib.api";
-import type { DocumentListItem, DocumentProfileSchemaItem } from "../../lib.types";
+import type { DocumentListItem, DocumentProfileSchemaItem, DocumentTemplateSnapshotItem } from "../../lib.types";
 import { formatDocumentDisplayName } from "../../features/shared/documentDisplay";
 import { ProgressSidebar } from "../create/widgets/ProgressSidebar";
 import type { StepStatus } from "../create/documentCreateTypes";
 import { DynamicEditor } from "../../features/documents/runtime/DynamicEditor";
+import { DocumentCanvas } from "../../features/documents/canvas/DocumentCanvas";
+import { normalizeGovernedCanvasTemplate } from "../../features/documents/canvas/templateAdapters";
 import type { SchemaSection } from "./contentSchemaTypes";
 import { hasAnyValue, isFieldComplete, sectionAnchorId } from "./contentBuilderUtils";
 import { useAutoSave } from "./useAutoSave";
@@ -26,19 +28,32 @@ type BuilderState = {
   version: number | null;
   contentDraft: Record<string, unknown>;
   schema: DocumentProfileSchemaItem | null;
+  templateSnapshot: DocumentTemplateSnapshotItem | null;
+  draftToken: string;
   previewCollapsed: boolean;
   sidebarCollapsed: boolean;
 };
 
 type BuilderAction =
   | { type: "load_start" }
-  | { type: "load_success"; payload: { contentDraft: Record<string, unknown>; schema: DocumentProfileSchemaItem | null; version: number | null; pdfUrl: string } }
+  | {
+      type: "load_success";
+      payload: {
+        contentDraft: Record<string, unknown>;
+        schema: DocumentProfileSchemaItem | null;
+        version: number | null;
+        pdfUrl: string;
+        templateSnapshot: DocumentTemplateSnapshotItem | null;
+        draftToken: string;
+      };
+    }
   | { type: "load_error"; payload: { message: string } }
   | { type: "set_draft"; payload: { contentDraft: Record<string, unknown> } }
   | { type: "set_status"; payload: { status: BuilderStatus } }
   | { type: "set_error"; payload: { message: string } }
   | { type: "set_pdf"; payload: { pdfUrl: string } }
   | { type: "set_version"; payload: { version: number | null } }
+  | { type: "set_draft_token"; payload: { draftToken: string } }
   | { type: "set_preview"; payload: { collapsed: boolean } }
   | { type: "set_sidebar"; payload: { collapsed: boolean } };
 
@@ -49,6 +64,8 @@ const initialState: BuilderState = {
   version: null,
   contentDraft: {},
   schema: null,
+  templateSnapshot: null,
+  draftToken: "",
   previewCollapsed: false,
   sidebarCollapsed: false,
 };
@@ -66,6 +83,8 @@ function reducer(state: BuilderState, action: BuilderAction): BuilderState {
         schema: action.payload.schema,
         version: action.payload.version,
         pdfUrl: action.payload.pdfUrl,
+        templateSnapshot: action.payload.templateSnapshot,
+        draftToken: action.payload.draftToken,
       };
     case "load_error":
       return { ...state, status: "error", error: action.payload.message };
@@ -79,6 +98,8 @@ function reducer(state: BuilderState, action: BuilderAction): BuilderState {
       return { ...state, pdfUrl: action.payload.pdfUrl };
     case "set_version":
       return { ...state, version: action.payload.version };
+    case "set_draft_token":
+      return { ...state, draftToken: action.payload.draftToken };
     case "set_preview":
       return { ...state, previewCollapsed: action.payload.collapsed };
     case "set_sidebar":
@@ -91,7 +112,7 @@ function reducer(state: BuilderState, action: BuilderAction): BuilderState {
 export function ContentBuilderView(props: ContentBuilderViewProps) {
   const documentId = props.document?.documentId ?? "";
   const [state, dispatch] = useReducer(reducer, initialState);
-  const { status, error, pdfUrl, version, contentDraft, schema, previewCollapsed, sidebarCollapsed } = state;
+  const { status, error, pdfUrl, version, contentDraft, schema, templateSnapshot, draftToken, previewCollapsed, sidebarCollapsed } = state;
   const editorRef = useRef<HTMLDivElement | null>(null);
   const [activeSectionKey, setActiveSectionKey] = useState<string | null>(null);
   const [autosaveLabel, setAutosaveLabel] = useState("Nao salvo");
@@ -103,9 +124,13 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
     return props.document.documentCode ?? formatDocumentDisplayName(props.document);
   }, [props.document]);
 
-  const documentTitle = useMemo(() => {
-    return props.document?.title ?? "";
-  }, [props.document]);
+  const governedCanvasTemplate = useMemo(() => normalizeGovernedCanvasTemplate(templateSnapshot), [templateSnapshot]);
+  const governedCanvasProfileActive = profileCode === "po";
+  const governedCanvasReady = governedCanvasProfileActive && Boolean(governedCanvasTemplate) && draftToken.trim().length > 0;
+  const governedCanvasFailure =
+    governedCanvasProfileActive && !governedCanvasReady
+      ? "O canvas governado do PO nao pode ser aberto com metadados invalidos ou incompletos."
+      : "";
 
   const sections = useMemo(() => {
     const raw = schema?.contentSchema as { sections?: SchemaSection[] } | undefined;
@@ -130,10 +155,19 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
   // --- Auto-save integration ---
   const saveFn = useCallback(
     async (docId: string, body: { content: Record<string, unknown> }) => {
-      const response = await api.saveDocumentContentNative(docId, body);
+      if (governedCanvasProfileActive && !governedCanvasReady) {
+        throw new Error("Governed canvas draft token is missing or invalid.");
+      }
+      const response = await api.saveDocumentContentNative(
+        docId,
+        governedCanvasReady ? { ...body, draftToken: draftToken.trim() } : body,
+      );
+      if (response.draftToken && response.draftToken !== draftToken) {
+        dispatch({ type: "set_draft_token", payload: { draftToken: response.draftToken } });
+      }
       return { pdfUrl: response.pdfUrl, version: response.version ?? null };
     },
-    [],
+    [draftToken, governedCanvasProfileActive, governedCanvasReady],
   );
 
   const autoSave = useAutoSave({
@@ -141,7 +175,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
     contentDraft,
     saveFn,
     debounceMs: 3000,
-    enabled: !!documentId && status !== "loading",
+    enabled: !!documentId && status !== "loading" && !governedCanvasFailure,
   });
   const lastSavedAt = autoSave.lastSavedAt;
 
@@ -163,8 +197,17 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
     if (!documentId) {
       const pCode = props.document?.documentProfile;
       if (!pCode) {
-        dispatch({ type: "set_status", payload: { status: "idle" } });
-        dispatch({ type: "set_draft", payload: { contentDraft: {} } });
+        dispatch({
+          type: "load_success",
+          payload: {
+            contentDraft: {},
+            schema: null,
+            version: null,
+            pdfUrl: "",
+            templateSnapshot: null,
+            draftToken: "",
+          },
+        });
         return;
       }
       let isActive = true;
@@ -177,7 +220,14 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
           const activeSchema = items.find((item) => item.isActive) ?? items[0] ?? null;
           dispatch({
             type: "load_success",
-            payload: { contentDraft: {}, schema: activeSchema, version: null, pdfUrl: "" },
+            payload: {
+              contentDraft: {},
+              schema: activeSchema,
+              version: null,
+              pdfUrl: "",
+              templateSnapshot: null,
+              draftToken: "",
+            },
           });
         } catch {
           if (!isActive) return;
@@ -191,8 +241,9 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
     async function loadContent() {
       dispatch({ type: "load_start" });
       try {
-        const [contentResponse, schemasResponse, pdfResponse] = await Promise.all([
+        const [contentResponse, bundleResponse, schemasResponse, pdfResponse] = await Promise.all([
           api.getDocumentContentNative(documentId),
+          api.getDocumentEditorBundle(documentId),
           props.document?.documentProfile
             ? api.listDocumentProfileSchemas(props.document.documentProfile)
             : Promise.resolve({ items: [] as DocumentProfileSchemaItem[] }),
@@ -211,6 +262,8 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
             schema: activeSchema,
             version: contentResponse.version ?? null,
             pdfUrl: pdfResponse?.pdfUrl ?? "",
+            templateSnapshot: bundleResponse.templateSnapshot ?? null,
+            draftToken: bundleResponse.draftToken ?? "",
           },
         });
       } catch (err) {
@@ -218,7 +271,14 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
         if (statusOf(err) === 404) {
           dispatch({
             type: "load_success",
-            payload: { contentDraft: {}, schema: null, version: null, pdfUrl: "" },
+            payload: {
+              contentDraft: {},
+              schema: null,
+              version: null,
+              pdfUrl: "",
+              templateSnapshot: null,
+              draftToken: "",
+            },
           });
           return;
         }
@@ -274,10 +334,27 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
     dispatch({ type: "set_error", payload: { message: "" } });
     dispatch({ type: "set_status", payload: { status: "saving" } });
     try {
-      const response = await api.saveDocumentContentNative(documentId, { content: savedContent });
+      if (governedCanvasProfileActive && !governedCanvasReady) {
+        dispatch({ type: "load_error", payload: { message: governedCanvasFailure } });
+        return false;
+      }
+      const response = await api.saveDocumentContentNative(
+        documentId,
+        governedCanvasReady ? { content: savedContent, draftToken: draftToken.trim() } : { content: savedContent },
+      );
       autoSave.acknowledgeSave(savedContent, response.pdfUrl);
       dispatch({ type: "set_pdf", payload: { pdfUrl: response.pdfUrl } });
-      dispatch({ type: "load_success", payload: { contentDraft: savedContent, schema, version: response.version ?? null, pdfUrl: response.pdfUrl } });
+      dispatch({
+        type: "load_success",
+        payload: {
+          contentDraft: savedContent,
+          schema,
+          version: response.version ?? null,
+          pdfUrl: response.pdfUrl,
+          templateSnapshot,
+          draftToken: response.draftToken ?? draftToken,
+        },
+      });
       return true;
     } catch {
       dispatch({ type: "load_error", payload: { message: "Falha ao salvar o conteudo." } });
@@ -309,6 +386,8 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
             schema,
             version: created.version ?? null,
             pdfUrl: created.pdfUrl,
+            templateSnapshot,
+            draftToken,
           },
         });
         exportId = created.documentId;
@@ -348,7 +427,14 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
         autoSave.acknowledgeSave(contentDraft ?? {}, created.pdfUrl);
         dispatch({
           type: "load_success",
-          payload: { contentDraft: contentDraft ?? {}, schema, version: created.version ?? null, pdfUrl: created.pdfUrl },
+          payload: {
+            contentDraft: contentDraft ?? {},
+            schema,
+            version: created.version ?? null,
+            pdfUrl: created.pdfUrl,
+            templateSnapshot,
+            draftToken,
+          },
         });
       } catch {
         dispatch({ type: "load_error", payload: { message: "Falha ao criar o documento." } });
@@ -423,15 +509,28 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
   const editorPane = (
     <main className="content-builder-editor" ref={editorRef}>
       <div className="content-builder-editor-inner">
-        <DynamicEditor
-          schema={schema}
-          value={contentDraft}
-          activeSectionKey={activeSectionKey}
-          onChange={(next) => {
-            dispatch({ type: "set_draft", payload: { contentDraft: next } });
-            dispatch({ type: "set_status", payload: { status: "dirty" } });
-          }}
-        />
+        {governedCanvasFailure ? (
+          <div className="content-builder-error">{governedCanvasFailure}</div>
+        ) : governedCanvasReady && governedCanvasTemplate ? (
+          <DocumentCanvas
+            template={governedCanvasTemplate}
+            values={contentDraft}
+            onChange={(next) => {
+              dispatch({ type: "set_draft", payload: { contentDraft: next } });
+              dispatch({ type: "set_status", payload: { status: "dirty" } });
+            }}
+          />
+        ) : (
+          <DynamicEditor
+            schema={schema}
+            value={contentDraft}
+            activeSectionKey={activeSectionKey}
+            onChange={(next) => {
+              dispatch({ type: "set_draft", payload: { contentDraft: next } });
+              dispatch({ type: "set_status", payload: { status: "dirty" } });
+            }}
+          />
+        )}
         {error && <div className="content-builder-error">{error}</div>}
         {autoSave.error && <div className="content-builder-error">{autoSave.error}</div>}
       </div>
@@ -447,6 +546,14 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
       onToggleCollapse={(collapsed) => dispatch({ type: "set_preview", payload: { collapsed } })}
     />
   );
+
+  const contentBuilderControlsDisabled =
+    isExporting ||
+    status === "saving" ||
+    status === "loading" ||
+    status === "rendering" ||
+    autoSave.isSaving ||
+    Boolean(governedCanvasFailure);
 
   return (
     <section className="content-builder">
@@ -566,7 +673,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
             type="button"
             className="content-builder-btn ghost"
             onClick={handleExportDocx}
-            disabled={isExporting || status === "saving" || status === "loading" || status === "rendering" || autoSave.isSaving}
+            disabled={contentBuilderControlsDisabled}
           >
             Exportar .docx
           </button>
@@ -574,7 +681,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
             type="button"
             className="content-builder-btn ghost"
             onClick={handleSave}
-            disabled={isExporting || status === "saving" || status === "loading" || status === "rendering" || autoSave.isSaving}
+            disabled={contentBuilderControlsDisabled}
           >
             Salvar rascunho
           </button>
@@ -582,7 +689,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
             type="button"
             className="content-builder-btn primary"
             onClick={handleRenderPdf}
-            disabled={isExporting || status === "saving" || status === "loading" || status === "rendering" || autoSave.isSaving}
+            disabled={contentBuilderControlsDisabled}
           >
             Gerar PDF
           </button>

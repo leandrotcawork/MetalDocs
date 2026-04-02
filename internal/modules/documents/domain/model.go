@@ -72,6 +72,8 @@ type Version struct {
 	FileSizeBytes    int64
 	OriginalFilename string
 	PageCount        int
+	TemplateKey      string
+	TemplateVersion  int
 	CreatedAt        time.Time
 }
 
@@ -138,6 +140,7 @@ type SaveEtapaBodyCommand struct {
 
 type SaveNativeContentCommand struct {
 	DocumentID string
+	DraftToken string
 	Content    map[string]any
 	TraceID    string
 }

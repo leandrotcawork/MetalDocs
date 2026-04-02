@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -233,6 +234,76 @@ func TestSaveNativeContentAuthorizedIncludesPendingRevisionInDocgenPayload(t *te
 	}
 	if payload.Revisions[1].Por != doc.OwnerID {
 		t.Fatalf("revision[1].por = %q, want %q", payload.Revisions[1].Por, doc.OwnerID)
+	}
+}
+
+func TestSaveNativeContentRejectsStaleDraftToken(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, time.April, 2, 12, 0, 0, 0, time.UTC)
+	repo := documentmemory.NewRepository()
+	store := documentmemory.NewAttachmentStore()
+
+	doc := seedDraftDocument(t, ctx, repo, now)
+	if err := repo.SaveVersion(ctx, domain.Version{
+		DocumentID:    doc.ID,
+		Number:        1,
+		Content:       "{}",
+		ContentHash:   contentHash("{}"),
+		ChangeSummary: "Initial version",
+		ContentSource: domain.ContentSourceNative,
+		NativeContent: map[string]any{},
+		Values:        map[string]any{},
+		TextContent:   "{}",
+		CreatedAt:     now,
+	}); err != nil {
+		t.Fatalf("save version: %v", err)
+	}
+
+	service := NewService(repo, nil, fixedClock{now: now}).WithAttachmentStore(store)
+
+	_, err := service.SaveNativeContentAuthorized(ctx, domain.SaveNativeContentCommand{
+		DocumentID: doc.ID,
+		DraftToken: "v1:stale",
+		Content: map[string]any{
+			"identificacaoProcesso": map[string]any{"objetivo": "novo objetivo"},
+		},
+		TraceID: "trace-stale",
+	})
+	if !errors.Is(err, domain.ErrDraftConflict) {
+		t.Fatalf("err = %v, want ErrDraftConflict", err)
+	}
+}
+
+func TestResolveDocumentTemplatePrefersDocumentAssignmentOverProfileDefault(t *testing.T) {
+	repo := documentmemory.NewRepository()
+	service := NewService(repo, nil, nil)
+
+	if err := repo.UpsertDocumentTemplateAssignment(context.Background(), domain.DocumentTemplateAssignment{
+		DocumentID:      "doc-1",
+		TemplateKey:     "po-doc-special",
+		TemplateVersion: 2,
+		AssignedAt:      time.Unix(0, 0).UTC(),
+	}); err != nil {
+		t.Fatalf("upsert assignment: %v", err)
+	}
+	if err := repo.UpsertDocumentTemplateVersionForTest(context.Background(), domain.DocumentTemplateVersion{
+		TemplateKey:   "po-doc-special",
+		Version:       2,
+		ProfileCode:   "po",
+		SchemaVersion: 3,
+		Name:          "PO special canvas",
+		Definition:    map[string]any{"type": "page", "id": "special"},
+		CreatedAt:     time.Unix(1, 0).UTC(),
+	}); err != nil {
+		t.Fatalf("upsert template version: %v", err)
+	}
+
+	got, err := service.ResolveDocumentTemplate(context.Background(), "doc-1", "po")
+	if err != nil {
+		t.Fatalf("resolve template: %v", err)
+	}
+	if got.TemplateKey != "po-doc-special" || got.Version != 2 {
+		t.Fatalf("resolved template = %+v, want po-doc-special v2", got)
 	}
 }
 

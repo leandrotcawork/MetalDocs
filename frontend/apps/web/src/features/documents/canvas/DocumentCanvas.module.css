@@ -1,0 +1,90 @@
+.canvasPage {
+  display: grid;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  border-radius: 1.25rem;
+  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.page {
+  display: grid;
+  gap: 1rem;
+}
+
+.sectionFrame {
+  display: grid;
+  gap: 0.875rem;
+  padding: 1.125rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--surface);
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.25;
+  color: var(--vinho-d);
+}
+
+.sectionBody {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.label {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-soft);
+  letter-spacing: 0.01em;
+}
+
+.fieldSlot,
+.richSlot {
+  display: grid;
+  gap: 0.375rem;
+}
+
+.input,
+.textarea {
+  width: 100%;
+  border: 1px solid var(--border-2);
+  border-radius: 0.875rem;
+  background: var(--surface);
+  color: var(--text);
+  padding: 0.875rem 1rem;
+  font: inherit;
+  outline: none;
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 10rem;
+}
+
+.input:focus,
+.textarea:focus {
+  border-color: var(--vinho);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--vinho-soft) 68%, transparent);
+}
+
+.unsupportedSlot {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.875rem 1rem;
+  border-radius: 0.875rem;
+  border: 1px dashed var(--border-2);
+  background: var(--vinho-pale);
+  color: var(--text-soft);
+}
+
+.unsupportedSlot strong {
+  font-size: 0.9rem;
+}
+
+.unsupportedSlot span {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}

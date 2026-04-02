@@ -93,17 +93,28 @@ type VersionResponse struct {
 	CreatedAt     string `json:"createdAt"`
 }
 
+type DocumentTemplateSnapshotResponse struct {
+	TemplateKey   string         `json:"templateKey"`
+	Version       int            `json:"version"`
+	ProfileCode   string         `json:"profileCode"`
+	SchemaVersion int            `json:"schemaVersion"`
+	Definition    map[string]any `json:"definition"`
+}
+
 type DocumentEditorBundleResponse struct {
-	Document   DocumentResponse                  `json:"document"`
-	Versions   []VersionResponse                 `json:"versions"`
-	Schema     DocumentProfileSchemaResponse     `json:"schema"`
-	Governance DocumentProfileGovernanceResponse `json:"governance"`
-	Presence   []CollaborationPresenceResponse   `json:"presence"`
-	EditLock   *DocumentEditLockResponse         `json:"editLock,omitempty"`
+	Document         DocumentResponse                  `json:"document"`
+	Versions         []VersionResponse                 `json:"versions"`
+	Schema           DocumentProfileSchemaResponse     `json:"schema"`
+	Governance       DocumentProfileGovernanceResponse `json:"governance"`
+	TemplateSnapshot *DocumentTemplateSnapshotResponse `json:"templateSnapshot,omitempty"`
+	DraftToken       string                            `json:"draftToken,omitempty"`
+	Presence         []CollaborationPresenceResponse   `json:"presence"`
+	EditLock         *DocumentEditLockResponse         `json:"editLock,omitempty"`
 }
 
 type DocumentContentNativeRequest struct {
-	Content map[string]any `json:"content"`
+	DraftToken string         `json:"draftToken,omitempty"`
+	Content    map[string]any `json:"content"`
 }
 
 type DocumentContentNativeResponse struct {
@@ -117,6 +128,7 @@ type DocumentContentSaveResponse struct {
 	DocumentID    string `json:"documentId"`
 	Version       int    `json:"version"`
 	ContentSource string `json:"contentSource"`
+	DraftToken    string `json:"draftToken,omitempty"`
 	PdfURL        string `json:"pdfUrl"`
 	ExpiresAt     string `json:"expiresAt"`
 }
@@ -1505,6 +1517,17 @@ func (h *Handler) handleDocumentEditorBundle(w http.ResponseWriter, r *http.Requ
 		}
 	}
 
+	var templateSnapshot *DocumentTemplateSnapshotResponse
+	if bundle.TemplateSnapshot.TemplateKey != "" {
+		templateSnapshot = &DocumentTemplateSnapshotResponse{
+			TemplateKey:   bundle.TemplateSnapshot.TemplateKey,
+			Version:       bundle.TemplateSnapshot.Version,
+			ProfileCode:   bundle.TemplateSnapshot.ProfileCode,
+			SchemaVersion: bundle.TemplateSnapshot.SchemaVersion,
+			Definition:    bundle.TemplateSnapshot.Definition,
+		}
+	}
+
 	writeJSON(w, http.StatusOK, DocumentEditorBundleResponse{
 		Document: DocumentResponse{
 			DocumentID:           bundle.Document.ID,
@@ -1542,8 +1565,10 @@ func (h *Handler) handleDocumentEditorBundle(w http.ResponseWriter, r *http.Requ
 			RetentionDays:      bundle.Governance.RetentionDays,
 			ValidityDays:       bundle.Governance.ValidityDays,
 		},
-		Presence: presence,
-		EditLock: editLock,
+		TemplateSnapshot: templateSnapshot,
+		DraftToken:       bundle.DraftToken,
+		Presence:         presence,
+		EditLock:         editLock,
 	})
 }
 
@@ -1755,6 +1780,8 @@ func (h *Handler) writeDomainError(w http.ResponseWriter, err error, traceID str
 		writeAPIError(w, http.StatusBadRequest, "INVALID_METADATA", "Invalid metadata for document type", traceID)
 	case errors.Is(err, domain.ErrInvalidNativeContent):
 		writeAPIError(w, http.StatusBadRequest, "INVALID_NATIVE_CONTENT", "Invalid native content payload", traceID)
+	case errors.Is(err, domain.ErrDraftConflict):
+		writeAPIError(w, http.StatusConflict, "DRAFT_CONFLICT", "Draft token is stale or draft changed", traceID)
 	case errors.Is(err, domain.ErrDocumentNotFound):
 		writeAPIError(w, http.StatusNotFound, "DOC_NOT_FOUND", "Document not found", traceID)
 	case errors.Is(err, domain.ErrDocumentAlreadyExists):

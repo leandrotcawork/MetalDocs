@@ -12,6 +12,7 @@ import type {
   DocumentListItem,
   DocumentProfileGovernanceItem,
   DocumentProfileSchemaItem,
+  DocumentTemplateSnapshotItem,
   SearchDocumentItem,
   VersionDiffResponse,
   VersionListItem,
@@ -143,6 +144,16 @@ function normalizeDocumentEditLockItem(value: DocumentEditLockItem): DocumentEdi
   };
 }
 
+function normalizeDocumentTemplateSnapshot(value: DocumentTemplateSnapshotItem): DocumentTemplateSnapshotItem {
+  return {
+    templateKey: value?.templateKey ?? "",
+    version: Number(value?.version ?? 0),
+    profileCode: value?.profileCode ?? "",
+    schemaVersion: Number(value?.schemaVersion ?? 0),
+    definition: value?.definition && typeof value.definition === "object" && !Array.isArray(value.definition) ? value.definition : {},
+  };
+}
+
 function normalizeAccessPolicyItem(value: AccessPolicyItem): AccessPolicyItem {
   return {
     subjectType: value?.subjectType ?? "user",
@@ -168,11 +179,27 @@ function normalizeVersionDiff(value: VersionDiffResponse): VersionDiffResponse {
 }
 
 function normalizeDocumentEditorBundle(value: DocumentEditorBundleResponse): DocumentEditorBundleResponse {
+  const document = normalizeDocumentListItem(value?.document);
+  const templateSnapshot = value?.templateSnapshot ? normalizeDocumentTemplateSnapshot(value.templateSnapshot) : undefined;
+  const draftToken = typeof value?.draftToken === "string" && value.draftToken.trim() ? value.draftToken.trim() : "";
+  const hasTemplateSnapshot = Boolean(templateSnapshot);
+  const hasDraftToken = Boolean(draftToken);
+
+  if (hasTemplateSnapshot !== hasDraftToken) {
+    throw new Error("Governed canvas bundle missing template snapshot or draft token.");
+  }
+
+  if (templateSnapshot && templateSnapshot.profileCode && templateSnapshot.profileCode !== document.documentProfile) {
+    throw new Error("Governed canvas template snapshot profile mismatch.");
+  }
+
   return {
-    document: normalizeDocumentListItem(value?.document),
+    document,
     versions: Array.isArray(value?.versions) ? value.versions.map(normalizeVersionItem) : [],
     schema: normalizeDocumentProfileSchema(value?.schema),
     governance: normalizeDocumentProfileGovernance(value?.governance),
+    templateSnapshot,
+    draftToken: draftToken || undefined,
     presence: Array.isArray(value?.presence) ? value.presence.map(normalizeCollaborationPresenceItem) : [],
     editLock: value?.editLock ? normalizeDocumentEditLockItem(value.editLock) : undefined,
   };
@@ -302,7 +329,7 @@ export function getDocumentContentNative(documentId: string) {
   return request<DocumentContentNativeResponse>(`/documents/${documentId}/content/native`);
 }
 
-export function saveDocumentContentNative(documentId: string, body: Record<string, unknown>) {
+export function saveDocumentContentNative(documentId: string, body: { content: Record<string, unknown>; draftToken?: string }) {
   return request<DocumentContentSaveResponse>(`/documents/${documentId}/content/native`, {
     method: "POST",
     body: JSON.stringify(body),

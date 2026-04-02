@@ -180,6 +180,7 @@ export interface DocumentContentSaveResponse {
   contentSource: DocumentContentSource;
   pdfUrl: string;
   expiresAt: string;
+  draftToken?: string;
 }
 
 export interface DocumentContentPdfResponse {
@@ -243,11 +244,21 @@ export interface DocumentEditLockItem {
   expiresAt: string;
 }
 
+export interface DocumentTemplateSnapshotItem {
+  templateKey: string;
+  version: number;
+  profileCode: string;
+  schemaVersion: number;
+  definition: Record<string, unknown>;
+}
+
 export interface DocumentEditorBundleResponse {
   document: DocumentListItem;
   versions: VersionListItem[];
   schema: DocumentProfileSchemaItem;
   governance: DocumentProfileGovernanceItem;
+  templateSnapshot?: DocumentTemplateSnapshotItem;
+  draftToken?: string;
   presence: CollaborationPresenceItem[];
   editLock?: DocumentEditLockItem;
 }
@@ -293,3 +304,4 @@ export interface ApiErrorEnvelope {
     trace_id: string;
   };
 }
+

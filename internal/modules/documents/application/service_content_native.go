@@ -69,23 +69,103 @@ func (s *Service) SaveNativeContentAuthorized(ctx context.Context, cmd domain.Sa
 		return domain.Version{}, domain.ErrInvalidCommand
 	}
 	contentText := string(rawContent)
+	now := s.clock.Now()
+
+	if draftToken := strings.TrimSpace(cmd.DraftToken); draftToken != "" {
+		current, err := s.latestVersion(ctx, doc.ID)
+		if err != nil {
+			return domain.Version{}, err
+		}
+		if !matchesDraftToken(draftToken, current) {
+			return domain.Version{}, domain.ErrDraftConflict
+		}
+
+		resolvedTemplate := domain.DocumentTemplateVersion{}
+		if strings.TrimSpace(current.TemplateKey) != "" && current.TemplateVersion > 0 {
+			resolvedTemplate.TemplateKey = current.TemplateKey
+			resolvedTemplate.Version = current.TemplateVersion
+		} else {
+			resolvedTemplate, _, err = s.resolveDocumentTemplateOptional(ctx, doc.ID, doc.DocumentProfile)
+			if err != nil {
+				return domain.Version{}, err
+			}
+		}
+
+		version := current
+		version.Content = contentText
+		version.ContentHash = contentHash(contentText)
+		version.ChangeSummary = fmt.Sprintf("Content version %d", current.Number)
+		version.ContentSource = domain.ContentSourceNative
+		version.NativeContent = contentPayload
+		version.Values = contentPayload
+		version.TextContent = contentText
+		version.CreatedAt = current.CreatedAt
+		version.TemplateKey = resolvedTemplate.TemplateKey
+		version.TemplateVersion = resolvedTemplate.Version
+
+		pending := &docgen.RenderRevision{
+			Versao:    fmt.Sprintf("%d", current.Number),
+			Data:      now.Format("2006-01-02"),
+			Descricao: fmt.Sprintf("Content version %d", current.Number),
+			Por:       doc.OwnerID,
+		}
+		docxBytes, err := s.generateDocxBytes(ctx, doc, version, contentPayload, cmd.TraceID, pending)
+		if err != nil {
+			return domain.Version{}, err
+		}
+		docxKey := documentContentStorageKey(doc.ID, current.Number, "docx")
+		if err := s.attachmentStore.Save(ctx, docxKey, docxBytes); err != nil {
+			return domain.Version{}, err
+		}
+		version.DocxStorageKey = docxKey
+
+		pdfBytes, err := s.convertDocxToPDF(ctx, docxBytes, cmd.TraceID)
+		if err != nil {
+			_ = s.attachmentStore.Delete(ctx, docxKey)
+			return domain.Version{}, err
+		}
+		pdfKey := documentContentStorageKey(doc.ID, current.Number, "pdf")
+		if err := s.attachmentStore.Save(ctx, pdfKey, pdfBytes); err != nil {
+			_ = s.attachmentStore.Delete(ctx, docxKey)
+			return domain.Version{}, err
+		}
+		version.PdfStorageKey = pdfKey
+
+		expectedHash := strings.TrimSpace(current.ContentHash)
+		if expectedHash == "" {
+			expectedHash = contentHash(current.Content)
+		}
+		if err := s.repo.UpdateDraftVersionContentCAS(ctx, version, expectedHash); err != nil {
+			_ = s.attachmentStore.Delete(ctx, pdfKey)
+			_ = s.attachmentStore.Delete(ctx, docxKey)
+			return domain.Version{}, err
+		}
+		return version, nil
+	}
 
 	next, err := s.repo.NextVersionNumber(ctx, doc.ID)
 	if err != nil {
 		return domain.Version{}, err
 	}
-	now := s.clock.Now()
+
+	resolvedTemplate, _, err := s.resolveDocumentTemplateOptional(ctx, doc.ID, doc.DocumentProfile)
+	if err != nil {
+		return domain.Version{}, err
+	}
 
 	version := domain.Version{
-		DocumentID:    doc.ID,
-		Number:        next,
-		Content:       contentText,
-		ContentHash:   contentHash(contentText),
-		ChangeSummary: fmt.Sprintf("Content version %d", next),
-		ContentSource: domain.ContentSourceNative,
-		NativeContent: contentPayload,
-		TextContent:   contentText,
-		CreatedAt:     now,
+		DocumentID:      doc.ID,
+		Number:          next,
+		Content:         contentText,
+		ContentHash:     contentHash(contentText),
+		ChangeSummary:   fmt.Sprintf("Content version %d", next),
+		ContentSource:   domain.ContentSourceNative,
+		NativeContent:   contentPayload,
+		Values:          contentPayload,
+		TextContent:     contentText,
+		TemplateKey:     resolvedTemplate.TemplateKey,
+		TemplateVersion: resolvedTemplate.Version,
+		CreatedAt:       now,
 	}
 
 	pending := &docgen.RenderRevision{
@@ -259,4 +339,8 @@ func (s *Service) OpenContentStorage(ctx context.Context, storageKey string) ([]
 
 func documentContentStorageKey(documentID string, version int, extension string) string {
 	return fmt.Sprintf("documents/%s/versions/%d/content.%s", documentID, version, strings.TrimPrefix(extension, "."))
+}
+
+func matchesDraftToken(token string, version domain.Version) bool {
+	return strings.TrimSpace(token) == draftTokenForVersion(version)
 }

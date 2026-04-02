@@ -921,3 +921,10 @@ Wrong:   Treating every plausible enterprise concern from a review as required s
 Correct: Add only the missing contracts that affect the first implementation directly, and explicitly push broader concerns like slot ACL, search strategy, and conditional templates out of v1
 Rule:    Architecture reviews should tighten the current delivery slice and reject scope that would dilute the first release.
 Layer:   process
+
+## Lesson DX - apply_patch targets the parent repo unless the worktree path is explicit
+Date: 2026-04-02 | Trigger: correction
+Wrong:   Using relative apply_patch paths in a linked worktree and writing the new file into the parent repo instead
+Correct: Use absolute worktree paths for every apply_patch edit when the active branch lives under `.worktrees/`
+Rule:    Path-sensitive edit tools must be pointed at the active worktree explicitly, or changes can land in the wrong git repository.
+Layer:   process

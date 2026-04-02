@@ -8,12 +8,14 @@ import (
 )
 
 type DocumentEditorBundle struct {
-	Document   domain.Document
-	Versions   []domain.Version
-	Schema     domain.DocumentProfileSchemaVersion
-	Governance domain.DocumentProfileGovernance
-	Presence   []domain.CollaborationPresence
-	EditLock   *domain.DocumentEditLock
+	Document         domain.Document
+	Versions         []domain.Version
+	Schema           domain.DocumentProfileSchemaVersion
+	Governance       domain.DocumentProfileGovernance
+	TemplateSnapshot domain.DocumentTemplateSnapshot
+	DraftToken       string
+	Presence         []domain.CollaborationPresence
+	EditLock         *domain.DocumentEditLock
 }
 
 func (s *Service) GetDocumentEditorBundle(ctx context.Context, documentID string) (DocumentEditorBundle, error) {
@@ -37,6 +39,11 @@ func (s *Service) GetDocumentEditorBundle(ctx context.Context, documentID string
 		return DocumentEditorBundle{}, err
 	}
 
+	templateVersion, hasTemplate, err := s.resolveDocumentTemplateOptional(ctx, doc.ID, doc.DocumentProfile)
+	if err != nil {
+		return DocumentEditorBundle{}, err
+	}
+
 	presence, err := s.ListCollaborationPresenceAuthorized(ctx, doc.ID)
 	if err != nil {
 		return DocumentEditorBundle{}, err
@@ -52,11 +59,29 @@ func (s *Service) GetDocumentEditorBundle(ctx context.Context, documentID string
 		editLock = &lock
 	}
 
+	draftToken := ""
+	if hasTemplate && len(versions) > 0 {
+		draftToken = draftTokenForVersion(versions[len(versions)-1])
+	}
+
 	return DocumentEditorBundle{
 		Document:   doc,
 		Versions:   versions,
 		Schema:     schema,
 		Governance: governance,
+		TemplateSnapshot: func() domain.DocumentTemplateSnapshot {
+			if !hasTemplate {
+				return domain.DocumentTemplateSnapshot{}
+			}
+			return domain.DocumentTemplateSnapshot{
+				TemplateKey:   templateVersion.TemplateKey,
+				Version:       templateVersion.Version,
+				ProfileCode:   templateVersion.ProfileCode,
+				SchemaVersion: templateVersion.SchemaVersion,
+				Definition:    templateVersion.Definition,
+			}
+		}(),
+		DraftToken: draftToken,
 		Presence:   presence,
 		EditLock:   editLock,
 	}, nil

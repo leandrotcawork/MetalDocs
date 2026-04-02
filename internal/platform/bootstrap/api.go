@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net/http"
+	"time"
 
 	auditdomain "metaldocs/internal/modules/audit/domain"
 	auditmemory "metaldocs/internal/modules/audit/infrastructure/memory"
@@ -95,7 +97,7 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 			Publisher:         outboxpg.NewPublisher(db),
 			DocgenClient:      docgenClient,
 			GotenbergClient:   gotenbergClient,
-			StatusProvider:    observability.NewPostgresRuntimeStatusProvider(db, repoMode, attachmentsCfg.Provider, authn.Enabled()),
+			StatusProvider:    observability.NewPostgresRuntimeStatusProvider(db, repoMode, attachmentsCfg.Provider, authn.Enabled(), gotenbergHealthCheck(gotenbergCfg)),
 			Cleanup:           func() { _ = closeDB(db) },
 		}, nil
 	default:
@@ -129,7 +131,7 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 			Publisher:         nooppub.NewPublisher(),
 			DocgenClient:      docgenClient,
 			GotenbergClient:   gotenbergClient,
-			StatusProvider:    observability.NewStaticRuntimeStatusProvider(repoMode, attachmentsCfg.Provider, authn.Enabled()),
+			StatusProvider:    observability.NewStaticRuntimeStatusProvider(repoMode, attachmentsCfg.Provider, authn.Enabled(), gotenbergHealthCheck(gotenbergCfg)),
 			Cleanup:           func() {},
 		}, nil
 	}
@@ -158,4 +160,35 @@ func closeDB(db *sql.DB) error {
 		return nil
 	}
 	return db.Close()
+}
+
+func gotenbergHealthCheck(cfg config.GotenbergConfig) observability.DependencyCheck {
+	return observability.DependencyCheck{
+		Name: "gotenberg",
+		Check: func(ctx context.Context) (observability.DependencyCheckResult, error) {
+			if !cfg.Enabled || cfg.URL == "" {
+				return observability.DependencyCheckResult{
+					Status: "skipped",
+					Detail: "gotenberg not configured",
+				}, nil
+			}
+			client := &http.Client{Timeout: 2 * time.Second}
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, cfg.URL+"/health", nil)
+			if err != nil {
+				return observability.DependencyCheckResult{}, err
+			}
+			resp, err := client.Do(req)
+			if err != nil {
+				return observability.DependencyCheckResult{}, err
+			}
+			defer resp.Body.Close()
+			if resp.StatusCode != http.StatusOK {
+				return observability.DependencyCheckResult{}, fmt.Errorf("gotenberg unhealthy: status %d", resp.StatusCode)
+			}
+			return observability.DependencyCheckResult{
+				Status: "up",
+				Detail: cfg.URL,
+			}, nil
+		},
+	}
 }

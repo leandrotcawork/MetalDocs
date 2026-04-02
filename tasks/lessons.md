@@ -872,3 +872,10 @@ Wrong:   Building the save-generated docgen payload only from `ListVersions`, wh
 Correct: Thread the pending revision into the render payload whenever DOCX generation happens before the version row is persisted
 Rule:    Any render/export payload generated before persistence must be able to include the pending mutation state explicitly instead of relying only on repository reads.
 Layer:   application
+
+## Lesson DQ - Optional runtime dependencies must be registered in every status provider
+Date: 2026-04-02 | Trigger: correction
+Wrong:   Wiring the Gotenberg client for runtime use but omitting its dependency check from the memory/static and Postgres status providers
+Correct: Register the same dependency check with every runtime status provider so readiness payloads report optional services consistently across environments
+Rule:    Any optional backend dependency that affects runtime behavior must expose one shared health check through every status provider construction path.
+Layer:   process

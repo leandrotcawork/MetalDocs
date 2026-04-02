@@ -865,3 +865,10 @@ Wrong:   Saving a regenerated DOCX blob during PDF rendering without updating th
 Correct: Persist the backfilled blob's storage key on the version record immediately after the blob write succeeds
 Rule:    Any lazily regenerated artifact must update its canonical storage pointer as part of the same recovery path, or later reads will behave as if the artifact does not exist.
 Layer:   application
+
+## Lesson DP - Pre-persist export payloads must accept pending revision state
+Date: 2026-04-02 | Trigger: correction
+Wrong:   Building the save-generated docgen payload only from `ListVersions`, which omits the in-flight revision before `SaveVersion`
+Correct: Thread the pending revision into the render payload whenever DOCX generation happens before the version row is persisted
+Rule:    Any render/export payload generated before persistence must be able to include the pending mutation state explicitly instead of relying only on repository reads.
+Layer:   application

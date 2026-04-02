@@ -10,6 +10,7 @@ import (
 
 	"metaldocs/internal/modules/documents/domain"
 	"metaldocs/internal/platform/messaging"
+	"metaldocs/internal/platform/render/docgen"
 )
 
 func (s *Service) GetNativeContentAuthorized(ctx context.Context, documentID string) (domain.Version, error) {
@@ -87,7 +88,13 @@ func (s *Service) SaveNativeContentAuthorized(ctx context.Context, cmd domain.Sa
 		CreatedAt:     now,
 	}
 
-	docxBytes, err := s.generateDocxBytes(ctx, doc, version, contentPayload, cmd.TraceID)
+	pending := &docgen.RenderRevision{
+		Versao:    fmt.Sprintf("%d", next),
+		Data:      now.Format("2006-01-02"),
+		Descricao: fmt.Sprintf("Content version %d", next),
+		Por:       doc.OwnerID,
+	}
+	docxBytes, err := s.generateDocxBytes(ctx, doc, version, contentPayload, cmd.TraceID, pending)
 	if err != nil {
 		return domain.Version{}, err
 	}
@@ -194,7 +201,7 @@ func (s *Service) RenderContentPDFAuthorized(ctx context.Context, documentID, tr
 				return domain.Version{}, err
 			}
 		} else {
-			docxBytes, err = s.generateDocxBytes(ctx, doc, version, content, traceID)
+			docxBytes, err = s.generateDocxBytes(ctx, doc, version, content, traceID, nil)
 			if err != nil {
 				return domain.Version{}, err
 			}

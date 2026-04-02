@@ -173,7 +173,7 @@ func (s *Service) SaveDocumentValuesAuthorized(ctx context.Context, cmd domain.S
 	return version, nil
 }
 
-func (s *Service) buildDocgenPayload(ctx context.Context, doc domain.Document, schema domain.DocumentProfileSchemaVersion, version domain.Version) (docgen.RenderPayload, error) {
+func (s *Service) buildDocgenPayload(ctx context.Context, doc domain.Document, schema domain.DocumentProfileSchemaVersion, version domain.Version, pendingRevision *docgen.RenderRevision) (docgen.RenderPayload, error) {
 	schemaMap, err := toDocgenSchema(schema.ContentSchema)
 	if err != nil {
 		return docgen.RenderPayload{}, err
@@ -215,6 +215,9 @@ func (s *Service) buildDocgenPayload(ctx context.Context, doc domain.Document, s
 		}
 		payload.Revisions = revisions
 	}
+	if pendingRevision != nil {
+		payload.Revisions = append(payload.Revisions, *pendingRevision)
+	}
 
 	return payload, nil
 }
@@ -229,7 +232,7 @@ func (s *Service) ExportDocumentDocxAuthorized(ctx context.Context, documentID, 
 		return nil, err
 	}
 
-	payload, err := s.buildDocgenPayload(ctx, bundle.Document, bundle.Schema, bundle.Version)
+	payload, err := s.buildDocgenPayload(ctx, bundle.Document, bundle.Schema, bundle.Version, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -237,7 +240,7 @@ func (s *Service) ExportDocumentDocxAuthorized(ctx context.Context, documentID, 
 	return s.docgenClient.Generate(ctx, payload, traceID)
 }
 
-func (s *Service) generateDocxBytes(ctx context.Context, doc domain.Document, version domain.Version, content map[string]any, traceID string) ([]byte, error) {
+func (s *Service) generateDocxBytes(ctx context.Context, doc domain.Document, version domain.Version, content map[string]any, traceID string, pendingRevision *docgen.RenderRevision) ([]byte, error) {
 	if s.docgenClient == nil {
 		return nil, domain.ErrRenderUnavailable
 	}
@@ -252,7 +255,7 @@ func (s *Service) generateDocxBytes(ctx context.Context, doc domain.Document, ve
 		versionWithValues.Values = content
 	}
 
-	payload, err := s.buildDocgenPayload(ctx, doc, schema, versionWithValues)
+	payload, err := s.buildDocgenPayload(ctx, doc, schema, versionWithValues, pendingRevision)
 	if err != nil {
 		return nil, err
 	}

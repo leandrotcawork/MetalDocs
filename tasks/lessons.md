@@ -837,3 +837,10 @@ Wrong:   Building the docgen export payload with only title/code/schema/values a
 Correct: Populate export metadata from document ownership and latest approval data, and build revision rows from stored document versions
 Rule:    Server-side exports must derive user-facing governance sections from canonical document, approval, and version records rather than placeholders.
 Layer:   application
+
+## Lesson DL - Internal module commands must use paths relative to the internal module root
+Date: 2026-04-02 | Trigger: correction
+Wrong:   Running `go test ./internal/platform/...` after `cd internal`, which resolves to a non-existent `internal/internal/...` path
+Correct: From `internal/`, target packages with module-root-relative paths such as `go test ./platform/config ./platform/render/gotenberg`
+Rule:    When a Go module lives in a subdirectory, verification commands must be scoped relative to that module root, not repeated from the repo root.
+Layer:   process

@@ -1724,7 +1724,7 @@ func (h *Handler) handleDiffVersions(w http.ResponseWriter, r *http.Request, doc
 		FromVersion:           diff.FromVersion,
 		ToVersion:             diff.ToVersion,
 		ContentChanged:        diff.ContentChanged,
-		MetadataChanged:       append([]string(nil), diff.MetadataChanged...),
+		MetadataChanged:       append([]string{}, diff.MetadataChanged...),
 		ClassificationChanged: diff.ClassificationChanged,
 		EffectiveAtChanged:    diff.EffectiveAtChanged,
 		ExpiryAtChanged:       diff.ExpiryAtChanged,

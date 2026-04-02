@@ -50,17 +50,28 @@ func (h *Handler) handleDocumentWorkflowRoutes(w http.ResponseWriter, r *http.Re
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/workflow/documents/")
 	parts := strings.Split(path, "/")
 	if strings.TrimSpace(parts[0]) == "" {
+		writeAPIError(w, http.StatusNotFound, "WORKFLOW_ROUTE_NOT_FOUND", "Route not found", traceID)
 		return
 	}
 
-	if len(parts) == 2 && parts[1] == "transitions" && r.Method == http.MethodPost {
-		h.handleTransition(w, r, parts[0], traceID)
+	if len(parts) == 2 && parts[1] == "transitions" {
+		if r.Method == http.MethodPost {
+			h.handleTransition(w, r, parts[0], traceID)
+			return
+		}
+		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	if len(parts) == 2 && parts[1] == "approvals" && r.Method == http.MethodGet {
-		h.handleListApprovals(w, r, parts[0], traceID)
+	if len(parts) == 2 && parts[1] == "approvals" {
+		if r.Method == http.MethodGet {
+			h.handleListApprovals(w, r, parts[0], traceID)
+			return
+		}
+		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
+
+	writeAPIError(w, http.StatusNotFound, "WORKFLOW_ROUTE_NOT_FOUND", "Route not found", traceID)
 }
 
 func (h *Handler) handleTransition(w http.ResponseWriter, r *http.Request, documentID, traceID string) {

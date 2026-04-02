@@ -173,7 +173,94 @@ func (s *Service) SaveDocumentValuesAuthorized(ctx context.Context, cmd domain.S
 	return version, nil
 }
 
+func (s *Service) buildDocgenPayload(ctx context.Context, doc domain.Document, schema domain.DocumentProfileSchemaVersion, version domain.Version) (docgen.RenderPayload, error) {
+	schemaMap, err := toDocgenSchema(schema.ContentSchema)
+	if err != nil {
+		return docgen.RenderPayload{}, err
+	}
+
+	ownerName := s.resolveUserDisplayName(ctx, doc.OwnerID)
+	approverName, approvedAt := s.resolveLatestApproval(ctx, doc.ID)
+
+	payload := docgen.RenderPayload{
+		DocumentType: firstNonEmpty(doc.DocumentType, doc.DocumentProfile),
+		DocumentCode: doc.DocumentCode,
+		Title:        doc.Title,
+		Version:      fmt.Sprintf("%d", version.Number),
+		Status:       doc.Status,
+		Schema:       schemaMap,
+		Values:       cloneRuntimeValues(version.Values),
+		Metadata: &docgen.RenderMetadata{
+			ElaboradoPor: ownerName,
+			AprovadoPor:  approverName,
+			CreatedAt:    doc.CreatedAt.Format("2006-01-02"),
+			ApprovedAt:   approvedAt,
+		},
+	}
+
+	versions, err := s.repo.ListVersions(ctx, doc.ID)
+	if err == nil && len(versions) > 0 {
+		revisions := make([]docgen.RenderRevision, 0, len(versions))
+		for _, v := range versions {
+			summary := v.ChangeSummary
+			if summary == "" && v.Number == 1 {
+				summary = "Criação do documento"
+			}
+			revisions = append(revisions, docgen.RenderRevision{
+				Versao:    fmt.Sprintf("%d", v.Number),
+				Data:      v.CreatedAt.Format("2006-01-02"),
+				Descricao: summary,
+				Por:       ownerName,
+			})
+		}
+		payload.Revisions = revisions
+	}
+
+	return payload, nil
+}
+
 func (s *Service) ExportDocumentDocxAuthorized(ctx context.Context, documentID, traceID string) ([]byte, error) {
+	if s.docgenClient == nil {
+		return nil, domain.ErrRenderUnavailable
+	}
+
+	bundle, err := s.GetDocumentRuntimeBundle(ctx, documentID)
+	if err != nil {
+		return nil, err
+	}
+
+	payload, err := s.buildDocgenPayload(ctx, bundle.Document, bundle.Schema, bundle.Version)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.docgenClient.Generate(ctx, payload, traceID)
+}
+
+func (s *Service) generateDocxBytes(ctx context.Context, doc domain.Document, version domain.Version, content map[string]any, traceID string) ([]byte, error) {
+	if s.docgenClient == nil {
+		return nil, domain.ErrRenderUnavailable
+	}
+
+	schema, err := s.resolveActiveProfileSchema(ctx, doc.DocumentProfile)
+	if err != nil {
+		return nil, err
+	}
+
+	versionWithValues := version
+	if len(content) > 0 {
+		versionWithValues.Values = content
+	}
+
+	payload, err := s.buildDocgenPayload(ctx, doc, schema, versionWithValues)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.docgenClient.Generate(ctx, payload, traceID)
+}
+
+func (s *Service) exportDocumentDocxAuthorizedLegacy(ctx context.Context, documentID, traceID string) ([]byte, error) {
 	if s.docgenClient == nil {
 		return nil, domain.ErrRenderUnavailable
 	}

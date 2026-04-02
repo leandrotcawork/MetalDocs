@@ -87,18 +87,31 @@ func (s *Service) SaveNativeContentAuthorized(ctx context.Context, cmd domain.Sa
 		CreatedAt:     now,
 	}
 
-	pdfBytes, err := s.renderDocumentPDF(ctx, doc, version, cmd.Content, cmd.TraceID)
+	docxBytes, err := s.generateDocxBytes(ctx, doc, version, contentPayload, cmd.TraceID)
 	if err != nil {
+		return domain.Version{}, err
+	}
+	docxKey := documentContentStorageKey(doc.ID, next, "docx")
+	if err := s.attachmentStore.Save(ctx, docxKey, docxBytes); err != nil {
+		return domain.Version{}, err
+	}
+	version.DocxStorageKey = docxKey
+
+	pdfBytes, err := s.convertDocxToPDF(ctx, docxBytes, cmd.TraceID)
+	if err != nil {
+		_ = s.attachmentStore.Delete(ctx, docxKey)
 		return domain.Version{}, err
 	}
 	pdfKey := documentContentStorageKey(doc.ID, next, "pdf")
 	if err := s.attachmentStore.Save(ctx, pdfKey, pdfBytes); err != nil {
+		_ = s.attachmentStore.Delete(ctx, docxKey)
 		return domain.Version{}, err
 	}
 	version.PdfStorageKey = pdfKey
 
 	if err := s.repo.SaveVersion(ctx, version); err != nil {
 		_ = s.attachmentStore.Delete(ctx, pdfKey)
+		_ = s.attachmentStore.Delete(ctx, docxKey)
 		return domain.Version{}, err
 	}
 
@@ -174,7 +187,26 @@ func (s *Service) RenderContentPDFAuthorized(ctx context.Context, documentID, tr
 				content = parsed
 			}
 		}
-		pdfBytes, err = s.renderDocumentPDF(ctx, doc, version, content, traceID)
+		var docxBytes []byte
+		if strings.TrimSpace(version.DocxStorageKey) != "" {
+			docxBytes, err = s.OpenContentStorage(ctx, version.DocxStorageKey)
+			if err != nil {
+				return domain.Version{}, err
+			}
+		} else {
+			docxBytes, err = s.generateDocxBytes(ctx, doc, version, content, traceID)
+			if err != nil {
+				return domain.Version{}, err
+			}
+			docxKey := documentContentStorageKey(doc.ID, version.Number, "docx")
+			if saveErr := s.attachmentStore.Save(ctx, docxKey, docxBytes); saveErr == nil {
+				// TODO(Task 6): persist generated DOCX storage key once Repository exposes UpdateVersionDocx.
+				// if err := s.repo.UpdateVersionDocx(ctx, doc.ID, version.Number, docxKey); err != nil {
+				// 	return domain.Version{}, err
+				// }
+			}
+		}
+		pdfBytes, err = s.convertDocxToPDF(ctx, docxBytes, traceID)
 		if err != nil {
 			return domain.Version{}, err
 		}

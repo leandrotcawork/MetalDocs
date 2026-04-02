@@ -178,19 +178,10 @@ func validateDocumentTypeValueField(field domain.FieldDef, root, container map[s
 			}
 		}
 	case "rich":
-		if _, ok := value.(string); ok {
-			return nil
+		if err := validateRichEnvelopeValue(value); err != nil {
+			return domain.ErrInvalidNativeContent
 		}
-		if _, ok := value.(map[string]any); ok {
-			return nil
-		}
-		if _, ok := value.([]any); ok {
-			return nil
-		}
-		if raw, ok := value.(json.RawMessage); ok && json.Valid(raw) {
-			return nil
-		}
-		return domain.ErrInvalidNativeContent
+		return nil
 	case "array":
 		if _, ok := toRuntimeSlice(value); !ok {
 			return domain.ErrInvalidNativeContent

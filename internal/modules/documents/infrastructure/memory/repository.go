@@ -602,6 +602,24 @@ func (r *Repository) UpdateVersionValues(_ context.Context, documentID string, v
 	return domain.ErrVersionNotFound
 }
 
+func (r *Repository) UpdateVersionDocx(_ context.Context, documentID string, versionNumber int, docxStorageKey string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, exists := r.documents[documentID]; !exists {
+		return domain.ErrDocumentNotFound
+	}
+	versions := r.versions[documentID]
+	for i := range versions {
+		if versions[i].Number == versionNumber {
+			versions[i].DocxStorageKey = docxStorageKey
+			r.versions[documentID] = versions
+			return nil
+		}
+	}
+	return domain.ErrVersionNotFound
+}
+
 func (r *Repository) saveVersionLocked(_ context.Context, version domain.Version) error {
 	if _, exists := r.documents[version.DocumentID]; !exists {
 		return domain.ErrDocumentNotFound

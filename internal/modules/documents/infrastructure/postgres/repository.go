@@ -1190,6 +1190,26 @@ WHERE document_id = $1 AND version_number = $2
 	return nil
 }
 
+func (r *Repository) UpdateVersionDocx(ctx context.Context, documentID string, versionNumber int, docxStorageKey string) error {
+	const q = `
+UPDATE metaldocs.document_versions
+SET docx_storage_key = $3
+WHERE document_id = $1 AND version_number = $2
+`
+	res, err := r.db.ExecContext(ctx, q, documentID, versionNumber, nullIfEmpty(docxStorageKey))
+	if err != nil {
+		return mapError(err)
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected update version docx: %w", err)
+	}
+	if affected == 0 {
+		return domain.ErrVersionNotFound
+	}
+	return nil
+}
+
 func (r *Repository) UpdateVersionPDF(ctx context.Context, documentID string, versionNumber int, pdfStorageKey string, pageCount int) error {
 	const q = `
 UPDATE metaldocs.document_versions

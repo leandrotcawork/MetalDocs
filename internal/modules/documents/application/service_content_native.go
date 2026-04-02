@@ -200,10 +200,11 @@ func (s *Service) RenderContentPDFAuthorized(ctx context.Context, documentID, tr
 			}
 			docxKey := documentContentStorageKey(doc.ID, version.Number, "docx")
 			if saveErr := s.attachmentStore.Save(ctx, docxKey, docxBytes); saveErr == nil {
-				// TODO(Task 6): persist generated DOCX storage key once Repository exposes UpdateVersionDocx.
-				// if err := s.repo.UpdateVersionDocx(ctx, doc.ID, version.Number, docxKey); err != nil {
-				// 	return domain.Version{}, err
-				// }
+				if err := s.repo.UpdateVersionDocx(ctx, doc.ID, version.Number, docxKey); err != nil {
+					_ = s.attachmentStore.Delete(ctx, docxKey)
+					return domain.Version{}, err
+				}
+				version.DocxStorageKey = docxKey
 			}
 		}
 		pdfBytes, err = s.convertDocxToPDF(ctx, docxBytes, traceID)

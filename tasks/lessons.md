@@ -858,3 +858,10 @@ Wrong:   Leaving template download handlers wired to removed Carbone service met
 Correct: Replace retired endpoints with an explicit deprecation response until the route itself is removed or replaced
 Rule:    When a backend capability is removed before its route disappears, handlers must fail closed with a stable non-2xx response instead of calling dead dependencies.
 Layer:   delivery
+
+## Lesson DO - Backfilled artifact blobs must persist their storage keys
+Date: 2026-04-02 | Trigger: correction
+Wrong:   Saving a regenerated DOCX blob during PDF rendering without updating the stored version metadata
+Correct: Persist the backfilled blob's storage key on the version record immediately after the blob write succeeds
+Rule:    Any lazily regenerated artifact must update its canonical storage pointer as part of the same recovery path, or later reads will behave as if the artifact does not exist.
+Layer:   application

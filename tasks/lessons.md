@@ -963,3 +963,10 @@ Wrong:   Resolving template validation against the active schema version, even w
 Correct: Load the schema by `templateVersion.SchemaVersion` from the profile schema list and reject the template if that exact version is absent
 Rule:    Template validation must be bound to the schema snapshot the template declares, not to the currently active version.
 Layer:   application
+
+## Lesson ED - Template validation must use the hydrated canonical schema source
+Date: 2026-04-03 | Trigger: correction
+Wrong:   Reading `repo.ListDocumentProfileSchemas(...)` directly during template validation and trusting the raw profile-row `content_schema_json`
+Correct: Resolve schema content through `s.ListDocumentProfileSchemas(...)` so validation uses the canonical type-definition snapshot that runtime/editor consume
+Rule:    Template compatibility checks must validate against the same hydrated schema source as runtime, not against stale profile rows.
+Layer:   application

@@ -970,3 +970,17 @@ Wrong:   Reading `repo.ListDocumentProfileSchemas(...)` directly during template
 Correct: Resolve schema content through `s.ListDocumentProfileSchemas(...)` so validation uses the canonical type-definition snapshot that runtime/editor consume
 Rule:    Template compatibility checks must validate against the same hydrated schema source as runtime, not against stale profile rows.
 Layer:   application
+
+## Lesson EE - Governed canvas exports must bind to the versioned template snapshot
+Date: 2026-04-03 | Trigger: correction
+Wrong:   Building DOCX payloads from the document's active profile schema alone and allowing version 1 creation to continue when the governed template snapshot could not be resolved
+Correct: Resolve the exact template snapshot for governed PO documents, fail closed when it is missing, and use that snapshot's schema version when building export/runtime payloads
+Rule:    Governed exports must render from the stored revision snapshot, not from whichever profile defaults happen to be current.
+Layer:   application
+
+## Lesson EF - Export payloads must fail closed on schema drift
+Date: 2026-04-03 | Trigger: correction
+Wrong:   Re-resolving the docgen schema snapshot from `templateSnapshot.SchemaVersion` when it differed from `document.ProfileSchemaVersion`
+Correct: Compare the template snapshot schema version against the document schema snapshot and return `ErrInvalidCommand` before payload creation if they differ
+Rule:    Export/runtime payloads must stay bound to the document's resolved schema snapshot and never silently switch to another version.
+Layer:   application

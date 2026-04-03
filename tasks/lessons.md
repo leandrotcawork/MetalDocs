@@ -942,3 +942,10 @@ Wrong:   A heartbeat response was allowed to write collaboration state based on 
 Correct: Capture the document id at request start and only apply the result if the live selected document still matches that snapshot
 Rule:    Async side effects must compare against request-local identity to avoid stale writes after selection changes.
 Layer:   frontend
+
+## Lesson EA2 - Template compatibility must use the template's declared schema version
+Date: 2026-04-03 | Trigger: correction
+Wrong:   Template validation resolved against the active profile schema and silently fell back when the referenced schema version was missing
+Correct: Resolve compatibility against `templateVersion.SchemaVersion` exactly and fail closed with `ErrInvalidCommand` if that schema snapshot is absent
+Rule:    Template snapshots must validate against the schema version they declare, not whichever version happens to be active.
+Layer:   application

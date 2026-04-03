@@ -31,6 +31,7 @@ func TestRenderContentPDFAuthorizedCachesGeneratedDocxKey(t *testing.T) {
 	store := documentmemory.NewAttachmentStore()
 
 	doc := seedDraftDocument(t, ctx, repo, now)
+	seedCompatiblePOProfileSchemaSet(t, repo)
 	if err := repo.SaveVersion(ctx, domain.Version{
 		DocumentID:    doc.ID,
 		Number:        1,
@@ -103,6 +104,7 @@ func TestSaveNativeContentAuthorizedDeletesDocxWhenPDFConversionFails(t *testing
 	store := documentmemory.NewAttachmentStore()
 
 	doc := seedDraftDocument(t, ctx, repo, now)
+	seedCompatiblePOProfileSchemaSet(t, repo)
 
 	docgenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/generate" {
@@ -151,6 +153,7 @@ func TestSaveNativeContentAuthorizedIncludesPendingRevisionInDocgenPayload(t *te
 	store := documentmemory.NewAttachmentStore()
 
 	doc := seedDraftDocument(t, ctx, repo, now)
+	seedCompatiblePOProfileSchemaSet(t, repo)
 	if err := repo.SaveVersion(ctx, domain.Version{
 		DocumentID:    doc.ID,
 		Number:        1,
@@ -277,6 +280,7 @@ func TestSaveNativeContentRejectsStaleDraftToken(t *testing.T) {
 func TestResolveDocumentTemplatePrefersDocumentAssignmentOverProfileDefault(t *testing.T) {
 	repo := documentmemory.NewRepository()
 	service := NewService(repo, nil, nil)
+	seedCompatiblePOProfileSchemaSet(t, repo)
 
 	if err := repo.UpsertDocumentTemplateAssignment(context.Background(), domain.DocumentTemplateAssignment{
 		DocumentID:      "doc-1",
@@ -304,6 +308,76 @@ func TestResolveDocumentTemplatePrefersDocumentAssignmentOverProfileDefault(t *t
 	}
 	if got.TemplateKey != "po-doc-special" || got.Version != 2 {
 		t.Fatalf("resolved template = %+v, want po-doc-special v2", got)
+	}
+}
+
+func seedCompatiblePOProfileSchemaSet(t *testing.T, repo *documentmemory.Repository) {
+	t.Helper()
+
+	schema := map[string]any{
+		"sections": []any{
+			map[string]any{
+				"key":   "identificacaoProcesso",
+				"num":   "2",
+				"title": "Identificacao do Processo",
+				"fields": []any{
+					map[string]any{"key": "objetivo", "label": "Objetivo", "type": "textarea"},
+				},
+			},
+			map[string]any{
+				"key":   "visaoGeral",
+				"num":   "4",
+				"title": "Visao Geral do Processo",
+				"fields": []any{
+					map[string]any{"key": "descricaoProcesso", "label": "Descricao do processo", "type": "rich"},
+				},
+			},
+		},
+	}
+
+	if err := repo.UpsertDocumentTypeDefinition(context.Background(), domain.DocumentTypeDefinition{
+		Key:           "po",
+		Name:          "Procedimento Operacional",
+		ActiveVersion: 1,
+		Schema: domain.DocumentTypeSchema{
+			Sections: []domain.SectionDef{
+				{
+					Key:   "identificacaoProcesso",
+					Num:   "2",
+					Title: "Identificacao do Processo",
+					Fields: []domain.FieldDef{
+						{Key: "objetivo", Label: "Objetivo", Type: "textarea"},
+					},
+				},
+				{
+					Key:   "visaoGeral",
+					Num:   "4",
+					Title: "Visao Geral do Processo",
+					Fields: []domain.FieldDef{
+						{Key: "descricaoProcesso", Label: "Descricao do processo", Type: "rich"},
+					},
+				},
+			},
+		},
+	}); err != nil {
+		t.Fatalf("seed document type definition: %v", err)
+	}
+
+	if err := repo.UpsertDocumentProfileSchemaVersion(context.Background(), domain.DocumentProfileSchemaVersion{
+		ProfileCode:   "po",
+		Version:       1,
+		IsActive:      true,
+		ContentSchema: schema,
+	}); err != nil {
+		t.Fatalf("seed profile schema v1: %v", err)
+	}
+	if err := repo.UpsertDocumentProfileSchemaVersion(context.Background(), domain.DocumentProfileSchemaVersion{
+		ProfileCode:   "po",
+		Version:       3,
+		IsActive:      false,
+		ContentSchema: schema,
+	}); err != nil {
+		t.Fatalf("seed profile schema v3: %v", err)
 	}
 }
 

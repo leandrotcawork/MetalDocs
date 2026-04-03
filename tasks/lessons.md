@@ -956,3 +956,10 @@ Wrong:   The in-memory PO type seed still advertised active version 2 while the 
 Correct: Keep the default runtime type definition aligned with the template's declared schema version so exact-version validation succeeds in default flows
 Rule:    Seeded runtime schemas and template contracts must advance together, or exact-version validation will fail closed in baseline environments.
 Layer:   process
+
+## Lesson EC - Template schema resolution must read the requested snapshot
+Date: 2026-04-03 | Trigger: correction
+Wrong:   Resolving template validation against the active schema version, even when the template referenced a different schema snapshot
+Correct: Load the schema by `templateVersion.SchemaVersion` from the profile schema list and reject the template if that exact version is absent
+Rule:    Template validation must be bound to the schema snapshot the template declares, not to the currently active version.
+Layer:   application

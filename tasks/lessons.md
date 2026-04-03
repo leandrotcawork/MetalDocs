@@ -949,3 +949,10 @@ Wrong:   Template validation resolved against the active profile schema and sile
 Correct: Resolve compatibility against `templateVersion.SchemaVersion` exactly and fail closed with `ErrInvalidCommand` if that schema snapshot is absent
 Rule:    Template snapshots must validate against the schema version they declare, not whichever version happens to be active.
 Layer:   application
+
+## Lesson EB - Runtime schema seeds must match template contracts
+Date: 2026-04-03 | Trigger: correction
+Wrong:   The in-memory PO type seed still advertised active version 2 while the built-in template contract and runtime migration data pointed at version 3
+Correct: Keep the default runtime type definition aligned with the template's declared schema version so exact-version validation succeeds in default flows
+Rule:    Seeded runtime schemas and template contracts must advance together, or exact-version validation will fail closed in baseline environments.
+Layer:   process

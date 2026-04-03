@@ -928,3 +928,17 @@ Wrong:   Using relative apply_patch paths in a linked worktree and writing the n
 Correct: Use absolute worktree paths for every apply_patch edit when the active branch lives under `.worktrees/`
 Rule:    Path-sensitive edit tools must be pointed at the active worktree explicitly, or changes can land in the wrong git repository.
 Layer:   process
+
+## Lesson DY - Governed canvas guards must distinguish persisted documents from pre-persist drafts
+Date: 2026-04-03 | Trigger: correction
+Wrong:   Treating a new draft with an empty `documentId` as a governed persisted document, then fail-closing on missing `templateSnapshot` or `draftToken`
+Correct: Only apply the governed-canvas fail-closed guard when `documentId` is non-empty, and block editing/autosave client-side when `editLock.lockedBy !== currentUserId`
+Rule:    Pre-persist drafts need a permissive open path, while persisted documents must fail closed on invalid governance metadata and lock ownership.
+Layer:   frontend
+
+## Lesson DZ - Async guards should snapshot request identity, not rely on delayed refs
+Date: 2026-04-03 | Trigger: correction
+Wrong:   A heartbeat response was allowed to write collaboration state based on a ref that lagged behind the current selected document
+Correct: Capture the document id at request start and only apply the result if the live selected document still matches that snapshot
+Rule:    Async side effects must compare against request-local identity to avoid stale writes after selection changes.
+Layer:   frontend

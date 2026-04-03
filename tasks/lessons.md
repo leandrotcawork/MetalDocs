@@ -984,3 +984,10 @@ Wrong:   Re-resolving the docgen schema snapshot from `templateSnapshot.SchemaVe
 Correct: Compare the template snapshot schema version against the document schema snapshot and return `ErrInvalidCommand` before payload creation if they differ
 Rule:    Export/runtime payloads must stay bound to the document's resolved schema snapshot and never silently switch to another version.
 Layer:   application
+
+## Lesson EG - Governed drafts must never fall back past a missing template snapshot
+Date: 2026-04-03 | Trigger: correction
+Wrong:   `GetDocumentEditorBundle` returned an empty template snapshot and `SaveNativeContentAuthorized` resolved a template default when a governed PO draft version had no stored template key/version
+Correct: Fail closed with `ErrInvalidCommand` for governed PO drafts when the latest version lacks a template snapshot; only non-governed drafts may use the existing fallback
+Rule:    Governed draft flows must treat the stored template snapshot as mandatory and never infer a replacement from profile defaults.
+Layer:   application

@@ -1642,6 +1642,56 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
+  /documents/{documentId}/content/browser:
+    post:
+      operationId: saveDocumentBrowserContent
+      summary: Salva conteudo HTML do browser editor
+      description: Salva o body HTML atual do draft usando `draftToken` para controle de concorrencia no browser editor.
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentBrowserContentSaveRequest'
+      responses:
+        '201':
+          description: Conteudo HTML salvo no draft atual
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentBrowserContentSaveResponse'
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '409':
+          description: Conflict por draft token expirado ou conflito de edicao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '404':
+          description: Documento nao encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
   /documents/{documentId}/content/pdf:
     get:
       summary: Obtem URL assinada do PDF do documento
@@ -1895,6 +1945,37 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DocumentEditorBundleResponse'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '404':
+          description: Documento nao encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+  /documents/{documentId}/browser-editor-bundle:
+    get:
+      operationId: getDocumentBrowserEditorBundle
+      summary: Carrega bundle para o browser editor de documentos
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      responses:
+        '200':
+          description: Bundle do browser editor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentBrowserEditorBundleResponse'
         '401':
           description: Nao autenticado
           content:
@@ -2844,7 +2925,7 @@ components:
             type: string
     DocumentContentSource:
       type: string
-      enum: [native, docx_upload]
+      enum: [native, docx_upload, browser_editor]
     DocumentContentSaveRequest:
       type: object
       required: [content]
@@ -2855,6 +2936,15 @@ components:
         content:
           type: object
           additionalProperties: true
+    DocumentBrowserContentSaveRequest:
+      type: object
+      required: [body, draftToken]
+      properties:
+        body:
+          type: string
+        draftToken:
+          type: string
+          description: Token atual do draft carregado no browser editor.
     DocumentContentNativeResponse:
       type: object
       required: [documentId, version, content, contentSource]
@@ -2884,6 +2974,26 @@ components:
           type: integer
         definition:
           $ref: '#/components/schemas/DocumentTemplateNodeResponse'
+    DocumentBrowserTemplateSnapshot:
+      type: object
+      required: [templateKey, version, profileCode, schemaVersion, editor, contentFormat, body]
+      properties:
+        templateKey:
+          type: string
+        version:
+          type: integer
+        profileCode:
+          type: string
+        schemaVersion:
+          type: integer
+        editor:
+          type: string
+          enum: [ckeditor5]
+        contentFormat:
+          type: string
+          enum: [html]
+        body:
+          type: string
     DocumentTemplateNodeResponse:
       oneOf:
         - $ref: '#/components/schemas/DocumentTemplatePageNodeResponse'
@@ -3046,6 +3156,21 @@ components:
         expiresAt:
           type: string
           format: date-time
+    DocumentBrowserContentSaveResponse:
+      type: object
+      required: [documentId, version, contentSource, draftToken]
+      properties:
+        documentId:
+          type: string
+        version:
+          type: integer
+          minimum: 1
+        contentSource:
+          type: string
+          enum: [browser_editor]
+        draftToken:
+          type: string
+          description: Token atualizado do draft corrente para controle de concorrencia no browser editor.
     DocumentContentUploadResponse:
       type: object
       required: [docxUrl, pdfUrl, expiresAt, contentSource]
@@ -3560,6 +3685,25 @@ components:
             - $ref: '#/components/schemas/DocumentTemplateSnapshotResponse'
         editLock:
           $ref: '#/components/schemas/DocumentEditLock'
+    DocumentBrowserEditorBundleResponse:
+      type: object
+      required: [document, versions, governance, templateSnapshot, body, draftToken]
+      properties:
+        document:
+          $ref: '#/components/schemas/DocumentListItem'
+        versions:
+          type: array
+          items:
+            $ref: '#/components/schemas/VersionListItem'
+        governance:
+          $ref: '#/components/schemas/DocumentProfileGovernance'
+        templateSnapshot:
+          $ref: '#/components/schemas/DocumentBrowserTemplateSnapshot'
+        body:
+          type: string
+        draftToken:
+          type: string
+          description: Token atual do draft snapshot carregado no browser editor; clients devem enviar este valor de volta no save.
     AcquireDocumentEditLockRequest:
       type: object
       properties:

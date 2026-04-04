@@ -1,6 +1,8 @@
 import type {
   AccessPolicyItem,
   AttachmentItem,
+  DocumentBrowserEditorBundleResponse,
+  DocumentBrowserTemplateSnapshotItem,
   CollaborationPresenceItem,
   DocumentContentDocxResponse,
   DocumentContentNativeResponse,
@@ -154,6 +156,18 @@ function normalizeDocumentTemplateSnapshot(value: DocumentTemplateSnapshotItem):
   };
 }
 
+function normalizeDocumentBrowserTemplateSnapshot(value: DocumentBrowserTemplateSnapshotItem): DocumentBrowserTemplateSnapshotItem {
+  return {
+    templateKey: value?.templateKey ?? "",
+    version: Number(value?.version ?? 0),
+    profileCode: value?.profileCode ?? "",
+    schemaVersion: Number(value?.schemaVersion ?? 0),
+    editor: value?.editor === "ckeditor5" ? "ckeditor5" : "ckeditor5",
+    contentFormat: value?.contentFormat === "html" ? "html" : "html",
+    body: typeof value?.body === "string" ? value.body : "",
+  };
+}
+
 function normalizeAccessPolicyItem(value: AccessPolicyItem): AccessPolicyItem {
   return {
     subjectType: value?.subjectType ?? "user",
@@ -205,6 +219,34 @@ function normalizeDocumentEditorBundle(value: DocumentEditorBundleResponse): Doc
   };
 }
 
+function normalizeDocumentBrowserEditorBundle(value: DocumentBrowserEditorBundleResponse): DocumentBrowserEditorBundleResponse {
+  const document = normalizeDocumentListItem(value?.document);
+  const templateSnapshot = normalizeDocumentBrowserTemplateSnapshot(value?.templateSnapshot);
+  const draftToken = typeof value?.draftToken === "string" ? value.draftToken.trim() : "";
+  const body = typeof value?.body === "string" ? value.body : "";
+
+  if (!draftToken) {
+    throw new Error("Browser editor bundle missing draft token.");
+  }
+
+  if (!templateSnapshot.templateKey || !templateSnapshot.version) {
+    throw new Error("Browser editor bundle missing template snapshot.");
+  }
+
+  if (templateSnapshot.profileCode && templateSnapshot.profileCode !== document.documentProfile) {
+    throw new Error("Browser editor template snapshot profile mismatch.");
+  }
+
+  return {
+    document,
+    versions: Array.isArray(value?.versions) ? value.versions.map(normalizeVersionItem) : [],
+    governance: normalizeDocumentProfileGovernance(value?.governance),
+    templateSnapshot,
+    body,
+    draftToken,
+  };
+}
+
 export async function listDocuments() {
   const response = await request<{ items: DocumentListItem[] }>("/documents");
   return { items: Array.isArray(response.items) ? response.items.map(normalizeDocumentListItem) : [] };
@@ -222,6 +264,12 @@ export async function getDocument(documentId: string) {
 export async function getDocumentEditorBundle(documentId: string) {
   return normalizeDocumentEditorBundle(
     await request<DocumentEditorBundleResponse>(`/documents/${encodeURIComponent(documentId)}/editor-bundle`),
+  );
+}
+
+export async function getDocumentBrowserEditorBundle(documentId: string) {
+  return normalizeDocumentBrowserEditorBundle(
+    await request<DocumentBrowserEditorBundleResponse>(`/documents/${encodeURIComponent(documentId)}/browser-editor-bundle`),
   );
 }
 
@@ -334,6 +382,16 @@ export function saveDocumentContentNative(documentId: string, body: { content: R
     method: "POST",
     body: JSON.stringify(body),
   });
+}
+
+export function saveDocumentBrowserContent(documentId: string, body: { body: string; draftToken: string }) {
+  return request<{ documentId: string; version: number; contentSource: "browser_editor"; draftToken: string }>(
+    `/documents/${encodeURIComponent(documentId)}/content/browser`,
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+  );
 }
 
 export function getDocumentContentPdf(documentId: string) {

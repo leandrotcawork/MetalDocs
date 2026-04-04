@@ -2,7 +2,7 @@ export type DocumentStatus = "DRAFT" | "IN_REVIEW" | "APPROVED" | "PUBLISHED" | 
 export type Classification = "PUBLIC" | "INTERNAL" | "CONFIDENTIAL" | "RESTRICTED";
 export type ResourceScope = "document" | "document_type" | "area";
 export type UserRole = "admin" | "editor" | "reviewer" | "viewer";
-export type DocumentContentSource = "native" | "docx_upload";
+export type DocumentContentSource = "native" | "docx_upload" | "browser_editor";
 
 export interface CurrentUser {
   userId: string;
@@ -252,6 +252,16 @@ export interface DocumentTemplateSnapshotItem {
   definition: Record<string, unknown>;
 }
 
+export interface DocumentBrowserTemplateSnapshotItem {
+  templateKey: string;
+  version: number;
+  profileCode: string;
+  schemaVersion: number;
+  editor: "ckeditor5";
+  contentFormat: "html";
+  body: string;
+}
+
 export interface DocumentEditorBundleResponse {
   document: DocumentListItem;
   versions: VersionListItem[];
@@ -261,6 +271,15 @@ export interface DocumentEditorBundleResponse {
   draftToken?: string;
   presence: CollaborationPresenceItem[];
   editLock?: DocumentEditLockItem;
+}
+
+export interface DocumentBrowserEditorBundleResponse {
+  document: DocumentListItem;
+  versions: VersionListItem[];
+  governance: DocumentProfileGovernanceItem;
+  templateSnapshot: DocumentBrowserTemplateSnapshotItem;
+  body: string;
+  draftToken: string;
 }
 
 export interface AccessPolicyItem {

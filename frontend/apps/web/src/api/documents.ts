@@ -1,6 +1,7 @@
 import type {
   AccessPolicyItem,
   AttachmentItem,
+  DocumentBrowserContentSaveResponse,
   DocumentBrowserEditorBundleResponse,
   DocumentBrowserTemplateSnapshotItem,
   CollaborationPresenceItem,
@@ -157,13 +158,21 @@ function normalizeDocumentTemplateSnapshot(value: DocumentTemplateSnapshotItem):
 }
 
 function normalizeDocumentBrowserTemplateSnapshot(value: DocumentBrowserTemplateSnapshotItem): DocumentBrowserTemplateSnapshotItem {
+  if (value?.editor !== "ckeditor5") {
+    throw new Error("Browser editor template snapshot has unsupported editor.");
+  }
+
+  if (value?.contentFormat !== "html") {
+    throw new Error("Browser editor template snapshot has unsupported content format.");
+  }
+
   return {
     templateKey: value?.templateKey ?? "",
     version: Number(value?.version ?? 0),
     profileCode: value?.profileCode ?? "",
     schemaVersion: Number(value?.schemaVersion ?? 0),
-    editor: value?.editor === "ckeditor5" ? "ckeditor5" : "ckeditor5",
-    contentFormat: value?.contentFormat === "html" ? "html" : "html",
+    editor: value.editor,
+    contentFormat: value.contentFormat,
     body: typeof value?.body === "string" ? value.body : "",
   };
 }
@@ -385,7 +394,7 @@ export function saveDocumentContentNative(documentId: string, body: { content: R
 }
 
 export function saveDocumentBrowserContent(documentId: string, body: { body: string; draftToken: string }) {
-  return request<{ documentId: string; version: number; contentSource: "browser_editor"; draftToken: string }>(
+  return request<DocumentBrowserContentSaveResponse>(
     `/documents/${encodeURIComponent(documentId)}/content/browser`,
     {
       method: "POST",

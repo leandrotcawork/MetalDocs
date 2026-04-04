@@ -282,6 +282,13 @@ export interface DocumentBrowserEditorBundleResponse {
   draftToken: string;
 }
 
+export interface DocumentBrowserContentSaveResponse {
+  documentId: string;
+  version: number;
+  contentSource: "browser_editor";
+  draftToken: string;
+}
+
 export interface AccessPolicyItem {
   subjectType: "user" | "role" | "group";
   subjectId: string;

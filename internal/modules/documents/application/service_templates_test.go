@@ -201,28 +201,9 @@ func TestCreateDocumentSeedsBrowserTemplateBody(t *testing.T) {
 
 	seedCompatiblePOProfileSchemaSet(t, repo)
 
-	if err := repo.UpsertDocumentTemplateAssignment(ctx, domain.DocumentTemplateAssignment{
-		DocumentID:      "doc-browser-1",
-		TemplateKey:     "po-browser-template",
-		TemplateVersion: 1,
-		AssignedAt:      now,
-	}); err != nil {
-		t.Fatalf("upsert assignment: %v", err)
-	}
-
-	const body = `<section><p>Template body</p></section>`
-	if err := repo.UpsertDocumentTemplateVersionForTest(ctx, domain.DocumentTemplateVersion{
-		TemplateKey:   "po-browser-template",
-		Version:       1,
-		ProfileCode:   "po",
-		SchemaVersion: 3,
-		Name:          "PO Browser Template",
-		Editor:        "ckeditor5",
-		ContentFormat: "html",
-		Body:          body,
-		CreatedAt:     now,
-	}); err != nil {
-		t.Fatalf("upsert template version: %v", err)
+	templateVersion, err := repo.GetDefaultDocumentTemplate(ctx, "po")
+	if err != nil {
+		t.Fatalf("GetDefaultDocumentTemplate() error = %v", err)
 	}
 
 	doc, err := service.CreateDocument(ctx, domain.CreateDocumentCommand{
@@ -247,17 +228,17 @@ func TestCreateDocumentSeedsBrowserTemplateBody(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetVersion() error = %v", err)
 	}
-	if version.Content != body {
-		t.Fatalf("version content = %q, want %q", version.Content, body)
+	if version.Content != templateVersion.Body {
+		t.Fatalf("version content = %q, want %q", version.Content, templateVersion.Body)
 	}
 	if version.ContentSource != domain.ContentSourceBrowserEditor {
 		t.Fatalf("content source = %q, want %q", version.ContentSource, domain.ContentSourceBrowserEditor)
 	}
-	if version.TextContent != body {
-		t.Fatalf("text content = %q, want %q", version.TextContent, body)
+	if version.TextContent != "Procedimento Operacional Objetivo Preencha o objetivo. Descricao do processo Descreva o processo." {
+		t.Fatalf("text content = %q, want sanitized plain text", version.TextContent)
 	}
-	if version.TemplateKey != "po-browser-template" || version.TemplateVersion != 1 {
-		t.Fatalf("template snapshot = %q/%d, want po-browser-template/1", version.TemplateKey, version.TemplateVersion)
+	if version.TemplateKey != "po-default-canvas" || version.TemplateVersion != 1 {
+		t.Fatalf("template snapshot = %q/%d, want po-default-canvas/1", version.TemplateKey, version.TemplateVersion)
 	}
 }
 

@@ -12,6 +12,8 @@ import (
 	"metaldocs/internal/platform/messaging"
 	"metaldocs/internal/platform/render/docgen"
 	"metaldocs/internal/platform/render/gotenberg"
+
+	"golang.org/x/net/html"
 )
 
 type Clock interface {
@@ -172,7 +174,7 @@ func (s *Service) CreateDocument(ctx context.Context, cmd domain.CreateDocumentC
 		if resolvedTemplate.IsBrowserHTML() {
 			initialContent = resolvedTemplate.Body
 			contentSource = domain.ContentSourceBrowserEditor
-			textContent = initialContent
+			textContent = plainTextFromHTML(initialContent)
 		}
 	}
 
@@ -408,4 +410,20 @@ func (s *Service) ListDocumentsAuthorized(ctx context.Context) ([]domain.Documen
 		}
 	}
 	return filtered, nil
+}
+
+func plainTextFromHTML(raw string) string {
+	tokenizer := html.NewTokenizer(strings.NewReader(raw))
+	parts := make([]string, 0)
+	for {
+		switch tokenizer.Next() {
+		case html.ErrorToken:
+			return strings.Join(parts, " ")
+		case html.TextToken:
+			text := strings.TrimSpace(html.UnescapeString(string(tokenizer.Text())))
+			if text != "" {
+				parts = append(parts, text)
+			}
+		}
+	}
 }

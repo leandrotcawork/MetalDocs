@@ -1,0 +1,134 @@
+package application
+
+import (
+	"context"
+	"fmt"
+	"strings"
+
+	"metaldocs/internal/modules/documents/domain"
+)
+
+type BrowserEditorBundle struct {
+	Document         domain.Document
+	Versions         []domain.Version
+	Governance       domain.DocumentProfileGovernance
+	TemplateSnapshot domain.DocumentTemplateSnapshot
+	Body             string
+	DraftToken       string
+}
+
+func (s *Service) GetBrowserEditorBundleAuthorized(ctx context.Context, documentID string) (BrowserEditorBundle, error) {
+	doc, err := s.GetDocumentAuthorized(ctx, documentID)
+	if err != nil {
+		return BrowserEditorBundle{}, err
+	}
+
+	versions, err := s.repo.ListVersions(ctx, doc.ID)
+	if err != nil {
+		return BrowserEditorBundle{}, err
+	}
+	if len(versions) == 0 {
+		return BrowserEditorBundle{}, domain.ErrVersionNotFound
+	}
+
+	governance, err := s.GetDocumentProfileGovernance(ctx, doc.DocumentProfile)
+	if err != nil {
+		return BrowserEditorBundle{}, err
+	}
+
+	current := versions[len(versions)-1]
+	templateVersion, hasTemplate, err := s.resolveTemplateVersionForVersion(ctx, doc, current)
+	if err != nil {
+		return BrowserEditorBundle{}, err
+	}
+
+	bundle := BrowserEditorBundle{
+		Document:   doc,
+		Versions:   versions,
+		Governance: governance,
+		Body:       current.Content,
+		DraftToken: draftTokenForVersion(current),
+	}
+	if hasTemplate {
+		bundle.TemplateSnapshot = documentTemplateSnapshotFromVersion(templateVersion)
+	}
+	return bundle, nil
+}
+
+func (s *Service) SaveBrowserContentAuthorized(ctx context.Context, cmd domain.SaveBrowserContentCommand) (domain.Version, error) {
+	if strings.TrimSpace(cmd.DocumentID) == "" || strings.TrimSpace(cmd.DraftToken) == "" {
+		return domain.Version{}, domain.ErrInvalidCommand
+	}
+
+	doc, err := s.repo.GetDocument(ctx, strings.TrimSpace(cmd.DocumentID))
+	if err != nil {
+		return domain.Version{}, err
+	}
+	allowed, err := s.isAllowed(ctx, doc, domain.CapabilityDocumentEdit)
+	if err != nil {
+		return domain.Version{}, err
+	}
+	if !allowed {
+		return domain.Version{}, domain.ErrDocumentNotFound
+	}
+	if !isVersioningAllowed(doc) {
+		return domain.Version{}, domain.ErrVersioningNotAllowed
+	}
+
+	current, err := s.latestVersion(ctx, doc.ID)
+	if err != nil {
+		return domain.Version{}, err
+	}
+	if !matchesDraftToken(cmd.DraftToken, current) {
+		return domain.Version{}, domain.ErrDraftConflict
+	}
+
+	templateVersion, hasTemplate, err := s.resolveTemplateVersionForVersion(ctx, doc, current)
+	if err != nil {
+		return domain.Version{}, err
+	}
+
+	version := current
+	version.Content = cmd.Body
+	version.ContentHash = contentHash(cmd.Body)
+	version.ChangeSummary = fmt.Sprintf("Content version %d", current.Number)
+	version.ContentSource = domain.ContentSourceBrowserEditor
+	version.TextContent = plainTextFromHTML(cmd.Body)
+	if hasTemplate {
+		version.TemplateKey = templateVersion.TemplateKey
+		version.TemplateVersion = templateVersion.Version
+	}
+
+	expectedHash := strings.TrimSpace(current.ContentHash)
+	if expectedHash == "" {
+		expectedHash = contentHash(current.Content)
+	}
+	if err := s.repo.UpdateDraftVersionContentCAS(ctx, version, expectedHash); err != nil {
+		return domain.Version{}, err
+	}
+	return version, nil
+}
+
+func (s *Service) resolveTemplateVersionForVersion(ctx context.Context, doc domain.Document, version domain.Version) (domain.DocumentTemplateVersion, bool, error) {
+	if strings.TrimSpace(version.TemplateKey) != "" && version.TemplateVersion > 0 {
+		item, err := s.repo.GetDocumentTemplateVersion(ctx, version.TemplateKey, version.TemplateVersion)
+		if err != nil {
+			return domain.DocumentTemplateVersion{}, false, err
+		}
+		return item, true, nil
+	}
+	return s.resolveDocumentTemplateOptional(ctx, doc.ID, doc.DocumentProfile)
+}
+
+func documentTemplateSnapshotFromVersion(item domain.DocumentTemplateVersion) domain.DocumentTemplateSnapshot {
+	return domain.DocumentTemplateSnapshot{
+		TemplateKey:   item.TemplateKey,
+		Version:       item.Version,
+		ProfileCode:   item.ProfileCode,
+		SchemaVersion: item.SchemaVersion,
+		Editor:        item.Editor,
+		ContentFormat: item.ContentFormat,
+		Body:          item.Body,
+		Definition:    item.Definition,
+	}
+}

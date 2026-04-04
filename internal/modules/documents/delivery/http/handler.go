@@ -98,6 +98,9 @@ type DocumentTemplateSnapshotResponse struct {
 	Version       int            `json:"version"`
 	ProfileCode   string         `json:"profileCode"`
 	SchemaVersion int            `json:"schemaVersion"`
+	Editor        string         `json:"editor,omitempty"`
+	ContentFormat string         `json:"contentFormat,omitempty"`
+	Body          string         `json:"body,omitempty"`
 	Definition    map[string]any `json:"definition"`
 }
 
@@ -112,9 +115,23 @@ type DocumentEditorBundleResponse struct {
 	EditLock         *DocumentEditLockResponse         `json:"editLock,omitempty"`
 }
 
+type DocumentBrowserEditorBundleResponse struct {
+	Document         DocumentResponse                  `json:"document"`
+	Versions         []VersionResponse                 `json:"versions"`
+	Governance       DocumentProfileGovernanceResponse `json:"governance"`
+	TemplateSnapshot *DocumentTemplateSnapshotResponse `json:"templateSnapshot,omitempty"`
+	Body             string                            `json:"body"`
+	DraftToken       string                            `json:"draftToken"`
+}
+
 type DocumentContentNativeRequest struct {
 	DraftToken string         `json:"draftToken,omitempty"`
 	Content    map[string]any `json:"content"`
+}
+
+type DocumentContentBrowserRequest struct {
+	DraftToken string `json:"draftToken,omitempty"`
+	Body       string `json:"body"`
 }
 
 type DocumentContentNativeResponse struct {
@@ -122,6 +139,13 @@ type DocumentContentNativeResponse struct {
 	Version       int            `json:"version"`
 	ContentSource string         `json:"contentSource"`
 	Content       map[string]any `json:"content"`
+}
+
+type DocumentContentBrowserResponse struct {
+	DocumentID    string `json:"documentId"`
+	Version       int    `json:"version"`
+	ContentSource string `json:"contentSource"`
+	DraftToken    string `json:"draftToken,omitempty"`
 }
 
 type DocumentContentSaveResponse struct {
@@ -1369,6 +1393,10 @@ func (h *Handler) handleDocumentSubRoutes(w http.ResponseWriter, r *http.Request
 		}
 		return
 	}
+	if len(parts) == 3 && strings.TrimSpace(parts[0]) != "" && parts[1] == "content" && parts[2] == "browser" && r.Method == http.MethodPost {
+		h.handleDocumentContentBrowserPost(w, r, parts[0])
+		return
+	}
 	if len(parts) == 2 && strings.TrimSpace(parts[0]) != "" && parts[1] == "content" && r.Method == http.MethodPut {
 		h.handleDocumentRuntimeContentPut(w, r, parts[0])
 		return
@@ -1399,6 +1427,10 @@ func (h *Handler) handleDocumentSubRoutes(w http.ResponseWriter, r *http.Request
 	}
 	if len(parts) == 2 && strings.TrimSpace(parts[0]) != "" && parts[1] == "editor-bundle" && r.Method == http.MethodGet {
 		h.handleDocumentEditorBundle(w, r, parts[0])
+		return
+	}
+	if len(parts) == 2 && strings.TrimSpace(parts[0]) != "" && parts[1] == "browser-editor-bundle" && r.Method == http.MethodGet {
+		h.handleDocumentBrowserEditorBundle(w, r, parts[0])
 		return
 	}
 	if len(parts) == 4 && strings.TrimSpace(parts[0]) != "" && parts[1] == "attachments" && parts[3] == "download-url" && r.Method == http.MethodGet {
@@ -1517,16 +1549,7 @@ func (h *Handler) handleDocumentEditorBundle(w http.ResponseWriter, r *http.Requ
 		}
 	}
 
-	var templateSnapshot *DocumentTemplateSnapshotResponse
-	if bundle.TemplateSnapshot.TemplateKey != "" {
-		templateSnapshot = &DocumentTemplateSnapshotResponse{
-			TemplateKey:   bundle.TemplateSnapshot.TemplateKey,
-			Version:       bundle.TemplateSnapshot.Version,
-			ProfileCode:   bundle.TemplateSnapshot.ProfileCode,
-			SchemaVersion: bundle.TemplateSnapshot.SchemaVersion,
-			Definition:    bundle.TemplateSnapshot.Definition,
-		}
-	}
+	templateSnapshot := mapDocumentTemplateSnapshotResponse(bundle.TemplateSnapshot)
 
 	writeJSON(w, http.StatusOK, DocumentEditorBundleResponse{
 		Document: DocumentResponse{
@@ -1569,6 +1592,54 @@ func (h *Handler) handleDocumentEditorBundle(w http.ResponseWriter, r *http.Requ
 		DraftToken:       bundle.DraftToken,
 		Presence:         presence,
 		EditLock:         editLock,
+	})
+}
+
+func (h *Handler) handleDocumentBrowserEditorBundle(w http.ResponseWriter, r *http.Request, documentID string) {
+	traceID := requestTraceID(r)
+	bundle, err := h.service.GetBrowserEditorBundleAuthorized(r.Context(), documentID)
+	if err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+
+	versions := make([]VersionResponse, 0, len(bundle.Versions))
+	for _, item := range bundle.Versions {
+		versions = append(versions, VersionResponse{
+			DocumentID:    item.DocumentID,
+			Version:       item.Number,
+			ContentHash:   item.ContentHash,
+			ChangeSummary: item.ChangeSummary,
+			CreatedAt:     item.CreatedAt.UTC().Format(time.RFC3339),
+		})
+	}
+
+	writeJSON(w, http.StatusOK, DocumentBrowserEditorBundleResponse{
+		Document: DocumentResponse{
+			DocumentID:           bundle.Document.ID,
+			Title:                bundle.Document.Title,
+			DocumentType:         bundle.Document.DocumentType,
+			DocumentProfile:      bundle.Document.DocumentProfile,
+			DocumentFamily:       bundle.Document.DocumentFamily,
+			DocumentSequence:     bundle.Document.DocumentSequence,
+			DocumentCode:         bundle.Document.DocumentCode,
+			ProfileSchemaVersion: bundle.Document.ProfileSchemaVersion,
+			ProcessArea:          bundle.Document.ProcessArea,
+			Subject:              bundle.Document.Subject,
+			OwnerID:              bundle.Document.OwnerID,
+			BusinessUnit:         bundle.Document.BusinessUnit,
+			Department:           bundle.Document.Department,
+			Classification:       bundle.Document.Classification,
+			Status:               bundle.Document.Status,
+			Tags:                 append([]string(nil), bundle.Document.Tags...),
+			EffectiveAt:          formatOptionalTime(bundle.Document.EffectiveAt),
+			ExpiryAt:             formatOptionalTime(bundle.Document.ExpiryAt),
+		},
+		Versions:         versions,
+		Governance:       mapDocumentProfileGovernanceResponse(bundle.Governance),
+		TemplateSnapshot: mapDocumentTemplateSnapshotResponse(bundle.TemplateSnapshot),
+		Body:             bundle.Body,
+		DraftToken:       bundle.DraftToken,
 	})
 }
 
@@ -1883,5 +1954,32 @@ func mapAttachmentResponse(item domain.Attachment) AttachmentResponse {
 		SizeBytes:    item.SizeBytes,
 		UploadedBy:   item.UploadedBy,
 		CreatedAt:    item.CreatedAt.UTC().Format(time.RFC3339),
+	}
+}
+
+func mapDocumentProfileGovernanceResponse(item domain.DocumentProfileGovernance) DocumentProfileGovernanceResponse {
+	return DocumentProfileGovernanceResponse{
+		ProfileCode:        item.ProfileCode,
+		WorkflowProfile:    item.WorkflowProfile,
+		ReviewIntervalDays: item.ReviewIntervalDays,
+		ApprovalRequired:   item.ApprovalRequired,
+		RetentionDays:      item.RetentionDays,
+		ValidityDays:       item.ValidityDays,
+	}
+}
+
+func mapDocumentTemplateSnapshotResponse(item domain.DocumentTemplateSnapshot) *DocumentTemplateSnapshotResponse {
+	if item.TemplateKey == "" {
+		return nil
+	}
+	return &DocumentTemplateSnapshotResponse{
+		TemplateKey:   item.TemplateKey,
+		Version:       item.Version,
+		ProfileCode:   item.ProfileCode,
+		SchemaVersion: item.SchemaVersion,
+		Editor:        item.Editor,
+		ContentFormat: item.ContentFormat,
+		Body:          item.Body,
+		Definition:    item.Definition,
 	}
 }

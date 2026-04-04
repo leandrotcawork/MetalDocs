@@ -146,6 +146,13 @@ type SaveNativeContentCommand struct {
 	TraceID    string
 }
 
+type SaveBrowserContentCommand struct {
+	DocumentID string
+	DraftToken string
+	Body       string
+	TraceID    string
+}
+
 type SaveDocumentValuesCommand struct {
 	DocumentID string
 	Values     map[string]any

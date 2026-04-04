@@ -1198,7 +1198,7 @@ WHERE document_id = $1 AND version_number = $2
 
 func (r *Repository) GetDocumentTemplateVersion(ctx context.Context, templateKey string, version int) (domain.DocumentTemplateVersion, error) {
 	const q = `
-SELECT template_key, version, profile_code, schema_version, name, definition_json, created_at
+SELECT template_key, version, profile_code, schema_version, name, editor, content_format, body_html, definition_json, created_at
 FROM metaldocs.document_template_versions
 WHERE template_key = $1 AND version = $2
 `
@@ -1210,6 +1210,9 @@ WHERE template_key = $1 AND version = $2
 		&item.ProfileCode,
 		&item.SchemaVersion,
 		&item.Name,
+		&item.Editor,
+		&item.ContentFormat,
+		&item.Body,
 		&definitionJSON,
 		&item.CreatedAt,
 	); err != nil {

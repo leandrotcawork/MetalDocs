@@ -1,6 +1,9 @@
 package domain
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 type DocumentTemplateVersion struct {
 	TemplateKey   string
@@ -8,6 +11,9 @@ type DocumentTemplateVersion struct {
 	ProfileCode   string
 	SchemaVersion int
 	Name          string
+	Editor        string
+	ContentFormat string
+	Body          string
 	Definition    map[string]any
 	CreatedAt     time.Time
 }
@@ -24,7 +30,18 @@ type DocumentTemplateSnapshot struct {
 	Version       int
 	ProfileCode   string
 	SchemaVersion int
+	Editor        string
+	ContentFormat string
+	Body          string
 	Definition    map[string]any
+}
+
+func (v DocumentTemplateVersion) IsBrowserHTML() bool {
+	return strings.EqualFold(v.Editor, "ckeditor5") && strings.EqualFold(v.ContentFormat, "html")
+}
+
+func (s DocumentTemplateSnapshot) IsBrowserHTML() bool {
+	return strings.EqualFold(s.Editor, "ckeditor5") && strings.EqualFold(s.ContentFormat, "html")
 }
 
 func DefaultDocumentTemplateVersions() []DocumentTemplateVersion {
@@ -35,6 +52,15 @@ func DefaultDocumentTemplateVersions() []DocumentTemplateVersion {
 			ProfileCode:   "po",
 			SchemaVersion: 3,
 			Name:          "PO Governed Canvas v1",
+			Editor:        "ckeditor5",
+			ContentFormat: "html",
+			Body: `<section class="md-doc-shell">
+  <h1>Procedimento Operacional</h1>
+  <p><strong>Objetivo</strong></p>
+  <p><span class="restricted-editing-exception">Preencha o objetivo.</span></p>
+  <p><strong>Descricao do processo</strong></p>
+  <div class="restricted-editing-exception"><p>Descreva o processo.</p></div>
+</section>`,
 			Definition: map[string]any{
 				"type": "page",
 				"id":   "po-root",

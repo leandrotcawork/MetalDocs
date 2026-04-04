@@ -56,6 +56,9 @@ func (s *Service) validateDocumentTemplateCompatibility(ctx context.Context, tem
 	if !ok {
 		return domain.ErrInvalidCommand
 	}
+	if templateVersion.IsBrowserHTML() {
+		return nil
+	}
 
 	if err := validateTemplateCompatibility(schema, templateVersion); err != nil {
 		return err

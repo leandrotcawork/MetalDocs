@@ -21,8 +21,9 @@ const (
 )
 
 const (
-	ContentSourceNative     = "native"
-	ContentSourceDocxUpload = "docx_upload"
+	ContentSourceNative        = "native"
+	ContentSourceDocxUpload    = "docx_upload"
+	ContentSourceBrowserEditor = "browser_editor"
 )
 
 const (

@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -148,6 +149,115 @@ func TestResolveDocumentTemplateRejectsMissingSchemaVersion(t *testing.T) {
 	_, err := service.ResolveDocumentTemplate(ctx, "doc-1", "po")
 	if !errors.Is(err, domain.ErrInvalidCommand) {
 		t.Fatalf("err = %v, want ErrInvalidCommand", err)
+	}
+}
+
+func TestResolveDocumentTemplateReturnsBrowserTemplateMetadata(t *testing.T) {
+	ctx := context.Background()
+	repo := documentmemory.NewRepository()
+	service := NewService(repo, nil, nil)
+
+	seedCompatiblePOProfileSchemaSet(t, repo)
+
+	if err := repo.UpsertDocumentTemplateAssignment(ctx, domain.DocumentTemplateAssignment{
+		DocumentID:      "doc-1",
+		TemplateKey:     "po-browser-template",
+		TemplateVersion: 1,
+		AssignedAt:      time.Unix(0, 0).UTC(),
+	}); err != nil {
+		t.Fatalf("upsert assignment: %v", err)
+	}
+	if err := repo.UpsertDocumentTemplateVersionForTest(ctx, domain.DocumentTemplateVersion{
+		TemplateKey:   "po-browser-template",
+		Version:       1,
+		ProfileCode:   "po",
+		SchemaVersion: 3,
+		Name:          "PO Browser Template",
+		Editor:        "ckeditor5",
+		ContentFormat: "html",
+		Body:          `<section><span class="restricted-editing-exception">Objetivo</span></section>`,
+		CreatedAt:     time.Unix(1, 0).UTC(),
+	}); err != nil {
+		t.Fatalf("upsert template version: %v", err)
+	}
+
+	got, err := service.ResolveDocumentTemplate(ctx, "doc-1", "po")
+	if err != nil {
+		t.Fatalf("ResolveDocumentTemplate() error = %v", err)
+	}
+	if got.Editor != "ckeditor5" || got.ContentFormat != "html" {
+		t.Fatalf("template metadata = %#v, want ckeditor5/html", got)
+	}
+	if !strings.Contains(got.Body, "restricted-editing-exception") {
+		t.Fatalf("body = %q, want restricted-editing markup", got.Body)
+	}
+}
+
+func TestCreateDocumentSeedsBrowserTemplateBody(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, time.April, 4, 10, 0, 0, 0, time.UTC)
+	repo := documentmemory.NewRepository()
+	service := NewService(repo, nil, fixedClock{now: now})
+
+	seedCompatiblePOProfileSchemaSet(t, repo)
+
+	if err := repo.UpsertDocumentTemplateAssignment(ctx, domain.DocumentTemplateAssignment{
+		DocumentID:      "doc-browser-1",
+		TemplateKey:     "po-browser-template",
+		TemplateVersion: 1,
+		AssignedAt:      now,
+	}); err != nil {
+		t.Fatalf("upsert assignment: %v", err)
+	}
+
+	const body = `<section><p>Template body</p></section>`
+	if err := repo.UpsertDocumentTemplateVersionForTest(ctx, domain.DocumentTemplateVersion{
+		TemplateKey:   "po-browser-template",
+		Version:       1,
+		ProfileCode:   "po",
+		SchemaVersion: 3,
+		Name:          "PO Browser Template",
+		Editor:        "ckeditor5",
+		ContentFormat: "html",
+		Body:          body,
+		CreatedAt:     now,
+	}); err != nil {
+		t.Fatalf("upsert template version: %v", err)
+	}
+
+	doc, err := service.CreateDocument(ctx, domain.CreateDocumentCommand{
+		DocumentID:      "doc-browser-1",
+		Title:           "Browser Seeded Document",
+		DocumentType:    "po",
+		DocumentProfile: "po",
+		OwnerID:         "owner-1",
+		BusinessUnit:    "operations",
+		Department:      "sgq",
+		InitialContent:  `{"legacy":"content"}`,
+		TraceID:         "trace-browser-seed",
+	})
+	if err != nil {
+		t.Fatalf("CreateDocument() error = %v", err)
+	}
+	if doc.ID != "doc-browser-1" {
+		t.Fatalf("document id = %q, want doc-browser-1", doc.ID)
+	}
+
+	version, err := repo.GetVersion(ctx, doc.ID, 1)
+	if err != nil {
+		t.Fatalf("GetVersion() error = %v", err)
+	}
+	if version.Content != body {
+		t.Fatalf("version content = %q, want %q", version.Content, body)
+	}
+	if version.ContentSource != domain.ContentSourceBrowserEditor {
+		t.Fatalf("content source = %q, want %q", version.ContentSource, domain.ContentSourceBrowserEditor)
+	}
+	if version.TextContent != body {
+		t.Fatalf("text content = %q, want %q", version.TextContent, body)
+	}
+	if version.TemplateKey != "po-browser-template" || version.TemplateVersion != 1 {
+		t.Fatalf("template snapshot = %q/%d, want po-browser-template/1", version.TemplateKey, version.TemplateVersion)
 	}
 }
 

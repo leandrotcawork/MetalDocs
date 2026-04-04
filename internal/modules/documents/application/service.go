@@ -35,15 +35,15 @@ func (realClock) Now() time.Time {
 }
 
 type Service struct {
-	repo             domain.Repository
-	attachmentStore  domain.AttachmentStore
-	audit            auditdomain.Writer
-	publisher        messaging.Publisher
-	clock            Clock
-	docgenClient     *docgen.Client
-	gotenbergClient  *gotenberg.Client
-	userResolver     UserDisplayNameResolver
-	approvalReader   WorkflowApprovalReader
+	repo            domain.Repository
+	attachmentStore domain.AttachmentStore
+	audit           auditdomain.Writer
+	publisher       messaging.Publisher
+	clock           Clock
+	docgenClient    *docgen.Client
+	gotenbergClient *gotenberg.Client
+	userResolver    UserDisplayNameResolver
+	approvalReader  WorkflowApprovalReader
 }
 
 func NewService(repo domain.Repository, publisher messaging.Publisher, clock Clock) *Service {
@@ -156,14 +156,37 @@ func (s *Service) CreateDocument(ctx context.Context, cmd domain.CreateDocumentC
 		UpdatedAt:            now,
 	}
 
+	resolvedTemplate, hasTemplate, err := s.resolveDocumentTemplateOptional(ctx, doc.ID, doc.DocumentProfile)
+	if err != nil {
+		return domain.Document{}, err
+	}
+
+	initialContent := cmd.InitialContent
+	contentSource := domain.ContentSourceNative
+	textContent := ""
+	templateKey := ""
+	templateVersion := 0
+	if hasTemplate {
+		templateKey = resolvedTemplate.TemplateKey
+		templateVersion = resolvedTemplate.Version
+		if resolvedTemplate.IsBrowserHTML() {
+			initialContent = resolvedTemplate.Body
+			contentSource = domain.ContentSourceBrowserEditor
+			textContent = initialContent
+		}
+	}
+
 	v1 := domain.Version{
-		DocumentID:    doc.ID,
-		Number:        1,
-		Content:       cmd.InitialContent,
-		ContentHash:   contentHash(cmd.InitialContent),
-		ChangeSummary: "Initial version",
-		ContentSource: domain.ContentSourceNative,
-		CreatedAt:     now,
+		DocumentID:      doc.ID,
+		Number:          1,
+		Content:         initialContent,
+		ContentHash:     contentHash(initialContent),
+		ChangeSummary:   "Initial version",
+		ContentSource:   contentSource,
+		TextContent:     textContent,
+		TemplateKey:     templateKey,
+		TemplateVersion: templateVersion,
+		CreatedAt:       now,
 	}
 
 	if atomicRepo, ok := s.repo.(domain.AtomicCreateRepository); ok {

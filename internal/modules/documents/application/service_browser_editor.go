@@ -115,6 +115,9 @@ func (s *Service) resolveTemplateVersionForVersion(ctx context.Context, doc doma
 		if err != nil {
 			return domain.DocumentTemplateVersion{}, false, err
 		}
+		if err := s.validateDocumentTemplateCompatibility(ctx, item); err != nil {
+			return domain.DocumentTemplateVersion{}, false, err
+		}
 		return item, true, nil
 	}
 	return s.resolveDocumentTemplateOptional(ctx, doc.ID, doc.DocumentProfile)

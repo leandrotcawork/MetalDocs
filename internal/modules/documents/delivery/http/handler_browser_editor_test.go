@@ -46,6 +46,8 @@ func (c applicationFixedClock) Now() time.Time {
 func seedBrowserHandlerDocument(t *testing.T, ctx context.Context, repo *documentmemory.Repository, now time.Time, body string) domain.Document {
 	t.Helper()
 
+	seedCompatibleBrowserTemplateSchemaSet(t, repo)
+
 	doc := domain.Document{
 		ID:                   "doc-123",
 		Title:                "Browser Handler Document",
@@ -93,4 +95,17 @@ func seedBrowserHandlerDocument(t *testing.T, ctx context.Context, repo *documen
 	}
 
 	return doc
+}
+
+func seedCompatibleBrowserTemplateSchemaSet(t *testing.T, repo *documentmemory.Repository) {
+	t.Helper()
+
+	if err := repo.UpsertDocumentProfileSchemaVersion(context.Background(), domain.DocumentProfileSchemaVersion{
+		ProfileCode:   "po",
+		Version:       3,
+		IsActive:      false,
+		ContentSchema: map[string]any{},
+	}); err != nil {
+		t.Fatalf("upsert browser schema version: %v", err)
+	}
 }

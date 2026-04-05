@@ -991,3 +991,10 @@ Wrong:   `GetDocumentEditorBundle` returned an empty template snapshot and `Save
 Correct: Fail closed with `ErrInvalidCommand` for governed PO drafts when the latest version lacks a template snapshot; only non-governed drafts may use the existing fallback
 Rule:    Governed draft flows must treat the stored template snapshot as mandatory and never infer a replacement from profile defaults.
 Layer:   application
+
+## Lesson EH - Browser template tests must seed the exact schema snapshot they resolve against
+Date: 2026-04-05 | Trigger: correction
+Wrong:   A browser-content handler fixture only seeded the draft document and version, leaving the browser template's schema version absent from the repository
+Correct: Seed the exact profile schema version referenced by the browser template before exercising the save path
+Rule:    Template resolution that validates by exact schema version requires fixtures to provide that schema snapshot explicitly.
+Layer:   delivery

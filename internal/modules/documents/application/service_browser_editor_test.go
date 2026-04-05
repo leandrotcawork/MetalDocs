@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -70,6 +71,61 @@ func TestSaveBrowserContentAuthorizedUpdatesDraftInPlace(t *testing.T) {
 	}
 	if savedVersion.Content != `<section><p>Atualizado</p></section>` {
 		t.Fatalf("saved content = %q, want updated HTML", savedVersion.Content)
+	}
+}
+
+func TestSaveBrowserContentAuthorizedRejectsNonBrowserTemplate(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, time.April, 4, 11, 0, 0, 0, time.UTC)
+	repo := documentmemory.NewRepository()
+	service := NewService(repo, nil, fixedClock{now: now})
+	doc := seedBrowserDocument(t, ctx, repo, now, `<section><p>Original</p></section>`)
+
+	if err := repo.UpsertDocumentTemplateVersionForTest(ctx, domain.DocumentTemplateVersion{
+		TemplateKey:   "po-governed-docx",
+		Version:       1,
+		ProfileCode:   "po",
+		SchemaVersion: 3,
+		Name:          "PO Governed DOCX",
+		Editor:        "docx",
+		ContentFormat: "json",
+		Definition: map[string]any{
+			"type": "page",
+			"id":   "po-root",
+			"children": []any{
+				map[string]any{
+					"type":  "section-frame",
+					"id":    "section-visao-geral",
+					"title": "Visao Geral",
+					"children": []any{
+						map[string]any{"type": "rich-slot", "id": "slot-descricao", "path": "visaoGeral.descricaoProcesso", "fieldKind": "rich"},
+					},
+				},
+			},
+		},
+		CreatedAt: now,
+	}); err != nil {
+		t.Fatalf("UpsertDocumentTemplateVersionForTest() error = %v", err)
+	}
+
+	current, err := repo.GetVersion(ctx, doc.ID, 1)
+	if err != nil {
+		t.Fatalf("GetVersion() error = %v", err)
+	}
+	current.TemplateKey = "po-governed-docx"
+	current.TemplateVersion = 1
+	if err := repo.UpdateDraftVersionContentCAS(ctx, current, current.ContentHash); err != nil {
+		t.Fatalf("UpdateDraftVersionContentCAS() error = %v", err)
+	}
+
+	_, err = service.SaveBrowserContentAuthorized(ctx, domain.SaveBrowserContentCommand{
+		DocumentID: doc.ID,
+		DraftToken: draftTokenForVersion(current),
+		Body:       `<section><p>Atualizado</p></section>`,
+		TraceID:    "trace-test",
+	})
+	if !errors.Is(err, domain.ErrInvalidCommand) {
+		t.Fatalf("err = %v, want ErrInvalidCommand", err)
 	}
 }
 

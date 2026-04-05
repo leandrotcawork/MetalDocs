@@ -37,7 +37,7 @@ func (s *Service) GetBrowserEditorBundleAuthorized(ctx context.Context, document
 	}
 
 	current := versions[len(versions)-1]
-	templateVersion, hasTemplate, err := s.resolveTemplateVersionForVersion(ctx, doc, current)
+	templateVersion, hasTemplate, err := s.resolveBrowserTemplateVersionForVersion(ctx, doc, current)
 	if err != nil {
 		return BrowserEditorBundle{}, err
 	}
@@ -83,7 +83,7 @@ func (s *Service) SaveBrowserContentAuthorized(ctx context.Context, cmd domain.S
 		return domain.Version{}, domain.ErrDraftConflict
 	}
 
-	templateVersion, hasTemplate, err := s.resolveTemplateVersionForVersion(ctx, doc, current)
+	templateVersion, hasTemplate, err := s.resolveBrowserTemplateVersionForVersion(ctx, doc, current)
 	if err != nil {
 		return domain.Version{}, err
 	}
@@ -118,6 +118,30 @@ func (s *Service) resolveTemplateVersionForVersion(ctx context.Context, doc doma
 		return item, true, nil
 	}
 	return s.resolveDocumentTemplateOptional(ctx, doc.ID, doc.DocumentProfile)
+}
+
+func (s *Service) resolveBrowserTemplateVersionForVersion(ctx context.Context, doc domain.Document, version domain.Version) (domain.DocumentTemplateVersion, bool, error) {
+	item, hasTemplate, err := s.resolveTemplateVersionForVersion(ctx, doc, version)
+	if err != nil {
+		return domain.DocumentTemplateVersion{}, false, err
+	}
+	if !hasTemplate {
+		return domain.DocumentTemplateVersion{}, false, nil
+	}
+	if err := validateBrowserTemplateVersion(item); err != nil {
+		return domain.DocumentTemplateVersion{}, false, domain.ErrInvalidCommand
+	}
+	return item, true, nil
+}
+
+func validateBrowserTemplateVersion(item domain.DocumentTemplateVersion) error {
+	if strings.TrimSpace(item.TemplateKey) == "" || item.Version <= 0 || strings.TrimSpace(item.ProfileCode) == "" {
+		return domain.ErrInvalidCommand
+	}
+	if !item.IsBrowserHTML() {
+		return domain.ErrInvalidCommand
+	}
+	return nil
 }
 
 func documentTemplateSnapshotFromVersion(item domain.DocumentTemplateVersion) domain.DocumentTemplateSnapshot {

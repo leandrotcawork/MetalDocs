@@ -129,6 +129,41 @@ func TestSaveBrowserContentAuthorizedRejectsNonBrowserTemplate(t *testing.T) {
 	}
 }
 
+func TestGetBrowserEditorBundleRejectsIncompatibleStoredTemplateSnapshot(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, time.April, 4, 11, 0, 0, 0, time.UTC)
+	repo := documentmemory.NewRepository()
+	service := NewService(repo, nil, fixedClock{now: now})
+	doc := seedBrowserDocument(t, ctx, repo, now, `<section><p>Original</p></section>`)
+
+	setStoredBrowserTemplateSnapshotForTest(t, ctx, repo, now, doc.ID, "po-browser-invalid-schema", 99)
+
+	_, err := service.GetBrowserEditorBundleAuthorized(ctx, doc.ID)
+	if !errors.Is(err, domain.ErrInvalidCommand) {
+		t.Fatalf("err = %v, want ErrInvalidCommand", err)
+	}
+}
+
+func TestSaveBrowserContentAuthorizedRejectsIncompatibleStoredTemplateSnapshot(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, time.April, 4, 11, 0, 0, 0, time.UTC)
+	repo := documentmemory.NewRepository()
+	service := NewService(repo, nil, fixedClock{now: now})
+	doc := seedBrowserDocument(t, ctx, repo, now, `<section><p>Original</p></section>`)
+
+	current := setStoredBrowserTemplateSnapshotForTest(t, ctx, repo, now, doc.ID, "po-browser-invalid-schema", 99)
+
+	_, err := service.SaveBrowserContentAuthorized(ctx, domain.SaveBrowserContentCommand{
+		DocumentID: doc.ID,
+		DraftToken: draftTokenForVersion(current),
+		Body:       `<section><p>Atualizado</p></section>`,
+		TraceID:    "trace-test",
+	})
+	if !errors.Is(err, domain.ErrInvalidCommand) {
+		t.Fatalf("err = %v, want ErrInvalidCommand", err)
+	}
+}
+
 func seedBrowserDocument(t *testing.T, ctx context.Context, repo *documentmemory.Repository, now time.Time, body string) domain.Document {
 	t.Helper()
 
@@ -158,4 +193,33 @@ func seedBrowserDocument(t *testing.T, ctx context.Context, repo *documentmemory
 		t.Fatalf("save version: %v", err)
 	}
 	return doc
+}
+
+func setStoredBrowserTemplateSnapshotForTest(t *testing.T, ctx context.Context, repo *documentmemory.Repository, now time.Time, documentID, templateKey string, schemaVersion int) domain.Version {
+	t.Helper()
+
+	if err := repo.UpsertDocumentTemplateVersionForTest(ctx, domain.DocumentTemplateVersion{
+		TemplateKey:   templateKey,
+		Version:       1,
+		ProfileCode:   "po",
+		SchemaVersion: schemaVersion,
+		Name:          "PO Browser Invalid Snapshot",
+		Editor:        "ckeditor5",
+		ContentFormat: "html",
+		Body:          `<section><p>Stored invalid browser snapshot</p></section>`,
+		CreatedAt:     now,
+	}); err != nil {
+		t.Fatalf("UpsertDocumentTemplateVersionForTest() error = %v", err)
+	}
+
+	current, err := repo.GetVersion(ctx, documentID, 1)
+	if err != nil {
+		t.Fatalf("GetVersion() error = %v", err)
+	}
+	current.TemplateKey = templateKey
+	current.TemplateVersion = 1
+	if err := repo.UpdateDraftVersionContentCAS(ctx, current, current.ContentHash); err != nil {
+		t.Fatalf("UpdateDraftVersionContentCAS() error = %v", err)
+	}
+	return current
 }

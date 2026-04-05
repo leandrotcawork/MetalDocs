@@ -991,10 +991,3 @@ Wrong:   `GetDocumentEditorBundle` returned an empty template snapshot and `Save
 Correct: Fail closed with `ErrInvalidCommand` for governed PO drafts when the latest version lacks a template snapshot; only non-governed drafts may use the existing fallback
 Rule:    Governed draft flows must treat the stored template snapshot as mandatory and never infer a replacement from profile defaults.
 Layer:   application
-
-## Lesson EH - Draft tokens must depend on draft state, not template lookup
-Date: 2026-04-04 | Trigger: correction
-Wrong:   Gating editor-bundle `draftToken` emission on successful template resolution
-Correct: Derive `draftToken` directly from the latest draft version whenever a version exists, even if template snapshot resolution is separate
-Rule:    Concurrency tokens must be tied to the persisted draft state they protect, not to optional metadata loaded alongside that state.
-Layer:   application

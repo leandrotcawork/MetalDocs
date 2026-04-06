@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"fmt"
+	"html"
 	"strings"
 
 	"metaldocs/internal/modules/documents/domain"
@@ -159,7 +160,7 @@ func substituteTemplateTokens(body string, doc domain.Document, version domain.V
 	if !doc.CreatedAt.IsZero() {
 		data = doc.CreatedAt.Format("02/01/2006")
 	}
-	por := doc.OwnerID
+	por := html.EscapeString(doc.OwnerID)
 	if por == "" {
 		por = "—"
 	}

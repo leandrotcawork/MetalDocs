@@ -337,3 +337,113 @@ func TestNewPODocumentGetsBrowserTemplateInBundle(t *testing.T) {
 		t.Fatal("expected draft token")
 	}
 }
+
+func TestSubstituteTemplateTokens(t *testing.T) {
+	doc := domain.Document{
+		OwnerID:   "leandro_theodoro",
+		CreatedAt: time.Date(2026, 4, 6, 0, 0, 0, 0, time.UTC),
+	}
+	version := domain.Version{Number: 1}
+
+	body := `<td><p class="restricted-editing-exception">{{versao}}</p></td>` +
+		`<td><p class="restricted-editing-exception">{{data_criacao}}</p></td>` +
+		`<td><p class="restricted-editing-exception"></p></td>` +
+		`<td><p class="restricted-editing-exception">{{elaborador}}</p></td>`
+
+	got := substituteTemplateTokens(body, doc, version)
+
+	if strings.Contains(got, "{{versao}}") {
+		t.Error("expected {{versao}} to be replaced")
+	}
+	if strings.Contains(got, "{{data_criacao}}") {
+		t.Error("expected {{data_criacao}} to be replaced")
+	}
+	if strings.Contains(got, "{{elaborador}}") {
+		t.Error("expected {{elaborador}} to be replaced")
+	}
+	if !strings.Contains(got, "01") {
+		t.Error("expected version 01 in result")
+	}
+	if !strings.Contains(got, "06/04/2026") {
+		t.Error("expected date 06/04/2026 in result")
+	}
+	if !strings.Contains(got, "leandro_theodoro") {
+		t.Error("expected owner in result")
+	}
+}
+
+func TestSubstituteTemplateTokensIdempotent(t *testing.T) {
+	doc := domain.Document{
+		OwnerID:   "owner",
+		CreatedAt: time.Date(2026, 4, 6, 0, 0, 0, 0, time.UTC),
+	}
+	version := domain.Version{Number: 1}
+
+	// Body with no tokens — should be returned unchanged
+	body := `<p class="restricted-editing-exception">already filled</p>`
+	got := substituteTemplateTokens(body, doc, version)
+	if got != body {
+		t.Errorf("idempotent: body without tokens should be unchanged, got %q", got)
+	}
+}
+
+func TestSubstituteTemplateTokensEmptyOwner(t *testing.T) {
+	doc := domain.Document{} // zero value: no owner, zero time
+	version := domain.Version{Number: 2}
+
+	body := `{{versao}} {{data_criacao}} {{elaborador}}`
+	got := substituteTemplateTokens(body, doc, version)
+
+	if !strings.Contains(got, "02") {
+		t.Error("expected version 02")
+	}
+	if !strings.Contains(got, "—") {
+		t.Error("expected em dash fallback for missing owner and date")
+	}
+}
+
+// TestGetBrowserEditorBundleSubstitutesTokens exercises GetBrowserEditorBundleAuthorized
+// end-to-end and asserts no raw tokens remain in bundle.Body.
+// Note: After Task 6 rewrites the PO browser template body to include
+// {{versao}}, {{data_criacao}}, {{elaborador}} tokens, this test will also
+// validate that the substitution pipeline runs on those tokens. Currently it
+// guards against accidental raw-token leakage in the bundle path.
+func TestGetBrowserEditorBundleSubstitutesTokens(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, time.April, 6, 10, 0, 0, 0, time.UTC)
+	repo := documentmemory.NewRepository()
+	service := NewService(repo, nil, fixedClock{now: now})
+
+	seedCompatiblePOProfileSchemaSet(t, repo)
+
+	doc, err := service.CreateDocument(ctx, domain.CreateDocumentCommand{
+		DocumentID:      "doc-token-substitution",
+		Title:           "Token Substitution Test",
+		DocumentType:    "po",
+		DocumentProfile: "po",
+		OwnerID:         "leandro_theodoro",
+		BusinessUnit:    "operations",
+		Department:      "sgq",
+		InitialContent:  `{"legacy":"content"}`,
+		TraceID:         "trace-token-test",
+	})
+	if err != nil {
+		t.Fatalf("CreateDocument() error = %v", err)
+	}
+
+	bundle, err := service.GetBrowserEditorBundleAuthorized(ctx, doc.ID)
+	if err != nil {
+		t.Fatalf("GetBrowserEditorBundleAuthorized() error = %v", err)
+	}
+
+	// Assert: no raw tokens remain in bundle.Body (tokens present after Task 6 rewrite)
+	for _, token := range []string{"{{versao}}", "{{data_criacao}}", "{{elaborador}}"} {
+		if strings.Contains(bundle.Body, token) {
+			t.Errorf("bundle.Body must not contain raw token %q after substitution", token)
+		}
+	}
+	// Assert: bundle has content (template body is present)
+	if bundle.Body == "" {
+		t.Fatal("bundle body is empty")
+	}
+}

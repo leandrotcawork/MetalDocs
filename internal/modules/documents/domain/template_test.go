@@ -174,6 +174,44 @@ func TestPOBrowserTemplateGoSQLParity(t *testing.T) {
 	}
 }
 
+func TestPOBrowserTemplate0058Parity(t *testing.T) {
+	// Get canonical Go template body (same lookup as TestPOBrowserTemplateGoSQLParity)
+	var goTemplate *DocumentTemplateVersion
+	for _, tmpl := range DefaultDocumentTemplateVersions() {
+		if tmpl.TemplateKey == "po-default-browser" {
+			found := tmpl
+			goTemplate = &found
+			break
+		}
+	}
+	if goTemplate == nil {
+		t.Fatal("po-default-browser template not found in Go seed")
+	}
+
+	// Read 0058 migration file
+	migrationPath := "../../../../migrations/0058_update_po_browser_template.sql"
+	sqlBytes, err := os.ReadFile(migrationPath)
+	if err != nil {
+		t.Fatalf("read 0058 migration file: %v", err)
+	}
+	sqlContent := string(sqlBytes)
+
+	// Extract body between $$ delimiters (same as 0057 parity test)
+	parts := strings.SplitN(sqlContent, "$$", 3)
+	if len(parts) < 3 {
+		t.Fatal("0058 migration does not contain $$ delimited body_html")
+	}
+	sqlBody := parts[1]
+
+	goNormalized := strings.TrimSpace(strings.ReplaceAll(goTemplate.Body, "\r\n", "\n"))
+	sqlNormalized := strings.TrimSpace(strings.ReplaceAll(sqlBody, "\r\n", "\n"))
+
+	if goNormalized != sqlNormalized {
+		t.Fatalf("0058 body_html differs from Go canonical body.\nGo length=%d, SQL length=%d\nFirst difference at character %d",
+			len(goNormalized), len(sqlNormalized), firstDiffIndex(goNormalized, sqlNormalized))
+	}
+}
+
 func firstDiffIndex(a, b string) int {
 	minLen := len(a)
 	if len(b) < minLen {

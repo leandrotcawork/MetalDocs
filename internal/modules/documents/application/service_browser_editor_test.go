@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -286,4 +287,52 @@ func seedBrowserDocumentWithoutTemplate(t *testing.T, ctx context.Context, repo 
 		t.Fatalf("save version: %v", err)
 	}
 	return doc
+}
+
+func TestNewPODocumentGetsBrowserTemplateInBundle(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, time.April, 6, 10, 0, 0, 0, time.UTC)
+	repo := documentmemory.NewRepository()
+	service := NewService(repo, nil, fixedClock{now: now})
+
+	seedCompatiblePOProfileSchemaSet(t, repo)
+
+	doc, err := service.CreateDocument(ctx, domain.CreateDocumentCommand{
+		DocumentID:      "doc-browser-smoke",
+		Title:           "PO Smoke Test",
+		DocumentType:    "po",
+		DocumentProfile: "po",
+		OwnerID:         "owner-1",
+		BusinessUnit:    "operations",
+		Department:      "sgq",
+		InitialContent:  `{"legacy":"content"}`,
+		TraceID:         "trace-browser-smoke",
+	})
+	if err != nil {
+		t.Fatalf("CreateDocument() error = %v", err)
+	}
+
+	bundle, err := service.GetBrowserEditorBundleAuthorized(ctx, doc.ID)
+	if err != nil {
+		t.Fatalf("GetBrowserEditorBundleAuthorized() error = %v", err)
+	}
+
+	if bundle.TemplateSnapshot.TemplateKey != "po-default-browser" {
+		t.Fatalf("template key = %q, want po-default-browser", bundle.TemplateSnapshot.TemplateKey)
+	}
+	if bundle.TemplateSnapshot.Version != 1 {
+		t.Fatalf("template version = %d, want 1", bundle.TemplateSnapshot.Version)
+	}
+	if !bundle.TemplateSnapshot.IsBrowserHTML() {
+		t.Fatalf("template snapshot = %#v, want browser html", bundle.TemplateSnapshot)
+	}
+	if bundle.Body == "" {
+		t.Fatal("bundle body is empty")
+	}
+	if !strings.Contains(bundle.Body, "Procedimento Operacional") {
+		t.Fatal("bundle body does not contain template content")
+	}
+	if bundle.DraftToken == "" {
+		t.Fatal("expected draft token")
+	}
 }

@@ -206,3 +206,39 @@
   font-size: 0.83rem;
   font-weight: 500;
 }
+
+/* ── Field Table ───────────────────────────────────────────────── */
+.ck-content .md-field-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+}
+
+.ck-content .md-field-table td {
+  border: 1px solid #dfc8c8;
+  padding: 0.5rem 0.75rem;
+  vertical-align: top;
+  font-size: 0.93rem;
+  color: #483030;
+}
+
+.ck-content .md-field-table .md-field-label {
+  width: 30%;
+  font-weight: 600;
+  font-size: 0.84rem;
+  color: #3e1018;
+  background: #f9f3f3;
+}
+
+.ck-content .md-field-table td:last-child {
+  width: 70%;
+}
+
+.ck-content .md-field-table .restricted-editing-exception {
+  margin: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  min-height: unset;
+}

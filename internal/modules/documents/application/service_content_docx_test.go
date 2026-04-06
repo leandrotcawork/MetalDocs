@@ -21,6 +21,7 @@ func TestBuildBrowserDocumentHeaderHTML(t *testing.T) {
 	result := buildBrowserDocumentHeaderHTML(doc, version)
 
 	checks := []string{
+		`<table`,
 		`class="md-doc-header"`,
 		`PO-110`,
 		`Rev. 03`,
@@ -28,11 +29,20 @@ func TestBuildBrowserDocumentHeaderHTML(t *testing.T) {
 		`Procedimento Operacional`,
 		`06/04/2026`,
 		`rascunho`,
+		`Metal Nobre`,
+		`Tipo`,
+		`Elaborado por`,
+		`Data`,
+		`Status`,
+		`Aprovado por`,
 	}
 	for _, want := range checks {
 		if !strings.Contains(result, want) {
 			t.Errorf("header HTML missing %q", want)
 		}
+	}
+	if strings.Contains(result, `<div class="md-doc-header"`) {
+		t.Error("header must use <table>, not <div>")
 	}
 }
 

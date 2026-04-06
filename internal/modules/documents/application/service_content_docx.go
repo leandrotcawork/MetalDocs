@@ -188,11 +188,9 @@ func (s *Service) generateBrowserDocxBytes(ctx context.Context, doc domain.Docum
 }
 
 // buildBrowserDocumentHeaderHTML produces the locked identity header block
-// that mirrors the DocumentEditorHeader React component. This header is
-// prepended to the CKEditor body HTML before browser DOCX export so that
-// the exported artifact matches what the user sees in the editor.
-// Inline styles are included so the header renders correctly when HTMLtoDOCX
-// processes it without access to the external CSS file.
+// as a <table> so that HTMLtoDOCX can render it as a proper Word table with
+// background colors and bordered cells. The React DocumentEditorHeader component
+// handles the browser view; this function serves the DOCX export path only.
 func buildBrowserDocumentHeaderHTML(doc domain.Document, version domain.Version) string {
 	revision := fmt.Sprintf("Rev. %02d", version.Number)
 	code := doc.DocumentCode
@@ -211,37 +209,41 @@ func buildBrowserDocumentHeaderHTML(doc domain.Document, version domain.Version)
 	if owner == "" {
 		owner = "—"
 	}
+
+	topCell := `background-color:#6b1f2a;color:#ffffff;padding:6px 14px;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;`
+	metaCell := func(label, value, sep string) string {
+		return fmt.Sprintf(
+			`<td style="background-color:#3e1018;color:#ffffff;padding:6px 14px;%s">`+
+				`<p style="margin:0;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#b6a5a7;">%s</p>`+
+				`<p style="margin:0;font-size:12px;font-weight:500;">%s</p>`+
+				`</td>`,
+			sep, label, value,
+		)
+	}
+	sep := `border-right:1px solid rgba(255,255,255,0.18);`
+
 	return fmt.Sprintf(
-		`<div class="md-doc-header" style="background:#3e1018;color:#ffffff;border-radius:10px;overflow:hidden;margin-bottom:2rem;font-family:DM Sans,sans-serif;">`+
-			`<div class="md-doc-header__top" style="display:flex;justify-content:space-between;align-items:center;padding:0.55rem 1.25rem;background:#6b1f2a;font-size:0.76rem;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;">`+
-			`<span>Metal Nobre</span>`+
-			`<span>%s · %s</span>`+
-			`</div>`+
-			`<p class="md-doc-header__title" style="padding:0.85rem 1.25rem 0.6rem;font-size:1.15rem;font-weight:700;line-height:1.35;margin:0;">%s</p>`+
-			`<div class="md-doc-header__meta" style="display:flex;flex-wrap:wrap;padding:0.4rem 1.25rem 0.85rem;">`+
-			`<span class="md-doc-header__meta-item" style="display:flex;flex-direction:column;padding-right:1.25rem;margin-right:1.25rem;border-right:1px solid rgba(255,255,255,0.18);">`+
-			`<span class="md-doc-header__meta-label" style="font-size:0.69rem;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;opacity:0.62;margin-bottom:0.1rem;">Tipo</span>`+
-			`<span class="md-doc-header__meta-value" style="font-size:0.83rem;font-weight:500;">%s</span></span>`+
-			`<span class="md-doc-header__meta-item" style="display:flex;flex-direction:column;padding-right:1.25rem;margin-right:1.25rem;border-right:1px solid rgba(255,255,255,0.18);">`+
-			`<span class="md-doc-header__meta-label" style="font-size:0.69rem;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;opacity:0.62;margin-bottom:0.1rem;">Elaborado por</span>`+
-			`<span class="md-doc-header__meta-value" style="font-size:0.83rem;font-weight:500;">%s</span></span>`+
-			`<span class="md-doc-header__meta-item" style="display:flex;flex-direction:column;padding-right:1.25rem;margin-right:1.25rem;border-right:1px solid rgba(255,255,255,0.18);">`+
-			`<span class="md-doc-header__meta-label" style="font-size:0.69rem;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;opacity:0.62;margin-bottom:0.1rem;">Data</span>`+
-			`<span class="md-doc-header__meta-value" style="font-size:0.83rem;font-weight:500;">%s</span></span>`+
-			`<span class="md-doc-header__meta-item" style="display:flex;flex-direction:column;padding-right:1.25rem;margin-right:1.25rem;border-right:1px solid rgba(255,255,255,0.18);">`+
-			`<span class="md-doc-header__meta-label" style="font-size:0.69rem;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;opacity:0.62;margin-bottom:0.1rem;">Status</span>`+
-			`<span class="md-doc-header__meta-value" style="font-size:0.83rem;font-weight:500;">%s</span></span>`+
-			`<span class="md-doc-header__meta-item" style="display:flex;flex-direction:column;">`+
-			`<span class="md-doc-header__meta-label" style="font-size:0.69rem;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;opacity:0.62;margin-bottom:0.1rem;">Aprovado por</span>`+
-			`<span class="md-doc-header__meta-value" style="font-size:0.83rem;font-weight:500;">—</span></span>`+
-			`</div>`+
-			`</div>`,
+		`<table class="md-doc-header" style="width:100%;border-collapse:collapse;margin-bottom:2rem;font-family:DM Sans,sans-serif;">`+
+			`<tr>`+
+			`<td colspan="4" style="%s">Metal Nobre</td>`+
+			`<td style="%sfont-size:11px;font-weight:600;text-align:right;white-space:nowrap;">%s · %s</td>`+
+			`</tr>`+
+			`<tr>`+
+			`<td colspan="5" style="background-color:#3e1018;color:#ffffff;padding:10px 14px 6px;font-size:16px;font-weight:700;line-height:1.35;">%s</td>`+
+			`</tr>`+
+			`<tr>`+
+			`%s%s%s%s%s`+
+			`</tr>`+
+			`</table>`,
+		topCell,
+		`background-color:#6b1f2a;color:#ffffff;padding:6px 14px;`,
 		html.EscapeString(code),
 		html.EscapeString(revision),
 		html.EscapeString(doc.Title),
-		html.EscapeString(doc.DocumentType),
-		html.EscapeString(owner),
-		createdAt,
-		html.EscapeString(status),
+		metaCell("Tipo", html.EscapeString(doc.DocumentType), sep),
+		metaCell("Elaborado por", html.EscapeString(owner), sep),
+		metaCell("Data", createdAt, sep),
+		metaCell("Status", html.EscapeString(status), sep),
+		metaCell("Aprovado por", "—", ""),
 	)
 }

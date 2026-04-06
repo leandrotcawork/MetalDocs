@@ -244,7 +244,7 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
         </span>
         <span className={styles.metaItem}>
           <span className={styles.metaLabel}>Template</span>
-          <strong>{bundle?.templateSnapshot.templateKey ?? "-"}</strong>
+          <strong>{bundle?.templateSnapshot?.templateKey ?? "-"}</strong>
         </span>
       </div>
 

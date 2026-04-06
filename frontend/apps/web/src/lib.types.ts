@@ -277,7 +277,7 @@ export interface DocumentBrowserEditorBundleResponse {
   document: DocumentListItem;
   versions: VersionListItem[];
   governance: DocumentProfileGovernanceItem;
-  templateSnapshot: DocumentBrowserTemplateSnapshotItem;
+  templateSnapshot?: DocumentBrowserTemplateSnapshotItem;
   body: string;
   draftToken: string;
 }

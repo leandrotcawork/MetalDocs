@@ -188,6 +188,10 @@ func (r *atomicRepoSpy) GetDocumentTemplateVersion(context.Context, string, int)
 	return domain.DocumentTemplateVersion{}, domain.ErrDocumentTemplateNotFound
 }
 
+func (r *atomicRepoSpy) ListDocumentTemplateVersions(context.Context, string) ([]domain.DocumentTemplateVersion, error) {
+	return nil, nil
+}
+
 func (r *atomicRepoSpy) GetDefaultDocumentTemplate(context.Context, string) (domain.DocumentTemplateVersion, error) {
 	return domain.DocumentTemplateVersion{}, domain.ErrDocumentTemplateNotFound
 }

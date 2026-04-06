@@ -2,6 +2,7 @@ package contract
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"mime/multipart"
@@ -21,6 +22,7 @@ import (
 	authmemory "metaldocs/internal/modules/auth/infrastructure/memory"
 	docapp "metaldocs/internal/modules/documents/application"
 	docdelivery "metaldocs/internal/modules/documents/delivery/http"
+	docdomain "metaldocs/internal/modules/documents/domain"
 	memoryrepo "metaldocs/internal/modules/documents/infrastructure/memory"
 	iamapp "metaldocs/internal/modules/iam/application"
 	iamdelivery "metaldocs/internal/modules/iam/delivery/http"
@@ -275,6 +277,11 @@ func TestAPIContractSmoke(t *testing.T) {
 
 func buildContractTestHandler() http.Handler {
 	docRepo := memoryrepo.NewRepository()
+	_ = docRepo.UpsertDocumentProfileSchemaVersion(context.Background(), docdomain.DocumentProfileSchemaVersion{
+		ProfileCode: "po",
+		Version:     3,
+		IsActive:    true,
+	})
 	attachmentStore := memoryrepo.NewAttachmentStore()
 	cachedProvider := iamapp.NewCachedRoleProvider(
 		iamapp.NewDevRoleProvider(map[string][]iamdomain.Role{

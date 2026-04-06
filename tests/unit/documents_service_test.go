@@ -421,8 +421,8 @@ func TestCreateDocumentWithMetalNobreProfileAndProcessArea(t *testing.T) {
 	if doc.ProcessArea != "marketplaces" {
 		t.Fatalf("expected processArea marketplaces, got %s", doc.ProcessArea)
 	}
-	if doc.ProfileSchemaVersion != 1 {
-		t.Fatalf("expected schema version 1, got %d", doc.ProfileSchemaVersion)
+	if doc.ProfileSchemaVersion != 3 {
+		t.Fatalf("expected schema version 3, got %d", doc.ProfileSchemaVersion)
 	}
 }
 

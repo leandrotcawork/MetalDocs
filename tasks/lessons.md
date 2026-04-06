@@ -1082,3 +1082,17 @@ Wrong:   Local API boot required `METALDOCS_DOCGEN_API_URL` even though the repo
 Correct: In `APP_ENV=local`, default the docgen client to the local docgen service unless an explicit URL is provided
 Rule:    Local development should honor the workspace's standard sidecar ports instead of requiring extra env wiring for every session.
 Layer:   process
+
+## Lesson EU - Downstream renderer outages must map to stable unavailable errors
+Date: 2026-04-06 | Trigger: correction
+Wrong:   Browser DOCX export propagated docgen transport/5xx failures as generic errors and leaked as `500 INTERNAL_ERROR`
+Correct: Classify docgen transport/5xx failures as renderer unavailable and map them to `ErrRenderUnavailable` (`503`)
+Rule:    Infrastructure dependency outages must surface as stable availability errors, never as opaque internal failures.
+Layer:   application
+
+## Lesson EV - Default template schema versions must match seeded profile schemas
+Date: 2026-04-06 | Trigger: correction
+Wrong:   Default PO template referenced schema version 3 while default profile schema seeds only exposed active version 1 in memory/runtime fixtures
+Correct: Keep default profile `ActiveSchemaVersion` and seeded profile schema versions aligned with the default template's declared schema version
+Rule:    Any versioned template shipped by default must have a matching seeded schema snapshot, or create/search/runtime flows will fail closed with `ErrInvalidCommand`.
+Layer:   process

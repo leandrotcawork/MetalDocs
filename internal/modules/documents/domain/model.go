@@ -318,7 +318,7 @@ func DefaultDocumentFamilies() []DocumentFamily {
 func DefaultDocumentProfiles() []DocumentProfile {
 	governanceByCode := DefaultDocumentProfileGovernanceByCode()
 	return []DocumentProfile{
-		{Code: "po", FamilyCode: "procedure", Name: "Procedimento Operacional", Alias: "Procedimentos", Description: "Procedimento operacional da Metal Nobre", ReviewIntervalDays: governanceByCode["po"].ReviewIntervalDays, ActiveSchemaVersion: 1, WorkflowProfile: governanceByCode["po"].WorkflowProfile, ApprovalRequired: governanceByCode["po"].ApprovalRequired, RetentionDays: governanceByCode["po"].RetentionDays, ValidityDays: governanceByCode["po"].ValidityDays},
+		{Code: "po", FamilyCode: "procedure", Name: "Procedimento Operacional", Alias: "Procedimentos", Description: "Procedimento operacional da Metal Nobre", ReviewIntervalDays: governanceByCode["po"].ReviewIntervalDays, ActiveSchemaVersion: 3, WorkflowProfile: governanceByCode["po"].WorkflowProfile, ApprovalRequired: governanceByCode["po"].ApprovalRequired, RetentionDays: governanceByCode["po"].RetentionDays, ValidityDays: governanceByCode["po"].ValidityDays},
 		{Code: "it", FamilyCode: "work_instruction", Name: "Instrucao de Trabalho", Alias: "Instrucoes", Description: "Instrucao de trabalho da Metal Nobre", ReviewIntervalDays: governanceByCode["it"].ReviewIntervalDays, ActiveSchemaVersion: 1, WorkflowProfile: governanceByCode["it"].WorkflowProfile, ApprovalRequired: governanceByCode["it"].ApprovalRequired, RetentionDays: governanceByCode["it"].RetentionDays, ValidityDays: governanceByCode["it"].ValidityDays},
 		{Code: "rg", FamilyCode: "record", Name: "Registro", Alias: "Registros", Description: "Registro operacional da Metal Nobre", ReviewIntervalDays: governanceByCode["rg"].ReviewIntervalDays, ActiveSchemaVersion: 1, WorkflowProfile: governanceByCode["rg"].WorkflowProfile, ApprovalRequired: governanceByCode["rg"].ApprovalRequired, RetentionDays: governanceByCode["rg"].RetentionDays, ValidityDays: governanceByCode["rg"].ValidityDays},
 	}
@@ -367,6 +367,13 @@ func DefaultDocumentProfileSchemas() []DocumentProfileSchemaVersion {
 		{
 			ProfileCode:   "po",
 			Version:       1,
+			IsActive:      false,
+			MetadataRules: []MetadataFieldRule{},
+			ContentSchema: map[string]any{},
+		},
+		{
+			ProfileCode:   "po",
+			Version:       3,
 			IsActive:      true,
 			MetadataRules: []MetadataFieldRule{},
 			ContentSchema: map[string]any{},

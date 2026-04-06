@@ -27,19 +27,20 @@ func TestListDocumentProfileSchemasResolvesContentSchemaFromTypeDefinition(t *te
 	if err != nil {
 		t.Fatalf("list profile schemas: %v", err)
 	}
-	if len(items) != 1 {
-		t.Fatalf("expected 1 schema version, got %d", len(items))
+	if len(items) == 0 {
+		t.Fatal("expected at least 1 schema version")
 	}
 
-	if _, ok := items[0].ContentSchema["legacy"]; ok {
-		t.Fatalf("expected service to replace legacy content schema with type schema")
-	}
-
-	sections, ok := items[0].ContentSchema["sections"].([]any)
-	if !ok {
-		t.Fatalf("expected enriched content schema sections array, got %T", items[0].ContentSchema["sections"])
-	}
-	if len(sections) == 0 {
-		t.Fatalf("expected enriched content schema sections to be non-empty")
+	for _, item := range items {
+		if _, ok := item.ContentSchema["legacy"]; ok {
+			t.Fatalf("expected service to replace legacy content schema with type schema for version %d", item.Version)
+		}
+		sections, ok := item.ContentSchema["sections"].([]any)
+		if !ok {
+			t.Fatalf("expected enriched content schema sections array for version %d, got %T", item.Version, item.ContentSchema["sections"])
+		}
+		if len(sections) == 0 {
+			t.Fatalf("expected enriched content schema sections to be non-empty for version %d", item.Version)
+		}
 	}
 }

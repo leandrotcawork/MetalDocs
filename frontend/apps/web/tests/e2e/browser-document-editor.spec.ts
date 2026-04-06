@@ -50,24 +50,15 @@ test("browser document editor opens as a single document surface", async ({ page
   await expect(page.getByTestId("browser-document-editor")).toBeVisible({ timeout: 20_000 });
   await expect(page.locator(".content-builder-preview")).toHaveCount(0);
 
-  const bundleResponse = await apiContext.get(
-    `/api/v1/documents/${encodeURIComponent(createdDocument.documentId)}/browser-editor-bundle`,
-    { headers: sameSiteHeaders },
-  );
-  expect(bundleResponse.ok()).toBeTruthy();
-  const bundleBody = (await bundleResponse.json()) as { body?: string; draftToken?: string };
+  const editable = page.locator(".ck-editor__editable").first();
+  await expect(editable).toBeVisible();
+  await page.locator(".ck-editor__editable .restricted-editing-exception").first().click();
+  await page.keyboard.type(` Objetivo do teste ${Date.now()}`);
 
-  const saveResponse = await apiContext.post(
-    `/api/v1/documents/${encodeURIComponent(createdDocument.documentId)}/content/browser`,
-    {
-      headers: sameSiteHeaders,
-      data: {
-        body: `${bundleBody.body ?? ""}<p>Objetivo do teste</p>`,
-        draftToken: bundleBody.draftToken ?? "",
-      },
-    },
-  );
-  expect(saveResponse.ok()).toBeTruthy();
+  const saveButton = page.getByRole("button", { name: "Salvar rascunho" });
+  await expect(saveButton).toBeEnabled();
+  await saveButton.click();
+  await expect(page.getByText(/Salvo agora|Salvo ha pouco/)).toBeVisible();
 
   const exportResponse = await apiContext.post(`/api/v1/documents/${encodeURIComponent(createdDocument.documentId)}/export/docx`, {
     headers: sameSiteHeaders,

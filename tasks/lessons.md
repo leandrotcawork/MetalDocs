@@ -1026,3 +1026,24 @@ Wrong:   Browser e2e used `page.context().request` for authenticated calls witho
 Correct: Add `Origin: http://127.0.0.1:4173` to authenticated Playwright APIRequestContext calls that rely on session cookies
 Rule:    When backend session middleware enforces origin checks, e2e API calls must include an explicit same-site origin header.
 Layer:   process
+
+## Lesson EM - Domain sentinel errors must map to stable client error envelopes
+Date: 2026-04-05 | Trigger: correction
+Wrong:   New template assignment/read flows returned template-related sentinel errors that fell through `writeDomainError` and surfaced as `500 INTERNAL_ERROR`
+Correct: Map template domain errors explicitly in delivery (`ErrDocumentTemplateNotFound`, `ErrDocumentTemplateAssignmentNotFound`) to non-5xx API responses
+Rule:    Any new domain sentinel introduced in application flows must be mapped in HTTP error translation before release.
+Layer:   delivery
+
+## Lesson EN - Content mutation endpoints need explicit body size guards
+Date: 2026-04-05 | Trigger: correction
+Wrong:   Native/browser content save handlers decoded request bodies without `http.MaxBytesReader`, allowing unbounded JSON payloads
+Correct: Apply explicit max-body limits at handler entry for content-save routes before JSON decode
+Rule:    Mutation endpoints that persist document content must enforce request-size limits at the HTTP boundary.
+Layer:   delivery
+
+## Lesson EO - Draft template snapshots must fail closed when missing
+Date: 2026-04-05 | Trigger: correction
+Wrong:   Draft native-content saves re-resolved template assignment/default when the latest version had empty `TemplateKey`/`TemplateVersion`
+Correct: Reject the save with `ErrInvalidCommand` when draft snapshot metadata is missing
+Rule:    Revision-bound template metadata is mandatory once a draft exists; save flows must not silently rebind templates.
+Layer:   application

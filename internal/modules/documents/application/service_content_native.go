@@ -85,10 +85,7 @@ func (s *Service) SaveNativeContentAuthorized(ctx context.Context, cmd domain.Sa
 			resolvedTemplate.TemplateKey = current.TemplateKey
 			resolvedTemplate.Version = current.TemplateVersion
 		} else {
-			resolvedTemplate, _, err = s.resolveDocumentTemplateOptional(ctx, doc.ID, doc.DocumentProfile)
-			if err != nil {
-				return domain.Version{}, err
-			}
+			return domain.Version{}, domain.ErrInvalidCommand
 		}
 
 		version := current
@@ -279,13 +276,14 @@ func (s *Service) RenderContentPDFAuthorized(ctx context.Context, documentID, tr
 				return domain.Version{}, err
 			}
 			docxKey := documentContentStorageKey(doc.ID, version.Number, "docx")
-			if saveErr := s.attachmentStore.Save(ctx, docxKey, docxBytes); saveErr == nil {
-				if err := s.repo.UpdateVersionDocx(ctx, doc.ID, version.Number, docxKey); err != nil {
-					_ = s.attachmentStore.Delete(ctx, docxKey)
-					return domain.Version{}, err
-				}
-				version.DocxStorageKey = docxKey
+			if err := s.attachmentStore.Save(ctx, docxKey, docxBytes); err != nil {
+				return domain.Version{}, err
 			}
+			if err := s.repo.UpdateVersionDocx(ctx, doc.ID, version.Number, docxKey); err != nil {
+				_ = s.attachmentStore.Delete(ctx, docxKey)
+				return domain.Version{}, err
+			}
+			version.DocxStorageKey = docxKey
 		}
 		pdfBytes, err = s.convertDocxToPDF(ctx, docxBytes, traceID)
 		if err != nil {
@@ -311,13 +309,14 @@ func (s *Service) RenderContentPDFAuthorized(ctx context.Context, documentID, tr
 				return domain.Version{}, err
 			}
 			docxKey := documentContentStorageKey(doc.ID, version.Number, "docx")
-			if saveErr := s.attachmentStore.Save(ctx, docxKey, docxBytes); saveErr == nil {
-				if err := s.repo.UpdateVersionDocx(ctx, doc.ID, version.Number, docxKey); err != nil {
-					_ = s.attachmentStore.Delete(ctx, docxKey)
-					return domain.Version{}, err
-				}
-				version.DocxStorageKey = docxKey
+			if err := s.attachmentStore.Save(ctx, docxKey, docxBytes); err != nil {
+				return domain.Version{}, err
 			}
+			if err := s.repo.UpdateVersionDocx(ctx, doc.ID, version.Number, docxKey); err != nil {
+				_ = s.attachmentStore.Delete(ctx, docxKey)
+				return domain.Version{}, err
+			}
+			version.DocxStorageKey = docxKey
 		}
 		pdfBytes, err = s.convertDocxToPDF(ctx, docxBytes, traceID)
 		if err != nil {

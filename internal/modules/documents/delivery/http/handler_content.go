@@ -13,6 +13,8 @@ import (
 	"metaldocs/internal/modules/documents/domain"
 )
 
+const maxDocumentContentPayloadBytes = 2 << 20
+
 func (h *Handler) handleDocumentContentNativeGet(w http.ResponseWriter, r *http.Request, documentID string) {
 	traceID := requestTraceID(r)
 	version, err := h.service.GetNativeContentAuthorized(r.Context(), documentID)
@@ -38,6 +40,7 @@ func (h *Handler) handleDocumentContentNativeGet(w http.ResponseWriter, r *http.
 
 func (h *Handler) handleDocumentContentNativePost(w http.ResponseWriter, r *http.Request, documentID string) {
 	traceID := requestTraceID(r)
+	r.Body = http.MaxBytesReader(w, r.Body, maxDocumentContentPayloadBytes)
 
 	var req DocumentContentNativeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -74,6 +77,7 @@ func (h *Handler) handleDocumentContentNativePost(w http.ResponseWriter, r *http
 
 func (h *Handler) handleDocumentContentBrowserPost(w http.ResponseWriter, r *http.Request, documentID string) {
 	traceID := requestTraceID(r)
+	r.Body = http.MaxBytesReader(w, r.Body, maxDocumentContentPayloadBytes)
 
 	var req DocumentContentBrowserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

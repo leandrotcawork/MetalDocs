@@ -243,9 +243,12 @@ func (s *Service) ExportDocumentDocxAuthorized(ctx context.Context, documentID, 
 		return s.generateBrowserDocxBytes(ctx, doc, version, traceID)
 	}
 
-	schema, err := s.resolveActiveProfileSchema(ctx, doc.DocumentProfile)
+	schema, ok, err := s.resolveDocumentProfileSchema(ctx, doc.DocumentProfile, doc.ProfileSchemaVersion)
 	if err != nil {
 		return nil, err
+	}
+	if !ok {
+		return nil, domain.ErrInvalidCommand
 	}
 
 	payload, err := s.buildDocgenPayload(ctx, doc, schema, version, nil)
@@ -261,9 +264,12 @@ func (s *Service) generateDocxBytes(ctx context.Context, doc domain.Document, ve
 		return nil, domain.ErrRenderUnavailable
 	}
 
-	schema, err := s.resolveActiveProfileSchema(ctx, doc.DocumentProfile)
+	schema, ok, err := s.resolveDocumentProfileSchema(ctx, doc.DocumentProfile, doc.ProfileSchemaVersion)
 	if err != nil {
 		return nil, err
+	}
+	if !ok {
+		return nil, domain.ErrInvalidCommand
 	}
 
 	versionWithValues := version

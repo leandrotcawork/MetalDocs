@@ -165,8 +165,8 @@ func TestPOBrowserTemplateGoSQLParity(t *testing.T) {
 	}
 	sqlBody := parts[1]
 
-	goNormalized := strings.TrimSpace(goTemplate.Body)
-	sqlNormalized := strings.TrimSpace(sqlBody)
+	goNormalized := strings.TrimSpace(strings.ReplaceAll(goTemplate.Body, "\r\n", "\n"))
+	sqlNormalized := strings.TrimSpace(strings.ReplaceAll(sqlBody, "\r\n", "\n"))
 
 	if goNormalized != sqlNormalized {
 		t.Fatalf("Go seed body and SQL migration body differ.\nGo length=%d, SQL length=%d\nFirst difference at character %d",

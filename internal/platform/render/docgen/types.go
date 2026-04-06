@@ -47,9 +47,17 @@ type RenderField struct {
 	ItemFields []RenderField `json:"itemFields,omitempty"`
 }
 
+type BrowserRenderMargins struct {
+	Top    float64 `json:"top"`
+	Right  float64 `json:"right"`
+	Bottom float64 `json:"bottom"`
+	Left   float64 `json:"left"`
+}
+
 type BrowserRenderPayload struct {
-	DocumentCode string `json:"documentCode"`
-	Title        string `json:"title"`
-	Version      string `json:"version,omitempty"`
-	HTML         string `json:"html"`
+	DocumentCode string                `json:"documentCode"`
+	Title        string                `json:"title"`
+	Version      string                `json:"version,omitempty"`
+	HTML         string                `json:"html"`
+	Margins      *BrowserRenderMargins `json:"margins,omitempty"`
 }

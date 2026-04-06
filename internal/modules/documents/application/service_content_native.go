@@ -271,7 +271,15 @@ func (s *Service) RenderContentPDFAuthorized(ctx context.Context, documentID, tr
 				return domain.Version{}, err
 			}
 		} else {
-			docxBytes, err = s.generateBrowserDocxBytes(ctx, doc, version, traceID)
+			var exportConfig *domain.TemplateExportConfig
+			if version.TemplateKey != "" && version.TemplateVersion > 0 {
+				tmpl, err := s.repo.GetDocumentTemplateVersion(ctx, version.TemplateKey, version.TemplateVersion)
+				if err != nil {
+					return domain.Version{}, err
+				}
+				exportConfig = tmpl.ExportConfig
+			}
+			docxBytes, err = s.generateBrowserDocxBytes(ctx, doc, version, exportConfig, traceID)
 			if err != nil {
 				return domain.Version{}, err
 			}

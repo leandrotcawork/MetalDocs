@@ -163,7 +163,7 @@ func (s *Service) convertDocxToPDF(ctx context.Context, content []byte, traceID 
 	return s.gotenbergClient.ConvertDocxToPDF(ctx, content)
 }
 
-func (s *Service) generateBrowserDocxBytes(ctx context.Context, doc domain.Document, version domain.Version, traceID string) ([]byte, error) {
+func (s *Service) generateBrowserDocxBytes(ctx context.Context, doc domain.Document, version domain.Version, exportConfig *domain.TemplateExportConfig, traceID string) ([]byte, error) {
 	if s.docgenClient == nil {
 		return nil, domain.ErrRenderUnavailable
 	}
@@ -176,6 +176,7 @@ func (s *Service) generateBrowserDocxBytes(ctx context.Context, doc domain.Docum
 		Title:        doc.Title,
 		Version:      fmt.Sprintf("%d", version.Number),
 		HTML:         headerHTML + substituteTemplateTokens(version.Content, doc, version),
+		Margins:      browserRenderMarginsFromExportConfig(exportConfig),
 	}
 	rendered, err := s.docgenClient.GenerateBrowser(ctx, payload, traceID)
 	if err != nil {
@@ -185,6 +186,18 @@ func (s *Service) generateBrowserDocxBytes(ctx context.Context, doc domain.Docum
 		return nil, err
 	}
 	return rendered, nil
+}
+
+func browserRenderMarginsFromExportConfig(cfg *domain.TemplateExportConfig) *docgen.BrowserRenderMargins {
+	if cfg == nil {
+		return nil
+	}
+	return &docgen.BrowserRenderMargins{
+		Top:    cfg.MarginTop,
+		Right:  cfg.MarginRight,
+		Bottom: cfg.MarginBottom,
+		Left:   cfg.MarginLeft,
+	}
 }
 
 // buildBrowserDocumentHeaderHTML produces the locked identity header block

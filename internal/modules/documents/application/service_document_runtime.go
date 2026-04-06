@@ -241,7 +241,15 @@ func (s *Service) ExportDocumentDocxAuthorized(ctx context.Context, documentID, 
 		return nil, err
 	}
 	if strings.TrimSpace(version.ContentSource) == domain.ContentSourceBrowserEditor {
-		return s.generateBrowserDocxBytes(ctx, doc, version, traceID)
+		var exportConfig *domain.TemplateExportConfig
+		if version.TemplateKey != "" && version.TemplateVersion > 0 {
+			tmpl, err := s.repo.GetDocumentTemplateVersion(ctx, version.TemplateKey, version.TemplateVersion)
+			if err != nil {
+				return nil, err
+			}
+			exportConfig = tmpl.ExportConfig
+		}
+		return s.generateBrowserDocxBytes(ctx, doc, version, exportConfig, traceID)
 	}
 
 	schema, ok, err := s.resolveDocumentProfileSchema(ctx, doc.DocumentProfile, doc.ProfileSchemaVersion)

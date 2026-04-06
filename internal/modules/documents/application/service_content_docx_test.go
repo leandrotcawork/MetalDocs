@@ -92,6 +92,37 @@ func TestBuildBrowserDocumentHeaderHTMLEscapesSpecialChars(t *testing.T) {
 	}
 }
 
+func TestBrowserRenderMarginsFromExportConfig(t *testing.T) {
+	t.Run("nil config returns nil", func(t *testing.T) {
+		result := browserRenderMarginsFromExportConfig(nil)
+		if result != nil {
+			t.Errorf("expected nil, got %+v", result)
+		}
+	})
+	t.Run("non-nil config maps all fields", func(t *testing.T) {
+		cfg := &domain.TemplateExportConfig{
+			MarginTop: 0.625, MarginRight: 0.625,
+			MarginBottom: 0.625, MarginLeft: 0.625,
+		}
+		result := browserRenderMarginsFromExportConfig(cfg)
+		if result == nil {
+			t.Fatal("expected non-nil result")
+		}
+		if result.Top != 0.625 {
+			t.Errorf("Top = %v, want 0.625", result.Top)
+		}
+		if result.Right != 0.625 {
+			t.Errorf("Right = %v, want 0.625", result.Right)
+		}
+		if result.Bottom != 0.625 {
+			t.Errorf("Bottom = %v, want 0.625", result.Bottom)
+		}
+		if result.Left != 0.625 {
+			t.Errorf("Left = %v, want 0.625", result.Left)
+		}
+	})
+}
+
 func TestGenerateBrowserDocxBodySubstitutesTokens(t *testing.T) {
 	// Verify substituteTemplateTokens eliminates tokens from a body
 	// that would be passed to generateBrowserDocxBytes — guards against

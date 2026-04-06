@@ -175,7 +175,7 @@ func (s *Service) generateBrowserDocxBytes(ctx context.Context, doc domain.Docum
 		DocumentCode: doc.DocumentCode,
 		Title:        doc.Title,
 		Version:      fmt.Sprintf("%d", version.Number),
-		HTML:         headerHTML + version.Content,
+		HTML:         headerHTML + substituteTemplateTokens(version.Content, doc, version),
 	}
 	rendered, err := s.docgenClient.GenerateBrowser(ctx, payload, traceID)
 	if err != nil {

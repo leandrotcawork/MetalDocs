@@ -138,9 +138,63 @@
 .surface {
   min-height: 0;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
   padding: 1rem 1rem 0;
   gap: 0.75rem;
+}
+
+.errorBanner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(200, 54, 74, 0.18);
+  border-radius: 1rem;
+  background: linear-gradient(180deg, rgba(249, 243, 243, 0.98), rgba(255, 255, 255, 0.98));
+}
+
+.errorCopy {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.errorCopy strong {
+  color: var(--danger);
+}
+
+.errorCopy p {
+  margin: 0;
+  color: var(--text-soft);
+  line-height: 1.55;
+}
+
+.errorActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.65rem;
+}
+
+.errorActionButton,
+.errorActionButtonSecondary {
+  height: 38px;
+  padding: 0 0.9rem;
+  border-radius: 999px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.errorActionButton {
+  border: 1px solid rgba(107, 31, 42, 0.14);
+  background: var(--vinho-soft);
+  color: var(--vinho);
+}
+
+.errorActionButtonSecondary {
+  border: 1px solid rgba(107, 31, 42, 0.12);
+  background: var(--surface);
+  color: var(--text-soft);
 }
 
 .toolbarShell {
@@ -290,6 +344,14 @@
 
   .surface {
     padding-inline: 0.75rem;
+  }
+
+  .errorBanner {
+    flex-direction: column;
+  }
+
+  .errorActions {
+    justify-content: flex-start;
   }
 
   .footer {

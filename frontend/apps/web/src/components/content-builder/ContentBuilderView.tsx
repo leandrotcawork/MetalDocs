@@ -1,5 +1,6 @@
 import type { DocumentListItem } from "../../lib.types";
 import { BrowserDocumentEditorView } from "../../features/documents/browser-editor/BrowserDocumentEditorView";
+import { LegacyContentBuilderView } from "./LegacyContentBuilderView";
 
 type ContentBuilderViewProps = {
   document: DocumentListItem | null;
@@ -20,5 +21,18 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
     );
   }
 
-  return <BrowserDocumentEditorView document={props.document} onBack={props.onBack} />;
+  const isPersistedDocument = props.document.documentId.trim().length > 0;
+  const isBrowserEditorEligible = isPersistedDocument && props.document.documentProfile.trim().toLowerCase() === "po";
+
+  if (isBrowserEditorEligible) {
+    return <BrowserDocumentEditorView document={props.document} onBack={props.onBack} />;
+  }
+
+  return (
+    <LegacyContentBuilderView
+      document={props.document}
+      onBack={props.onBack}
+      onCreateFromDraft={props.onCreateFromDraft}
+    />
+  );
 }

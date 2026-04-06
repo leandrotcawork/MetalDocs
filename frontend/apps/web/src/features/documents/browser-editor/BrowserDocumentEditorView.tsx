@@ -1,12 +1,12 @@
 import { CKEditor } from "@ckeditor/ckeditor5-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DecoupledEditor } from "ckeditor5";
 import "ckeditor5/ckeditor5.css";
 
 import { getDocumentBrowserEditorBundle, saveDocumentBrowserContent } from "../../../api/documents";
 import type { DocumentBrowserEditorBundleResponse, DocumentListItem } from "../../../lib.types";
 import { formatDocumentDisplayName } from "../../shared/documentDisplay";
-import { browserDocumentEditorClass, buildBrowserDocumentEditorConfig } from "./ckeditorConfig";
+import { browserDocumentEditorClass, browserDocumentEditorConfig } from "./ckeditorConfig";
 import styles from "./BrowserDocumentEditorView.module.css";
 
 type BrowserDocumentEditorViewProps = {
@@ -21,60 +21,63 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
   const [editorData, setEditorData] = useState("");
   const [viewState, setViewState] = useState<ViewState>("loading");
   const [errorMessage, setErrorMessage] = useState("");
+  const [errorCode, setErrorCode] = useState<"load" | "save" | "conflict" | null>(null);
   const [saveLabel, setSaveLabel] = useState("Nao salvo");
   const toolbarHostRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadBundle() {
-      if (!document.documentId.trim()) {
-        setBundle(null);
-        setEditorData("");
-        setViewState("error");
-        setErrorMessage("Este fluxo aceita apenas documentos ja persistidos. Abra um documento salvo pelo acervo.");
-        setSaveLabel("Nao salvo");
-        return;
-      }
-
-      setViewState("loading");
-      setErrorMessage("");
-      setSaveLabel("Carregando...");
-
-      try {
-        const nextBundle = await getDocumentBrowserEditorBundle(document.documentId);
-        if (cancelled) {
-          return;
-        }
-        setBundle(nextBundle);
-        setEditorData(nextBundle.body);
-        setViewState("ready");
-        setSaveLabel("Salvo");
-      } catch {
-        if (cancelled) {
-          return;
-        }
-        setBundle(null);
-        setEditorData("");
-        setViewState("error");
-        setErrorMessage("Nao foi possivel carregar o bundle do editor do documento.");
-        setSaveLabel("Erro");
-      }
+  const loadBundle = useCallback(async (activeRef?: { cancelled: boolean }) => {
+    if (!document.documentId.trim()) {
+      setBundle(null);
+      setEditorData("");
+      setViewState("error");
+      setErrorCode("load");
+      setErrorMessage("Este fluxo aceita apenas documentos ja persistidos. Abra um documento salvo pelo acervo.");
+      setSaveLabel("Nao salvo");
+      return;
     }
 
-    void loadBundle();
+    setViewState("loading");
+    setErrorCode(null);
+    setErrorMessage("");
+    setSaveLabel("Carregando...");
 
-    return () => {
-      cancelled = true;
-    };
+    try {
+      const nextBundle = await getDocumentBrowserEditorBundle(document.documentId);
+      if (activeRef?.cancelled) {
+        return;
+      }
+      setBundle(nextBundle);
+      setEditorData(nextBundle.body);
+      setViewState("ready");
+      setErrorCode(null);
+      setErrorMessage("");
+      setSaveLabel("Salvo");
+    } catch {
+      if (activeRef?.cancelled) {
+        return;
+      }
+      setBundle(null);
+      setEditorData("");
+      setViewState("error");
+      setErrorCode("load");
+      setErrorMessage("Nao foi possivel carregar o bundle do editor do documento.");
+      setSaveLabel("Erro");
+    }
   }, [document.documentId]);
+
+  useEffect(() => {
+    const activeRef = { cancelled: false };
+    void loadBundle(activeRef);
+    return () => {
+      activeRef.cancelled = true;
+    };
+  }, [loadBundle]);
 
   const documentTitle = useMemo(
     () => document.documentCode ?? formatDocumentDisplayName(document),
     [document],
   );
 
-  const editorConfig = useMemo(() => buildBrowserDocumentEditorConfig(editorData), [editorData]);
   const isDirty = bundle !== null && editorData !== bundle.body;
   const isSaving = viewState === "saving";
   const latestVersion = bundle && bundle.versions.length > 0 ? bundle.versions[bundle.versions.length - 1] : null;
@@ -85,6 +88,7 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
     }
 
     setViewState("saving");
+    setErrorCode(null);
     setErrorMessage("");
     setSaveLabel("Salvando...");
 
@@ -115,16 +119,28 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
         };
       });
       setViewState("ready");
+      setErrorCode(null);
+      setErrorMessage("");
       setSaveLabel("Salvo agora");
       window.setTimeout(() => {
         setSaveLabel((current) => (current === "Salvo agora" ? "Salvo ha pouco" : current));
       }, 3000);
-    } catch {
+    } catch (error) {
       setViewState("error");
+      if (statusOf(error) === 409) {
+        setErrorCode("conflict");
+        setErrorMessage("O rascunho ficou desatualizado. Recarregue o documento para sincronizar a ultima revisao antes de salvar novamente.");
+        setSaveLabel("Conflito de rascunho");
+        return;
+      }
+      setErrorCode("save");
       setErrorMessage("Nao foi possivel salvar o rascunho no editor do navegador.");
       setSaveLabel("Erro ao salvar");
     }
   }
+
+  const canRetrySave = Boolean(bundle) && !isSaving && isDirty;
+  const showInlineError = errorMessage.trim().length > 0;
 
   return (
     <section className={styles.root} data-testid="browser-document-editor">
@@ -171,12 +187,30 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
 
       {bundle ? (
         <div className={styles.surface}>
+          {showInlineError ? (
+            <div className={styles.errorBanner} role="alert">
+              <div className={styles.errorCopy}>
+                <strong>{errorCode === "conflict" ? "Conflito de rascunho" : "Falha no editor"}</strong>
+                <p>{errorMessage}</p>
+              </div>
+              <div className={styles.errorActions}>
+                <button type="button" className={styles.errorActionButton} onClick={() => void loadBundle()}>
+                  Recarregar documento
+                </button>
+                {errorCode !== "load" && canRetrySave ? (
+                  <button type="button" className={styles.errorActionButtonSecondary} onClick={() => void handleSave()}>
+                    Tentar salvar novamente
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
           <div className={styles.toolbarShell} ref={toolbarHostRef} />
           <div className={styles.editorShell}>
             <CKEditor
               key={document.documentId}
               editor={browserDocumentEditorClass}
-              config={editorConfig}
+              config={browserDocumentEditorConfig}
               data={bundle.body}
               onReady={(editor: DecoupledEditor) => {
                 const toolbarElement = editor.ui.view.toolbar.element;
@@ -197,6 +231,10 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
                 if (viewState !== "saving") {
                   setViewState("ready");
                 }
+                if (errorCode !== null) {
+                  setErrorCode(null);
+                  setErrorMessage("");
+                }
                 setSaveLabel(nextData === bundle.body ? "Salvo" : "Editando...");
               }}
             />
@@ -209,6 +247,9 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
             <p className={errorMessage ? styles.errorText : undefined}>
               {errorMessage || "Preparando o bundle do documento para o editor do navegador."}
             </p>
+            <button type="button" className={styles.errorActionButton} onClick={() => void loadBundle()}>
+              Recarregar documento
+            </button>
           </div>
         </div>
       )}
@@ -228,4 +269,11 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
       </footer>
     </section>
   );
+}
+
+function statusOf(error: unknown): number | undefined {
+  if (error && typeof error === "object" && "status" in error && typeof (error as { status?: unknown }).status === "number") {
+    return (error as { status: number }).status;
+  }
+  return undefined;
 }

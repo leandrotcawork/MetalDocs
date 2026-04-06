@@ -1012,3 +1012,10 @@ Wrong:   `normalizeDocumentProfileCode` lived inside the legacy builder module a
 Correct: Put document profile normalization in a shared frontend helper and reuse it in views and API validation checks
 Rule:    Canonical string normalization should live in one shared utility so profile comparisons stay consistent.
 Layer:   frontend
+
+## Lesson EK - Template catalog endpoints must return assignable template versions, not profile defaults
+Date: 2026-04-05 | Trigger: correction
+Wrong:   `ListDocumentTemplates` looped active profiles and returned only `GetDefaultDocumentTemplate(profile)`
+Correct: `ListDocumentTemplates` reads `ListDocumentTemplateVersions(profileCode)` and returns the assignable template catalog filtered to active profiles
+Rule:    Listing endpoints for assignment workflows must expose the full assignable catalog, while defaults remain a separate resolution path.
+Layer:   application

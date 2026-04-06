@@ -1232,6 +1232,54 @@ WHERE template_key = $1 AND version = $2
 	return item, nil
 }
 
+func (r *Repository) ListDocumentTemplateVersions(ctx context.Context, profileCode string) ([]domain.DocumentTemplateVersion, error) {
+	const q = `
+SELECT template_key, version, profile_code, schema_version, name, editor, content_format, body_html, definition_json, created_at
+FROM metaldocs.document_template_versions
+WHERE ($1 = '' OR profile_code = $1)
+ORDER BY profile_code ASC, template_key ASC, version DESC
+`
+	rows, err := r.db.QueryContext(ctx, q, strings.TrimSpace(profileCode))
+	if err != nil {
+		return nil, fmt.Errorf("list document template versions: %w", err)
+	}
+	defer rows.Close()
+
+	items := make([]domain.DocumentTemplateVersion, 0)
+	for rows.Next() {
+		var item domain.DocumentTemplateVersion
+		var definitionJSON []byte
+		if err := rows.Scan(
+			&item.TemplateKey,
+			&item.Version,
+			&item.ProfileCode,
+			&item.SchemaVersion,
+			&item.Name,
+			&item.Editor,
+			&item.ContentFormat,
+			&item.Body,
+			&definitionJSON,
+			&item.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan document template version: %w", err)
+		}
+		if len(definitionJSON) > 0 {
+			if err := json.Unmarshal(definitionJSON, &item.Definition); err != nil {
+				return nil, fmt.Errorf("unmarshal document template version definition: %w", err)
+			}
+		}
+		if item.Definition == nil {
+			item.Definition = map[string]any{}
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list document template versions rows: %w", err)
+	}
+
+	return items, nil
+}
+
 func (r *Repository) GetDefaultDocumentTemplate(ctx context.Context, profileCode string) (domain.DocumentTemplateVersion, error) {
 	const q = `
 SELECT template_key, template_version

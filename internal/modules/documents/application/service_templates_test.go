@@ -242,23 +242,58 @@ func TestCreateDocumentSeedsBrowserTemplateBody(t *testing.T) {
 	}
 }
 
-func TestListDocumentTemplatesReturnsProfileDefaults(t *testing.T) {
+func TestListDocumentTemplatesReturnsProfileCatalog(t *testing.T) {
 	ctx := context.Background()
 	repo := documentmemory.NewRepository()
 	service := NewService(repo, nil, nil)
+
+	if err := repo.UpsertDocumentTemplateVersionForTest(ctx, domain.DocumentTemplateVersion{
+		TemplateKey:   "po-governed-canvas",
+		Version:       2,
+		ProfileCode:   "po",
+		SchemaVersion: 3,
+		Name:          "PO Governed Canvas v2",
+		Editor:        "ckeditor5",
+		ContentFormat: "html",
+		Body:          `<section><p>v2</p></section>`,
+		CreatedAt:     time.Unix(2, 0).UTC(),
+	}); err != nil {
+		t.Fatalf("upsert template version: %v", err)
+	}
+	if err := repo.UpsertDocumentTemplateVersionForTest(ctx, domain.DocumentTemplateVersion{
+		TemplateKey:   "wi-default-canvas",
+		Version:       1,
+		ProfileCode:   "wi",
+		SchemaVersion: 1,
+		Name:          "WI Default Canvas v1",
+		Editor:        "ckeditor5",
+		ContentFormat: "html",
+		Body:          `<section><p>wi</p></section>`,
+		CreatedAt:     time.Unix(3, 0).UTC(),
+	}); err != nil {
+		t.Fatalf("upsert template version: %v", err)
+	}
 
 	items, err := service.ListDocumentTemplates(ctx, "po")
 	if err != nil {
 		t.Fatalf("ListDocumentTemplates() error = %v", err)
 	}
-	if len(items) != 1 {
-		t.Fatalf("template count = %d, want 1", len(items))
+	if len(items) != 2 {
+		t.Fatalf("template count = %d, want 2", len(items))
 	}
 	if items[0].TemplateKey != "po-default-canvas" || items[0].Version != 1 {
-		t.Fatalf("template = %#v, want po-default-canvas v1", items[0])
+		t.Fatalf("template[0] = %#v, want po-default-canvas v1", items[0])
 	}
-	if !items[0].IsBrowserHTML() {
-		t.Fatalf("template metadata = %#v, want browser html", items[0])
+	if items[1].TemplateKey != "po-governed-canvas" || items[1].Version != 2 {
+		t.Fatalf("template[1] = %#v, want po-governed-canvas v2", items[1])
+	}
+	for _, item := range items {
+		if !item.IsBrowserHTML() {
+			t.Fatalf("template metadata = %#v, want browser html", item)
+		}
+		if item.ProfileCode != "po" {
+			t.Fatalf("template profile = %q, want po", item.ProfileCode)
+		}
 	}
 }
 

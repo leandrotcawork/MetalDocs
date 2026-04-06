@@ -44,6 +44,7 @@ type Repository interface {
 	UpdateVersionBodyBlocks(ctx context.Context, documentID string, versionNumber int, bodyBlocks []EtapaBody) error
 	UpdateVersionValues(ctx context.Context, documentID string, versionNumber int, values DocumentValues) error
 	GetDocumentTemplateVersion(ctx context.Context, templateKey string, version int) (DocumentTemplateVersion, error)
+	ListDocumentTemplateVersions(ctx context.Context, profileCode string) ([]DocumentTemplateVersion, error)
 	GetDefaultDocumentTemplate(ctx context.Context, profileCode string) (DocumentTemplateVersion, error)
 	GetDocumentTemplateAssignment(ctx context.Context, documentID string) (DocumentTemplateAssignment, error)
 	UpsertDocumentTemplateAssignment(ctx context.Context, item DocumentTemplateAssignment) error

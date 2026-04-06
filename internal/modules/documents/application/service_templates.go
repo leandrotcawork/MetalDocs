@@ -39,33 +39,38 @@ func (s *Service) ListDocumentTemplates(ctx context.Context, profileCode string)
 		return nil, err
 	}
 
-	selectedProfiles := make([]domain.DocumentProfile, 0, len(profiles))
+	allowedProfiles := make(map[string]struct{}, len(profiles))
 	if normalizedProfileCode != "" {
+		found := false
 		for _, item := range profiles {
 			if strings.EqualFold(item.Code, normalizedProfileCode) {
-				selectedProfiles = append(selectedProfiles, item)
+				allowedProfiles[strings.ToLower(strings.TrimSpace(item.Code))] = struct{}{}
+				found = true
 				break
 			}
 		}
-		if len(selectedProfiles) == 0 {
+		if !found {
 			return nil, domain.ErrInvalidCommand
 		}
 	} else {
-		selectedProfiles = profiles
+		for _, profile := range profiles {
+			allowedProfiles[strings.ToLower(strings.TrimSpace(profile.Code))] = struct{}{}
+		}
 	}
 
-	items := make([]domain.DocumentTemplateVersion, 0, len(selectedProfiles))
-	for _, profile := range selectedProfiles {
-		item, err := s.repo.GetDefaultDocumentTemplate(ctx, profile.Code)
-		if err != nil {
-			if errors.Is(err, domain.ErrDocumentTemplateNotFound) {
-				continue
-			}
-			return nil, err
-		}
-		items = append(items, item)
+	items, err := s.repo.ListDocumentTemplateVersions(ctx, normalizedProfileCode)
+	if err != nil {
+		return nil, err
 	}
-	return items, nil
+
+	filtered := make([]domain.DocumentTemplateVersion, 0, len(items))
+	for _, item := range items {
+		if _, ok := allowedProfiles[strings.ToLower(strings.TrimSpace(item.ProfileCode))]; !ok {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+	return filtered, nil
 }
 
 func (s *Service) AssignDocumentTemplateAuthorized(ctx context.Context, item domain.DocumentTemplateAssignment) (domain.DocumentTemplateAssignment, error) {

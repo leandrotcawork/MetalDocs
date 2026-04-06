@@ -639,6 +639,36 @@ func (r *Repository) GetDocumentTemplateVersion(_ context.Context, templateKey s
 	return cloneDocumentTemplateVersion(item), nil
 }
 
+func (r *Repository) ListDocumentTemplateVersions(_ context.Context, profileCode string) ([]domain.DocumentTemplateVersion, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	normalizedProfileCode := strings.ToLower(strings.TrimSpace(profileCode))
+	templateKeys := make([]string, 0, len(r.templateVersions))
+	for templateKey := range r.templateVersions {
+		templateKeys = append(templateKeys, templateKey)
+	}
+	sort.Strings(templateKeys)
+
+	items := make([]domain.DocumentTemplateVersion, 0)
+	for _, templateKey := range templateKeys {
+		versions := r.templateVersions[templateKey]
+		versionNumbers := make([]int, 0, len(versions))
+		for version := range versions {
+			versionNumbers = append(versionNumbers, version)
+		}
+		sort.Sort(sort.Reverse(sort.IntSlice(versionNumbers)))
+		for _, version := range versionNumbers {
+			item := versions[version]
+			if normalizedProfileCode != "" && !strings.EqualFold(item.ProfileCode, normalizedProfileCode) {
+				continue
+			}
+			items = append(items, cloneDocumentTemplateVersion(item))
+		}
+	}
+	return items, nil
+}
+
 func (r *Repository) GetDefaultDocumentTemplate(_ context.Context, profileCode string) (domain.DocumentTemplateVersion, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

@@ -25,6 +25,16 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
   const [errorCode, setErrorCode] = useState<"load" | "save" | "conflict" | null>(null);
   const [saveLabel, setSaveLabel] = useState("Nao salvo");
   const toolbarHostRef = useRef<HTMLDivElement | null>(null);
+  const bundleRef = useRef<DocumentBrowserEditorBundleResponse | null>(null);
+  const errorCodeRef = useRef<"load" | "save" | "conflict" | null>(null);
+
+  useEffect(() => {
+    bundleRef.current = bundle;
+  }, [bundle]);
+
+  useEffect(() => {
+    errorCodeRef.current = errorCode;
+  }, [errorCode]);
 
   const loadBundle = useCallback(async (activeRef?: { cancelled: boolean }) => {
     if (!document.documentId.trim()) {
@@ -55,9 +65,17 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
       if (activeRef?.cancelled) {
         return;
       }
+      const hadBundle = bundleRef.current !== null;
+      const hadConflict = errorCodeRef.current === "conflict";
+      setViewState("error");
+      if (hadBundle && hadConflict) {
+        setErrorCode("conflict");
+        setErrorMessage("Nao foi possivel recarregar o documento. Verifique a conexao e tente novamente.");
+        setSaveLabel("Conflito de rascunho");
+        return;
+      }
       setBundle(null);
       setEditorData("");
-      setViewState("error");
       setErrorCode("load");
       setErrorMessage("Nao foi possivel carregar o bundle do editor do documento.");
       setSaveLabel("Erro");

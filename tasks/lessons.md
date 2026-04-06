@@ -1019,3 +1019,10 @@ Wrong:   `ListDocumentTemplates` looped active profiles and returned only `GetDe
 Correct: `ListDocumentTemplates` reads `ListDocumentTemplateVersions(profileCode)` and returns the assignable template catalog filtered to active profiles
 Rule:    Listing endpoints for assignment workflows must expose the full assignable catalog, while defaults remain a separate resolution path.
 Layer:   application
+
+## Lesson EL - Session-protected Playwright API requests must send same-site Origin
+Date: 2026-04-05 | Trigger: correction
+Wrong:   Browser e2e used `page.context().request` for authenticated calls without an `Origin` header and hit `AUTH_INVALID_ORIGIN`
+Correct: Add `Origin: http://127.0.0.1:4173` to authenticated Playwright APIRequestContext calls that rely on session cookies
+Rule:    When backend session middleware enforces origin checks, e2e API calls must include an explicit same-site origin header.
+Layer:   process

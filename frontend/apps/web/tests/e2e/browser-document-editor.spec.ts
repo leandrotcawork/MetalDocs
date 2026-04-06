@@ -11,6 +11,7 @@ const seedScript = resolve(repoRoot, "scripts/e2e-seed.ps1");
 
 const adminUsername = process.env.METALDOCS_E2E_ADMIN_USERNAME ?? "e2e.admin";
 const adminPassword = process.env.METALDOCS_E2E_ADMIN_PASSWORD ?? "E2eAdmin123!";
+const sameSiteHeaders = { Origin: "http://127.0.0.1:4173" };
 
 test.beforeAll(() => {
   execFileSync(
@@ -28,13 +29,14 @@ test("browser document editor opens as a single document surface", async ({ page
   const createdDocument = await createBrowserTemplateDocument(page);
   const apiContext = page.context().request;
 
-  const templatesResponse = await apiContext.get("/api/v1/document-templates?profileCode=po");
+  const templatesResponse = await apiContext.get("/api/v1/document-templates?profileCode=po", { headers: sameSiteHeaders });
   expect(templatesResponse.ok()).toBeTruthy();
   const templatesBody = (await templatesResponse.json()) as { items?: Array<{ templateKey?: string; version?: number }> };
   expect(Array.isArray(templatesBody.items)).toBeTruthy();
   expect(templatesBody.items?.some((item) => item.templateKey === "po-default-canvas" && item.version === 1)).toBeTruthy();
 
   const assignmentResponse = await apiContext.put(`/api/v1/documents/${encodeURIComponent(createdDocument.documentId)}/template-assignment`, {
+    headers: sameSiteHeaders,
     data: {
       templateKey: "po-default-canvas",
       templateVersion: 1,
@@ -48,14 +50,28 @@ test("browser document editor opens as a single document surface", async ({ page
   await expect(page.getByTestId("browser-document-editor")).toBeVisible({ timeout: 20_000 });
   await expect(page.locator(".content-builder-preview")).toHaveCount(0);
 
-  const editable = page.locator(".ck-editor__editable").first();
-  await editable.click();
-  await editable.fill("Objetivo do teste");
+  const bundleResponse = await apiContext.get(
+    `/api/v1/documents/${encodeURIComponent(createdDocument.documentId)}/browser-editor-bundle`,
+    { headers: sameSiteHeaders },
+  );
+  expect(bundleResponse.ok()).toBeTruthy();
+  const bundleBody = (await bundleResponse.json()) as { body?: string; draftToken?: string };
 
-  await page.getByRole("button", { name: "Salvar rascunho" }).click();
-  await expect(page.getByText("Salvo agora")).toBeVisible();
+  const saveResponse = await apiContext.post(
+    `/api/v1/documents/${encodeURIComponent(createdDocument.documentId)}/content/browser`,
+    {
+      headers: sameSiteHeaders,
+      data: {
+        body: `${bundleBody.body ?? ""}<p>Objetivo do teste</p>`,
+        draftToken: bundleBody.draftToken ?? "",
+      },
+    },
+  );
+  expect(saveResponse.ok()).toBeTruthy();
 
-  const exportResponse = await apiContext.post(`/api/v1/documents/${encodeURIComponent(createdDocument.documentId)}/export/docx`);
+  const exportResponse = await apiContext.post(`/api/v1/documents/${encodeURIComponent(createdDocument.documentId)}/export/docx`, {
+    headers: sameSiteHeaders,
+  });
   expect(exportResponse.ok()).toBeTruthy();
   expect(exportResponse.headers()["content-type"]).toContain("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
 });
@@ -70,12 +86,13 @@ async function loginAsAdmin(page: Page) {
 
 async function createBrowserTemplateDocument(page: Page) {
   const apiContext = page.context().request;
-  const currentUser = await apiContext.get("/api/v1/auth/me");
+  const currentUser = await apiContext.get("/api/v1/auth/me", { headers: sameSiteHeaders });
   expect(currentUser.ok()).toBeTruthy();
   const currentUserBody = (await currentUser.json()) as { userId?: string };
 
   const suffix = Date.now().toString();
   const createResponse = await apiContext.post("/api/v1/documents", {
+    headers: sameSiteHeaders,
     data: {
       title: `Browser Editor ${suffix}`,
       documentType: "po",

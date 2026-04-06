@@ -234,8 +234,10 @@ func TestCreateDocumentSeedsBrowserTemplateBody(t *testing.T) {
 	if version.ContentSource != domain.ContentSourceBrowserEditor {
 		t.Fatalf("content source = %q, want %q", version.ContentSource, domain.ContentSourceBrowserEditor)
 	}
-	if !strings.HasPrefix(version.TextContent, "Procedimento Operacional") {
-		t.Fatalf("text content = %q, want prefix 'Procedimento Operacional'", version.TextContent)
+	// The new browser template uses the React DocumentEditorHeader for the title;
+	// body content starts with the first editable section.
+	if !strings.HasPrefix(version.TextContent, "2. Identificação do Processo") {
+		t.Fatalf("text content = %q, want prefix '2. Identificação do Processo'", version.TextContent)
 	}
 	if version.TemplateKey != "po-default-browser" || version.TemplateVersion != 1 {
 		t.Fatalf("template snapshot = %q/%d, want po-default-browser/1", version.TemplateKey, version.TemplateVersion)

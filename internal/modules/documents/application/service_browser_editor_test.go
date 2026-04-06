@@ -329,7 +329,8 @@ func TestNewPODocumentGetsBrowserTemplateInBundle(t *testing.T) {
 	if bundle.Body == "" {
 		t.Fatal("bundle body is empty")
 	}
-	if !strings.Contains(bundle.Body, "Procedimento Operacional") {
+	// Title is rendered by DocumentEditorHeader React component; body starts with the first section.
+	if !strings.Contains(bundle.Body, "Identificação do Processo") {
 		t.Fatal("bundle body does not contain template content")
 	}
 	if bundle.DraftToken == "" {

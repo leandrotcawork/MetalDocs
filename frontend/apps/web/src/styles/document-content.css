@@ -1,0 +1,143 @@
+/* ================================================================
+   MetalDocs — Document Content Design System
+   Imported into every browser editor via BrowserDocumentEditorView.tsx.
+   All rules scoped to .ck-content — safe for global import.
+   New templates just use these classes. No per-template CSS ever.
+   ================================================================ */
+
+/* ── Shell ─────────────────────────────────────────────────────── */
+.ck-content .md-doc-shell {
+  font-family: "DM Sans", sans-serif;
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: #1a0e0e;
+  max-width: 820px;
+  margin-left: auto;
+  margin-right: auto;
+  background: #ffffff;
+  padding: 2rem;
+}
+
+/* ── Section ───────────────────────────────────────────────────── */
+.ck-content .md-section {
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #e8dede;
+}
+
+.ck-content .md-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.ck-content .md-section > h2 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #3e1018;
+  padding-left: 0.8rem;
+  border-left: 3px solid #6b1f2a;
+  margin-top: 0;
+  margin-bottom: 1.25rem;
+  line-height: 1.4;
+}
+
+.ck-content .md-section-hint {
+  font-size: 0.87rem;
+  color: #7a6060;
+  font-style: italic;
+  margin-top: -0.5rem;
+  margin-bottom: 1rem;
+}
+
+/* ── Field ─────────────────────────────────────────────────────── */
+.ck-content .md-field {
+  margin-bottom: 1rem;
+}
+
+.ck-content .md-field > .md-field-label {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #483030;
+  margin-bottom: 0.25rem;
+  margin-top: 0;
+}
+
+.ck-content .md-field .restricted-editing-exception {
+  display: block;
+  background: #f9f3f3;
+  border: 1px solid #dfc8c8;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  min-height: 2rem;
+  font-size: 0.93rem;
+  color: #7a6060;
+}
+
+.ck-content .md-field .restricted-editing-exception p {
+  margin: 0;
+}
+
+/* ── Free Block ────────────────────────────────────────────────── */
+.ck-content .md-free-block {
+  border-left: 3px solid #dfc8c8;
+  background: #f9f3f3;
+  border-radius: 0 8px 8px 0;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.ck-content .md-free-block h3 {
+  font-size: 0.97rem;
+  font-weight: 700;
+  color: #3e1018;
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
+
+.ck-content .md-free-block p {
+  margin-top: 0;
+  color: #483030;
+}
+
+.ck-content .md-free-block p:last-child {
+  margin-bottom: 0;
+}
+
+/* ── Table ─────────────────────────────────────────────────────── */
+.ck-content .md-table {
+  width: 100%;
+  margin-bottom: 0;
+  overflow-x: auto;
+}
+
+.ck-content .md-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.ck-content .md-table thead tr {
+  background: #6b1f2a;
+  color: #ffffff;
+}
+
+.ck-content .md-table thead th {
+  padding: 0.55rem 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.82rem;
+  letter-spacing: 0.03em;
+  border: none;
+}
+
+.ck-content .md-table tbody tr:nth-child(even) {
+  background: #f9f3f3;
+}
+
+.ck-content .md-table tbody td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #e8dede;
+  color: #483030;
+  vertical-align: top;
+  word-break: break-word;
+}

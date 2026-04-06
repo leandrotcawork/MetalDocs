@@ -9,6 +9,8 @@ import { formatDocumentDisplayName } from "../../shared/documentDisplay";
 import { normalizeDocumentProfileCode } from "../../shared/documentProfile";
 import { browserDocumentEditorClass, browserDocumentEditorConfig } from "./ckeditorConfig";
 import styles from "./BrowserDocumentEditorView.module.css";
+import "../../../styles/document-content.css";
+import { DocumentEditorHeader } from "./DocumentEditorHeader";
 
 type BrowserDocumentEditorViewProps = {
   document: DocumentListItem;
@@ -266,6 +268,7 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
               </div>
             </div>
           ) : null}
+          <DocumentEditorHeader bundle={bundle} />
           <div className={styles.toolbarShell} ref={toolbarHostRef} />
           <div className={styles.editorShell}>
             <CKEditor

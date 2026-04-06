@@ -48,6 +48,7 @@ test("browser document editor opens as a single document surface", async ({ page
   await page.getByRole("button", { name: "Abrir documento" }).click();
 
   await expect(page.getByTestId("browser-document-editor")).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId("document-editor-header")).toBeVisible({ timeout: 5_000 });
 
   const editable = page.locator(".ck-editor__editable").first();
   await expect(editable).toBeVisible();
@@ -113,6 +114,7 @@ test("native create flow opens the browser editor with a persisted document id",
 
   await expect(page.getByTestId("browser-document-editor")).toBeVisible({ timeout: 20_000 });
   await expect(page.locator(".ck-editor__editable")).toBeVisible();
+  await expect(page.getByTestId("document-editor-header")).toBeVisible({ timeout: 5_000 });
 });
 
 async function loginAsAdmin(page: Page) {

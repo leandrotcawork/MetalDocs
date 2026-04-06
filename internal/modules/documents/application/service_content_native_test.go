@@ -1,9 +1,11 @@
 package application
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -94,6 +96,76 @@ func TestRenderContentPDFAuthorizedCachesGeneratedDocxKey(t *testing.T) {
 	pdfKey := documentContentStorageKey(doc.ID, 1, "pdf")
 	if version.PdfStorageKey != pdfKey {
 		t.Fatalf("pdf storage key = %q, want %q", version.PdfStorageKey, pdfKey)
+	}
+}
+
+func TestExportBrowserContentUsesBrowserDocgenRoute(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, time.April, 5, 12, 0, 0, 0, time.UTC)
+	repo := documentmemory.NewRepository()
+	store := documentmemory.NewAttachmentStore()
+
+	doc := seedDraftDocument(t, ctx, repo, now)
+	seedCompatiblePOProfileSchemaSet(t, repo)
+	if err := repo.SaveVersion(ctx, domain.Version{
+		DocumentID:      doc.ID,
+		Number:          1,
+		Content:         `<section><p>Atualizado</p></section>`,
+		ContentHash:     contentHash(`<section><p>Atualizado</p></section>`),
+		ChangeSummary:   "Initial version",
+		ContentSource:   domain.ContentSourceBrowserEditor,
+		TextContent:     "Atualizado",
+		TemplateKey:     "po-default-canvas",
+		TemplateVersion: 1,
+		CreatedAt:       now,
+	}); err != nil {
+		t.Fatalf("save version: %v", err)
+	}
+
+	payloadCh := make(chan []byte, 1)
+	docgenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/generate-browser" {
+			t.Fatalf("docgen path = %q, want /generate-browser", r.URL.Path)
+		}
+		raw, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("read docgen payload: %v", err)
+		}
+		payloadCh <- raw
+		w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+		_, _ = w.Write([]byte("docx-binary"))
+	}))
+	defer docgenServer.Close()
+
+	gotenbergServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/forms/libreoffice/convert" {
+			t.Fatalf("gotenberg path = %q, want /forms/libreoffice/convert", r.URL.Path)
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("%PDF-1.4"))
+	}))
+	defer gotenbergServer.Close()
+
+	service := NewService(repo, nil, fixedClock{now: now}).
+		WithAttachmentStore(store).
+		WithDocgenClient(docgen.NewClient(config.DocgenConfig{
+			Enabled:               true,
+			APIURL:                docgenServer.URL,
+			RequestTimeoutSeconds: 1,
+		})).
+		WithGotenberg(gotenberg.NewClient(gotenbergServer.URL))
+
+	if _, err := service.RenderContentPDFAuthorized(ctx, doc.ID, "trace-test"); err != nil {
+		t.Fatalf("RenderContentPDFAuthorized() error = %v", err)
+	}
+
+	select {
+	case raw := <-payloadCh:
+		if !bytes.Contains(raw, []byte(`"html":"<section><p>Atualizado</p></section>"`)) {
+			t.Fatalf("payload = %s", raw)
+		}
+	default:
+		t.Fatal("expected browser docgen payload")
 	}
 }
 

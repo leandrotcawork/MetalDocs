@@ -12,6 +12,7 @@ import (
 
 	"metaldocs/internal/modules/documents/domain"
 	"metaldocs/internal/platform/messaging"
+	"metaldocs/internal/platform/render/docgen"
 )
 
 func (s *Service) UploadDocxContentAuthorized(ctx context.Context, cmd domain.UploadDocxContentCommand) (domain.Version, error) {
@@ -158,4 +159,19 @@ func (s *Service) convertDocxToPDF(ctx context.Context, content []byte, traceID 
 		return nil, fmt.Errorf("gotenberg client not configured: PDF conversion unavailable")
 	}
 	return s.gotenbergClient.ConvertDocxToPDF(ctx, content)
+}
+
+func (s *Service) generateBrowserDocxBytes(ctx context.Context, doc domain.Document, version domain.Version, traceID string) ([]byte, error) {
+	if s.docgenClient == nil {
+		return nil, domain.ErrRenderUnavailable
+	}
+	if strings.TrimSpace(version.Content) == "" {
+		return nil, domain.ErrInvalidCommand
+	}
+	return s.docgenClient.GenerateBrowser(ctx, docgen.BrowserRenderPayload{
+		DocumentCode: doc.DocumentCode,
+		Title:        doc.Title,
+		Version:      fmt.Sprintf("%d", version.Number),
+		HTML:         version.Content,
+	}, traceID)
 }

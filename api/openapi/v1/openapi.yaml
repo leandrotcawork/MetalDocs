@@ -297,6 +297,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
+  /document-templates:
+    get:
+      summary: Lista o catalogo de templates documentais atribuiveis por profile
+      parameters:
+        - in: query
+          name: profileCode
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Catalogo de templates documentais
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDocumentTemplatesResponse'
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
   /document-profiles:
     get:
       summary: Lista os perfis documentais disponiveis
@@ -1994,6 +2027,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
+  /documents/{documentId}/template-assignment:
+    put:
+      summary: Atribui um override de template ao lineage do documento
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentTemplateAssignmentRequest'
+      responses:
+        '200':
+          description: Override de template persistido para o documento
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentTemplateAssignmentResponse'
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '404':
+          description: Documento ou template nao encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
   /documents/{documentId}/collaboration/presence:
     get:
       summary: Lista presencas colaborativas ativas no documento
@@ -2994,6 +3069,57 @@ components:
           enum: [html]
         body:
           type: string
+    DocumentTemplateItem:
+      type: object
+      required: [templateKey, version, profileCode, schemaVersion, name]
+      properties:
+        templateKey:
+          type: string
+        version:
+          type: integer
+          minimum: 1
+        profileCode:
+          type: string
+        schemaVersion:
+          type: integer
+          minimum: 1
+        name:
+          type: string
+        editor:
+          type: string
+        contentFormat:
+          type: string
+    ListDocumentTemplatesResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentTemplateItem'
+    DocumentTemplateAssignmentRequest:
+      type: object
+      required: [templateKey, templateVersion]
+      properties:
+        templateKey:
+          type: string
+        templateVersion:
+          type: integer
+          minimum: 1
+    DocumentTemplateAssignmentResponse:
+      type: object
+      required: [documentId, templateKey, templateVersion, assignedAt]
+      properties:
+        documentId:
+          type: string
+        templateKey:
+          type: string
+        templateVersion:
+          type: integer
+          minimum: 1
+        assignedAt:
+          type: string
+          format: date-time
     DocumentTemplateNodeResponse:
       oneOf:
         - $ref: '#/components/schemas/DocumentTemplatePageNodeResponse'

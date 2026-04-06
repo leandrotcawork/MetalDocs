@@ -46,3 +46,10 @@ type RenderField struct {
 	Columns    []RenderField `json:"columns,omitempty"`
 	ItemFields []RenderField `json:"itemFields,omitempty"`
 }
+
+type BrowserRenderPayload struct {
+	DocumentCode string `json:"documentCode"`
+	Title        string `json:"title"`
+	Version      string `json:"version,omitempty"`
+	HTML         string `json:"html"`
+}

@@ -35,6 +35,52 @@ func TestHandleDocumentBrowserContentPost(t *testing.T) {
 	}
 }
 
+func TestHandleDocumentTemplatesGetAndAssignmentPut(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, time.April, 5, 12, 0, 0, 0, time.UTC)
+	repo := documentmemory.NewRepository()
+	service := application.NewService(repo, nil, applicationFixedClock{now: now})
+	doc := seedBrowserHandlerDocument(t, ctx, repo, now, `<section><p>Original</p></section>`)
+	if err := repo.UpsertDocumentTemplateVersionForTest(ctx, domain.DocumentTemplateVersion{
+		TemplateKey:   "po-browser-override",
+		Version:       2,
+		ProfileCode:   "po",
+		SchemaVersion: 3,
+		Name:          "PO Browser Override",
+		Editor:        "ckeditor5",
+		ContentFormat: "html",
+		Body:          `<section><p>Override</p></section>`,
+		CreatedAt:     time.Unix(1, 0).UTC(),
+	}); err != nil {
+		t.Fatalf("upsert template version: %v", err)
+	}
+	handler := NewHandler(service)
+
+	listReq := httptest.NewRequest(http.MethodGet, "/api/v1/document-templates?profileCode=po", nil)
+	listRec := httptest.NewRecorder()
+	handler.handleDocumentTemplates(listRec, listReq)
+	if listRec.Code != http.StatusOK {
+		t.Fatalf("list status = %d, want %d", listRec.Code, http.StatusOK)
+	}
+	if !strings.Contains(listRec.Body.String(), `"templateKey":"po-default-canvas"`) {
+		t.Fatalf("list body = %s", listRec.Body.String())
+	}
+
+	assignReq := httptest.NewRequest(http.MethodPut, "/api/v1/documents/"+doc.ID+"/template-assignment", strings.NewReader(`{"templateKey":"po-browser-override","templateVersion":2}`))
+	assignReq.Header.Set("Content-Type", "application/json")
+	assignRec := httptest.NewRecorder()
+	handler.handleDocumentTemplateAssignmentPut(assignRec, assignReq, doc.ID)
+	if assignRec.Code != http.StatusOK {
+		t.Fatalf("assign status = %d, want %d", assignRec.Code, http.StatusOK)
+	}
+	if !strings.Contains(assignRec.Body.String(), `"templateKey":"po-browser-override"`) {
+		t.Fatalf("assign body = %s", assignRec.Body.String())
+	}
+	if !strings.Contains(assignRec.Body.String(), `"templateVersion":2`) {
+		t.Fatalf("assign body = %s", assignRec.Body.String())
+	}
+}
+
 type applicationFixedClock struct {
 	now time.Time
 }

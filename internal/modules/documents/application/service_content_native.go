@@ -266,6 +266,31 @@ func (s *Service) RenderContentPDFAuthorized(ctx context.Context, documentID, tr
 		if err != nil {
 			return domain.Version{}, err
 		}
+	case domain.ContentSourceBrowserEditor:
+		var docxBytes []byte
+		if strings.TrimSpace(version.DocxStorageKey) != "" {
+			docxBytes, err = s.OpenContentStorage(ctx, version.DocxStorageKey)
+			if err != nil {
+				return domain.Version{}, err
+			}
+		} else {
+			docxBytes, err = s.generateBrowserDocxBytes(ctx, doc, version, traceID)
+			if err != nil {
+				return domain.Version{}, err
+			}
+			docxKey := documentContentStorageKey(doc.ID, version.Number, "docx")
+			if saveErr := s.attachmentStore.Save(ctx, docxKey, docxBytes); saveErr == nil {
+				if err := s.repo.UpdateVersionDocx(ctx, doc.ID, version.Number, docxKey); err != nil {
+					_ = s.attachmentStore.Delete(ctx, docxKey)
+					return domain.Version{}, err
+				}
+				version.DocxStorageKey = docxKey
+			}
+		}
+		pdfBytes, err = s.convertDocxToPDF(ctx, docxBytes, traceID)
+		if err != nil {
+			return domain.Version{}, err
+		}
 	default:
 		content := version.NativeContent
 		if len(content) == 0 && strings.TrimSpace(version.Content) != "" {

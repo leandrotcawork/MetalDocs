@@ -15,6 +15,8 @@ import type {
   DocumentListItem,
   DocumentProfileGovernanceItem,
   DocumentProfileSchemaItem,
+  DocumentTemplateAssignmentItem,
+  DocumentTemplateItem,
   DocumentTemplateSnapshotItem,
   SearchDocumentItem,
   VersionDiffResponse,
@@ -178,6 +180,27 @@ function normalizeDocumentBrowserTemplateSnapshot(value: DocumentBrowserTemplate
   };
 }
 
+function normalizeDocumentTemplateItem(value: DocumentTemplateItem): DocumentTemplateItem {
+  return {
+    templateKey: value?.templateKey ?? "",
+    version: Number(value?.version ?? 0),
+    profileCode: value?.profileCode ?? "",
+    schemaVersion: Number(value?.schemaVersion ?? 0),
+    name: value?.name ?? "",
+    editor: typeof value?.editor === "string" && value.editor.trim() ? value.editor : undefined,
+    contentFormat: typeof value?.contentFormat === "string" && value.contentFormat.trim() ? value.contentFormat : undefined,
+  };
+}
+
+function normalizeDocumentTemplateAssignmentItem(value: DocumentTemplateAssignmentItem): DocumentTemplateAssignmentItem {
+  return {
+    documentId: value?.documentId ?? "",
+    templateKey: value?.templateKey ?? "",
+    templateVersion: Number(value?.templateVersion ?? 0),
+    assignedAt: value?.assignedAt ?? "",
+  };
+}
+
 function normalizeAccessPolicyItem(value: AccessPolicyItem): AccessPolicyItem {
   return {
     subjectType: value?.subjectType ?? "user",
@@ -284,6 +307,25 @@ export async function getDocumentEditorBundle(documentId: string) {
 export async function getDocumentBrowserEditorBundle(documentId: string) {
   return normalizeDocumentBrowserEditorBundle(
     await request<DocumentBrowserEditorBundleResponse>(`/documents/${encodeURIComponent(documentId)}/browser-editor-bundle`),
+  );
+}
+
+export async function listDocumentTemplates(profileCode?: string) {
+  const params = new URLSearchParams();
+  if (typeof profileCode === "string" && profileCode.trim()) {
+    params.set("profileCode", profileCode.trim());
+  }
+  const suffix = params.toString();
+  const response = await request<{ items: DocumentTemplateItem[] }>(`/document-templates${suffix ? `?${suffix}` : ""}`);
+  return { items: Array.isArray(response.items) ? response.items.map(normalizeDocumentTemplateItem) : [] };
+}
+
+export async function assignDocumentTemplate(documentId: string, body: { templateKey: string; templateVersion: number }) {
+  return normalizeDocumentTemplateAssignmentItem(
+    await request<DocumentTemplateAssignmentItem>(`/documents/${encodeURIComponent(documentId)}/template-assignment`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
   );
 }
 

@@ -242,6 +242,75 @@ func TestCreateDocumentSeedsBrowserTemplateBody(t *testing.T) {
 	}
 }
 
+func TestListDocumentTemplatesReturnsProfileDefaults(t *testing.T) {
+	ctx := context.Background()
+	repo := documentmemory.NewRepository()
+	service := NewService(repo, nil, nil)
+
+	items, err := service.ListDocumentTemplates(ctx, "po")
+	if err != nil {
+		t.Fatalf("ListDocumentTemplates() error = %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("template count = %d, want 1", len(items))
+	}
+	if items[0].TemplateKey != "po-default-canvas" || items[0].Version != 1 {
+		t.Fatalf("template = %#v, want po-default-canvas v1", items[0])
+	}
+	if !items[0].IsBrowserHTML() {
+		t.Fatalf("template metadata = %#v, want browser html", items[0])
+	}
+}
+
+func TestAssignDocumentTemplateAuthorizedPersistsDocumentOverride(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, time.April, 5, 12, 0, 0, 0, time.UTC)
+	repo := documentmemory.NewRepository()
+	service := NewService(repo, nil, fixedClock{now: now})
+
+	seedCompatiblePOProfileSchemaSet(t, repo)
+	doc := seedDraftDocument(t, ctx, repo, now)
+	if err := repo.UpsertDocumentTemplateVersionForTest(ctx, domain.DocumentTemplateVersion{
+		TemplateKey:   "po-browser-override",
+		Version:       2,
+		ProfileCode:   "po",
+		SchemaVersion: 3,
+		Name:          "PO Browser Override",
+		Editor:        "ckeditor5",
+		ContentFormat: "html",
+		Body:          `<section><p>Override</p></section>`,
+		CreatedAt:     time.Unix(1, 0).UTC(),
+	}); err != nil {
+		t.Fatalf("upsert template version: %v", err)
+	}
+
+	assignment, err := service.AssignDocumentTemplateAuthorized(ctx, domain.DocumentTemplateAssignment{
+		DocumentID:      doc.ID,
+		TemplateKey:     "po-browser-override",
+		TemplateVersion: 2,
+	})
+	if err != nil {
+		t.Fatalf("AssignDocumentTemplateAuthorized() error = %v", err)
+	}
+	if assignment.DocumentID != doc.ID {
+		t.Fatalf("document id = %q, want %q", assignment.DocumentID, doc.ID)
+	}
+	if assignment.TemplateKey != "po-browser-override" || assignment.TemplateVersion != 2 {
+		t.Fatalf("assignment = %#v, want po-browser-override v2", assignment)
+	}
+	if !assignment.AssignedAt.Equal(now) {
+		t.Fatalf("assigned at = %s, want %s", assignment.AssignedAt, now)
+	}
+
+	stored, err := repo.GetDocumentTemplateAssignment(ctx, doc.ID)
+	if err != nil {
+		t.Fatalf("GetDocumentTemplateAssignment() error = %v", err)
+	}
+	if stored.TemplateKey != "po-browser-override" || stored.TemplateVersion != 2 {
+		t.Fatalf("stored assignment = %#v, want po-browser-override v2", stored)
+	}
+}
+
 func seedDocumentProfileSchema(t *testing.T, repo *documentmemory.Repository, item domain.DocumentProfileSchemaVersion) {
 	t.Helper()
 

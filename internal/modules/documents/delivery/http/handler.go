@@ -124,6 +124,32 @@ type DocumentBrowserEditorBundleResponse struct {
 	DraftToken       string                            `json:"draftToken"`
 }
 
+type DocumentTemplateResponse struct {
+	TemplateKey   string `json:"templateKey"`
+	Version       int    `json:"version"`
+	ProfileCode   string `json:"profileCode"`
+	SchemaVersion int    `json:"schemaVersion"`
+	Name          string `json:"name"`
+	Editor        string `json:"editor,omitempty"`
+	ContentFormat string `json:"contentFormat,omitempty"`
+}
+
+type ListDocumentTemplatesResponse struct {
+	Items []DocumentTemplateResponse `json:"items"`
+}
+
+type DocumentTemplateAssignmentRequest struct {
+	TemplateKey     string `json:"templateKey"`
+	TemplateVersion int    `json:"templateVersion"`
+}
+
+type DocumentTemplateAssignmentResponse struct {
+	DocumentID      string `json:"documentId"`
+	TemplateKey     string `json:"templateKey"`
+	TemplateVersion int    `json:"templateVersion"`
+	AssignedAt      string `json:"assignedAt"`
+}
+
 type DocumentContentNativeRequest struct {
 	DraftToken string         `json:"draftToken,omitempty"`
 	Content    map[string]any `json:"content"`
@@ -422,6 +448,7 @@ func (h *Handler) WithAttachmentDownloads(signer *security.AttachmentSigner, ttl
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/document-families", h.handleDocumentFamilies)
 	mux.HandleFunc("/api/v1/document-profiles", h.handleDocumentProfiles)
+	mux.HandleFunc("/api/v1/document-templates", h.handleDocumentTemplates)
 	mux.HandleFunc("/api/v1/document-profiles/", h.handleDocumentProfileSubRoutes)
 	mux.HandleFunc("/api/v1/process-areas", h.handleProcessAreas)
 	mux.HandleFunc("/api/v1/process-areas/", h.handleProcessAreaSubRoutes)
@@ -507,6 +534,35 @@ func (h *Handler) handleDocumentProfiles(w http.ResponseWriter, r *http.Request)
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
+}
+
+func (h *Handler) handleDocumentTemplates(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	traceID := requestTraceID(r)
+	items, err := h.service.ListDocumentTemplates(r.Context(), r.URL.Query().Get("profileCode"))
+	if err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+
+	out := make([]DocumentTemplateResponse, 0, len(items))
+	for _, item := range items {
+		out = append(out, DocumentTemplateResponse{
+			TemplateKey:   item.TemplateKey,
+			Version:       item.Version,
+			ProfileCode:   item.ProfileCode,
+			SchemaVersion: item.SchemaVersion,
+			Name:          item.Name,
+			Editor:        item.Editor,
+			ContentFormat: item.ContentFormat,
+		})
+	}
+
+	writeJSON(w, http.StatusOK, ListDocumentTemplatesResponse{Items: out})
 }
 
 func (h *Handler) handleListDocumentProfiles(w http.ResponseWriter, r *http.Request) {
@@ -1433,6 +1489,10 @@ func (h *Handler) handleDocumentSubRoutes(w http.ResponseWriter, r *http.Request
 		h.handleDocumentBrowserEditorBundle(w, r, parts[0])
 		return
 	}
+	if len(parts) == 2 && strings.TrimSpace(parts[0]) != "" && parts[1] == "template-assignment" && r.Method == http.MethodPut {
+		h.handleDocumentTemplateAssignmentPut(w, r, parts[0])
+		return
+	}
 	if len(parts) == 4 && strings.TrimSpace(parts[0]) != "" && parts[1] == "attachments" && parts[3] == "download-url" && r.Method == http.MethodGet {
 		h.handleCreateAttachmentDownloadURL(w, r, parts[0], parts[2])
 		return
@@ -1640,6 +1700,33 @@ func (h *Handler) handleDocumentBrowserEditorBundle(w http.ResponseWriter, r *ht
 		TemplateSnapshot: mapDocumentTemplateSnapshotResponse(bundle.TemplateSnapshot),
 		Body:             bundle.Body,
 		DraftToken:       bundle.DraftToken,
+	})
+}
+
+func (h *Handler) handleDocumentTemplateAssignmentPut(w http.ResponseWriter, r *http.Request, documentID string) {
+	traceID := requestTraceID(r)
+
+	var req DocumentTemplateAssignmentRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid JSON payload", traceID)
+		return
+	}
+
+	item, err := h.service.AssignDocumentTemplateAuthorized(r.Context(), domain.DocumentTemplateAssignment{
+		DocumentID:      documentID,
+		TemplateKey:     req.TemplateKey,
+		TemplateVersion: req.TemplateVersion,
+	})
+	if err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, DocumentTemplateAssignmentResponse{
+		DocumentID:      item.DocumentID,
+		TemplateKey:     item.TemplateKey,
+		TemplateVersion: item.TemplateVersion,
+		AssignedAt:      item.AssignedAt.UTC().Format(time.RFC3339),
 	})
 }
 

@@ -231,12 +231,24 @@ func (s *Service) ExportDocumentDocxAuthorized(ctx context.Context, documentID, 
 		return nil, domain.ErrRenderUnavailable
 	}
 
-	bundle, err := s.GetDocumentRuntimeBundle(ctx, documentID)
+	doc, err := s.GetDocumentAuthorized(ctx, documentID)
+	if err != nil {
+		return nil, err
+	}
+	version, err := s.latestVersion(ctx, doc.ID)
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(version.ContentSource) == domain.ContentSourceBrowserEditor {
+		return s.generateBrowserDocxBytes(ctx, doc, version, traceID)
+	}
+
+	schema, err := s.resolveActiveProfileSchema(ctx, doc.DocumentProfile)
 	if err != nil {
 		return nil, err
 	}
 
-	payload, err := s.buildDocgenPayload(ctx, bundle.Document, bundle.Schema, bundle.Version, nil)
+	payload, err := s.buildDocgenPayload(ctx, doc, schema, version, nil)
 	if err != nil {
 		return nil, err
 	}

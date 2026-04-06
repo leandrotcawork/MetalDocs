@@ -32,6 +32,87 @@ func (s *Service) ResolveDocumentTemplate(ctx context.Context, documentID, profi
 	return templateVersion, nil
 }
 
+func (s *Service) ListDocumentTemplates(ctx context.Context, profileCode string) ([]domain.DocumentTemplateVersion, error) {
+	normalizedProfileCode := strings.ToLower(strings.TrimSpace(profileCode))
+	profiles, err := s.ListDocumentProfiles(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	selectedProfiles := make([]domain.DocumentProfile, 0, len(profiles))
+	if normalizedProfileCode != "" {
+		for _, item := range profiles {
+			if strings.EqualFold(item.Code, normalizedProfileCode) {
+				selectedProfiles = append(selectedProfiles, item)
+				break
+			}
+		}
+		if len(selectedProfiles) == 0 {
+			return nil, domain.ErrInvalidCommand
+		}
+	} else {
+		selectedProfiles = profiles
+	}
+
+	items := make([]domain.DocumentTemplateVersion, 0, len(selectedProfiles))
+	for _, profile := range selectedProfiles {
+		item, err := s.repo.GetDefaultDocumentTemplate(ctx, profile.Code)
+		if err != nil {
+			if errors.Is(err, domain.ErrDocumentTemplateNotFound) {
+				continue
+			}
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, nil
+}
+
+func (s *Service) AssignDocumentTemplateAuthorized(ctx context.Context, item domain.DocumentTemplateAssignment) (domain.DocumentTemplateAssignment, error) {
+	normalizedDocumentID := strings.TrimSpace(item.DocumentID)
+	normalizedTemplateKey := strings.TrimSpace(item.TemplateKey)
+	if normalizedDocumentID == "" || normalizedTemplateKey == "" || item.TemplateVersion <= 0 {
+		return domain.DocumentTemplateAssignment{}, domain.ErrInvalidCommand
+	}
+
+	doc, err := s.repo.GetDocument(ctx, normalizedDocumentID)
+	if err != nil {
+		return domain.DocumentTemplateAssignment{}, err
+	}
+	allowed, err := s.isAllowed(ctx, doc, domain.CapabilityDocumentEdit)
+	if err != nil {
+		return domain.DocumentTemplateAssignment{}, err
+	}
+	if !allowed {
+		return domain.DocumentTemplateAssignment{}, domain.ErrDocumentNotFound
+	}
+
+	templateVersion, err := s.repo.GetDocumentTemplateVersion(ctx, normalizedTemplateKey, item.TemplateVersion)
+	if err != nil {
+		return domain.DocumentTemplateAssignment{}, err
+	}
+	if !strings.EqualFold(templateVersion.ProfileCode, doc.DocumentProfile) {
+		return domain.DocumentTemplateAssignment{}, domain.ErrInvalidCommand
+	}
+	if err := s.validateDocumentTemplateCompatibility(ctx, templateVersion); err != nil {
+		return domain.DocumentTemplateAssignment{}, err
+	}
+
+	assignment := domain.DocumentTemplateAssignment{
+		DocumentID:      normalizedDocumentID,
+		TemplateKey:     normalizedTemplateKey,
+		TemplateVersion: item.TemplateVersion,
+		AssignedAt:      item.AssignedAt,
+	}
+	if assignment.AssignedAt.IsZero() {
+		assignment.AssignedAt = s.clock.Now()
+	}
+	if err := s.repo.UpsertDocumentTemplateAssignment(ctx, assignment); err != nil {
+		return domain.DocumentTemplateAssignment{}, err
+	}
+	return assignment, nil
+}
+
 func (s *Service) resolveDocumentTemplateOptional(ctx context.Context, documentID, profileCode string) (domain.DocumentTemplateVersion, bool, error) {
 	templateVersion, err := s.ResolveDocumentTemplate(ctx, documentID, profileCode)
 	if err == nil {

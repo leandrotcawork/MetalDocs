@@ -26,6 +26,21 @@ test.beforeAll(() => {
 test("browser document editor opens as a single document surface", async ({ page }) => {
   await loginAsAdmin(page);
   const createdDocument = await createBrowserTemplateDocument(page);
+  const apiContext = page.context().request;
+
+  const templatesResponse = await apiContext.get("/api/v1/document-templates?profileCode=po");
+  expect(templatesResponse.ok()).toBeTruthy();
+  const templatesBody = (await templatesResponse.json()) as { items?: Array<{ templateKey?: string; version?: number }> };
+  expect(Array.isArray(templatesBody.items)).toBeTruthy();
+  expect(templatesBody.items?.some((item) => item.templateKey === "po-default-canvas" && item.version === 1)).toBeTruthy();
+
+  const assignmentResponse = await apiContext.put(`/api/v1/documents/${encodeURIComponent(createdDocument.documentId)}/template-assignment`, {
+    data: {
+      templateKey: "po-default-canvas",
+      templateVersion: 1,
+    },
+  });
+  expect(assignmentResponse.ok()).toBeTruthy();
 
   await page.goto(`/#/documents/doc/${encodeURIComponent(createdDocument.documentId)}`);
   await page.getByRole("button", { name: "Abrir documento" }).click();
@@ -39,6 +54,10 @@ test("browser document editor opens as a single document surface", async ({ page
 
   await page.getByRole("button", { name: "Salvar rascunho" }).click();
   await expect(page.getByText("Salvo agora")).toBeVisible();
+
+  const exportResponse = await apiContext.post(`/api/v1/documents/${encodeURIComponent(createdDocument.documentId)}/export/docx`);
+  expect(exportResponse.ok()).toBeTruthy();
+  expect(exportResponse.headers()["content-type"]).toContain("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
 });
 
 async function loginAsAdmin(page: Page) {

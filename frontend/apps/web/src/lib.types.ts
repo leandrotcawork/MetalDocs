@@ -289,6 +289,23 @@ export interface DocumentBrowserContentSaveResponse {
   draftToken: string;
 }
 
+export interface DocumentTemplateItem {
+  templateKey: string;
+  version: number;
+  profileCode: string;
+  schemaVersion: number;
+  name: string;
+  editor?: string;
+  contentFormat?: string;
+}
+
+export interface DocumentTemplateAssignmentItem {
+  documentId: string;
+  templateKey: string;
+  templateVersion: number;
+  assignedAt: string;
+}
+
 export interface AccessPolicyItem {
   subjectType: "user" | "role" | "group";
   subjectId: string;

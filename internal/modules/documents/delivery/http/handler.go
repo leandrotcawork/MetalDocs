@@ -1402,6 +1402,7 @@ func (h *Handler) handleListDocuments(w http.ResponseWriter, r *http.Request) {
 			Tags:                 append([]string(nil), doc.Tags...),
 			EffectiveAt:          formatOptionalTime(doc.EffectiveAt),
 			ExpiryAt:             formatOptionalTime(doc.ExpiryAt),
+			CreatedAt:            doc.CreatedAt.UTC().Format(time.RFC3339),
 		})
 	}
 
@@ -1557,6 +1558,7 @@ func (h *Handler) handleGetDocument(w http.ResponseWriter, r *http.Request, docu
 		Tags:                 append([]string(nil), doc.Tags...),
 		EffectiveAt:          formatOptionalTime(doc.EffectiveAt),
 		ExpiryAt:             formatOptionalTime(doc.ExpiryAt),
+		CreatedAt:            doc.CreatedAt.UTC().Format(time.RFC3339),
 	})
 }
 
@@ -1632,6 +1634,7 @@ func (h *Handler) handleDocumentEditorBundle(w http.ResponseWriter, r *http.Requ
 			Tags:                 append([]string(nil), bundle.Document.Tags...),
 			EffectiveAt:          formatOptionalTime(bundle.Document.EffectiveAt),
 			ExpiryAt:             formatOptionalTime(bundle.Document.ExpiryAt),
+			CreatedAt:            bundle.Document.CreatedAt.UTC().Format(time.RFC3339),
 		},
 		Versions: versions,
 		Schema: DocumentProfileSchemaResponse{

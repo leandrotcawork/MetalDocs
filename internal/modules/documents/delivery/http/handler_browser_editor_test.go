@@ -143,6 +143,32 @@ func seedBrowserHandlerDocument(t *testing.T, ctx context.Context, repo *documen
 	return doc
 }
 
+func TestHandleDocumentBrowserEditorBundleCreatedAt(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, time.April, 4, 11, 0, 0, 0, time.UTC)
+	repo := documentmemory.NewRepository()
+	service := application.NewService(repo, nil, applicationFixedClock{now: now})
+	doc := seedBrowserHandlerDocument(t, ctx, repo, now, `<section><p>Original</p></section>`)
+	handler := NewHandler(service)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/documents/"+doc.ID+"/browser-editor-bundle", nil)
+	rec := httptest.NewRecorder()
+
+	handler.handleDocumentBrowserEditorBundle(rec, req, doc.ID)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body = %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, `"createdAt":"`) {
+		t.Fatalf("expected createdAt in response, got: %s", body)
+	}
+	wantCreatedAt := now.UTC().Format(time.RFC3339)
+	if !strings.Contains(body, `"createdAt":"`+wantCreatedAt+`"`) {
+		t.Fatalf("expected createdAt %q in response, got: %s", wantCreatedAt, body)
+	}
+}
+
 func seedCompatibleBrowserTemplateSchemaSet(t *testing.T, repo *documentmemory.Repository) {
 	t.Helper()
 

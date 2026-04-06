@@ -142,6 +142,7 @@ export interface DocumentListItem {
   tags: string[];
   effectiveAt?: string;
   expiryAt?: string;
+  createdAt?: string;
 }
 
 export interface SearchDocumentItem extends DocumentListItem {

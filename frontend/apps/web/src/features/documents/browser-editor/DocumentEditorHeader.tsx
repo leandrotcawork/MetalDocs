@@ -9,7 +9,11 @@ export function DocumentEditorHeader({ bundle }: DocumentEditorHeaderProps) {
   const { document, versions } = bundle;
   const latest = versions.length > 0 ? versions[versions.length - 1] : null;
   const revision = latest ? String(latest.version).padStart(2, "0") : "—";
-  const createdAt = latest?.createdAt ? formatDate(latest.createdAt) : "—";
+  const createdAt = document.createdAt
+    ? formatDate(document.createdAt)
+    : latest?.createdAt
+    ? formatDate(latest.createdAt)
+    : "—";
 
   return (
     <div className={styles.header} data-testid="document-editor-header">

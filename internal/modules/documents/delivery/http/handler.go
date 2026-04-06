@@ -69,6 +69,7 @@ type DocumentResponse struct {
 	Tags                 []string `json:"tags"`
 	EffectiveAt          string   `json:"effectiveAt,omitempty"`
 	ExpiryAt             string   `json:"expiryAt,omitempty"`
+	CreatedAt            string   `json:"createdAt,omitempty"`
 }
 
 type DocumentCreatedResponse struct {
@@ -1694,6 +1695,7 @@ func (h *Handler) handleDocumentBrowserEditorBundle(w http.ResponseWriter, r *ht
 			Tags:                 append([]string(nil), bundle.Document.Tags...),
 			EffectiveAt:          formatOptionalTime(bundle.Document.EffectiveAt),
 			ExpiryAt:             formatOptionalTime(bundle.Document.ExpiryAt),
+			CreatedAt:            bundle.Document.CreatedAt.UTC().Format(time.RFC3339),
 		},
 		Versions:         versions,
 		Governance:       mapDocumentProfileGovernanceResponse(bundle.Governance),

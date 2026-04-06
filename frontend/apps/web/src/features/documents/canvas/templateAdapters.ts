@@ -1,5 +1,4 @@
 import type { DocumentTemplateSnapshotItem } from "../../../lib.types";
-import { PO_GOVERNED_CANVAS_TEMPLATE, PO_GOVERNED_CANVAS_TEMPLATE_DEFINITION } from "./pilotTemplates";
 import type { CanvasTemplateNode, CanvasTemplatePage } from "./templateTypes";
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -114,25 +113,10 @@ export function normalizeGovernedCanvasTemplate(
     return null;
   }
 
-  if (
-    snapshot.templateKey !== PO_GOVERNED_CANVAS_TEMPLATE.templateKey ||
-    snapshot.version !== PO_GOVERNED_CANVAS_TEMPLATE.version ||
-    snapshot.profileCode !== PO_GOVERNED_CANVAS_TEMPLATE.profileCode ||
-    snapshot.schemaVersion !== PO_GOVERNED_CANVAS_TEMPLATE.schemaVersion
-  ) {
-    return null;
-  }
-
   const normalized = normalizeTemplateNode(snapshot.definition);
   if (!normalized || normalized.type !== "page") {
     return null;
   }
 
-  if (JSON.stringify(normalized) !== JSON.stringify(PO_GOVERNED_CANVAS_TEMPLATE_DEFINITION)) {
-    return null;
-  }
-
   return normalized;
 }
-
-

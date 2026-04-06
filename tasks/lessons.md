@@ -998,3 +998,17 @@ Wrong:   A browser-content handler fixture only seeded the draft document and ve
 Correct: Seed the exact profile schema version referenced by the browser template before exercising the save path
 Rule:    Template resolution that validates by exact schema version requires fixtures to provide that schema snapshot explicitly.
 Layer:   delivery
+
+## Lesson EI - Browser editor reloads must be explicit
+Date: 2026-04-05 | Trigger: correction
+Wrong:   `loadBundle` depended on `errorCode`, so save/conflict state changes could retrigger the loader and discard unsaved editor content
+Correct: Keep the bundle loader keyed only to document identity and trigger reloads only from the user's explicit retry action
+Rule:    Editor refetches should never be coupled to transient error state.
+Layer:   frontend
+
+## Lesson EJ - Document profile normalization must be shared
+Date: 2026-04-05 | Trigger: correction
+Wrong:   `normalizeDocumentProfileCode` lived inside the legacy builder module and API/profile checks compared profile strings ad hoc
+Correct: Put document profile normalization in a shared frontend helper and reuse it in views and API validation checks
+Rule:    Canonical string normalization should live in one shared utility so profile comparisons stay consistent.
+Layer:   frontend

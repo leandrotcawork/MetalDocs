@@ -26,6 +26,7 @@ import type {
   SchemaDocumentTypeBundleResponse,
 } from "../features/documents/runtime/schemaRuntimeTypes";
 import { normalizeDocumentTypeSchema, normalizeSchemaDocumentEditorBundle } from "../features/documents/runtime/schemaRuntimeAdapters";
+import { normalizeDocumentProfileCode } from "../features/shared/documentProfile";
 import { request, requestBlob } from "./client";
 
 function normalizeStringArray(value: unknown): string[] {
@@ -205,6 +206,8 @@ function normalizeDocumentEditorBundle(value: DocumentEditorBundleResponse): Doc
   const document = normalizeDocumentListItem(value?.document);
   const templateSnapshot = value?.templateSnapshot ? normalizeDocumentTemplateSnapshot(value.templateSnapshot) : undefined;
   const draftToken = typeof value?.draftToken === "string" && value.draftToken.trim() ? value.draftToken.trim() : "";
+  const documentProfileCode = normalizeDocumentProfileCode(document.documentProfile);
+  const templateProfileCode = normalizeDocumentProfileCode(templateSnapshot?.profileCode);
   const hasTemplateSnapshot = Boolean(templateSnapshot);
   const hasDraftToken = Boolean(draftToken);
 
@@ -212,7 +215,7 @@ function normalizeDocumentEditorBundle(value: DocumentEditorBundleResponse): Doc
     throw new Error("Governed canvas bundle missing template snapshot or draft token.");
   }
 
-  if (templateSnapshot && templateSnapshot.profileCode && templateSnapshot.profileCode !== document.documentProfile) {
+  if (templateProfileCode && templateProfileCode !== documentProfileCode) {
     throw new Error("Governed canvas template snapshot profile mismatch.");
   }
 
@@ -233,6 +236,8 @@ function normalizeDocumentBrowserEditorBundle(value: DocumentBrowserEditorBundle
   const templateSnapshot = normalizeDocumentBrowserTemplateSnapshot(value?.templateSnapshot);
   const draftToken = typeof value?.draftToken === "string" ? value.draftToken.trim() : "";
   const body = typeof value?.body === "string" ? value.body : "";
+  const documentProfileCode = normalizeDocumentProfileCode(document.documentProfile);
+  const templateProfileCode = normalizeDocumentProfileCode(templateSnapshot.profileCode);
 
   if (!draftToken) {
     throw new Error("Browser editor bundle missing draft token.");
@@ -242,7 +247,7 @@ function normalizeDocumentBrowserEditorBundle(value: DocumentBrowserEditorBundle
     throw new Error("Browser editor bundle missing template snapshot.");
   }
 
-  if (templateSnapshot.profileCode && templateSnapshot.profileCode !== document.documentProfile) {
+  if (templateProfileCode && templateProfileCode !== documentProfileCode) {
     throw new Error("Browser editor template snapshot profile mismatch.");
   }
 

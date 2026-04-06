@@ -1,6 +1,7 @@
 import type { DocumentListItem } from "../../lib.types";
 import { BrowserDocumentEditorView } from "../../features/documents/browser-editor/BrowserDocumentEditorView";
-import { LegacyContentBuilderView, normalizeDocumentProfileCode } from "./LegacyContentBuilderView";
+import { normalizeDocumentProfileCode } from "../../features/shared/documentProfile";
+import { LegacyContentBuilderView } from "./LegacyContentBuilderView";
 
 type ContentBuilderViewProps = {
   document: DocumentListItem | null;

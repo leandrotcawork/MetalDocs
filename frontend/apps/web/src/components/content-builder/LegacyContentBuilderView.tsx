@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "r
 import { api } from "../../lib.api";
 import type { DocumentListItem, DocumentProfileSchemaItem, DocumentTemplateSnapshotItem } from "../../lib.types";
 import { formatDocumentDisplayName } from "../../features/shared/documentDisplay";
+import { normalizeDocumentProfileCode } from "../../features/shared/documentProfile";
 import { ProgressSidebar } from "../create/widgets/ProgressSidebar";
 import type { StepStatus } from "../create/documentCreateTypes";
 import { DynamicEditor } from "../../features/documents/runtime/DynamicEditor";
@@ -19,10 +20,6 @@ type LegacyContentBuilderViewProps = {
   onBack: () => void;
   onCreateFromDraft?: (contentDraft: Record<string, unknown>) => Promise<{ documentId: string; pdfUrl: string; version: number | null }>;
 };
-
-export function normalizeDocumentProfileCode(value?: string): string {
-  return (value ?? "").trim().toLowerCase();
-}
 
 type BuilderStatus = "loading" | "idle" | "dirty" | "saving" | "rendering" | "error";
 

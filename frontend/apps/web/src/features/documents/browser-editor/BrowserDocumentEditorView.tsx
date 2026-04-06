@@ -6,6 +6,7 @@ import "ckeditor5/ckeditor5.css";
 import { getDocumentBrowserEditorBundle, saveDocumentBrowserContent } from "../../../api/documents";
 import type { DocumentBrowserEditorBundleResponse, DocumentListItem } from "../../../lib.types";
 import { formatDocumentDisplayName } from "../../shared/documentDisplay";
+import { normalizeDocumentProfileCode } from "../../shared/documentProfile";
 import { browserDocumentEditorClass, browserDocumentEditorConfig } from "./ckeditorConfig";
 import styles from "./BrowserDocumentEditorView.module.css";
 
@@ -26,25 +27,19 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
   const toolbarHostRef = useRef<HTMLDivElement | null>(null);
 
   const loadBundle = useCallback(async (activeRef?: { cancelled: boolean }) => {
-    const preserveConflict = errorCode === "conflict";
-
     if (!document.documentId.trim()) {
       setBundle(null);
       setEditorData("");
       setViewState("error");
-      if (!preserveConflict) {
-        setErrorCode("load");
-        setErrorMessage("Este fluxo aceita apenas documentos ja persistidos. Abra um documento salvo pelo acervo.");
-      }
+      setErrorCode("load");
+      setErrorMessage("Este fluxo aceita apenas documentos ja persistidos. Abra um documento salvo pelo acervo.");
       setSaveLabel("Nao salvo");
       return;
     }
 
     setViewState("loading");
-    if (!preserveConflict) {
-      setErrorCode(null);
-      setErrorMessage("");
-    }
+    setErrorCode(null);
+    setErrorMessage("");
     setSaveLabel("Carregando...");
 
     try {
@@ -65,13 +60,11 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
       setBundle(null);
       setEditorData("");
       setViewState("error");
-      if (!preserveConflict) {
-        setErrorCode("load");
-        setErrorMessage("Nao foi possivel carregar o bundle do editor do documento.");
-      }
+      setErrorCode("load");
+      setErrorMessage("Nao foi possivel carregar o bundle do editor do documento.");
       setSaveLabel("Erro");
     }
-  }, [document.documentId, errorCode]);
+  }, [document.documentId]);
 
   useEffect(() => {
     const activeRef = { cancelled: false };
@@ -85,6 +78,7 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
     () => document.documentCode ?? formatDocumentDisplayName(document),
     [document],
   );
+  const documentProfileCode = normalizeDocumentProfileCode(document.documentProfile);
 
   const isDirty = bundle !== null && editorData !== bundle.body;
   const isSaving = viewState === "saving";
@@ -182,7 +176,7 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
       <div className={styles.metaBar}>
         <span className={styles.metaItem}>
           <span className={styles.metaLabel}>Profile</span>
-          <strong>{document.documentProfile.toUpperCase()}</strong>
+          <strong>{documentProfileCode.toUpperCase()}</strong>
         </span>
         <span className={styles.metaItem}>
           <span className={styles.metaLabel}>Versao</span>

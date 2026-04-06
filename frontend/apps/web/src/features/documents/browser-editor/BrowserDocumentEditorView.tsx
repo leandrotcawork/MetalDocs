@@ -38,8 +38,6 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
     }
 
     setViewState("loading");
-    setErrorCode(null);
-    setErrorMessage("");
     setSaveLabel("Carregando...");
 
     try {
@@ -86,7 +84,7 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
   const hasConflict = errorCode === "conflict";
 
   async function handleSave() {
-    if (!bundle || isSaving || !document.documentId.trim()) {
+    if (!bundle || isSaving || viewState !== "ready" || !document.documentId.trim()) {
       return;
     }
 
@@ -167,7 +165,7 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
           type="button"
           className={styles.saveButton}
           onClick={handleSave}
-          disabled={!bundle || isSaving || !isDirty || hasConflict}
+          disabled={!bundle || viewState !== "ready" || isSaving || !isDirty || hasConflict}
         >
           Salvar rascunho
         </button>

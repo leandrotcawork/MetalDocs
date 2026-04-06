@@ -67,6 +67,55 @@ test("browser document editor opens as a single document surface", async ({ page
   expect(exportResponse.headers()["content-type"]).toContain("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
 });
 
+test("native create flow opens the browser editor with a persisted document id", async ({ page }) => {
+  await loginAsAdmin(page);
+
+  const suffix = Date.now().toString();
+  const documentTitle = `Native Editor ${suffix}`;
+
+  await page.getByRole("button", { name: "Novo documento" }).first().click();
+  await expect(page.getByTestId("document-create-form")).toBeVisible();
+
+  await page.getByTestId("document-title").fill(documentTitle);
+
+  const createDocumentResponse = page.waitForResponse(
+    (response) => {
+      if (response.request().method() !== "POST") {
+        return false;
+      }
+      if (response.status() < 200 || response.status() >= 300) {
+        return false;
+      }
+      const url = new URL(response.url());
+      if (url.pathname !== "/api/v1/documents") {
+        return false;
+      }
+      const payload = response.request().postDataJSON() as { title?: string } | null;
+      return payload?.title === documentTitle;
+    },
+    { timeout: 20_000 },
+  );
+
+  await page.getByTestId("document-submit").click();
+
+  const response = await createDocumentResponse;
+  const createdDocument = (await response.json()) as { documentId?: string };
+  expect(createdDocument.documentId).toBeTruthy();
+
+  const bundleResponse = await page.waitForResponse(
+    (item) =>
+      item.url().includes(`/api/v1/documents/${encodeURIComponent(createdDocument.documentId ?? "")}/browser-editor-bundle`)
+      && item.request().method() === "GET"
+      && item.status() >= 200
+      && item.status() < 300,
+    { timeout: 20_000 },
+  );
+  expect(bundleResponse.ok()).toBeTruthy();
+
+  await expect(page.getByTestId("browser-document-editor")).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator(".ck-editor__editable")).toBeVisible();
+});
+
 async function loginAsAdmin(page: Page) {
   await page.goto("/");
   await page.getByTestId("login-identifier").fill(adminUsername);

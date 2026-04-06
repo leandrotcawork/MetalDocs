@@ -41,6 +41,9 @@ func (s *Service) GetBrowserEditorBundleAuthorized(ctx context.Context, document
 	if err != nil {
 		return BrowserEditorBundle{}, err
 	}
+	if !hasTemplate {
+		return BrowserEditorBundle{}, domain.ErrDocumentTemplateNotFound
+	}
 
 	bundle := BrowserEditorBundle{
 		Document:   doc,
@@ -49,9 +52,7 @@ func (s *Service) GetBrowserEditorBundleAuthorized(ctx context.Context, document
 		Body:       current.Content,
 		DraftToken: draftTokenForVersion(current),
 	}
-	if hasTemplate {
-		bundle.TemplateSnapshot = documentTemplateSnapshotFromVersion(templateVersion)
-	}
+	bundle.TemplateSnapshot = documentTemplateSnapshotFromVersion(templateVersion)
 	return bundle, nil
 }
 
@@ -87,6 +88,9 @@ func (s *Service) SaveBrowserContentAuthorized(ctx context.Context, cmd domain.S
 	if err != nil {
 		return domain.Version{}, err
 	}
+	if !hasTemplate {
+		return domain.Version{}, domain.ErrDocumentTemplateNotFound
+	}
 
 	version := current
 	version.Content = cmd.Body
@@ -94,10 +98,8 @@ func (s *Service) SaveBrowserContentAuthorized(ctx context.Context, cmd domain.S
 	version.ChangeSummary = fmt.Sprintf("Content version %d", current.Number)
 	version.ContentSource = domain.ContentSourceBrowserEditor
 	version.TextContent = plainTextFromHTML(cmd.Body)
-	if hasTemplate {
-		version.TemplateKey = templateVersion.TemplateKey
-		version.TemplateVersion = templateVersion.Version
-	}
+	version.TemplateKey = templateVersion.TemplateKey
+	version.TemplateVersion = templateVersion.Version
 
 	expectedHash := strings.TrimSpace(current.ContentHash)
 	if expectedHash == "" {
@@ -120,7 +122,7 @@ func (s *Service) resolveTemplateVersionForVersion(ctx context.Context, doc doma
 		}
 		return item, true, nil
 	}
-	return s.resolveDocumentTemplateOptional(ctx, doc.ID, doc.DocumentProfile)
+	return domain.DocumentTemplateVersion{}, false, domain.ErrDocumentTemplateNotFound
 }
 
 func (s *Service) resolveBrowserTemplateVersionForVersion(ctx context.Context, doc domain.Document, version domain.Version) (domain.DocumentTemplateVersion, bool, error) {

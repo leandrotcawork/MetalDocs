@@ -292,15 +292,21 @@ func (s *Service) AddVersion(ctx context.Context, cmd domain.AddVersionCommand) 
 	if err != nil {
 		return domain.Version{}, err
 	}
+	current, err := s.latestVersion(ctx, doc.ID)
+	if err != nil {
+		return domain.Version{}, err
+	}
 
 	version := domain.Version{
-		DocumentID:    doc.ID,
-		Number:        next,
-		Content:       cmd.Content,
-		ContentHash:   contentHash(cmd.Content),
-		ChangeSummary: strings.TrimSpace(cmd.ChangeSummary),
-		ContentSource: domain.ContentSourceNative,
-		CreatedAt:     s.clock.Now(),
+		DocumentID:      doc.ID,
+		Number:          next,
+		Content:         cmd.Content,
+		ContentHash:     contentHash(cmd.Content),
+		ChangeSummary:   strings.TrimSpace(cmd.ChangeSummary),
+		ContentSource:   domain.ContentSourceNative,
+		CreatedAt:       s.clock.Now(),
+		TemplateKey:     current.TemplateKey,
+		TemplateVersion: current.TemplateVersion,
 	}
 	if version.ChangeSummary == "" {
 		version.ChangeSummary = fmt.Sprintf("Version %d update", next)

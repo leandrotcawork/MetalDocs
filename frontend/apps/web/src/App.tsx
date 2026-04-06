@@ -115,7 +115,6 @@ function AppContent() {
     openDocumentForHub,
     refreshOperationalSignals,
     handleCreateDocument: handleCreateDocumentInternal,
-    createDocumentFromDraft,
     handleContentModeChange,
     handleContentFileChange,
     handleDownloadTemplate,
@@ -145,10 +144,6 @@ function AppContent() {
     }
     requestViewNavigation("create");
   }, [requestViewNavigation, selectedDocument, setDocumentForm]);
-  const handleCreateFromDraft = useCallback(
-    (contentDraft: Record<string, unknown>) => createDocumentFromDraft(contentDraft, user),
-    [createDocumentFromDraft, user],
-  );
   const {
     applyDocumentProfile,
     handleCreateProcessArea,
@@ -391,7 +386,6 @@ function AppContent() {
         <ContentBuilderView
           document={selectedDocument}
           onBack={handleBackToCreate}
-          onCreateFromDraft={handleCreateFromDraft}
         />
       );
     }

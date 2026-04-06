@@ -35,6 +35,19 @@ func TestGetBrowserEditorBundleReturnsDraftHTML(t *testing.T) {
 	}
 }
 
+func TestGetBrowserEditorBundleRequiresTemplateSnapshot(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, time.April, 4, 11, 0, 0, 0, time.UTC)
+	repo := documentmemory.NewRepository()
+	service := NewService(repo, nil, fixedClock{now: now})
+	doc := seedBrowserDocumentWithoutTemplate(t, ctx, repo, now, `<section><p>Original</p></section>`)
+
+	_, err := service.GetBrowserEditorBundleAuthorized(ctx, doc.ID)
+	if !errors.Is(err, domain.ErrDocumentTemplateNotFound) {
+		t.Fatalf("err = %v, want ErrDocumentTemplateNotFound", err)
+	}
+}
+
 func TestSaveBrowserContentAuthorizedUpdatesDraftInPlace(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, time.April, 4, 11, 0, 0, 0, time.UTC)
@@ -71,6 +84,28 @@ func TestSaveBrowserContentAuthorizedUpdatesDraftInPlace(t *testing.T) {
 	}
 	if savedVersion.Content != `<section><p>Atualizado</p></section>` {
 		t.Fatalf("saved content = %q, want updated HTML", savedVersion.Content)
+	}
+}
+
+func TestSaveBrowserContentAuthorizedRequiresTemplateSnapshot(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, time.April, 4, 11, 0, 0, 0, time.UTC)
+	repo := documentmemory.NewRepository()
+	service := NewService(repo, nil, fixedClock{now: now})
+	doc := seedBrowserDocumentWithoutTemplate(t, ctx, repo, now, `<section><p>Original</p></section>`)
+	current, err := repo.GetVersion(ctx, doc.ID, 1)
+	if err != nil {
+		t.Fatalf("GetVersion() error = %v", err)
+	}
+
+	_, err = service.SaveBrowserContentAuthorized(ctx, domain.SaveBrowserContentCommand{
+		DocumentID: doc.ID,
+		DraftToken: draftTokenForVersion(current),
+		Body:       `<section><p>Atualizado</p></section>`,
+		TraceID:    "trace-test",
+	})
+	if !errors.Is(err, domain.ErrDocumentTemplateNotFound) {
+		t.Fatalf("err = %v, want ErrDocumentTemplateNotFound", err)
 	}
 }
 
@@ -222,4 +257,33 @@ func setStoredBrowserTemplateSnapshotForTest(t *testing.T, ctx context.Context, 
 		t.Fatalf("UpdateDraftVersionContentCAS() error = %v", err)
 	}
 	return current
+}
+
+func seedBrowserDocumentWithoutTemplate(t *testing.T, ctx context.Context, repo *documentmemory.Repository, now time.Time, body string) domain.Document {
+	t.Helper()
+
+	seedCompatiblePOProfileSchemaSet(t, repo)
+	doc := seedDraftDocument(t, ctx, repo, now)
+	if err := repo.UpsertDocumentTemplateAssignment(ctx, domain.DocumentTemplateAssignment{
+		DocumentID:      doc.ID,
+		TemplateKey:     "po-missing-template",
+		TemplateVersion: 99,
+		AssignedAt:      now,
+	}); err != nil {
+		t.Fatalf("upsert template assignment: %v", err)
+	}
+
+	if err := repo.SaveVersion(ctx, domain.Version{
+		DocumentID:    doc.ID,
+		Number:        1,
+		Content:       body,
+		ContentHash:   contentHash(body),
+		ChangeSummary: "Initial browser draft",
+		ContentSource: domain.ContentSourceBrowserEditor,
+		TextContent:   plainTextFromHTML(body),
+		CreatedAt:     now,
+	}); err != nil {
+		t.Fatalf("save version: %v", err)
+	}
+	return doc
 }

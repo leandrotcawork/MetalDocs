@@ -1047,3 +1047,24 @@ Wrong:   Draft native-content saves re-resolved template assignment/default when
 Correct: Reject the save with `ErrInvalidCommand` when draft snapshot metadata is missing
 Rule:    Revision-bound template metadata is mandatory once a draft exists; save flows must not silently rebind templates.
 Layer:   application
+
+## Lesson EP - Create-to-editor e2e must assert persisted creation before editor entry
+Date: 2026-04-05 | Trigger: correction
+Wrong:   A native create flow assertion would only check the editor surface after submit and could miss the absence of a persisted document create response
+Correct: Wait for the create POST to return a `documentId`, then assert the editor route/UI uses that persisted id
+Rule:    Editor handoff tests must treat the create response as the source of truth for persistence, not just the presence of editor chrome.
+Layer:   frontend
+
+## Lesson EQ - Browser editor handoff must persist native drafts first
+Date: 2026-04-06 | Trigger: correction
+Wrong:   Native create submitted to content-builder with a local draft (`documentId=""`) before `createDocument`, forcing browser editor load failure
+Correct: Persist document first via `createDocument`, then open browser editor using the persisted `documentId`
+Rule:    Any browser-editor entry flow must hand off a persisted document identity.
+Layer:   frontend
+
+## Lesson ER - Template-assigned browser editing must fail closed when snapshot is missing
+Date: 2026-04-06 | Trigger: correction
+Wrong:   Browser editor bundle/save accepted versions without resolved template snapshots
+Correct: Return `ErrDocumentTemplateNotFound` when browser template snapshot cannot be resolved for bundle/save
+Rule:    Template-assigned editing flows must reject edits when template binding is absent.
+Layer:   application

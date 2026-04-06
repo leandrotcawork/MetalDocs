@@ -44,6 +44,8 @@ type storedVersion struct {
 	fileSizeBytes    any
 	originalFilename any
 	pageCount        any
+	templateKey      any
+	templateVersion  any
 	createdAt        time.Time
 }
 
@@ -231,7 +233,7 @@ func (c *documentsRepoConn) ExecContext(_ context.Context, query string, args []
 		c.state.upsertTypeSchema(stringArg(args[0]), stringArg(args[2]))
 		return driver.RowsAffected(1), nil
 	case strings.Contains(query, "INSERT INTO metaldocs.document_versions"):
-		if len(args) < 16 {
+		if len(args) < 18 {
 			return nil, fmt.Errorf("unexpected args for version insert: %d", len(args))
 		}
 		version := storedVersion{
@@ -250,7 +252,9 @@ func (c *documentsRepoConn) ExecContext(_ context.Context, query string, args []
 			fileSizeBytes:    nullableInt64Arg(args[12]),
 			originalFilename: nullableStringArg(args[13]),
 			pageCount:        nullableIntArg(args[14]),
-			createdAt:        timeArg(args[15]),
+			templateKey:      nullableStringArg(args[15]),
+			templateVersion:  nullableIntArg(args[16]),
+			createdAt:        timeArg(args[17]),
 		}
 		c.state.saveVersion(version)
 		return driver.RowsAffected(1), nil
@@ -368,7 +372,7 @@ func versionColumns() []string {
 	return []string{
 		"document_id", "version_number", "content", "content_hash", "change_summary",
 		"content_source", "native_content", "values_json", "body_blocks", "docx_storage_key", "pdf_storage_key",
-		"text_content", "file_size_bytes", "original_filename", "page_count", "created_at",
+		"text_content", "file_size_bytes", "original_filename", "page_count", "template_key", "template_version", "created_at",
 	}
 }
 
@@ -415,6 +419,8 @@ func versionRow(version storedVersion) []driver.Value {
 		version.fileSizeBytes,
 		version.originalFilename,
 		version.pageCount,
+		version.templateKey,
+		version.templateVersion,
 		version.createdAt,
 	}
 }

@@ -2,7 +2,7 @@ export type DocumentStatus = "DRAFT" | "IN_REVIEW" | "APPROVED" | "PUBLISHED" | 
 export type Classification = "PUBLIC" | "INTERNAL" | "CONFIDENTIAL" | "RESTRICTED";
 export type ResourceScope = "document" | "document_type" | "area";
 export type UserRole = "admin" | "editor" | "reviewer" | "viewer";
-export type DocumentContentSource = "native" | "docx_upload";
+export type DocumentContentSource = "native" | "docx_upload" | "browser_editor";
 
 export interface CurrentUser {
   userId: string;
@@ -180,6 +180,7 @@ export interface DocumentContentSaveResponse {
   contentSource: DocumentContentSource;
   pdfUrl: string;
   expiresAt: string;
+  draftToken?: string;
 }
 
 export interface DocumentContentPdfResponse {
@@ -243,13 +244,66 @@ export interface DocumentEditLockItem {
   expiresAt: string;
 }
 
+export interface DocumentTemplateSnapshotItem {
+  templateKey: string;
+  version: number;
+  profileCode: string;
+  schemaVersion: number;
+  definition: Record<string, unknown>;
+}
+
+export interface DocumentBrowserTemplateSnapshotItem {
+  templateKey: string;
+  version: number;
+  profileCode: string;
+  schemaVersion: number;
+  editor: "ckeditor5";
+  contentFormat: "html";
+  body: string;
+}
+
 export interface DocumentEditorBundleResponse {
   document: DocumentListItem;
   versions: VersionListItem[];
   schema: DocumentProfileSchemaItem;
   governance: DocumentProfileGovernanceItem;
+  templateSnapshot?: DocumentTemplateSnapshotItem;
+  draftToken?: string;
   presence: CollaborationPresenceItem[];
   editLock?: DocumentEditLockItem;
+}
+
+export interface DocumentBrowserEditorBundleResponse {
+  document: DocumentListItem;
+  versions: VersionListItem[];
+  governance: DocumentProfileGovernanceItem;
+  templateSnapshot: DocumentBrowserTemplateSnapshotItem;
+  body: string;
+  draftToken: string;
+}
+
+export interface DocumentBrowserContentSaveResponse {
+  documentId: string;
+  version: number;
+  contentSource: "browser_editor";
+  draftToken: string;
+}
+
+export interface DocumentTemplateItem {
+  templateKey: string;
+  version: number;
+  profileCode: string;
+  schemaVersion: number;
+  name: string;
+  editor?: string;
+  contentFormat?: string;
+}
+
+export interface DocumentTemplateAssignmentItem {
+  documentId: string;
+  templateKey: string;
+  templateVersion: number;
+  assignedAt: string;
 }
 
 export interface AccessPolicyItem {
@@ -293,3 +347,4 @@ export interface ApiErrorEnvelope {
     trace_id: string;
   };
 }
+

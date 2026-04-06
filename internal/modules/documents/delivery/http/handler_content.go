@@ -1,7 +1,9 @@
 package httpdelivery
 
 import (
+	"crypto/md5"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -10,6 +12,8 @@ import (
 
 	"metaldocs/internal/modules/documents/domain"
 )
+
+const maxDocumentContentPayloadBytes = 2 << 20
 
 func (h *Handler) handleDocumentContentNativeGet(w http.ResponseWriter, r *http.Request, documentID string) {
 	traceID := requestTraceID(r)
@@ -36,6 +40,7 @@ func (h *Handler) handleDocumentContentNativeGet(w http.ResponseWriter, r *http.
 
 func (h *Handler) handleDocumentContentNativePost(w http.ResponseWriter, r *http.Request, documentID string) {
 	traceID := requestTraceID(r)
+	r.Body = http.MaxBytesReader(w, r.Body, maxDocumentContentPayloadBytes)
 
 	var req DocumentContentNativeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -45,6 +50,7 @@ func (h *Handler) handleDocumentContentNativePost(w http.ResponseWriter, r *http
 
 	version, err := h.service.SaveNativeContentAuthorized(r.Context(), domain.SaveNativeContentCommand{
 		DocumentID: documentID,
+		DraftToken: req.DraftToken,
 		Content:    req.Content,
 		TraceID:    traceID,
 	})
@@ -63,8 +69,38 @@ func (h *Handler) handleDocumentContentNativePost(w http.ResponseWriter, r *http
 		DocumentID:    documentID,
 		Version:       version.Number,
 		ContentSource: normalizeContentSource(version.ContentSource),
+		DraftToken:    draftTokenForVersion(version),
 		PdfURL:        pdfURL,
 		ExpiresAt:     expiresAt.Format(time.RFC3339),
+	})
+}
+
+func (h *Handler) handleDocumentContentBrowserPost(w http.ResponseWriter, r *http.Request, documentID string) {
+	traceID := requestTraceID(r)
+	r.Body = http.MaxBytesReader(w, r.Body, maxDocumentContentPayloadBytes)
+
+	var req DocumentContentBrowserRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid JSON payload", traceID)
+		return
+	}
+
+	version, err := h.service.SaveBrowserContentAuthorized(r.Context(), domain.SaveBrowserContentCommand{
+		DocumentID: documentID,
+		DraftToken: req.DraftToken,
+		Body:       req.Body,
+		TraceID:    traceID,
+	})
+	if err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, DocumentContentBrowserResponse{
+		DocumentID:    documentID,
+		Version:       version.Number,
+		ContentSource: normalizeContentSource(version.ContentSource),
+		DraftToken:    draftTokenForVersion(version),
 	})
 }
 
@@ -261,4 +297,13 @@ func (h *Handler) handleDocumentContentUpload(w http.ResponseWriter, r *http.Req
 		ExpiresAt:     expiresAt.Format(time.RFC3339),
 		PageCount:     version.PageCount,
 	})
+}
+
+func draftTokenForVersion(version domain.Version) string {
+	hash := strings.TrimSpace(version.ContentHash)
+	if hash == "" {
+		sum := md5.Sum([]byte(version.Content))
+		hash = fmt.Sprintf("%x", sum[:])
+	}
+	return fmt.Sprintf("v%d:%s", version.Number, hash)
 }

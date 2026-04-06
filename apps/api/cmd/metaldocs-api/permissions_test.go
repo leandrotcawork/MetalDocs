@@ -24,6 +24,7 @@ func TestPermissionResolver(t *testing.T) {
 		{name: "documents create", method: http.MethodPost, path: "/api/v1/documents", wantPerm: iamdomain.PermDocumentCreate, wantGuard: true},
 		{name: "documents list", method: http.MethodGet, path: "/api/v1/documents", wantPerm: iamdomain.PermDocumentRead, wantGuard: true},
 		{name: "document detail", method: http.MethodGet, path: "/api/v1/documents/doc-1", wantPerm: iamdomain.PermDocumentRead, wantGuard: true},
+		{name: "document browser content save", method: http.MethodPost, path: "/api/v1/documents/doc-1/content/browser", wantPerm: iamdomain.PermDocumentEdit, wantGuard: true},
 		{name: "document versions list", method: http.MethodGet, path: "/api/v1/documents/doc-1/versions", wantPerm: iamdomain.PermVersionRead, wantGuard: true},
 		{name: "document version create", method: http.MethodPost, path: "/api/v1/documents/doc-1/versions", wantPerm: iamdomain.PermDocumentEdit, wantGuard: true},
 		{name: "workflow transition", method: http.MethodPost, path: "/api/v1/workflow/documents/doc-1/transitions", wantPerm: iamdomain.PermWorkflowTransition, wantGuard: true},

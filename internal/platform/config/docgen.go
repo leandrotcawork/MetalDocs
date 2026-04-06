@@ -13,7 +13,11 @@ type DocgenConfig struct {
 }
 
 func LoadDocgenConfig() DocgenConfig {
+	appEnv := strings.TrimSpace(os.Getenv("APP_ENV"))
 	apiURL := strings.TrimSpace(os.Getenv("METALDOCS_DOCGEN_API_URL"))
+	if apiURL == "" && strings.EqualFold(appEnv, "local") {
+		apiURL = "http://127.0.0.1:3001"
+	}
 	enabled := apiURL != ""
 
 	timeoutSeconds := 10

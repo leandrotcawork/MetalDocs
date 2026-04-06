@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -178,6 +179,10 @@ func (s *Service) buildDocgenPayload(ctx context.Context, doc domain.Document, s
 	if err != nil {
 		return docgen.RenderPayload{}, err
 	}
+	projectedValues, err := s.projectDocumentValuesForDocgen(schema.ContentSchema, cloneRuntimeValues(version.Values))
+	if err != nil {
+		return docgen.RenderPayload{}, err
+	}
 
 	ownerName := s.resolveUserDisplayName(ctx, doc.OwnerID)
 	approverName, approvedAt := s.resolveLatestApproval(ctx, doc.ID)
@@ -189,7 +194,7 @@ func (s *Service) buildDocgenPayload(ctx context.Context, doc domain.Document, s
 		Version:      fmt.Sprintf("%d", version.Number),
 		Status:       doc.Status,
 		Schema:       schemaMap,
-		Values:       cloneRuntimeValues(version.Values),
+		Values:       projectedValues,
 		Metadata: &docgen.RenderMetadata{
 			ElaboradoPor: ownerName,
 			AprovadoPor:  approverName,
@@ -227,17 +232,39 @@ func (s *Service) ExportDocumentDocxAuthorized(ctx context.Context, documentID, 
 		return nil, domain.ErrRenderUnavailable
 	}
 
-	bundle, err := s.GetDocumentRuntimeBundle(ctx, documentID)
+	doc, err := s.GetDocumentAuthorized(ctx, documentID)
+	if err != nil {
+		return nil, err
+	}
+	version, err := s.latestVersion(ctx, doc.ID)
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(version.ContentSource) == domain.ContentSourceBrowserEditor {
+		return s.generateBrowserDocxBytes(ctx, doc, version, traceID)
+	}
+
+	schema, ok, err := s.resolveDocumentProfileSchema(ctx, doc.DocumentProfile, doc.ProfileSchemaVersion)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, domain.ErrInvalidCommand
+	}
+
+	payload, err := s.buildDocgenPayload(ctx, doc, schema, version, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	payload, err := s.buildDocgenPayload(ctx, bundle.Document, bundle.Schema, bundle.Version, nil)
+	rendered, err := s.docgenClient.Generate(ctx, payload, traceID)
 	if err != nil {
+		if errors.Is(err, docgen.ErrUnavailable) {
+			return nil, domain.ErrRenderUnavailable
+		}
 		return nil, err
 	}
-
-	return s.docgenClient.Generate(ctx, payload, traceID)
+	return rendered, nil
 }
 
 func (s *Service) generateDocxBytes(ctx context.Context, doc domain.Document, version domain.Version, content map[string]any, traceID string, pendingRevision *docgen.RenderRevision) ([]byte, error) {
@@ -245,9 +272,12 @@ func (s *Service) generateDocxBytes(ctx context.Context, doc domain.Document, ve
 		return nil, domain.ErrRenderUnavailable
 	}
 
-	schema, err := s.resolveActiveProfileSchema(ctx, doc.DocumentProfile)
+	schema, ok, err := s.resolveDocumentProfileSchema(ctx, doc.DocumentProfile, doc.ProfileSchemaVersion)
 	if err != nil {
 		return nil, err
+	}
+	if !ok {
+		return nil, domain.ErrInvalidCommand
 	}
 
 	versionWithValues := version
@@ -260,7 +290,14 @@ func (s *Service) generateDocxBytes(ctx context.Context, doc domain.Document, ve
 		return nil, err
 	}
 
-	return s.docgenClient.Generate(ctx, payload, traceID)
+	rendered, err := s.docgenClient.Generate(ctx, payload, traceID)
+	if err != nil {
+		if errors.Is(err, docgen.ErrUnavailable) {
+			return nil, domain.ErrRenderUnavailable
+		}
+		return nil, err
+	}
+	return rendered, nil
 }
 
 func (s *Service) recordRuntimeValuesAudit(ctx context.Context, doc domain.Document, version domain.Version, valueCount int, traceID string, now time.Time) error {

@@ -12,6 +12,8 @@ import (
 	"metaldocs/internal/platform/messaging"
 	"metaldocs/internal/platform/render/docgen"
 	"metaldocs/internal/platform/render/gotenberg"
+
+	"golang.org/x/net/html"
 )
 
 type Clock interface {
@@ -35,15 +37,15 @@ func (realClock) Now() time.Time {
 }
 
 type Service struct {
-	repo             domain.Repository
-	attachmentStore  domain.AttachmentStore
-	audit            auditdomain.Writer
-	publisher        messaging.Publisher
-	clock            Clock
-	docgenClient     *docgen.Client
-	gotenbergClient  *gotenberg.Client
-	userResolver     UserDisplayNameResolver
-	approvalReader   WorkflowApprovalReader
+	repo            domain.Repository
+	attachmentStore domain.AttachmentStore
+	audit           auditdomain.Writer
+	publisher       messaging.Publisher
+	clock           Clock
+	docgenClient    *docgen.Client
+	gotenbergClient *gotenberg.Client
+	userResolver    UserDisplayNameResolver
+	approvalReader  WorkflowApprovalReader
 }
 
 func NewService(repo domain.Repository, publisher messaging.Publisher, clock Clock) *Service {
@@ -156,14 +158,37 @@ func (s *Service) CreateDocument(ctx context.Context, cmd domain.CreateDocumentC
 		UpdatedAt:            now,
 	}
 
+	resolvedTemplate, hasTemplate, err := s.resolveDocumentTemplateOptional(ctx, doc.ID, doc.DocumentProfile)
+	if err != nil {
+		return domain.Document{}, err
+	}
+
+	initialContent := cmd.InitialContent
+	contentSource := domain.ContentSourceNative
+	textContent := ""
+	templateKey := ""
+	templateVersion := 0
+	if hasTemplate {
+		templateKey = resolvedTemplate.TemplateKey
+		templateVersion = resolvedTemplate.Version
+		if resolvedTemplate.IsBrowserHTML() {
+			initialContent = resolvedTemplate.Body
+			contentSource = domain.ContentSourceBrowserEditor
+			textContent = plainTextFromHTML(initialContent)
+		}
+	}
+
 	v1 := domain.Version{
-		DocumentID:    doc.ID,
-		Number:        1,
-		Content:       cmd.InitialContent,
-		ContentHash:   contentHash(cmd.InitialContent),
-		ChangeSummary: "Initial version",
-		ContentSource: domain.ContentSourceNative,
-		CreatedAt:     now,
+		DocumentID:      doc.ID,
+		Number:          1,
+		Content:         initialContent,
+		ContentHash:     contentHash(initialContent),
+		ChangeSummary:   "Initial version",
+		ContentSource:   contentSource,
+		TextContent:     textContent,
+		TemplateKey:     templateKey,
+		TemplateVersion: templateVersion,
+		CreatedAt:       now,
 	}
 
 	if atomicRepo, ok := s.repo.(domain.AtomicCreateRepository); ok {
@@ -267,15 +292,21 @@ func (s *Service) AddVersion(ctx context.Context, cmd domain.AddVersionCommand) 
 	if err != nil {
 		return domain.Version{}, err
 	}
+	current, err := s.latestVersion(ctx, doc.ID)
+	if err != nil {
+		return domain.Version{}, err
+	}
 
 	version := domain.Version{
-		DocumentID:    doc.ID,
-		Number:        next,
-		Content:       cmd.Content,
-		ContentHash:   contentHash(cmd.Content),
-		ChangeSummary: strings.TrimSpace(cmd.ChangeSummary),
-		ContentSource: domain.ContentSourceNative,
-		CreatedAt:     s.clock.Now(),
+		DocumentID:      doc.ID,
+		Number:          next,
+		Content:         cmd.Content,
+		ContentHash:     contentHash(cmd.Content),
+		ChangeSummary:   strings.TrimSpace(cmd.ChangeSummary),
+		ContentSource:   domain.ContentSourceNative,
+		CreatedAt:       s.clock.Now(),
+		TemplateKey:     current.TemplateKey,
+		TemplateVersion: current.TemplateVersion,
 	}
 	if version.ChangeSummary == "" {
 		version.ChangeSummary = fmt.Sprintf("Version %d update", next)
@@ -385,4 +416,20 @@ func (s *Service) ListDocumentsAuthorized(ctx context.Context) ([]domain.Documen
 		}
 	}
 	return filtered, nil
+}
+
+func plainTextFromHTML(raw string) string {
+	tokenizer := html.NewTokenizer(strings.NewReader(raw))
+	parts := make([]string, 0)
+	for {
+		switch tokenizer.Next() {
+		case html.ErrorToken:
+			return strings.Join(parts, " ")
+		case html.TextToken:
+			text := strings.TrimSpace(html.UnescapeString(string(tokenizer.Text())))
+			if text != "" {
+				parts = append(parts, text)
+			}
+		}
+	}
 }

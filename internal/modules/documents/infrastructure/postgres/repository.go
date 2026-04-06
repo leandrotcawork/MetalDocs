@@ -101,13 +101,13 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16::j
 	}
 
 	const insertVersion = `
-INSERT INTO metaldocs.document_versions (
-  document_id, version_number, content, content_hash, change_summary,
-  content_source, native_content, values_json, body_blocks, docx_storage_key, pdf_storage_key, text_content,
-  file_size_bytes, original_filename, page_count, created_at
-)
-VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, COALESCE($9::jsonb, '[]'::jsonb), $10, $11, $12, $13, $14, $15, $16)
-`
+	INSERT INTO metaldocs.document_versions (
+	  document_id, version_number, content, content_hash, change_summary,
+	  content_source, native_content, values_json, body_blocks, docx_storage_key, pdf_storage_key, text_content,
+	  file_size_bytes, original_filename, page_count, template_key, template_version, created_at
+	)
+	VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, COALESCE($9::jsonb, '[]'::jsonb), $10, $11, $12, $13, $14, $15, $16, $17, $18)
+	`
 	contentSource, nativeContentJSON, valuesJSON, bodyBlocksJSON, textContent, err := serializeVersion(version)
 	if err != nil {
 		return fmt.Errorf("serialize version: %w", err)
@@ -128,6 +128,8 @@ VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, COALESCE($9::jsonb, '[]'::
 		nullIfZeroInt64(version.FileSizeBytes),
 		nullIfEmpty(version.OriginalFilename),
 		nullIfZeroInt(version.PageCount),
+		nullIfEmpty(version.TemplateKey),
+		nullIfZeroInt(version.TemplateVersion),
 		version.CreatedAt,
 	); err != nil {
 		return mapError(err)
@@ -183,13 +185,13 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16::j
 	}
 
 	const insertVersion = `
-INSERT INTO metaldocs.document_versions (
-  document_id, version_number, content, content_hash, change_summary,
-  content_source, native_content, values_json, body_blocks, docx_storage_key, pdf_storage_key, text_content,
-  file_size_bytes, original_filename, page_count, created_at
-)
-VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, COALESCE($9::jsonb, '[]'::jsonb), $10, $11, $12, $13, $14, $15, $16)
-`
+	INSERT INTO metaldocs.document_versions (
+	  document_id, version_number, content, content_hash, change_summary,
+	  content_source, native_content, values_json, body_blocks, docx_storage_key, pdf_storage_key, text_content,
+	  file_size_bytes, original_filename, page_count, template_key, template_version, created_at
+	)
+	VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, COALESCE($9::jsonb, '[]'::jsonb), $10, $11, $12, $13, $14, $15, $16, $17, $18)
+	`
 	contentSource, nativeContentJSON, valuesJSON, bodyBlocksJSON, textContent, err := serializeVersion(version)
 	if err != nil {
 		return fmt.Errorf("serialize version: %w", err)
@@ -210,6 +212,8 @@ VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, COALESCE($9::jsonb, '[]'::
 		nullIfZeroInt64(version.FileSizeBytes),
 		nullIfEmpty(version.OriginalFilename),
 		nullIfZeroInt(version.PageCount),
+		nullIfEmpty(version.TemplateKey),
+		nullIfZeroInt(version.TemplateVersion),
 		version.CreatedAt,
 	); err != nil {
 		return mapError(err)
@@ -1132,13 +1136,13 @@ WHERE id = $1
 
 func (r *Repository) SaveVersion(ctx context.Context, version domain.Version) error {
 	const q = `
-INSERT INTO metaldocs.document_versions (
-  document_id, version_number, content, content_hash, change_summary,
-  content_source, native_content, values_json, body_blocks, docx_storage_key, pdf_storage_key, text_content,
-  file_size_bytes, original_filename, page_count, created_at
-)
-VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, COALESCE($9::jsonb, '[]'::jsonb), $10, $11, $12, $13, $14, $15, $16)
-`
+	INSERT INTO metaldocs.document_versions (
+	  document_id, version_number, content, content_hash, change_summary,
+	  content_source, native_content, values_json, body_blocks, docx_storage_key, pdf_storage_key, text_content,
+	  file_size_bytes, original_filename, page_count, template_key, template_version, created_at
+	)
+	VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, COALESCE($9::jsonb, '[]'::jsonb), $10, $11, $12, $13, $14, $15, $16, $17, $18)
+	`
 	contentSource, nativeContentJSON, valuesJSON, bodyBlocksJSON, textContent, err := serializeVersion(version)
 	if err != nil {
 		return fmt.Errorf("serialize version: %w", err)
@@ -1159,6 +1163,8 @@ VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, COALESCE($9::jsonb, '[]'::
 		nullIfZeroInt64(version.FileSizeBytes),
 		nullIfEmpty(version.OriginalFilename),
 		nullIfZeroInt(version.PageCount),
+		nullIfEmpty(version.TemplateKey),
+		nullIfZeroInt(version.TemplateVersion),
 		version.CreatedAt,
 	); execErr != nil {
 		return mapError(execErr)
@@ -1186,6 +1192,214 @@ WHERE document_id = $1 AND version_number = $2
 	}
 	if affected == 0 {
 		return domain.ErrVersionNotFound
+	}
+	return nil
+}
+
+func (r *Repository) GetDocumentTemplateVersion(ctx context.Context, templateKey string, version int) (domain.DocumentTemplateVersion, error) {
+	const q = `
+SELECT template_key, version, profile_code, schema_version, name, editor, content_format, body_html, definition_json, created_at
+FROM metaldocs.document_template_versions
+WHERE template_key = $1 AND version = $2
+`
+	var item domain.DocumentTemplateVersion
+	var definitionJSON []byte
+	if err := r.db.QueryRowContext(ctx, q, strings.TrimSpace(templateKey), version).Scan(
+		&item.TemplateKey,
+		&item.Version,
+		&item.ProfileCode,
+		&item.SchemaVersion,
+		&item.Name,
+		&item.Editor,
+		&item.ContentFormat,
+		&item.Body,
+		&definitionJSON,
+		&item.CreatedAt,
+	); err != nil {
+		if err == sql.ErrNoRows {
+			return domain.DocumentTemplateVersion{}, domain.ErrDocumentTemplateNotFound
+		}
+		return domain.DocumentTemplateVersion{}, fmt.Errorf("get document template version: %w", err)
+	}
+	if len(definitionJSON) > 0 {
+		if err := json.Unmarshal(definitionJSON, &item.Definition); err != nil {
+			return domain.DocumentTemplateVersion{}, fmt.Errorf("unmarshal document template version definition: %w", err)
+		}
+	}
+	if item.Definition == nil {
+		item.Definition = map[string]any{}
+	}
+	return item, nil
+}
+
+func (r *Repository) ListDocumentTemplateVersions(ctx context.Context, profileCode string) ([]domain.DocumentTemplateVersion, error) {
+	const q = `
+SELECT template_key, version, profile_code, schema_version, name, editor, content_format, body_html, definition_json, created_at
+FROM metaldocs.document_template_versions
+WHERE ($1 = '' OR profile_code = $1)
+ORDER BY profile_code ASC, template_key ASC, version DESC
+`
+	rows, err := r.db.QueryContext(ctx, q, strings.TrimSpace(profileCode))
+	if err != nil {
+		return nil, fmt.Errorf("list document template versions: %w", err)
+	}
+	defer rows.Close()
+
+	items := make([]domain.DocumentTemplateVersion, 0)
+	for rows.Next() {
+		var item domain.DocumentTemplateVersion
+		var definitionJSON []byte
+		if err := rows.Scan(
+			&item.TemplateKey,
+			&item.Version,
+			&item.ProfileCode,
+			&item.SchemaVersion,
+			&item.Name,
+			&item.Editor,
+			&item.ContentFormat,
+			&item.Body,
+			&definitionJSON,
+			&item.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan document template version: %w", err)
+		}
+		if len(definitionJSON) > 0 {
+			if err := json.Unmarshal(definitionJSON, &item.Definition); err != nil {
+				return nil, fmt.Errorf("unmarshal document template version definition: %w", err)
+			}
+		}
+		if item.Definition == nil {
+			item.Definition = map[string]any{}
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list document template versions rows: %w", err)
+	}
+
+	return items, nil
+}
+
+func (r *Repository) GetDefaultDocumentTemplate(ctx context.Context, profileCode string) (domain.DocumentTemplateVersion, error) {
+	const q = `
+SELECT template_key, template_version
+FROM metaldocs.document_profile_template_defaults
+WHERE profile_code = $1
+`
+	var templateKey string
+	var templateVersion int
+	if err := r.db.QueryRowContext(ctx, q, strings.TrimSpace(profileCode)).Scan(&templateKey, &templateVersion); err != nil {
+		if err == sql.ErrNoRows {
+			return domain.DocumentTemplateVersion{}, domain.ErrDocumentTemplateNotFound
+		}
+		return domain.DocumentTemplateVersion{}, fmt.Errorf("get default document template: %w", err)
+	}
+	return r.GetDocumentTemplateVersion(ctx, templateKey, templateVersion)
+}
+
+func (r *Repository) GetDocumentTemplateAssignment(ctx context.Context, documentID string) (domain.DocumentTemplateAssignment, error) {
+	const q = `
+SELECT document_id, template_key, template_version, assigned_at
+FROM metaldocs.document_template_assignments
+WHERE document_id = $1
+`
+	var item domain.DocumentTemplateAssignment
+	if err := r.db.QueryRowContext(ctx, q, strings.TrimSpace(documentID)).Scan(
+		&item.DocumentID,
+		&item.TemplateKey,
+		&item.TemplateVersion,
+		&item.AssignedAt,
+	); err != nil {
+		if err == sql.ErrNoRows {
+			return domain.DocumentTemplateAssignment{}, domain.ErrDocumentTemplateAssignmentNotFound
+		}
+		return domain.DocumentTemplateAssignment{}, fmt.Errorf("get document template assignment: %w", err)
+	}
+	return item, nil
+}
+
+func (r *Repository) UpsertDocumentTemplateAssignment(ctx context.Context, item domain.DocumentTemplateAssignment) error {
+	normalizedDocumentID := strings.TrimSpace(item.DocumentID)
+	normalizedTemplateKey := strings.TrimSpace(item.TemplateKey)
+	if normalizedDocumentID == "" || normalizedTemplateKey == "" || item.TemplateVersion <= 0 {
+		return domain.ErrInvalidCommand
+	}
+
+	const q = `
+INSERT INTO metaldocs.document_template_assignments (
+  document_id, template_key, template_version, assigned_at
+)
+VALUES ($1, $2, $3, COALESCE($4, NOW()))
+ON CONFLICT (document_id) DO UPDATE
+SET template_key = EXCLUDED.template_key,
+    template_version = EXCLUDED.template_version,
+    assigned_at = EXCLUDED.assigned_at
+`
+	assignedAt := item.AssignedAt.UTC()
+	if item.AssignedAt.IsZero() {
+		assignedAt = time.Now().UTC()
+	}
+	if _, err := r.db.ExecContext(ctx, q, normalizedDocumentID, normalizedTemplateKey, item.TemplateVersion, assignedAt); err != nil {
+		return mapError(err)
+	}
+	return nil
+}
+
+func (r *Repository) UpdateDraftVersionContentCAS(ctx context.Context, version domain.Version, expectedContentHash string) error {
+	const q = `
+UPDATE metaldocs.document_versions
+SET content = $4,
+    content_hash = $5,
+    change_summary = $6,
+    content_source = $7,
+    native_content = $8::jsonb,
+    values_json = $9::jsonb,
+    body_blocks = COALESCE($10::jsonb, '[]'::jsonb),
+    docx_storage_key = $11,
+    pdf_storage_key = $12,
+    text_content = $13,
+    file_size_bytes = $14,
+    original_filename = $15,
+    page_count = $16,
+    template_key = $17,
+    template_version = $18
+WHERE document_id = $1
+  AND version_number = $2
+  AND content_hash = $3
+`
+	contentSource, nativeContentJSON, valuesJSON, bodyBlocksJSON, textContent, err := serializeVersion(version)
+	if err != nil {
+		return fmt.Errorf("serialize draft version: %w", err)
+	}
+	res, err := r.db.ExecContext(ctx, q,
+		version.DocumentID,
+		version.Number,
+		expectedContentHash,
+		version.Content,
+		version.ContentHash,
+		version.ChangeSummary,
+		contentSource,
+		nativeContentJSON,
+		valuesJSON,
+		bodyBlocksJSON,
+		nullIfEmpty(version.DocxStorageKey),
+		nullIfEmpty(version.PdfStorageKey),
+		textContent,
+		nullIfZeroInt64(version.FileSizeBytes),
+		nullIfEmpty(version.OriginalFilename),
+		nullIfZeroInt(version.PageCount),
+		nullIfEmpty(version.TemplateKey),
+		nullIfZeroInt(version.TemplateVersion),
+	)
+	if err != nil {
+		return mapError(err)
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected update draft version: %w", err)
+	}
+	if affected == 0 {
+		return domain.ErrDraftConflict
 	}
 	return nil
 }
@@ -1262,13 +1476,13 @@ func (r *Repository) ListVersions(ctx context.Context, documentID string) ([]dom
 	}
 
 	const q = `
-SELECT document_id, version_number, content, content_hash, change_summary,
-       content_source, native_content, values_json, body_blocks, docx_storage_key, pdf_storage_key, text_content,
-       file_size_bytes, original_filename, page_count, created_at
-FROM metaldocs.document_versions
-WHERE document_id = $1
-ORDER BY version_number ASC
-`
+	SELECT document_id, version_number, content, content_hash, change_summary,
+	       content_source, native_content, values_json, body_blocks, docx_storage_key, pdf_storage_key, text_content,
+	       file_size_bytes, original_filename, page_count, template_key, template_version, created_at
+	FROM metaldocs.document_versions
+	WHERE document_id = $1
+	ORDER BY version_number ASC
+	`
 	rows, err := r.db.QueryContext(ctx, q, documentID)
 	if err != nil {
 		return nil, fmt.Errorf("list versions: %w", err)
@@ -1287,6 +1501,8 @@ ORDER BY version_number ASC
 		var fileSizeBytes sql.NullInt64
 		var originalFilename sql.NullString
 		var pageCount sql.NullInt64
+		var templateKey sql.NullString
+		var templateVersion sql.NullInt64
 		if err := rows.Scan(
 			&version.DocumentID,
 			&version.Number,
@@ -1303,11 +1519,19 @@ ORDER BY version_number ASC
 			&fileSizeBytes,
 			&originalFilename,
 			&pageCount,
+			&templateKey,
+			&templateVersion,
 			&version.CreatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("scan version: %w", err)
 		}
 		applyVersionOptionalFields(&version, nativeContentJSON, valuesJSON, bodyBlocksJSON, docxStorageKey, pdfStorageKey, textContent, fileSizeBytes, originalFilename, pageCount)
+		if templateKey.Valid {
+			version.TemplateKey = templateKey.String
+		}
+		if templateVersion.Valid {
+			version.TemplateVersion = int(templateVersion.Int64)
+		}
 		out = append(out, version)
 	}
 	if err := rows.Err(); err != nil {
@@ -1324,12 +1548,12 @@ func (r *Repository) GetVersion(ctx context.Context, documentID string, versionN
 	}
 
 	const q = `
-SELECT document_id, version_number, content, content_hash, change_summary,
-       content_source, native_content, values_json, body_blocks, docx_storage_key, pdf_storage_key, text_content,
-       file_size_bytes, original_filename, page_count, created_at
-FROM metaldocs.document_versions
-WHERE document_id = $1 AND version_number = $2
-`
+	SELECT document_id, version_number, content, content_hash, change_summary,
+	       content_source, native_content, values_json, body_blocks, docx_storage_key, pdf_storage_key, text_content,
+	       file_size_bytes, original_filename, page_count, template_key, template_version, created_at
+	FROM metaldocs.document_versions
+	WHERE document_id = $1 AND version_number = $2
+	`
 	var version domain.Version
 	var nativeContentJSON []byte
 	var valuesJSON []byte
@@ -1340,6 +1564,8 @@ WHERE document_id = $1 AND version_number = $2
 	var fileSizeBytes sql.NullInt64
 	var originalFilename sql.NullString
 	var pageCount sql.NullInt64
+	var templateKey sql.NullString
+	var templateVersion sql.NullInt64
 	if err := r.db.QueryRowContext(ctx, q, documentID, versionNumber).Scan(
 		&version.DocumentID,
 		&version.Number,
@@ -1356,6 +1582,8 @@ WHERE document_id = $1 AND version_number = $2
 		&fileSizeBytes,
 		&originalFilename,
 		&pageCount,
+		&templateKey,
+		&templateVersion,
 		&version.CreatedAt,
 	); err != nil {
 		if err == sql.ErrNoRows {
@@ -1364,6 +1592,12 @@ WHERE document_id = $1 AND version_number = $2
 		return domain.Version{}, fmt.Errorf("get version: %w", err)
 	}
 	applyVersionOptionalFields(&version, nativeContentJSON, valuesJSON, bodyBlocksJSON, docxStorageKey, pdfStorageKey, textContent, fileSizeBytes, originalFilename, pageCount)
+	if templateKey.Valid {
+		version.TemplateKey = templateKey.String
+	}
+	if templateVersion.Valid {
+		version.TemplateVersion = int(templateVersion.Int64)
+	}
 	return version, nil
 }
 

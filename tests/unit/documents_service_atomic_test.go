@@ -184,6 +184,30 @@ func (r *atomicRepoSpy) UpdateVersionValues(context.Context, string, int, domain
 	return nil
 }
 
+func (r *atomicRepoSpy) GetDocumentTemplateVersion(context.Context, string, int) (domain.DocumentTemplateVersion, error) {
+	return domain.DocumentTemplateVersion{}, domain.ErrDocumentTemplateNotFound
+}
+
+func (r *atomicRepoSpy) ListDocumentTemplateVersions(context.Context, string) ([]domain.DocumentTemplateVersion, error) {
+	return nil, nil
+}
+
+func (r *atomicRepoSpy) GetDefaultDocumentTemplate(context.Context, string) (domain.DocumentTemplateVersion, error) {
+	return domain.DocumentTemplateVersion{}, domain.ErrDocumentTemplateNotFound
+}
+
+func (r *atomicRepoSpy) GetDocumentTemplateAssignment(context.Context, string) (domain.DocumentTemplateAssignment, error) {
+	return domain.DocumentTemplateAssignment{}, domain.ErrDocumentTemplateAssignmentNotFound
+}
+
+func (r *atomicRepoSpy) UpsertDocumentTemplateAssignment(context.Context, domain.DocumentTemplateAssignment) error {
+	return nil
+}
+
+func (r *atomicRepoSpy) UpdateDraftVersionContentCAS(context.Context, domain.Version, string) error {
+	return domain.ErrDraftConflict
+}
+
 func (r *atomicRepoSpy) ListVersions(context.Context, string) ([]domain.Version, error) {
 	return nil, nil
 }

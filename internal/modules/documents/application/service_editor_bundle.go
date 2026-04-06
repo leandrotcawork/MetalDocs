@@ -8,12 +8,14 @@ import (
 )
 
 type DocumentEditorBundle struct {
-	Document   domain.Document
-	Versions   []domain.Version
-	Schema     domain.DocumentProfileSchemaVersion
-	Governance domain.DocumentProfileGovernance
-	Presence   []domain.CollaborationPresence
-	EditLock   *domain.DocumentEditLock
+	Document         domain.Document
+	Versions         []domain.Version
+	Schema           domain.DocumentProfileSchemaVersion
+	Governance       domain.DocumentProfileGovernance
+	TemplateSnapshot domain.DocumentTemplateSnapshot
+	DraftToken       string
+	Presence         []domain.CollaborationPresence
+	EditLock         *domain.DocumentEditLock
 }
 
 func (s *Service) GetDocumentEditorBundle(ctx context.Context, documentID string) (DocumentEditorBundle, error) {
@@ -37,6 +39,27 @@ func (s *Service) GetDocumentEditorBundle(ctx context.Context, documentID string
 		return DocumentEditorBundle{}, err
 	}
 
+	templateSnapshot := domain.DocumentTemplateSnapshot{}
+	draftToken := ""
+	if len(versions) > 0 {
+		templateVersion, hasTemplate, err := s.resolveTemplateVersionForVersion(ctx, doc, versions[len(versions)-1])
+		if err != nil {
+			return DocumentEditorBundle{}, err
+		}
+		if hasTemplate {
+			templateSnapshot = documentTemplateSnapshotFromVersion(templateVersion)
+		}
+		draftToken = draftTokenForVersion(versions[len(versions)-1])
+	} else {
+		templateVersion, hasTemplate, err := s.resolveDocumentTemplateOptional(ctx, doc.ID, doc.DocumentProfile)
+		if err != nil {
+			return DocumentEditorBundle{}, err
+		}
+		if hasTemplate {
+			templateSnapshot = documentTemplateSnapshotFromVersion(templateVersion)
+		}
+	}
+
 	presence, err := s.ListCollaborationPresenceAuthorized(ctx, doc.ID)
 	if err != nil {
 		return DocumentEditorBundle{}, err
@@ -53,11 +76,13 @@ func (s *Service) GetDocumentEditorBundle(ctx context.Context, documentID string
 	}
 
 	return DocumentEditorBundle{
-		Document:   doc,
-		Versions:   versions,
-		Schema:     schema,
-		Governance: governance,
-		Presence:   presence,
-		EditLock:   editLock,
+		Document:         doc,
+		Versions:         versions,
+		Schema:           schema,
+		Governance:       governance,
+		TemplateSnapshot: templateSnapshot,
+		DraftToken:       draftToken,
+		Presence:         presence,
+		EditLock:         editLock,
 	}, nil
 }

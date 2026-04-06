@@ -1,6 +1,9 @@
 import type {
   AccessPolicyItem,
   AttachmentItem,
+  DocumentBrowserContentSaveResponse,
+  DocumentBrowserEditorBundleResponse,
+  DocumentBrowserTemplateSnapshotItem,
   CollaborationPresenceItem,
   DocumentContentDocxResponse,
   DocumentContentNativeResponse,
@@ -12,6 +15,9 @@ import type {
   DocumentListItem,
   DocumentProfileGovernanceItem,
   DocumentProfileSchemaItem,
+  DocumentTemplateAssignmentItem,
+  DocumentTemplateItem,
+  DocumentTemplateSnapshotItem,
   SearchDocumentItem,
   VersionDiffResponse,
   VersionListItem,
@@ -22,6 +28,7 @@ import type {
   SchemaDocumentTypeBundleResponse,
 } from "../features/documents/runtime/schemaRuntimeTypes";
 import { normalizeDocumentTypeSchema, normalizeSchemaDocumentEditorBundle } from "../features/documents/runtime/schemaRuntimeAdapters";
+import { normalizeDocumentProfileCode } from "../features/shared/documentProfile";
 import { request, requestBlob } from "./client";
 
 function normalizeStringArray(value: unknown): string[] {
@@ -143,6 +150,57 @@ function normalizeDocumentEditLockItem(value: DocumentEditLockItem): DocumentEdi
   };
 }
 
+function normalizeDocumentTemplateSnapshot(value: DocumentTemplateSnapshotItem): DocumentTemplateSnapshotItem {
+  return {
+    templateKey: value?.templateKey ?? "",
+    version: Number(value?.version ?? 0),
+    profileCode: value?.profileCode ?? "",
+    schemaVersion: Number(value?.schemaVersion ?? 0),
+    definition: value?.definition && typeof value.definition === "object" && !Array.isArray(value.definition) ? value.definition : {},
+  };
+}
+
+function normalizeDocumentBrowserTemplateSnapshot(value: DocumentBrowserTemplateSnapshotItem): DocumentBrowserTemplateSnapshotItem {
+  if (value?.editor !== "ckeditor5") {
+    throw new Error("Browser editor template snapshot has unsupported editor.");
+  }
+
+  if (value?.contentFormat !== "html") {
+    throw new Error("Browser editor template snapshot has unsupported content format.");
+  }
+
+  return {
+    templateKey: value?.templateKey ?? "",
+    version: Number(value?.version ?? 0),
+    profileCode: value?.profileCode ?? "",
+    schemaVersion: Number(value?.schemaVersion ?? 0),
+    editor: value.editor,
+    contentFormat: value.contentFormat,
+    body: typeof value?.body === "string" ? value.body : "",
+  };
+}
+
+function normalizeDocumentTemplateItem(value: DocumentTemplateItem): DocumentTemplateItem {
+  return {
+    templateKey: value?.templateKey ?? "",
+    version: Number(value?.version ?? 0),
+    profileCode: value?.profileCode ?? "",
+    schemaVersion: Number(value?.schemaVersion ?? 0),
+    name: value?.name ?? "",
+    editor: typeof value?.editor === "string" && value.editor.trim() ? value.editor : undefined,
+    contentFormat: typeof value?.contentFormat === "string" && value.contentFormat.trim() ? value.contentFormat : undefined,
+  };
+}
+
+function normalizeDocumentTemplateAssignmentItem(value: DocumentTemplateAssignmentItem): DocumentTemplateAssignmentItem {
+  return {
+    documentId: value?.documentId ?? "",
+    templateKey: value?.templateKey ?? "",
+    templateVersion: Number(value?.templateVersion ?? 0),
+    assignedAt: value?.assignedAt ?? "",
+  };
+}
+
 function normalizeAccessPolicyItem(value: AccessPolicyItem): AccessPolicyItem {
   return {
     subjectType: value?.subjectType ?? "user",
@@ -168,13 +226,61 @@ function normalizeVersionDiff(value: VersionDiffResponse): VersionDiffResponse {
 }
 
 function normalizeDocumentEditorBundle(value: DocumentEditorBundleResponse): DocumentEditorBundleResponse {
+  const document = normalizeDocumentListItem(value?.document);
+  const templateSnapshot = value?.templateSnapshot ? normalizeDocumentTemplateSnapshot(value.templateSnapshot) : undefined;
+  const draftToken = typeof value?.draftToken === "string" && value.draftToken.trim() ? value.draftToken.trim() : "";
+  const documentProfileCode = normalizeDocumentProfileCode(document.documentProfile);
+  const templateProfileCode = normalizeDocumentProfileCode(templateSnapshot?.profileCode);
+  const hasTemplateSnapshot = Boolean(templateSnapshot);
+  const hasDraftToken = Boolean(draftToken);
+
+  if (hasTemplateSnapshot !== hasDraftToken) {
+    throw new Error("Governed canvas bundle missing template snapshot or draft token.");
+  }
+
+  if (templateProfileCode && templateProfileCode !== documentProfileCode) {
+    throw new Error("Governed canvas template snapshot profile mismatch.");
+  }
+
   return {
-    document: normalizeDocumentListItem(value?.document),
+    document,
     versions: Array.isArray(value?.versions) ? value.versions.map(normalizeVersionItem) : [],
     schema: normalizeDocumentProfileSchema(value?.schema),
     governance: normalizeDocumentProfileGovernance(value?.governance),
+    templateSnapshot,
+    draftToken: draftToken || undefined,
     presence: Array.isArray(value?.presence) ? value.presence.map(normalizeCollaborationPresenceItem) : [],
     editLock: value?.editLock ? normalizeDocumentEditLockItem(value.editLock) : undefined,
+  };
+}
+
+function normalizeDocumentBrowserEditorBundle(value: DocumentBrowserEditorBundleResponse): DocumentBrowserEditorBundleResponse {
+  const document = normalizeDocumentListItem(value?.document);
+  const templateSnapshot = normalizeDocumentBrowserTemplateSnapshot(value?.templateSnapshot);
+  const draftToken = typeof value?.draftToken === "string" ? value.draftToken.trim() : "";
+  const body = typeof value?.body === "string" ? value.body : "";
+  const documentProfileCode = normalizeDocumentProfileCode(document.documentProfile);
+  const templateProfileCode = normalizeDocumentProfileCode(templateSnapshot.profileCode);
+
+  if (!draftToken) {
+    throw new Error("Browser editor bundle missing draft token.");
+  }
+
+  if (!templateSnapshot.templateKey || !templateSnapshot.version) {
+    throw new Error("Browser editor bundle missing template snapshot.");
+  }
+
+  if (templateProfileCode && templateProfileCode !== documentProfileCode) {
+    throw new Error("Browser editor template snapshot profile mismatch.");
+  }
+
+  return {
+    document,
+    versions: Array.isArray(value?.versions) ? value.versions.map(normalizeVersionItem) : [],
+    governance: normalizeDocumentProfileGovernance(value?.governance),
+    templateSnapshot,
+    body,
+    draftToken,
   };
 }
 
@@ -195,6 +301,31 @@ export async function getDocument(documentId: string) {
 export async function getDocumentEditorBundle(documentId: string) {
   return normalizeDocumentEditorBundle(
     await request<DocumentEditorBundleResponse>(`/documents/${encodeURIComponent(documentId)}/editor-bundle`),
+  );
+}
+
+export async function getDocumentBrowserEditorBundle(documentId: string) {
+  return normalizeDocumentBrowserEditorBundle(
+    await request<DocumentBrowserEditorBundleResponse>(`/documents/${encodeURIComponent(documentId)}/browser-editor-bundle`),
+  );
+}
+
+export async function listDocumentTemplates(profileCode?: string) {
+  const params = new URLSearchParams();
+  if (typeof profileCode === "string" && profileCode.trim()) {
+    params.set("profileCode", profileCode.trim());
+  }
+  const suffix = params.toString();
+  const response = await request<{ items: DocumentTemplateItem[] }>(`/document-templates${suffix ? `?${suffix}` : ""}`);
+  return { items: Array.isArray(response.items) ? response.items.map(normalizeDocumentTemplateItem) : [] };
+}
+
+export async function assignDocumentTemplate(documentId: string, body: { templateKey: string; templateVersion: number }) {
+  return normalizeDocumentTemplateAssignmentItem(
+    await request<DocumentTemplateAssignmentItem>(`/documents/${encodeURIComponent(documentId)}/template-assignment`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
   );
 }
 
@@ -302,11 +433,21 @@ export function getDocumentContentNative(documentId: string) {
   return request<DocumentContentNativeResponse>(`/documents/${documentId}/content/native`);
 }
 
-export function saveDocumentContentNative(documentId: string, body: Record<string, unknown>) {
+export function saveDocumentContentNative(documentId: string, body: { content: Record<string, unknown>; draftToken?: string }) {
   return request<DocumentContentSaveResponse>(`/documents/${documentId}/content/native`, {
     method: "POST",
     body: JSON.stringify(body),
   });
+}
+
+export function saveDocumentBrowserContent(documentId: string, body: { body: string; draftToken: string }) {
+  return request<DocumentBrowserContentSaveResponse>(
+    `/documents/${encodeURIComponent(documentId)}/content/browser`,
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+  );
 }
 
 export function getDocumentContentPdf(documentId: string) {

@@ -1,8 +1,11 @@
 package application
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -30,6 +33,7 @@ func TestRenderContentPDFAuthorizedCachesGeneratedDocxKey(t *testing.T) {
 	store := documentmemory.NewAttachmentStore()
 
 	doc := seedDraftDocument(t, ctx, repo, now)
+	seedCompatiblePOProfileSchemaSet(t, repo)
 	if err := repo.SaveVersion(ctx, domain.Version{
 		DocumentID:    doc.ID,
 		Number:        1,
@@ -95,6 +99,76 @@ func TestRenderContentPDFAuthorizedCachesGeneratedDocxKey(t *testing.T) {
 	}
 }
 
+func TestExportBrowserContentUsesBrowserDocgenRoute(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, time.April, 5, 12, 0, 0, 0, time.UTC)
+	repo := documentmemory.NewRepository()
+	store := documentmemory.NewAttachmentStore()
+
+	doc := seedDraftDocument(t, ctx, repo, now)
+	seedCompatiblePOProfileSchemaSet(t, repo)
+	if err := repo.SaveVersion(ctx, domain.Version{
+		DocumentID:      doc.ID,
+		Number:          1,
+		Content:         `<section><p>Atualizado</p></section>`,
+		ContentHash:     contentHash(`<section><p>Atualizado</p></section>`),
+		ChangeSummary:   "Initial version",
+		ContentSource:   domain.ContentSourceBrowserEditor,
+		TextContent:     "Atualizado",
+		TemplateKey:     "po-default-canvas",
+		TemplateVersion: 1,
+		CreatedAt:       now,
+	}); err != nil {
+		t.Fatalf("save version: %v", err)
+	}
+
+	payloadCh := make(chan []byte, 1)
+	docgenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/generate-browser" {
+			t.Fatalf("docgen path = %q, want /generate-browser", r.URL.Path)
+		}
+		raw, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("read docgen payload: %v", err)
+		}
+		payloadCh <- raw
+		w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+		_, _ = w.Write([]byte("docx-binary"))
+	}))
+	defer docgenServer.Close()
+
+	gotenbergServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/forms/libreoffice/convert" {
+			t.Fatalf("gotenberg path = %q, want /forms/libreoffice/convert", r.URL.Path)
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("%PDF-1.4"))
+	}))
+	defer gotenbergServer.Close()
+
+	service := NewService(repo, nil, fixedClock{now: now}).
+		WithAttachmentStore(store).
+		WithDocgenClient(docgen.NewClient(config.DocgenConfig{
+			Enabled:               true,
+			APIURL:                docgenServer.URL,
+			RequestTimeoutSeconds: 1,
+		})).
+		WithGotenberg(gotenberg.NewClient(gotenbergServer.URL))
+
+	if _, err := service.RenderContentPDFAuthorized(ctx, doc.ID, "trace-test"); err != nil {
+		t.Fatalf("RenderContentPDFAuthorized() error = %v", err)
+	}
+
+	select {
+	case raw := <-payloadCh:
+		if !bytes.Contains(raw, []byte(`"html":"<section><p>Atualizado</p></section>"`)) {
+			t.Fatalf("payload = %s", raw)
+		}
+	default:
+		t.Fatal("expected browser docgen payload")
+	}
+}
+
 func TestSaveNativeContentAuthorizedDeletesDocxWhenPDFConversionFails(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, time.April, 2, 12, 0, 0, 0, time.UTC)
@@ -102,6 +176,7 @@ func TestSaveNativeContentAuthorizedDeletesDocxWhenPDFConversionFails(t *testing
 	store := documentmemory.NewAttachmentStore()
 
 	doc := seedDraftDocument(t, ctx, repo, now)
+	seedCompatiblePOProfileSchemaSet(t, repo)
 
 	docgenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/generate" {
@@ -150,6 +225,7 @@ func TestSaveNativeContentAuthorizedIncludesPendingRevisionInDocgenPayload(t *te
 	store := documentmemory.NewAttachmentStore()
 
 	doc := seedDraftDocument(t, ctx, repo, now)
+	seedCompatiblePOProfileSchemaSet(t, repo)
 	if err := repo.SaveVersion(ctx, domain.Version{
 		DocumentID:    doc.ID,
 		Number:        1,
@@ -233,6 +309,147 @@ func TestSaveNativeContentAuthorizedIncludesPendingRevisionInDocgenPayload(t *te
 	}
 	if payload.Revisions[1].Por != doc.OwnerID {
 		t.Fatalf("revision[1].por = %q, want %q", payload.Revisions[1].Por, doc.OwnerID)
+	}
+}
+
+func TestSaveNativeContentRejectsStaleDraftToken(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, time.April, 2, 12, 0, 0, 0, time.UTC)
+	repo := documentmemory.NewRepository()
+	store := documentmemory.NewAttachmentStore()
+
+	doc := seedDraftDocument(t, ctx, repo, now)
+	if err := repo.SaveVersion(ctx, domain.Version{
+		DocumentID:    doc.ID,
+		Number:        1,
+		Content:       "{}",
+		ContentHash:   contentHash("{}"),
+		ChangeSummary: "Initial version",
+		ContentSource: domain.ContentSourceNative,
+		NativeContent: map[string]any{},
+		Values:        map[string]any{},
+		TextContent:   "{}",
+		CreatedAt:     now,
+	}); err != nil {
+		t.Fatalf("save version: %v", err)
+	}
+
+	service := NewService(repo, nil, fixedClock{now: now}).WithAttachmentStore(store)
+
+	_, err := service.SaveNativeContentAuthorized(ctx, domain.SaveNativeContentCommand{
+		DocumentID: doc.ID,
+		DraftToken: "v1:stale",
+		Content: map[string]any{
+			"identificacaoProcesso": map[string]any{"objetivo": "novo objetivo"},
+		},
+		TraceID: "trace-stale",
+	})
+	if !errors.Is(err, domain.ErrDraftConflict) {
+		t.Fatalf("err = %v, want ErrDraftConflict", err)
+	}
+}
+
+func TestResolveDocumentTemplatePrefersDocumentAssignmentOverProfileDefault(t *testing.T) {
+	repo := documentmemory.NewRepository()
+	service := NewService(repo, nil, nil)
+	seedCompatiblePOProfileSchemaSet(t, repo)
+
+	if err := repo.UpsertDocumentTemplateAssignment(context.Background(), domain.DocumentTemplateAssignment{
+		DocumentID:      "doc-1",
+		TemplateKey:     "po-doc-special",
+		TemplateVersion: 2,
+		AssignedAt:      time.Unix(0, 0).UTC(),
+	}); err != nil {
+		t.Fatalf("upsert assignment: %v", err)
+	}
+	if err := repo.UpsertDocumentTemplateVersionForTest(context.Background(), domain.DocumentTemplateVersion{
+		TemplateKey:   "po-doc-special",
+		Version:       2,
+		ProfileCode:   "po",
+		SchemaVersion: 3,
+		Name:          "PO special canvas",
+		Definition:    map[string]any{"type": "page", "id": "special"},
+		CreatedAt:     time.Unix(1, 0).UTC(),
+	}); err != nil {
+		t.Fatalf("upsert template version: %v", err)
+	}
+
+	got, err := service.ResolveDocumentTemplate(context.Background(), "doc-1", "po")
+	if err != nil {
+		t.Fatalf("resolve template: %v", err)
+	}
+	if got.TemplateKey != "po-doc-special" || got.Version != 2 {
+		t.Fatalf("resolved template = %+v, want po-doc-special v2", got)
+	}
+}
+
+func seedCompatiblePOProfileSchemaSet(t *testing.T, repo *documentmemory.Repository) {
+	t.Helper()
+
+	schema := map[string]any{
+		"sections": []any{
+			map[string]any{
+				"key":   "identificacaoProcesso",
+				"num":   "2",
+				"title": "Identificacao do Processo",
+				"fields": []any{
+					map[string]any{"key": "objetivo", "label": "Objetivo", "type": "textarea"},
+				},
+			},
+			map[string]any{
+				"key":   "visaoGeral",
+				"num":   "4",
+				"title": "Visao Geral do Processo",
+				"fields": []any{
+					map[string]any{"key": "descricaoProcesso", "label": "Descricao do processo", "type": "rich"},
+				},
+			},
+		},
+	}
+
+	if err := repo.UpsertDocumentTypeDefinition(context.Background(), domain.DocumentTypeDefinition{
+		Key:           "po",
+		Name:          "Procedimento Operacional",
+		ActiveVersion: 1,
+		Schema: domain.DocumentTypeSchema{
+			Sections: []domain.SectionDef{
+				{
+					Key:   "identificacaoProcesso",
+					Num:   "2",
+					Title: "Identificacao do Processo",
+					Fields: []domain.FieldDef{
+						{Key: "objetivo", Label: "Objetivo", Type: "textarea"},
+					},
+				},
+				{
+					Key:   "visaoGeral",
+					Num:   "4",
+					Title: "Visao Geral do Processo",
+					Fields: []domain.FieldDef{
+						{Key: "descricaoProcesso", Label: "Descricao do processo", Type: "rich"},
+					},
+				},
+			},
+		},
+	}); err != nil {
+		t.Fatalf("seed document type definition: %v", err)
+	}
+
+	if err := repo.UpsertDocumentProfileSchemaVersion(context.Background(), domain.DocumentProfileSchemaVersion{
+		ProfileCode:   "po",
+		Version:       1,
+		IsActive:      true,
+		ContentSchema: schema,
+	}); err != nil {
+		t.Fatalf("seed profile schema v1: %v", err)
+	}
+	if err := repo.UpsertDocumentProfileSchemaVersion(context.Background(), domain.DocumentProfileSchemaVersion{
+		ProfileCode:   "po",
+		Version:       3,
+		IsActive:      false,
+		ContentSchema: schema,
+	}); err != nil {
+		t.Fatalf("seed profile schema v3: %v", err)
 	}
 }
 

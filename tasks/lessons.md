@@ -907,3 +907,192 @@ Wrong:   Keeping `exportDocumentDocxAuthorizedLegacy` alongside the unified docg
 Correct: Remove superseded export implementations once the replacement path is the only reachable flow, keeping only still-shared helpers
 Rule:    After service flow unification, unreachable predecessor methods should be deleted rather than left as dormant fallback code.
 Layer:   application
+
+## Lesson DV - V1 specs should freeze contracts to the narrowest viable shape
+Date: 2026-04-02 | Trigger: correction
+Wrong:   Leaving first-release design contracts flexible with options like schema-range compatibility and editor-vendor-native payloads before proving the simpler path
+Correct: Lock v1 to strict one-to-one bindings, platform-owned envelopes, and one narrow pilot slice; defer broader compatibility until the first implementation is stable
+Rule:    Early architecture specs should minimize optionality so validation, migration, and debugging stay tractable in the first delivery.
+Layer:   process
+
+## Lesson DW - Review feedback must sharpen v1 instead of widening it
+Date: 2026-04-02 | Trigger: correction
+Wrong:   Treating every plausible enterprise concern from a review as required scope for the current design spec
+Correct: Add only the missing contracts that affect the first implementation directly, and explicitly push broader concerns like slot ACL, search strategy, and conditional templates out of v1
+Rule:    Architecture reviews should tighten the current delivery slice and reject scope that would dilute the first release.
+Layer:   process
+
+## Lesson DX - apply_patch targets the parent repo unless the worktree path is explicit
+Date: 2026-04-02 | Trigger: correction
+Wrong:   Using relative apply_patch paths in a linked worktree and writing the new file into the parent repo instead
+Correct: Use absolute worktree paths for every apply_patch edit when the active branch lives under `.worktrees/`
+Rule:    Path-sensitive edit tools must be pointed at the active worktree explicitly, or changes can land in the wrong git repository.
+Layer:   process
+
+## Lesson DY - Governed canvas guards must distinguish persisted documents from pre-persist drafts
+Date: 2026-04-03 | Trigger: correction
+Wrong:   Treating a new draft with an empty `documentId` as a governed persisted document, then fail-closing on missing `templateSnapshot` or `draftToken`
+Correct: Only apply the governed-canvas fail-closed guard when `documentId` is non-empty, and block editing/autosave client-side when `editLock.lockedBy !== currentUserId`
+Rule:    Pre-persist drafts need a permissive open path, while persisted documents must fail closed on invalid governance metadata and lock ownership.
+Layer:   frontend
+
+## Lesson DZ - Async guards should snapshot request identity, not rely on delayed refs
+Date: 2026-04-03 | Trigger: correction
+Wrong:   A heartbeat response was allowed to write collaboration state based on a ref that lagged behind the current selected document
+Correct: Capture the document id at request start and only apply the result if the live selected document still matches that snapshot
+Rule:    Async side effects must compare against request-local identity to avoid stale writes after selection changes.
+Layer:   frontend
+
+## Lesson EA2 - Template compatibility must use the template's declared schema version
+Date: 2026-04-03 | Trigger: correction
+Wrong:   Template validation resolved against the active profile schema and silently fell back when the referenced schema version was missing
+Correct: Resolve compatibility against `templateVersion.SchemaVersion` exactly and fail closed with `ErrInvalidCommand` if that schema snapshot is absent
+Rule:    Template snapshots must validate against the schema version they declare, not whichever version happens to be active.
+Layer:   application
+
+## Lesson EB - Runtime schema seeds must match template contracts
+Date: 2026-04-03 | Trigger: correction
+Wrong:   The in-memory PO type seed still advertised active version 2 while the built-in template contract and runtime migration data pointed at version 3
+Correct: Keep the default runtime type definition aligned with the template's declared schema version so exact-version validation succeeds in default flows
+Rule:    Seeded runtime schemas and template contracts must advance together, or exact-version validation will fail closed in baseline environments.
+Layer:   process
+
+## Lesson EC - Template schema resolution must read the requested snapshot
+Date: 2026-04-03 | Trigger: correction
+Wrong:   Resolving template validation against the active schema version, even when the template referenced a different schema snapshot
+Correct: Load the schema by `templateVersion.SchemaVersion` from the profile schema list and reject the template if that exact version is absent
+Rule:    Template validation must be bound to the schema snapshot the template declares, not to the currently active version.
+Layer:   application
+
+## Lesson ED - Template validation must use the hydrated canonical schema source
+Date: 2026-04-03 | Trigger: correction
+Wrong:   Reading `repo.ListDocumentProfileSchemas(...)` directly during template validation and trusting the raw profile-row `content_schema_json`
+Correct: Resolve schema content through `s.ListDocumentProfileSchemas(...)` so validation uses the canonical type-definition snapshot that runtime/editor consume
+Rule:    Template compatibility checks must validate against the same hydrated schema source as runtime, not against stale profile rows.
+Layer:   application
+
+## Lesson EE - Governed canvas exports must bind to the versioned template snapshot
+Date: 2026-04-03 | Trigger: correction
+Wrong:   Building DOCX payloads from the document's active profile schema alone and allowing version 1 creation to continue when the governed template snapshot could not be resolved
+Correct: Resolve the exact template snapshot for governed PO documents, fail closed when it is missing, and use that snapshot's schema version when building export/runtime payloads
+Rule:    Governed exports must render from the stored revision snapshot, not from whichever profile defaults happen to be current.
+Layer:   application
+
+## Lesson EF - Export payloads must fail closed on schema drift
+Date: 2026-04-03 | Trigger: correction
+Wrong:   Re-resolving the docgen schema snapshot from `templateSnapshot.SchemaVersion` when it differed from `document.ProfileSchemaVersion`
+Correct: Compare the template snapshot schema version against the document schema snapshot and return `ErrInvalidCommand` before payload creation if they differ
+Rule:    Export/runtime payloads must stay bound to the document's resolved schema snapshot and never silently switch to another version.
+Layer:   application
+
+## Lesson EG - Governed drafts must never fall back past a missing template snapshot
+Date: 2026-04-03 | Trigger: correction
+Wrong:   `GetDocumentEditorBundle` returned an empty template snapshot and `SaveNativeContentAuthorized` resolved a template default when a governed PO draft version had no stored template key/version
+Correct: Fail closed with `ErrInvalidCommand` for governed PO drafts when the latest version lacks a template snapshot; only non-governed drafts may use the existing fallback
+Rule:    Governed draft flows must treat the stored template snapshot as mandatory and never infer a replacement from profile defaults.
+Layer:   application
+
+## Lesson EH - Browser template tests must seed the exact schema snapshot they resolve against
+Date: 2026-04-05 | Trigger: correction
+Wrong:   A browser-content handler fixture only seeded the draft document and version, leaving the browser template's schema version absent from the repository
+Correct: Seed the exact profile schema version referenced by the browser template before exercising the save path
+Rule:    Template resolution that validates by exact schema version requires fixtures to provide that schema snapshot explicitly.
+Layer:   delivery
+
+## Lesson EI - Browser editor reloads must be explicit
+Date: 2026-04-05 | Trigger: correction
+Wrong:   `loadBundle` depended on `errorCode`, so save/conflict state changes could retrigger the loader and discard unsaved editor content
+Correct: Keep the bundle loader keyed only to document identity and trigger reloads only from the user's explicit retry action
+Rule:    Editor refetches should never be coupled to transient error state.
+Layer:   frontend
+
+## Lesson EJ - Document profile normalization must be shared
+Date: 2026-04-05 | Trigger: correction
+Wrong:   `normalizeDocumentProfileCode` lived inside the legacy builder module and API/profile checks compared profile strings ad hoc
+Correct: Put document profile normalization in a shared frontend helper and reuse it in views and API validation checks
+Rule:    Canonical string normalization should live in one shared utility so profile comparisons stay consistent.
+Layer:   frontend
+
+## Lesson EK - Template catalog endpoints must return assignable template versions, not profile defaults
+Date: 2026-04-05 | Trigger: correction
+Wrong:   `ListDocumentTemplates` looped active profiles and returned only `GetDefaultDocumentTemplate(profile)`
+Correct: `ListDocumentTemplates` reads `ListDocumentTemplateVersions(profileCode)` and returns the assignable template catalog filtered to active profiles
+Rule:    Listing endpoints for assignment workflows must expose the full assignable catalog, while defaults remain a separate resolution path.
+Layer:   application
+
+## Lesson EL - Session-protected Playwright API requests must send same-site Origin
+Date: 2026-04-05 | Trigger: correction
+Wrong:   Browser e2e used `page.context().request` for authenticated calls without an `Origin` header and hit `AUTH_INVALID_ORIGIN`
+Correct: Add `Origin: http://127.0.0.1:4173` to authenticated Playwright APIRequestContext calls that rely on session cookies
+Rule:    When backend session middleware enforces origin checks, e2e API calls must include an explicit same-site origin header.
+Layer:   process
+
+## Lesson EM - Domain sentinel errors must map to stable client error envelopes
+Date: 2026-04-05 | Trigger: correction
+Wrong:   New template assignment/read flows returned template-related sentinel errors that fell through `writeDomainError` and surfaced as `500 INTERNAL_ERROR`
+Correct: Map template domain errors explicitly in delivery (`ErrDocumentTemplateNotFound`, `ErrDocumentTemplateAssignmentNotFound`) to non-5xx API responses
+Rule:    Any new domain sentinel introduced in application flows must be mapped in HTTP error translation before release.
+Layer:   delivery
+
+## Lesson EN - Content mutation endpoints need explicit body size guards
+Date: 2026-04-05 | Trigger: correction
+Wrong:   Native/browser content save handlers decoded request bodies without `http.MaxBytesReader`, allowing unbounded JSON payloads
+Correct: Apply explicit max-body limits at handler entry for content-save routes before JSON decode
+Rule:    Mutation endpoints that persist document content must enforce request-size limits at the HTTP boundary.
+Layer:   delivery
+
+## Lesson EO - Draft template snapshots must fail closed when missing
+Date: 2026-04-05 | Trigger: correction
+Wrong:   Draft native-content saves re-resolved template assignment/default when the latest version had empty `TemplateKey`/`TemplateVersion`
+Correct: Reject the save with `ErrInvalidCommand` when draft snapshot metadata is missing
+Rule:    Revision-bound template metadata is mandatory once a draft exists; save flows must not silently rebind templates.
+Layer:   application
+
+## Lesson EP - Create-to-editor e2e must assert persisted creation before editor entry
+Date: 2026-04-05 | Trigger: correction
+Wrong:   A native create flow assertion would only check the editor surface after submit and could miss the absence of a persisted document create response
+Correct: Wait for the create POST to return a `documentId`, then assert the editor route/UI uses that persisted id
+Rule:    Editor handoff tests must treat the create response as the source of truth for persistence, not just the presence of editor chrome.
+Layer:   frontend
+
+## Lesson EQ - Browser editor handoff must persist native drafts first
+Date: 2026-04-06 | Trigger: correction
+Wrong:   Native create submitted to content-builder with a local draft (`documentId=""`) before `createDocument`, forcing browser editor load failure
+Correct: Persist document first via `createDocument`, then open browser editor using the persisted `documentId`
+Rule:    Any browser-editor entry flow must hand off a persisted document identity.
+Layer:   frontend
+
+## Lesson ER - Template-assigned browser editing must fail closed when snapshot is missing
+Date: 2026-04-06 | Trigger: correction
+Wrong:   Browser editor bundle/save accepted versions without resolved template snapshots
+Correct: Return `ErrDocumentTemplateNotFound` when browser template snapshot cannot be resolved for bundle/save
+Rule:    Template-assigned editing flows must reject edits when template binding is absent.
+Layer:   application
+
+## Lesson ES - OpenAPI must declare fail-closed runtime responses actually returned by handlers
+Date: 2026-04-06 | Trigger: correction
+Wrong:   Browser bundle/export endpoints documented only happy-path auth/not-found responses while delivery could also return `400` and `503`
+Correct: Update OpenAPI responses in the same slice whenever fail-closed runtime paths are introduced or tightened
+Rule:    API contracts must enumerate real handler outcomes, especially validation and dependency-unavailable envelopes.
+Layer:   process
+
+## Lesson ET - Local dev clients should default to the checked-in runtime endpoint
+Date: 2026-04-06 | Trigger: correction
+Wrong:   Local API boot required `METALDOCS_DOCGEN_API_URL` even though the repo already runs docgen on `127.0.0.1:3001`
+Correct: In `APP_ENV=local`, default the docgen client to the local docgen service unless an explicit URL is provided
+Rule:    Local development should honor the workspace's standard sidecar ports instead of requiring extra env wiring for every session.
+Layer:   process
+
+## Lesson EU - Downstream renderer outages must map to stable unavailable errors
+Date: 2026-04-06 | Trigger: correction
+Wrong:   Browser DOCX export propagated docgen transport/5xx failures as generic errors and leaked as `500 INTERNAL_ERROR`
+Correct: Classify docgen transport/5xx failures as renderer unavailable and map them to `ErrRenderUnavailable` (`503`)
+Rule:    Infrastructure dependency outages must surface as stable availability errors, never as opaque internal failures.
+Layer:   application
+
+## Lesson EV - Default template schema versions must match seeded profile schemas
+Date: 2026-04-06 | Trigger: correction
+Wrong:   Default PO template referenced schema version 3 while default profile schema seeds only exposed active version 1 in memory/runtime fixtures
+Correct: Keep default profile `ActiveSchemaVersion` and seeded profile schema versions aligned with the default template's declared schema version
+Rule:    Any versioned template shipped by default must have a matching seeded schema snapshot, or create/search/runtime flows will fail closed with `ErrInvalidCommand`.
+Layer:   process

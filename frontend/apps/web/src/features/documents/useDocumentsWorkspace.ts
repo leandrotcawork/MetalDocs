@@ -6,7 +6,6 @@ import type {
   CollaborationPresenceItem,
   CurrentUser,
   DocumentEditLockItem,
-  DocumentListItem,
   ManagedUserItem,
   SearchDocumentItem,
   VersionDiffResponse,
@@ -198,14 +197,23 @@ export function useDocumentsWorkspace(applyDocumentProfile: (profileCode: string
     [setApprovals, setAttachments, setAuditEvents, setCollaborationPresence, setDocumentEditLock, setError, setPolicies, setPolicyResourceId, setSelectedDocument, setVersionDiff, setVersions],
   );
 
-  const openDocument = useCallback(
+  const openDocumentWithResult = useCallback(
     async (documentId: string, nextView: "library" | "content-builder" = "library") => {
       const ok = await loadDocumentDetails(documentId);
       if (ok) {
         requestViewNavigation(nextView);
+        return true;
       }
+      return false;
     },
     [loadDocumentDetails, requestViewNavigation],
+  );
+
+  const openDocument = useCallback(
+    async (documentId: string, nextView: "library" | "content-builder" = "library") => {
+      await openDocumentWithResult(documentId, nextView);
+    },
+    [openDocumentWithResult],
   );
 
   const openDocumentForHub = useCallback(
@@ -240,28 +248,8 @@ export function useDocumentsWorkspace(applyDocumentProfile: (profileCode: string
       if (shouldOpenEditor) {
         setIsCreateSubmitting(true);
       }
-      if (contentMode === "native") {
-        setSelectedDocument({
-          documentId: "",
-          title: documentForm.title,
-          documentType: documentForm.documentProfile,
-          documentProfile: documentForm.documentProfile,
-          documentFamily: documentForm.documentProfile,
-          processArea: documentForm.processArea || undefined,
-          subject: documentForm.subject || undefined,
-          ownerId: currentUser?.userId ?? documentForm.ownerId,
-          businessUnit: documentForm.businessUnit,
-          department: documentForm.department,
-          classification: documentForm.classification as DocumentListItem["classification"],
-          status: "DRAFT",
-          tags: documentForm.tags.split(",").map((item) => item.trim()).filter(Boolean),
-          effectiveAt: documentForm.effectiveAt || undefined,
-          expiryAt: documentForm.expiryAt || undefined,
-        });
-        requestViewNavigation("content-builder");
-        setIsCreateSubmitting(false);
-        return;
-      }
+      let createdDocumentID = "";
+      let failureStage: "create" | "content" | "open_editor" | "refresh" = "create";
       try {
         startApiTrace("create-document");
         const needsAudience = ["CONFIDENTIAL", "RESTRICTED"].includes(documentForm.classification);
@@ -286,10 +274,12 @@ export function useDocumentsWorkspace(applyDocumentProfile: (profileCode: string
           metadata: documentForm.metadata.trim() ? JSON.parse(documentForm.metadata) : {},
           audience,
         });
+        createdDocumentID = created.documentId;
         let handledContent = false;
         setContentError("");
 
         if (contentMode === "docx_upload" && contentFile) {
+          failureStage = "content";
           handledContent = true;
           setContentStatus("saving");
           const response = await api.uploadDocumentContentDocx(created.documentId, contentFile);
@@ -314,69 +304,42 @@ export function useDocumentsWorkspace(applyDocumentProfile: (profileCode: string
           setContentError("");
         }
         setMessage(handledContent ? "Documento criado e conteudo processado." : "Documento criado com sucesso.");
-        if (!handledContent) {
+        if (contentMode === "native") {
+          failureStage = "open_editor";
+          const opened = await openDocumentWithResult(created.documentId, "content-builder");
+          if (!opened) {
+            throw new Error("open-document-failed");
+          }
+        } else if (!handledContent) {
           requestViewNavigation("library");
         }
         setIsCreateSubmitting(false);
-        if (currentUser) await loadWorkspace(currentUser);
+        if (currentUser) {
+          failureStage = "refresh";
+          await loadWorkspace(currentUser);
+        }
         stopApiTrace();
       } catch (err) {
-        setContentStatus("error");
-        setContentError("Falha ao gerar o conteudo. O documento foi criado.");
-        setError(asMessage(err));
+        if (createdDocumentID == "") {
+          setContentStatus("idle");
+          setContentError("");
+          setError(asMessage(err));
+        } else if (failureStage === "content") {
+          setContentStatus("error");
+          setContentError("Falha ao gerar o conteudo. O documento foi criado.");
+          setError(asMessage(err));
+        } else if (failureStage === "open_editor") {
+          setError("Documento criado, mas nao foi possivel abrir o editor.");
+        } else if (failureStage === "refresh") {
+          setError("Documento criado, mas houve falha ao atualizar o workspace.");
+        } else {
+          setError(asMessage(err));
+        }
         setIsCreateSubmitting(false);
         stopApiTrace();
       }
     },
-    [contentFile, contentMode, documentForm, loadWorkspace, openDocument, requestViewNavigation, setContentDocxUrl, setContentError, setContentFile, setContentMode, setContentPdfUrl, setContentStatus, setDocumentForm, setError, setIsCreateSubmitting, setMessage, setSelectedDocument],
-  );
-
-  const createDocumentFromDraft = useCallback(
-    async (contentDraft: Record<string, unknown>, currentUser: CurrentUser | null) => {
-      setError("");
-      setMessage("");
-      setContentStatus("saving");
-      try {
-        startApiTrace("create-document-from-editor");
-        const needsAudience = ["CONFIDENTIAL", "RESTRICTED"].includes(documentForm.classification);
-        const audienceMode = documentForm.audienceMode || "DEPARTMENT";
-        const audienceDepartments = documentForm.classification === "CONFIDENTIAL"
-          ? documentForm.audienceDepartments
-          : [documentForm.audienceDepartment || documentForm.department].filter(Boolean);
-        const audience = needsAudience ? {
-          mode: audienceMode,
-          departmentCodes: audienceDepartments,
-          processAreaCodes: audienceMode === "AREAS"
-            ? [documentForm.audienceProcessArea || documentForm.processArea].filter(Boolean)
-            : undefined,
-        } : undefined;
-        const created = await api.createDocument({
-          ...documentForm,
-          documentType: documentForm.documentProfile,
-          documentProfile: documentForm.documentProfile,
-          tags: documentForm.tags.split(",").map((item) => item.trim()).filter(Boolean),
-          effectiveAt: documentForm.effectiveAt ? new Date(documentForm.effectiveAt).toISOString() : undefined,
-          expiryAt: documentForm.expiryAt ? new Date(documentForm.expiryAt).toISOString() : undefined,
-          metadata: documentForm.metadata.trim() ? JSON.parse(documentForm.metadata) : {},
-          audience,
-        });
-        const response = await api.saveDocumentContentNative(created.documentId, { content: contentDraft ?? {} });
-        setContentPdfUrl(response.pdfUrl);
-        setContentStatus("ready");
-        setMessage("Documento criado e PDF gerado.");
-        await openDocument(created.documentId, "content-builder");
-        if (currentUser) await loadWorkspace(currentUser);
-        stopApiTrace();
-        return { documentId: created.documentId, pdfUrl: response.pdfUrl, version: response.version ?? null };
-      } catch (err) {
-        setContentStatus("error");
-        setContentError("Falha ao gerar o PDF. O documento nao foi criado.");
-        setError(asMessage(err));
-        stopApiTrace();
-        throw err;
-      }
-    },
-    [documentForm, loadWorkspace, openDocument, setContentError, setContentPdfUrl, setContentStatus, setError, setMessage],
+    [contentFile, contentMode, documentForm, loadWorkspace, openDocumentWithResult, requestViewNavigation, setContentDocxUrl, setContentError, setContentFile, setContentMode, setContentPdfUrl, setContentStatus, setDocumentForm, setError, setIsCreateSubmitting, setMessage, setSelectedDocument],
   );
 
   const handleContentModeChange = useCallback((mode: ContentMode) => {
@@ -448,7 +411,6 @@ export function useDocumentsWorkspace(applyDocumentProfile: (profileCode: string
     openDocumentForHub,
     handleUploadAttachment,
     handleCreateDocument,
-    createDocumentFromDraft,
     handleContentModeChange,
     handleContentFileChange,
     handleDownloadTemplate,

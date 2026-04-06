@@ -1,0 +1,167 @@
+.canvasPage {
+  display: grid;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  border-radius: 1.25rem;
+  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.page {
+  display: grid;
+  gap: 1rem;
+}
+
+.sectionFrame {
+  display: grid;
+  gap: 0.875rem;
+  padding: 1.125rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--surface);
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.25;
+  color: var(--vinho-d);
+}
+
+.sectionBody {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.label {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-soft);
+  letter-spacing: 0.01em;
+}
+
+.slot {
+  display: grid;
+  gap: 0.5rem;
+  padding: 1rem;
+  border: 1px solid var(--border-2);
+  border-radius: 0.95rem;
+  background: var(--surface-2);
+}
+
+.slotHeader {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.slotLabelRow {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.slotLabel {
+  font-size: 0.96rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.slotRequired {
+  color: var(--vinho);
+  font-weight: 700;
+}
+
+.slotPath {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.slotDescription {
+  font-size: 0.86rem;
+  color: var(--text-soft);
+}
+
+.slotControl,
+.richEditorContent {
+  width: 100%;
+  border: 1px solid var(--border-2);
+  border-radius: 0.875rem;
+  background: var(--surface);
+  color: var(--text);
+  padding: 0.875rem 1rem;
+  font: inherit;
+  outline: none;
+}
+
+.slotTextarea {
+  resize: vertical;
+  min-height: 8rem;
+}
+
+.slotControl:focus,
+.richEditorContent:focus {
+  border-color: var(--vinho);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--vinho-soft) 68%, transparent);
+}
+
+.slotCheckboxRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 3rem;
+}
+
+.richEditorShell {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.richToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.richToolbarButton {
+  border: 1px solid var(--border-2);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-soft);
+  padding: 0.45rem 0.75rem;
+  font: inherit;
+  font-size: 0.83rem;
+}
+
+.richToolbarButtonActive {
+  border-color: var(--vinho);
+  background: var(--vinho-soft);
+  color: var(--vinho-d);
+}
+
+.richToolbarButton:disabled {
+  opacity: 0.55;
+}
+
+.richEditorBody :global(.tiptap) {
+  min-height: 11rem;
+}
+
+.unsupportedSlot {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.875rem 1rem;
+  border-radius: 0.875rem;
+  border: 1px dashed var(--border-2);
+  background: var(--vinho-pale);
+  color: var(--text-soft);
+}
+
+.unsupportedSlot strong {
+  font-size: 0.9rem;
+}
+
+.unsupportedSlot span {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}

@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -256,7 +257,14 @@ func (s *Service) ExportDocumentDocxAuthorized(ctx context.Context, documentID, 
 		return nil, err
 	}
 
-	return s.docgenClient.Generate(ctx, payload, traceID)
+	rendered, err := s.docgenClient.Generate(ctx, payload, traceID)
+	if err != nil {
+		if errors.Is(err, docgen.ErrUnavailable) {
+			return nil, domain.ErrRenderUnavailable
+		}
+		return nil, err
+	}
+	return rendered, nil
 }
 
 func (s *Service) generateDocxBytes(ctx context.Context, doc domain.Document, version domain.Version, content map[string]any, traceID string, pendingRevision *docgen.RenderRevision) ([]byte, error) {
@@ -282,7 +290,14 @@ func (s *Service) generateDocxBytes(ctx context.Context, doc domain.Document, ve
 		return nil, err
 	}
 
-	return s.docgenClient.Generate(ctx, payload, traceID)
+	rendered, err := s.docgenClient.Generate(ctx, payload, traceID)
+	if err != nil {
+		if errors.Is(err, docgen.ErrUnavailable) {
+			return nil, domain.ErrRenderUnavailable
+		}
+		return nil, err
+	}
+	return rendered, nil
 }
 
 func (s *Service) recordRuntimeValuesAudit(ctx context.Context, doc domain.Document, version domain.Version, valueCount int, traceID string, now time.Time) error {

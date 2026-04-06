@@ -12,13 +12,15 @@ if (-not $SkipInfra) {
 }
 
 Start-Process powershell -ArgumentList "-NoExit", "-ExecutionPolicy", "Bypass", "-File", "$PSScriptRoot/dev-api.ps1" -WorkingDirectory $root | Out-Null
+Start-Process powershell -ArgumentList "-NoExit", "-ExecutionPolicy", "Bypass", "-File", "$PSScriptRoot/dev-docgen.ps1" -WorkingDirectory $root | Out-Null
 
 $webCommand = "Set-Location `"$root/frontend/apps/web`"; npm run dev"
 Start-Process powershell -ArgumentList "-NoExit", "-Command", $webCommand -WorkingDirectory $root | Out-Null
 
 Write-Host ""
-Write-Host "[dev-api-web] API e web iniciados em janelas separadas."
+Write-Host "[dev-api-web] API, docgen e web iniciados em janelas separadas."
 Write-Host "  API: http://127.0.0.1:8080 (ou APP_PORT)"
+Write-Host "  Docgen: http://127.0.0.1:3001"
 Write-Host "  Web: http://127.0.0.1:4173"
 Write-Host ""
 Write-Host "Dica: use -SkipInfra para nao reiniciar containers."

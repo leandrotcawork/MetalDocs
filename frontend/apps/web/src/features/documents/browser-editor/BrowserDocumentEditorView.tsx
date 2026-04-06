@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DecoupledEditor } from "ckeditor5";
 import "ckeditor5/ckeditor5.css";
 
-import { getDocumentBrowserEditorBundle, saveDocumentBrowserContent } from "../../../api/documents";
+import { exportDocumentDocx, getDocumentBrowserEditorBundle, saveDocumentBrowserContent } from "../../../api/documents";
 import type { DocumentBrowserEditorBundleResponse, DocumentListItem } from "../../../lib.types";
 import { formatDocumentDisplayName } from "../../shared/documentDisplay";
 import { normalizeDocumentProfileCode } from "../../shared/documentProfile";
@@ -24,6 +24,7 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
   const [errorMessage, setErrorMessage] = useState("");
   const [errorCode, setErrorCode] = useState<"load" | "save" | "conflict" | null>(null);
   const [saveLabel, setSaveLabel] = useState("Nao salvo");
+  const [isExporting, setIsExporting] = useState(false);
   const toolbarHostRef = useRef<HTMLDivElement | null>(null);
   const bundleRef = useRef<DocumentBrowserEditorBundleResponse | null>(null);
   const errorCodeRef = useRef<"load" | "save" | "conflict" | null>(null);
@@ -158,6 +159,37 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
     }
   }
 
+  async function handleExportDocx() {
+    if (!document.documentId.trim() || isExporting) {
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const blob = await exportDocumentDocx(document.documentId);
+      const url = window.URL.createObjectURL(blob);
+      const link = window.document.createElement("a");
+      const safeCode = (document.documentCode || "documento").trim().replace(/[^\w.-]+/g, "-");
+      link.href = url;
+      link.download = `${safeCode}.docx`;
+      window.document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setErrorCode(null);
+      setErrorMessage("");
+    } catch (error) {
+      setErrorCode("save");
+      setErrorMessage("Nao foi possivel exportar o DOCX deste documento.");
+      const status = statusOf(error);
+      if (status === 503) {
+        setErrorMessage("Servico de render indisponivel. Inicie o docgen e tente novamente.");
+      }
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   const canRetrySave = Boolean(bundle) && !isSaving && isDirty;
   const showInlineError = errorMessage.trim().length > 0;
 
@@ -179,14 +211,24 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
           </div>
         </div>
 
-        <button
-          type="button"
-          className={styles.saveButton}
-          onClick={handleSave}
-          disabled={!bundle || viewState !== "ready" || isSaving || !isDirty || hasConflict}
-        >
-          Salvar rascunho
-        </button>
+        <div className={styles.actions}>
+          <button
+            type="button"
+            className={styles.exportButton}
+            onClick={() => void handleExportDocx()}
+            disabled={!bundle || isSaving || isExporting}
+          >
+            {isExporting ? "Exportando..." : "Exportar DOCX"}
+          </button>
+          <button
+            type="button"
+            className={styles.saveButton}
+            onClick={() => void handleSave()}
+            disabled={!bundle || viewState !== "ready" || isSaving || !isDirty || hasConflict}
+          >
+            Salvar rascunho
+          </button>
+        </div>
       </header>
 
       <div className={styles.metaBar}>

@@ -24,7 +24,8 @@
 }
 
 .backButton,
-.saveButton {
+.saveButton,
+.exportButton {
   height: 42px;
   padding: 0 1rem;
   border-radius: 999px;
@@ -54,8 +55,25 @@
   transform: translateY(-1px);
 }
 
+.actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.exportButton {
+  background: var(--surface);
+  color: var(--vinho);
+  border-color: rgba(107, 31, 42, 0.2);
+}
+
+.exportButton:hover:not(:disabled) {
+  background: var(--vinho-soft);
+}
+
 .saveButton:disabled,
-.backButton:disabled {
+.backButton:disabled,
+.exportButton:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
@@ -359,8 +377,15 @@
     align-items: flex-start;
   }
 
-  .saveButton {
+  .saveButton,
+  .exportButton,
+  .actions {
     width: 100%;
     justify-self: stretch;
+  }
+
+  .actions {
+    display: grid;
+    gap: 0.5rem;
   }
 }

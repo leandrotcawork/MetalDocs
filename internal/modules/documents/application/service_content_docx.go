@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -168,10 +169,18 @@ func (s *Service) generateBrowserDocxBytes(ctx context.Context, doc domain.Docum
 	if strings.TrimSpace(version.Content) == "" {
 		return nil, domain.ErrInvalidCommand
 	}
-	return s.docgenClient.GenerateBrowser(ctx, docgen.BrowserRenderPayload{
+	payload := docgen.BrowserRenderPayload{
 		DocumentCode: doc.DocumentCode,
 		Title:        doc.Title,
 		Version:      fmt.Sprintf("%d", version.Number),
 		HTML:         version.Content,
-	}, traceID)
+	}
+	rendered, err := s.docgenClient.GenerateBrowser(ctx, payload, traceID)
+	if err != nil {
+		if errors.Is(err, docgen.ErrUnavailable) {
+			return nil, domain.ErrRenderUnavailable
+		}
+		return nil, err
+	}
+	return rendered, nil
 }

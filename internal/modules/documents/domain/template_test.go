@@ -212,6 +212,35 @@ func TestPOBrowserTemplate0058Parity(t *testing.T) {
 	}
 }
 
+func TestPOBrowserTemplateHasExportConfig(t *testing.T) {
+	var template *DocumentTemplateVersion
+	for _, tmpl := range DefaultDocumentTemplateVersions() {
+		if tmpl.TemplateKey == "po-default-browser" {
+			found := tmpl
+			template = &found
+			break
+		}
+	}
+	if template == nil {
+		t.Fatal("po-default-browser template not found")
+	}
+	if template.ExportConfig == nil {
+		t.Fatal("po-default-browser template must have ExportConfig")
+	}
+	if template.ExportConfig.MarginTop != 0.625 {
+		t.Fatalf("MarginTop = %f, want 0.625", template.ExportConfig.MarginTop)
+	}
+	if template.ExportConfig.MarginRight != 0.625 {
+		t.Fatalf("MarginRight = %f, want 0.625", template.ExportConfig.MarginRight)
+	}
+	if template.ExportConfig.MarginBottom != 0.625 {
+		t.Fatalf("MarginBottom = %f, want 0.625", template.ExportConfig.MarginBottom)
+	}
+	if template.ExportConfig.MarginLeft != 0.625 {
+		t.Fatalf("MarginLeft = %f, want 0.625", template.ExportConfig.MarginLeft)
+	}
+}
+
 func firstDiffIndex(a, b string) int {
 	minLen := len(a)
 	if len(b) < minLen {

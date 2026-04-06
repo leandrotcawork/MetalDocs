@@ -180,5 +180,6 @@ func documentTemplateSnapshotFromVersion(item domain.DocumentTemplateVersion) do
 		ContentFormat: item.ContentFormat,
 		Body:          item.Body,
 		Definition:    item.Definition,
+		ExportConfig:  item.ExportConfig,
 	}
 }

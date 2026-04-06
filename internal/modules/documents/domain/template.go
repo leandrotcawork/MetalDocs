@@ -5,6 +5,13 @@ import (
 	"time"
 )
 
+type TemplateExportConfig struct {
+	MarginTop    float64 `json:"marginTop"`
+	MarginRight  float64 `json:"marginRight"`
+	MarginBottom float64 `json:"marginBottom"`
+	MarginLeft   float64 `json:"marginLeft"`
+}
+
 type DocumentTemplateVersion struct {
 	TemplateKey   string
 	Version       int
@@ -16,6 +23,7 @@ type DocumentTemplateVersion struct {
 	Body          string
 	Definition    map[string]any
 	CreatedAt     time.Time
+	ExportConfig  *TemplateExportConfig
 }
 
 type DocumentTemplateAssignment struct {
@@ -34,6 +42,7 @@ type DocumentTemplateSnapshot struct {
 	ContentFormat string
 	Body          string
 	Definition    map[string]any
+	ExportConfig  *TemplateExportConfig
 }
 
 func (v DocumentTemplateVersion) IsBrowserHTML() bool {
@@ -252,6 +261,12 @@ func DefaultDocumentTemplateVersions() []DocumentTemplateVersion {
 </section>`,
 			Definition: map[string]any{},
 			CreatedAt:  time.Unix(0, 0).UTC(),
+			ExportConfig: &TemplateExportConfig{
+				MarginTop:    0.625,
+				MarginRight:  0.625,
+				MarginBottom: 0.625,
+				MarginLeft:   0.625,
+			},
 		},
 	}
 }

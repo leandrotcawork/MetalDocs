@@ -77,4 +77,7 @@ func TestBuildBrowserDocumentHeaderHTMLEscapesSpecialChars(t *testing.T) {
 	if !strings.Contains(result, `&lt;script&gt;`) {
 		t.Error("header HTML must contain escaped script tag")
 	}
+	if !strings.Contains(result, `A &amp; B &lt;Test&gt;`) {
+		t.Errorf("header HTML must escape & and <> in title, got: %q", result)
+	}
 }

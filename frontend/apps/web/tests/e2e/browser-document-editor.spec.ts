@@ -33,12 +33,12 @@ test("browser document editor opens as a single document surface", async ({ page
   expect(templatesResponse.ok()).toBeTruthy();
   const templatesBody = (await templatesResponse.json()) as { items?: Array<{ templateKey?: string; version?: number }> };
   expect(Array.isArray(templatesBody.items)).toBeTruthy();
-  expect(templatesBody.items?.some((item) => item.templateKey === "po-default-canvas" && item.version === 1)).toBeTruthy();
+  expect(templatesBody.items?.some((item) => item.templateKey === "po-default-browser" && item.version === 1)).toBeTruthy();
 
   const assignmentResponse = await apiContext.put(`/api/v1/documents/${encodeURIComponent(createdDocument.documentId)}/template-assignment`, {
     headers: sameSiteHeaders,
     data: {
-      templateKey: "po-default-canvas",
+      templateKey: "po-default-browser",
       templateVersion: 1,
     },
   });

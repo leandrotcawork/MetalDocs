@@ -62,7 +62,7 @@ func TestHandleDocumentTemplatesGetAndAssignmentPut(t *testing.T) {
 	if listRec.Code != http.StatusOK {
 		t.Fatalf("list status = %d, want %d", listRec.Code, http.StatusOK)
 	}
-	if !strings.Contains(listRec.Body.String(), `"templateKey":"po-default-canvas"`) {
+	if !strings.Contains(listRec.Body.String(), `"templateKey":"po-default-browser"`) {
 		t.Fatalf("list body = %s", listRec.Body.String())
 	}
 

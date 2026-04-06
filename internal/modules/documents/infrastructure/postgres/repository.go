@@ -1198,12 +1198,13 @@ WHERE document_id = $1 AND version_number = $2
 
 func (r *Repository) GetDocumentTemplateVersion(ctx context.Context, templateKey string, version int) (domain.DocumentTemplateVersion, error) {
 	const q = `
-SELECT template_key, version, profile_code, schema_version, name, editor, content_format, body_html, definition_json, created_at
+SELECT template_key, version, profile_code, schema_version, name, editor, content_format, body_html, definition_json, created_at, export_config
 FROM metaldocs.document_template_versions
 WHERE template_key = $1 AND version = $2
 `
 	var item domain.DocumentTemplateVersion
 	var definitionJSON []byte
+	var exportConfigJSON []byte
 	if err := r.db.QueryRowContext(ctx, q, strings.TrimSpace(templateKey), version).Scan(
 		&item.TemplateKey,
 		&item.Version,
@@ -1215,6 +1216,7 @@ WHERE template_key = $1 AND version = $2
 		&item.Body,
 		&definitionJSON,
 		&item.CreatedAt,
+		&exportConfigJSON,
 	); err != nil {
 		if err == sql.ErrNoRows {
 			return domain.DocumentTemplateVersion{}, domain.ErrDocumentTemplateNotFound
@@ -1229,12 +1231,19 @@ WHERE template_key = $1 AND version = $2
 	if item.Definition == nil {
 		item.Definition = map[string]any{}
 	}
+	if len(exportConfigJSON) > 0 {
+		var cfg domain.TemplateExportConfig
+		if err := json.Unmarshal(exportConfigJSON, &cfg); err != nil {
+			return domain.DocumentTemplateVersion{}, fmt.Errorf("unmarshal template export config: %w", err)
+		}
+		item.ExportConfig = &cfg
+	}
 	return item, nil
 }
 
 func (r *Repository) ListDocumentTemplateVersions(ctx context.Context, profileCode string) ([]domain.DocumentTemplateVersion, error) {
 	const q = `
-SELECT template_key, version, profile_code, schema_version, name, editor, content_format, body_html, definition_json, created_at
+SELECT template_key, version, profile_code, schema_version, name, editor, content_format, body_html, definition_json, created_at, export_config
 FROM metaldocs.document_template_versions
 WHERE ($1 = '' OR profile_code = $1)
 ORDER BY profile_code ASC, template_key ASC, version DESC
@@ -1249,6 +1258,7 @@ ORDER BY profile_code ASC, template_key ASC, version DESC
 	for rows.Next() {
 		var item domain.DocumentTemplateVersion
 		var definitionJSON []byte
+		var exportConfigJSON []byte
 		if err := rows.Scan(
 			&item.TemplateKey,
 			&item.Version,
@@ -1260,6 +1270,7 @@ ORDER BY profile_code ASC, template_key ASC, version DESC
 			&item.Body,
 			&definitionJSON,
 			&item.CreatedAt,
+			&exportConfigJSON,
 		); err != nil {
 			return nil, fmt.Errorf("scan document template version: %w", err)
 		}
@@ -1270,6 +1281,13 @@ ORDER BY profile_code ASC, template_key ASC, version DESC
 		}
 		if item.Definition == nil {
 			item.Definition = map[string]any{}
+		}
+		if len(exportConfigJSON) > 0 {
+			var cfg domain.TemplateExportConfig
+			if err := json.Unmarshal(exportConfigJSON, &cfg); err != nil {
+				return nil, fmt.Errorf("unmarshal template export config: %w", err)
+			}
+			item.ExportConfig = &cfg
 		}
 		items = append(items, item)
 	}

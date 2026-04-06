@@ -223,7 +223,7 @@ func buildBrowserDocumentHeaderHTML(doc domain.Document, version domain.Version)
 	sep := `border-right:1px solid rgba(255,255,255,0.18);`
 
 	return fmt.Sprintf(
-		`<table class="md-doc-header" style="width:100%;border-collapse:collapse;margin-bottom:2rem;font-family:DM Sans,sans-serif;">`+
+		`<table class="md-doc-header" style="width:100%%;border-collapse:collapse;margin-bottom:2rem;font-family:DM Sans,sans-serif;">`+
 			`<tr>`+
 			`<td colspan="4" style="%s">Metal Nobre</td>`+
 			`<td style="%sfont-size:11px;font-weight:600;text-align:right;white-space:nowrap;">%s · %s</td>`+

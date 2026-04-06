@@ -1670,7 +1670,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
         '404':
-          description: Documento nao encontrado
+          description: Documento nao encontrado ou template nao encontrado
           content:
             application/json:
               schema:
@@ -1719,8 +1719,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
+        '400':
+          description: Requisicao invalida ou payload/schema inconsistente para exportacao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
         '404':
-          description: Documento nao encontrado
+          description: Documento nao encontrado ou template nao encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '503':
+          description: Servico de renderizacao indisponivel
           content:
             application/json:
               schema:
@@ -2021,8 +2033,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
+        '400':
+          description: Requisicao invalida ou template armazenado incompativel com browser editor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
         '404':
-          description: Documento nao encontrado
+          description: Documento nao encontrado ou template nao encontrado
           content:
             application/json:
               schema:

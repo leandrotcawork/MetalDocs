@@ -1068,3 +1068,17 @@ Wrong:   Browser editor bundle/save accepted versions without resolved template 
 Correct: Return `ErrDocumentTemplateNotFound` when browser template snapshot cannot be resolved for bundle/save
 Rule:    Template-assigned editing flows must reject edits when template binding is absent.
 Layer:   application
+
+## Lesson ES - OpenAPI must declare fail-closed runtime responses actually returned by handlers
+Date: 2026-04-06 | Trigger: correction
+Wrong:   Browser bundle/export endpoints documented only happy-path auth/not-found responses while delivery could also return `400` and `503`
+Correct: Update OpenAPI responses in the same slice whenever fail-closed runtime paths are introduced or tightened
+Rule:    API contracts must enumerate real handler outcomes, especially validation and dependency-unavailable envelopes.
+Layer:   process
+
+## Lesson ET - Local dev clients should default to the checked-in runtime endpoint
+Date: 2026-04-06 | Trigger: correction
+Wrong:   Local API boot required `METALDOCS_DOCGEN_API_URL` even though the repo already runs docgen on `127.0.0.1:3001`
+Correct: In `APP_ENV=local`, default the docgen client to the local docgen service unless an explicit URL is provided
+Rule:    Local development should honor the workspace's standard sidecar ports instead of requiring extra env wiring for every session.
+Layer:   process

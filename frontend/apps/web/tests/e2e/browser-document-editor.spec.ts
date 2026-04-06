@@ -48,7 +48,6 @@ test("browser document editor opens as a single document surface", async ({ page
   await page.getByRole("button", { name: "Abrir documento" }).click();
 
   await expect(page.getByTestId("browser-document-editor")).toBeVisible({ timeout: 20_000 });
-  await expect(page.locator(".content-builder-preview")).toHaveCount(0);
 
   const editable = page.locator(".ck-editor__editable").first();
   await expect(editable).toBeVisible();

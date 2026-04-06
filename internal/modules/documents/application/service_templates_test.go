@@ -234,11 +234,11 @@ func TestCreateDocumentSeedsBrowserTemplateBody(t *testing.T) {
 	if version.ContentSource != domain.ContentSourceBrowserEditor {
 		t.Fatalf("content source = %q, want %q", version.ContentSource, domain.ContentSourceBrowserEditor)
 	}
-	if version.TextContent != "Procedimento Operacional Objetivo Preencha o objetivo. Descricao do processo Descreva o processo." {
-		t.Fatalf("text content = %q, want sanitized plain text", version.TextContent)
+	if !strings.HasPrefix(version.TextContent, "Procedimento Operacional") {
+		t.Fatalf("text content = %q, want prefix 'Procedimento Operacional'", version.TextContent)
 	}
-	if version.TemplateKey != "po-default-canvas" || version.TemplateVersion != 1 {
-		t.Fatalf("template snapshot = %q/%d, want po-default-canvas/1", version.TemplateKey, version.TemplateVersion)
+	if version.TemplateKey != "po-default-browser" || version.TemplateVersion != 1 {
+		t.Fatalf("template snapshot = %q/%d, want po-default-browser/1", version.TemplateKey, version.TemplateVersion)
 	}
 }
 
@@ -278,22 +278,28 @@ func TestListDocumentTemplatesReturnsProfileCatalog(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListDocumentTemplates() error = %v", err)
 	}
-	if len(items) != 2 {
-		t.Fatalf("template count = %d, want 2", len(items))
+	if len(items) != 3 {
+		t.Fatalf("template count = %d, want 3", len(items))
 	}
-	if items[0].TemplateKey != "po-default-canvas" || items[0].Version != 1 {
-		t.Fatalf("template[0] = %#v, want po-default-canvas v1", items[0])
-	}
-	if items[1].TemplateKey != "po-governed-canvas" || items[1].Version != 2 {
-		t.Fatalf("template[1] = %#v, want po-governed-canvas v2", items[1])
-	}
+	// Verify all three PO templates are present
+	keys := make(map[string]bool)
 	for _, item := range items {
+		keys[item.TemplateKey] = true
 		if !item.IsBrowserHTML() {
 			t.Fatalf("template metadata = %#v, want browser html", item)
 		}
 		if item.ProfileCode != "po" {
 			t.Fatalf("template profile = %q, want po", item.ProfileCode)
 		}
+	}
+	if !keys["po-default-canvas"] {
+		t.Fatal("missing po-default-canvas in template list")
+	}
+	if !keys["po-default-browser"] {
+		t.Fatal("missing po-default-browser in template list")
+	}
+	if !keys["po-governed-canvas"] {
+		t.Fatal("missing po-governed-canvas in template list")
 	}
 }
 

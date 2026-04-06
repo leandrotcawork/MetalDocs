@@ -161,8 +161,13 @@ func TestExportBrowserContentUsesBrowserDocgenRoute(t *testing.T) {
 
 	select {
 	case raw := <-payloadCh:
-		if !bytes.Contains(raw, []byte(`"html":"<section><p>Atualizado</p></section>"`)) {
-			t.Fatalf("payload = %s", raw)
+		// Header is prepended; assert the md-doc-header block and body section are both present.
+		if !bytes.Contains(raw, []byte(`md-doc-header`)) {
+			t.Fatalf("payload missing md-doc-header: %s", raw)
+		}
+		if !bytes.Contains(raw, []byte(`\u003csection\u003e\u003cp\u003eAtualizado\u003c/p\u003e\u003c/section\u003e`)) &&
+			!bytes.Contains(raw, []byte(`<section><p>Atualizado</p></section>`)) {
+			t.Fatalf("payload missing body section: %s", raw)
 		}
 	default:
 		t.Fatal("expected browser docgen payload")

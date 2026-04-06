@@ -7,6 +7,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"html"
 	"io"
 	"strings"
 	"time"
@@ -169,11 +170,12 @@ func (s *Service) generateBrowserDocxBytes(ctx context.Context, doc domain.Docum
 	if strings.TrimSpace(version.Content) == "" {
 		return nil, domain.ErrInvalidCommand
 	}
+	headerHTML := buildBrowserDocumentHeaderHTML(doc, version)
 	payload := docgen.BrowserRenderPayload{
 		DocumentCode: doc.DocumentCode,
 		Title:        doc.Title,
 		Version:      fmt.Sprintf("%d", version.Number),
-		HTML:         version.Content,
+		HTML:         headerHTML + version.Content,
 	}
 	rendered, err := s.docgenClient.GenerateBrowser(ctx, payload, traceID)
 	if err != nil {
@@ -183,4 +185,50 @@ func (s *Service) generateBrowserDocxBytes(ctx context.Context, doc domain.Docum
 		return nil, err
 	}
 	return rendered, nil
+}
+
+// buildBrowserDocumentHeaderHTML produces the locked identity header block
+// that mirrors the DocumentEditorHeader React component. This header is
+// prepended to the CKEditor body HTML before browser DOCX export so that
+// the exported artifact matches what the user sees in the editor.
+func buildBrowserDocumentHeaderHTML(doc domain.Document, version domain.Version) string {
+	revision := fmt.Sprintf("Rev. %02d", version.Number)
+	code := doc.DocumentCode
+	if code == "" {
+		code = "—"
+	}
+	createdAt := "—"
+	if !doc.CreatedAt.IsZero() {
+		createdAt = doc.CreatedAt.Format("02/01/2006")
+	}
+	status := doc.Status
+	if status == "" {
+		status = "—"
+	}
+	owner := doc.OwnerID
+	if owner == "" {
+		owner = "—"
+	}
+	return fmt.Sprintf(`<div class="md-doc-header">`+
+		`<div class="md-doc-header__top">`+
+		`<span>Metal Nobre</span>`+
+		`<span>%s · %s</span>`+
+		`</div>`+
+		`<p class="md-doc-header__title">%s</p>`+
+		`<div class="md-doc-header__meta">`+
+		`<span class="md-doc-header__meta-item"><span class="md-doc-header__meta-label">Tipo</span><span class="md-doc-header__meta-value">%s</span></span>`+
+		`<span class="md-doc-header__meta-item"><span class="md-doc-header__meta-label">Elaborado por</span><span class="md-doc-header__meta-value">%s</span></span>`+
+		`<span class="md-doc-header__meta-item"><span class="md-doc-header__meta-label">Data</span><span class="md-doc-header__meta-value">%s</span></span>`+
+		`<span class="md-doc-header__meta-item"><span class="md-doc-header__meta-label">Status</span><span class="md-doc-header__meta-value">%s</span></span>`+
+		`<span class="md-doc-header__meta-item"><span class="md-doc-header__meta-label">Aprovado por</span><span class="md-doc-header__meta-value">—</span></span>`+
+		`</div>`+
+		`</div>`,
+		html.EscapeString(code),
+		html.EscapeString(revision),
+		html.EscapeString(doc.Title),
+		html.EscapeString(doc.DocumentType),
+		html.EscapeString(owner),
+		createdAt,
+		html.EscapeString(status),
+	)
 }

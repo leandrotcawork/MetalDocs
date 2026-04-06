@@ -69,7 +69,7 @@ type DocumentResponse struct {
 	Tags                 []string `json:"tags"`
 	EffectiveAt          string   `json:"effectiveAt,omitempty"`
 	ExpiryAt             string   `json:"expiryAt,omitempty"`
-	CreatedAt            string   `json:"createdAt,omitempty"`
+	CreatedAt            string   `json:"createdAt"`
 }
 
 type DocumentCreatedResponse struct {

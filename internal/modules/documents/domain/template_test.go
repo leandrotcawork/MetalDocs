@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"os"
 	"strings"
 	"testing"
 )
@@ -87,4 +88,101 @@ func TestPOBrowserTemplateCoversPOv3Schema(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestDefaultDocumentTemplateVersionsPODefaultIsLast(t *testing.T) {
+	var lastPO *DocumentTemplateVersion
+	for _, tmpl := range DefaultDocumentTemplateVersions() {
+		if tmpl.ProfileCode == "po" {
+			found := tmpl
+			lastPO = &found
+		}
+	}
+	if lastPO == nil {
+		t.Fatal("no PO template found in DefaultDocumentTemplateVersions()")
+	}
+	if lastPO.TemplateKey != "po-default-browser" {
+		t.Fatalf("last PO template key = %q, want po-default-browser (in-memory repo uses last entry as default)", lastPO.TemplateKey)
+	}
+	if lastPO.Version != 1 {
+		t.Fatalf("last PO template version = %d, want 1", lastPO.Version)
+	}
+}
+
+func TestPOBrowserTemplateGoSQLParity(t *testing.T) {
+	// Load Go seed template
+	var goTemplate *DocumentTemplateVersion
+	for _, tmpl := range DefaultDocumentTemplateVersions() {
+		if tmpl.TemplateKey == "po-default-browser" {
+			found := tmpl
+			goTemplate = &found
+			break
+		}
+	}
+	if goTemplate == nil {
+		t.Fatal("po-default-browser template not found in Go seed")
+	}
+
+	// Read SQL migration file
+	migrationPath := "../../../../migrations/0057_seed_po_browser_template.sql"
+	sqlBytes, err := os.ReadFile(migrationPath)
+	if err != nil {
+		t.Fatalf("read migration file: %v", err)
+	}
+	sqlContent := string(sqlBytes)
+
+	// Verify template identity fields are present in migration SQL
+	identityChecks := map[string]string{
+		"template_key":   "'po-default-browser'",
+		"profile_code":   "'po'",
+		"schema_version": "3",
+		"editor":         "'ckeditor5'",
+		"content_format": "'html'",
+		"name":           "'Procedimento Operacional'",
+		"version":        "1",
+	}
+	for field, expected := range identityChecks {
+		if !strings.Contains(sqlContent, expected) {
+			t.Errorf("migration SQL missing %s = %s", field, expected)
+		}
+	}
+
+	// Verify profile default update is present
+	if !strings.Contains(sqlContent, "document_profile_template_defaults") {
+		t.Error("migration SQL does not update document_profile_template_defaults")
+	}
+	if !strings.Contains(sqlContent, "template_key = 'po-default-browser'") {
+		t.Error("migration SQL does not set profile default to po-default-browser")
+	}
+	if !strings.Contains(sqlContent, "template_version = 1") {
+		t.Error("migration SQL does not set profile default version to 1")
+	}
+
+	// Extract body_html between $$ delimiters and compare with Go seed
+	parts := strings.SplitN(sqlContent, "$$", 3)
+	if len(parts) < 3 {
+		t.Fatal("migration file does not contain $$ delimited body_html")
+	}
+	sqlBody := parts[1]
+
+	goNormalized := strings.TrimSpace(goTemplate.Body)
+	sqlNormalized := strings.TrimSpace(sqlBody)
+
+	if goNormalized != sqlNormalized {
+		t.Fatalf("Go seed body and SQL migration body differ.\nGo length=%d, SQL length=%d\nFirst difference at character %d",
+			len(goNormalized), len(sqlNormalized), firstDiffIndex(goNormalized, sqlNormalized))
+	}
+}
+
+func firstDiffIndex(a, b string) int {
+	minLen := len(a)
+	if len(b) < minLen {
+		minLen = len(b)
+	}
+	for i := 0; i < minLen; i++ {
+		if a[i] != b[i] {
+			return i
+		}
+	}
+	return minLen
 }

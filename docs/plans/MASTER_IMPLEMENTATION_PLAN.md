@@ -10,6 +10,7 @@ Plano diretor decision-complete para implementar MetalDocs sem desvio arquitetur
 - Auth v1: RBAC local com login interno e interface pronta para SSO futuro.
 - Escopo inicial: backend-first com UI minima.
 - IA/LLM: fora de escopo v1.
+- Document authoring v1: browser editor template-assigned (CKEditor5), with DOCX/PDF as derived backend artifacts.
 
 ## Execution Phases
 

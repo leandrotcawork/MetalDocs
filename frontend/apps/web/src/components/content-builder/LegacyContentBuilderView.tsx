@@ -20,6 +20,10 @@ type LegacyContentBuilderViewProps = {
   onCreateFromDraft?: (contentDraft: Record<string, unknown>) => Promise<{ documentId: string; pdfUrl: string; version: number | null }>;
 };
 
+export function normalizeDocumentProfileCode(value?: string): string {
+  return (value ?? "").trim().toLowerCase();
+}
+
 type BuilderStatus = "loading" | "idle" | "dirty" | "saving" | "rendering" | "error";
 
 type BuilderState = {
@@ -127,7 +131,8 @@ export function LegacyContentBuilderView(props: LegacyContentBuilderViewProps) {
 
   const governedCanvasTemplate = useMemo(() => normalizeGovernedCanvasTemplate(templateSnapshot), [templateSnapshot]);
   const runtimeSchema = useMemo(() => toRuntimeDocumentSchema(schema?.contentSchema), [schema?.contentSchema]);
-  const governedCanvasProfileActive = profileCode === "po";
+  const normalizedProfileCode = normalizeDocumentProfileCode(profileCode);
+  const governedCanvasProfileActive = normalizedProfileCode === "po";
   const governedCanvasReady = governedCanvasProfileActive && Boolean(governedCanvasTemplate) && draftToken.trim().length > 0;
   const governedCanvasFailure =
     governedCanvasProfileActive && !governedCanvasReady
@@ -245,7 +250,9 @@ export function LegacyContentBuilderView(props: LegacyContentBuilderViewProps) {
       try {
         const [contentResponse, bundleResponse, schemasResponse, pdfResponse] = await Promise.all([
           api.getDocumentContentNative(documentId),
-          api.getDocumentEditorBundle(documentId),
+          governedCanvasProfileActive
+            ? api.getDocumentEditorBundle(documentId)
+            : Promise.resolve(null),
           props.document?.documentProfile
             ? api.listDocumentProfileSchemas(props.document.documentProfile)
             : Promise.resolve({ items: [] as DocumentProfileSchemaItem[] }),
@@ -264,8 +271,8 @@ export function LegacyContentBuilderView(props: LegacyContentBuilderViewProps) {
             schema: activeSchema,
             version: contentResponse.version ?? null,
             pdfUrl: pdfResponse?.pdfUrl ?? "",
-            templateSnapshot: bundleResponse.templateSnapshot ?? null,
-            draftToken: bundleResponse.draftToken ?? "",
+            templateSnapshot: bundleResponse?.templateSnapshot ?? null,
+            draftToken: bundleResponse?.draftToken ?? "",
           },
         });
       } catch (err) {

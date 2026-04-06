@@ -26,19 +26,25 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
   const toolbarHostRef = useRef<HTMLDivElement | null>(null);
 
   const loadBundle = useCallback(async (activeRef?: { cancelled: boolean }) => {
+    const preserveConflict = errorCode === "conflict";
+
     if (!document.documentId.trim()) {
       setBundle(null);
       setEditorData("");
       setViewState("error");
-      setErrorCode("load");
-      setErrorMessage("Este fluxo aceita apenas documentos ja persistidos. Abra um documento salvo pelo acervo.");
+      if (!preserveConflict) {
+        setErrorCode("load");
+        setErrorMessage("Este fluxo aceita apenas documentos ja persistidos. Abra um documento salvo pelo acervo.");
+      }
       setSaveLabel("Nao salvo");
       return;
     }
 
     setViewState("loading");
-    setErrorCode(null);
-    setErrorMessage("");
+    if (!preserveConflict) {
+      setErrorCode(null);
+      setErrorMessage("");
+    }
     setSaveLabel("Carregando...");
 
     try {
@@ -59,11 +65,13 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
       setBundle(null);
       setEditorData("");
       setViewState("error");
-      setErrorCode("load");
-      setErrorMessage("Nao foi possivel carregar o bundle do editor do documento.");
+      if (!preserveConflict) {
+        setErrorCode("load");
+        setErrorMessage("Nao foi possivel carregar o bundle do editor do documento.");
+      }
       setSaveLabel("Erro");
     }
-  }, [document.documentId]);
+  }, [document.documentId, errorCode]);
 
   useEffect(() => {
     const activeRef = { cancelled: false };
@@ -81,6 +89,7 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
   const isDirty = bundle !== null && editorData !== bundle.body;
   const isSaving = viewState === "saving";
   const latestVersion = bundle && bundle.versions.length > 0 ? bundle.versions[bundle.versions.length - 1] : null;
+  const hasConflict = errorCode === "conflict";
 
   async function handleSave() {
     if (!bundle || isSaving || !document.documentId.trim()) {
@@ -164,7 +173,7 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
           type="button"
           className={styles.saveButton}
           onClick={handleSave}
-          disabled={!bundle || isSaving || !isDirty}
+          disabled={!bundle || isSaving || !isDirty || hasConflict}
         >
           Salvar rascunho
         </button>
@@ -197,7 +206,7 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
                 <button type="button" className={styles.errorActionButton} onClick={() => void loadBundle()}>
                   Recarregar documento
                 </button>
-                {errorCode !== "load" && canRetrySave ? (
+                {errorCode !== "load" && errorCode !== "conflict" && canRetrySave ? (
                   <button type="button" className={styles.errorActionButtonSecondary} onClick={() => void handleSave()}>
                     Tentar salvar novamente
                   </button>
@@ -231,7 +240,7 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
                 if (viewState !== "saving") {
                   setViewState("ready");
                 }
-                if (errorCode !== null) {
+                if (errorCode !== null && errorCode !== "conflict") {
                   setErrorCode(null);
                   setErrorMessage("");
                 }

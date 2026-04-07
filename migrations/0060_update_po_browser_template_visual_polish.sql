@@ -16,23 +16,23 @@ SET
       <tbody>
         <tr>
           <td class="md-field-label" style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:30%;font-weight:600;font-size:0.84rem;color:#3e1018;background:#f9f3f3;">Objetivo</td>
-          <td style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:70%;"><p class="restricted-editing-exception">Descreva o objetivo deste procedimento, incluindo o resultado esperado ao final da execução.</p></td>
+          <td style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:70%;"><p><span class="restricted-editing-exception">Descreva o objetivo deste procedimento, incluindo o resultado esperado ao final da execução.</span></p></td>
         </tr>
         <tr>
           <td class="md-field-label" style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:30%;font-weight:600;font-size:0.84rem;color:#3e1018;background:#f9f3f3;">Escopo</td>
-          <td style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:70%;"><p class="restricted-editing-exception">Defina os limites de aplicação deste procedimento: onde começa, onde termina e o que está fora do escopo.</p></td>
+          <td style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:70%;"><p><span class="restricted-editing-exception">Defina os limites de aplicação deste procedimento: onde começa, onde termina e o que está fora do escopo.</span></p></td>
         </tr>
         <tr>
           <td class="md-field-label" style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:30%;font-weight:600;font-size:0.84rem;color:#3e1018;background:#f9f3f3;">Cargo responsável</td>
-          <td style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:70%;"><p class="restricted-editing-exception">Informe o cargo ou função responsável pela execução deste procedimento.</p></td>
+          <td style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:70%;"><p><span class="restricted-editing-exception">Informe o cargo ou função responsável pela execução deste procedimento.</span></p></td>
         </tr>
         <tr>
           <td class="md-field-label" style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:30%;font-weight:600;font-size:0.84rem;color:#3e1018;background:#f9f3f3;">Canal / Contexto</td>
-          <td style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:70%;"><p class="restricted-editing-exception">Descreva o canal ou contexto em que este procedimento se aplica.</p></td>
+          <td style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:70%;"><p><span class="restricted-editing-exception">Descreva o canal ou contexto em que este procedimento se aplica.</span></p></td>
         </tr>
         <tr>
           <td class="md-field-label" style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:30%;font-weight:600;font-size:0.84rem;color:#3e1018;background:#f9f3f3;">Participantes</td>
-          <td style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:70%;"><p class="restricted-editing-exception">Liste os cargos, funções ou áreas que participam da execução deste procedimento.</p></td>
+          <td style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:70%;"><p><span class="restricted-editing-exception">Liste os cargos, funções ou áreas que participam da execução deste procedimento.</span></p></td>
         </tr>
       </tbody>
     </table>
@@ -44,37 +44,21 @@ SET
         <td style="background-color:#6b1f2a;color:#ffffff;padding:8px 14px;font-size:13px;font-weight:700;letter-spacing:0.5px;">3. Entradas e Saídas</td>
       </tr>
     </table>
-    <table class="md-two-col" style="width:100%;border-collapse:collapse;margin-bottom:1rem;">
-      <tr>
-        <td style="width:50%;vertical-align:top;padding-right:0.5rem;">
-          <table class="md-field-table" style="width:100%;border-collapse:collapse;margin-bottom:0;">
-            <tbody>
-              <tr>
-                <td class="md-field-label" style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:30%;font-weight:600;font-size:0.84rem;color:#3e1018;background:#f9f3f3;">Entradas</td>
-                <td style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:70%;"><p class="restricted-editing-exception">Liste os insumos, informações ou materiais necessários para iniciar o processo.</p></td>
-              </tr>
-              <tr>
-                <td class="md-field-label" style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:30%;font-weight:600;font-size:0.84rem;color:#3e1018;background:#f9f3f3;">Documentos relacionados</td>
-                <td style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:70%;"><p class="restricted-editing-exception">Liste documentos, formulários ou registros utilizados ou gerados durante o processo.</p></td>
-              </tr>
-            </tbody>
-          </table>
-        </td>
-        <td style="width:50%;vertical-align:top;padding-left:0.5rem;">
-          <table class="md-field-table" style="width:100%;border-collapse:collapse;margin-bottom:0;">
-            <tbody>
-              <tr>
-                <td class="md-field-label" style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:30%;font-weight:600;font-size:0.84rem;color:#3e1018;background:#f9f3f3;">Saídas</td>
-                <td style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:70%;"><p class="restricted-editing-exception">Liste os produtos, resultados ou entregas gerados ao final do processo.</p></td>
-              </tr>
-              <tr>
-                <td class="md-field-label" style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:30%;font-weight:600;font-size:0.84rem;color:#3e1018;background:#f9f3f3;">Sistemas utilizados</td>
-                <td style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:70%;"><p class="restricted-editing-exception">Liste os sistemas, ferramentas ou plataformas utilizadas na execução do processo.</p></td>
-              </tr>
-            </tbody>
-          </table>
-        </td>
-      </tr>
+    <table class="md-field-table" style="width:100%;border-collapse:collapse;margin-bottom:1rem;">
+      <tbody>
+        <tr>
+          <td class="md-field-label" style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:22%;font-weight:600;font-size:0.84rem;color:#3e1018;background:#f9f3f3;">Entradas</td>
+          <td style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:28%;"><p><span class="restricted-editing-exception">Liste os insumos, informações ou materiais necessários para iniciar o processo.</span></p></td>
+          <td class="md-field-label" style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:22%;font-weight:600;font-size:0.84rem;color:#3e1018;background:#f9f3f3;">Saídas</td>
+          <td style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:28%;"><p><span class="restricted-editing-exception">Liste os produtos, resultados ou entregas gerados ao final do processo.</span></p></td>
+        </tr>
+        <tr>
+          <td class="md-field-label" style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:22%;font-weight:600;font-size:0.84rem;color:#3e1018;background:#f9f3f3;">Documentos relacionados</td>
+          <td style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:28%;"><p><span class="restricted-editing-exception">Liste documentos, formulários ou registros utilizados ou gerados durante o processo.</span></p></td>
+          <td class="md-field-label" style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:22%;font-weight:600;font-size:0.84rem;color:#3e1018;background:#f9f3f3;">Sistemas utilizados</td>
+          <td style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:28%;"><p><span class="restricted-editing-exception">Liste os sistemas, ferramentas ou plataformas utilizadas na execução do processo.</span></p></td>
+        </tr>
+      </tbody>
     </table>
   </section>
 
@@ -86,7 +70,7 @@ SET
     </table>
     <div class="md-field">
       <p class="md-field-label"><strong>Descrição do processo</strong></p>
-      <div class="restricted-editing-exception"><p>Descreva o processo de forma detalhada, incluindo o contexto, fluxo geral e principais decisões envolvidas.</p></div>
+      <p><span class="restricted-editing-exception">Descreva o processo de forma detalhada, incluindo o contexto, fluxo geral e principais decisões envolvidas.</span></p>
     </div>
     <div class="md-field">
       <p class="md-field-label"><strong>Ferramenta do fluxograma</strong></p>
@@ -98,7 +82,7 @@ SET
     </div>
     <div class="md-field">
       <p class="md-field-label"><strong>Diagrama</strong></p>
-      <div class="restricted-editing-exception"><p>Insira ou descreva o diagrama do processo. Pode utilizar imagens ou representações textuais.</p></div>
+      <p><span class="restricted-editing-exception">Insira ou descreva o diagrama do processo. Pode utilizar imagens ou representações textuais.</span></p>
     </div>
   </section>
 
@@ -109,9 +93,9 @@ SET
       </tr>
     </table>
     <p class="md-section-hint">Descreva cada etapa como uma seção livre. Duplique o bloco abaixo para adicionar mais etapas.</p>
-    <div class="md-free-block restricted-editing-exception">
-      <h3>Etapa 1 — [Nome da etapa]</h3>
-      <p>Descreva esta etapa livremente. Adicione parágrafos, listas, referências a outros documentos ou qualquer informação relevante para descrever o que acontece nesta etapa do processo.</p>
+    <div class="md-free-block">
+      <h3><span class="restricted-editing-exception">Etapa 1 — [Nome da etapa]</span></h3>
+      <p><span class="restricted-editing-exception">Descreva esta etapa livremente. Adicione parágrafos, listas, referências a outros documentos ou qualquer informação relevante para descrever o que acontece nesta etapa do processo.</span></p>
     </div>
   </section>
 
@@ -125,11 +109,11 @@ SET
       <tbody>
         <tr>
           <td class="md-field-label" style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:30%;font-weight:600;font-size:0.84rem;color:#3e1018;background:#f9f3f3;">Pontos de controle</td>
-          <td style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:70%;"><p class="restricted-editing-exception">Descreva os pontos de verificação, aprovação ou controle existentes no processo.</p></td>
+          <td style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:70%;"><p><span class="restricted-editing-exception">Descreva os pontos de verificação, aprovação ou controle existentes no processo.</span></p></td>
         </tr>
         <tr>
           <td class="md-field-label" style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:30%;font-weight:600;font-size:0.84rem;color:#3e1018;background:#f9f3f3;">Exceções e desvios</td>
-          <td style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:70%;"><p class="restricted-editing-exception">Descreva situações excepcionais e como devem ser tratadas.</p></td>
+          <td style="border:1px solid #dfc8c8;padding:0.5rem 0.75rem;vertical-align:top;width:70%;"><p><span class="restricted-editing-exception">Descreva situações excepcionais e como devem ser tratadas.</span></p></td>
         </tr>
       </tbody>
     </table>

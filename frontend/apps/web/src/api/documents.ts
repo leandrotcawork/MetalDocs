@@ -256,7 +256,7 @@ function normalizeDocumentEditorBundle(value: DocumentEditorBundleResponse): Doc
 
 function normalizeDocumentBrowserEditorBundle(value: DocumentBrowserEditorBundleResponse): DocumentBrowserEditorBundleResponse {
   const document = normalizeDocumentListItem(value?.document);
-  const templateSnapshot = normalizeDocumentBrowserTemplateSnapshot(value?.templateSnapshot);
+  const templateSnapshot = normalizeDocumentBrowserTemplateSnapshot(value?.templateSnapshot as DocumentBrowserTemplateSnapshotItem);
   const draftToken = typeof value?.draftToken === "string" ? value.draftToken.trim() : "";
   const body = typeof value?.body === "string" ? value.body : "";
   const documentProfileCode = normalizeDocumentProfileCode(document.documentProfile);

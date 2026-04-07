@@ -1,5 +1,6 @@
 {
   "permissions": {
+    "defaultMode": "bypassPermissions",
     "allow": [
       "Bash(cp \"C:/Users/leandro.theodoro.MN-NTB-LEANDROT/.claude/plugins/marketplaces/forgeflow-plugins/templates/brain/working-memory/brain-state.json\" \"c:/Users/leandro.theodoro.MN-NTB-LEANDROT/Documents/MetalDocs/.brain/working-memory/brain-state.json\")",
       "Bash(cp \"C:/Users/leandro.theodoro.MN-NTB-LEANDROT/.claude/plugins/marketplaces/forgeflow-plugins/templates/brain/progress/brain-project-state.json\" \"c:/Users/leandro.theodoro.MN-NTB-LEANDROT/Documents/MetalDocs/.brain/progress/brain-project-state.json\")",
@@ -37,8 +38,28 @@
       "Bash(docker exec:*)",
       "Bash(docker port:*)",
       "Bash(docker rm:*)",
-      "Bash(docker run:*)"
+      "Bash(docker run:*)",
+      "Bash(git log:*)",
+      "Bash(grep -l \"browser\\\\|Browser\\\\|ckeditor\" /c/Users/leandro.theodoro.MN-NTB-LEANDROT/Documents/MetalDocs/internal/modules/documents/delivery/http/*.go)",
+      "Bash(ls c:/Users/leandro.theodoro.MN-NTB-LEANDROT/Documents/MetalDocs/migrations/*.sql)",
+      "Bash(go test:*)",
+      "Bash(go build:*)",
+      "Bash(cd:*)",
+      "mcp__claudewatch__get_task_history",
+      "Bash(PGPASSWORD=Lepa12\\\\<\\\\>! psql:*)",
+      "Bash(ls *.sh scripts/)",
+      "Bash(pip install:*)",
+      "Bash(go mod:*)",
+      "Bash(npm install:*)",
+      "Bash(npx vite:*)",
+      "Bash(grep -n \"BrowserRenderPayload\\\\|type Browser\" internal/platform/render/docgen/*.go)",
+      "Bash(grep -n \"ListVersions\\\\|ORDER\\\\|order\\\\|asc\\\\|desc\" internal/modules/documents/infrastructure/postgres/*.go)",
+      "Bash(grep -n \"type Document struct\\\\|type Version struct\" internal/modules/documents/domain/*.go)",
+      "Bash(git:*)",
+      "Bash(go vet:*)",
+      "Bash(grep -n \"GetBrowserEditorBundle\\\\|BrowserEditorBundle\\\\|browser_editor_bundle\\\\|browserEditorBundle\" /c/Users/leandro.theodoro.MN-NTB-LEANDROT/Documents/MetalDocs/internal/modules/documents/application/*.go)"
     ],
+    "defaultMode": "bypassPermissions",
     "additionalDirectories": [
       "\\tmp"
     ]

@@ -63,9 +63,15 @@ func EnforceLayer2(rctx RulesContext, envelope map[string]any) error {
 	if err := checkParentChildGrammar(blocks); err != nil {
 		return err
 	}
-	// Other validators are added by subsequent tasks: minItems/maxItems,
-	// DataTable consistency, image existence, cross-doc references,
-	// block ID continuity. Each is wired here after its task lands.
+	if err := checkRepeatableMinMax(blocks); err != nil {
+		return err
+	}
+	if err := checkDataTableMinMax(blocks); err != nil {
+		return err
+	}
+	// Other validators are added by subsequent tasks: DataTable consistency,
+	// image existence, cross-doc references, block ID continuity.
+	// Each is wired here after its task lands.
 	return nil
 }
 
@@ -113,6 +119,72 @@ func checkIDUniqueness(blocks []any) error {
 				return &RuleViolation{Code: "ID_NOT_UNIQUE", BlockID: id, Message: "duplicate block id"}
 			}
 			seen[id] = true
+			if children, ok := bm["children"].([]any); ok {
+				if err := walk(children); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+	return walk(blocks)
+}
+
+func checkRepeatableMinMax(blocks []any) error {
+	var walk func([]any) error
+	walk = func(bs []any) error {
+		for _, b := range bs {
+			bm, ok := b.(map[string]any)
+			if !ok {
+				continue
+			}
+			if t, _ := bm["type"].(string); t == "repeatable" {
+				children, _ := bm["children"].([]any)
+				props, _ := bm["props"].(map[string]any)
+				minF, _ := props["minItems"].(float64)
+				maxF, _ := props["maxItems"].(float64)
+				if len(children) < int(minF) {
+					id, _ := bm["id"].(string)
+					return &RuleViolation{Code: "REPEATABLE_BELOW_MIN", BlockID: id, Message: fmt.Sprintf("items=%d < min=%d", len(children), int(minF))}
+				}
+				if len(children) > int(maxF) {
+					id, _ := bm["id"].(string)
+					return &RuleViolation{Code: "REPEATABLE_ABOVE_MAX", BlockID: id, Message: fmt.Sprintf("items=%d > max=%d", len(children), int(maxF))}
+				}
+			}
+			if children, ok := bm["children"].([]any); ok {
+				if err := walk(children); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+	return walk(blocks)
+}
+
+func checkDataTableMinMax(blocks []any) error {
+	var walk func([]any) error
+	walk = func(bs []any) error {
+		for _, b := range bs {
+			bm, ok := b.(map[string]any)
+			if !ok {
+				continue
+			}
+			if t, _ := bm["type"].(string); t == "dataTable" {
+				children, _ := bm["children"].([]any)
+				props, _ := bm["props"].(map[string]any)
+				minF, _ := props["minRows"].(float64)
+				maxF, _ := props["maxRows"].(float64)
+				if len(children) < int(minF) {
+					id, _ := bm["id"].(string)
+					return &RuleViolation{Code: "DATATABLE_BELOW_MIN", BlockID: id, Message: fmt.Sprintf("rows=%d < min=%d", len(children), int(minF))}
+				}
+				if len(children) > int(maxF) {
+					id, _ := bm["id"].(string)
+					return &RuleViolation{Code: "DATATABLE_ABOVE_MAX", BlockID: id, Message: fmt.Sprintf("rows=%d > max=%d", len(children), int(maxF))}
+				}
+			}
 			if children, ok := bm["children"].([]any); ok {
 				if err := walk(children); err != nil {
 					return err

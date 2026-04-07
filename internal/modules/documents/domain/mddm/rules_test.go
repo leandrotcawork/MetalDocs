@@ -78,3 +78,53 @@ func padHex(n, width int) string {
 	}
 	return string(out)
 }
+
+func TestRules_RejectRepeatableBelowMinItems(t *testing.T) {
+	env := parseEnvelope(t, `{
+		"mddm_version": 1,
+		"template_ref": null,
+		"blocks": [{
+			"id":"11111111-1111-1111-1111-111111111111",
+			"type":"repeatable",
+			"props":{"label":"E","itemPrefix":"Etapa","locked":true,"minItems":2,"maxItems":10},
+			"children":[
+				{"id":"22222222-2222-2222-2222-222222222222","type":"repeatableItem","props":{"title":"only one"},"children":[]}
+			]
+		}]
+	}`)
+	err := EnforceLayer2(RulesContext{}, env)
+	if err == nil || !strings.Contains(err.Error(), "REPEATABLE_BELOW_MIN") {
+		t.Errorf("expected REPEATABLE_BELOW_MIN error, got %v", err)
+	}
+}
+
+func TestRules_RejectDataTableAboveMaxRows(t *testing.T) {
+	rows := make([]any, 0, 6)
+	for i := 0; i < 6; i++ {
+		rows = append(rows, map[string]any{
+			"id":       "33333333-3333-3333-3333-" + padHex(i, 12),
+			"type":     "dataTableRow",
+			"props":    map[string]any{},
+			"children": []any{},
+		})
+	}
+	env := map[string]any{
+		"mddm_version": float64(1),
+		"template_ref": nil,
+		"blocks": []any{
+			map[string]any{
+				"id":   "11111111-1111-1111-1111-111111111111",
+				"type": "dataTable",
+				"props": map[string]any{
+					"label": "T", "columns": []any{}, "locked": true,
+					"minRows": float64(0), "maxRows": float64(5),
+				},
+				"children": rows,
+			},
+		},
+	}
+	err := EnforceLayer2(RulesContext{}, env)
+	if err == nil || !strings.Contains(err.Error(), "DATATABLE_ABOVE_MAX") {
+		t.Errorf("expected DATATABLE_ABOVE_MAX error, got %v", err)
+	}
+}

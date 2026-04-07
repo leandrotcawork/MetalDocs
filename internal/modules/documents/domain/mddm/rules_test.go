@@ -128,3 +128,27 @@ func TestRules_RejectDataTableAboveMaxRows(t *testing.T) {
 		t.Errorf("expected DATATABLE_ABOVE_MAX error, got %v", err)
 	}
 }
+
+func TestRules_RejectDataTableCellMissingColumn(t *testing.T) {
+	env := parseEnvelope(t, `{
+		"mddm_version": 1, "template_ref": null,
+		"blocks": [{
+			"id":"11111111-1111-1111-1111-111111111111",
+			"type":"dataTable",
+			"props":{
+				"label":"KPIs",
+				"columns":[{"key":"a","label":"A","type":"text","required":false}],
+				"locked":true,"minRows":0,"maxRows":500
+			},
+			"children":[{
+				"id":"22222222-2222-2222-2222-222222222222",
+				"type":"dataTableRow","props":{},
+				"children":[{"id":"33333333-3333-3333-3333-333333333333","type":"dataTableCell","props":{"columnKey":"unknown"},"children":[{"text":"x"}]}]
+			}]
+		}]
+	}`)
+	err := EnforceLayer2(RulesContext{}, env)
+	if err == nil || !strings.Contains(err.Error(), "DATATABLE_INVALID_COLUMN_KEY") {
+		t.Errorf("expected DATATABLE_INVALID_COLUMN_KEY error, got %v", err)
+	}
+}

@@ -69,8 +69,11 @@ func EnforceLayer2(rctx RulesContext, envelope map[string]any) error {
 	if err := checkDataTableMinMax(blocks); err != nil {
 		return err
 	}
-	// Other validators are added by subsequent tasks: DataTable consistency,
-	// image existence, cross-doc references, block ID continuity.
+	if err := checkDataTableCellConsistency(blocks); err != nil {
+		return err
+	}
+	// Other validators are added by subsequent tasks: image existence,
+	// cross-doc references, block ID continuity.
 	// Each is wired here after its task lands.
 	return nil
 }
@@ -183,6 +186,50 @@ func checkDataTableMinMax(blocks []any) error {
 				if len(children) > int(maxF) {
 					id, _ := bm["id"].(string)
 					return &RuleViolation{Code: "DATATABLE_ABOVE_MAX", BlockID: id, Message: fmt.Sprintf("rows=%d > max=%d", len(children), int(maxF))}
+				}
+			}
+			if children, ok := bm["children"].([]any); ok {
+				if err := walk(children); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+	return walk(blocks)
+}
+
+func checkDataTableCellConsistency(blocks []any) error {
+	var walk func([]any) error
+	walk = func(bs []any) error {
+		for _, b := range bs {
+			bm, ok := b.(map[string]any)
+			if !ok {
+				continue
+			}
+			if t, _ := bm["type"].(string); t == "dataTable" {
+				props, _ := bm["props"].(map[string]any)
+				cols, _ := props["columns"].([]any)
+				validKeys := map[string]bool{}
+				for _, c := range cols {
+					if cm, ok := c.(map[string]any); ok {
+						k, _ := cm["key"].(string)
+						validKeys[k] = true
+					}
+				}
+				rows, _ := bm["children"].([]any)
+				for _, row := range rows {
+					rm, _ := row.(map[string]any)
+					cells, _ := rm["children"].([]any)
+					for _, cell := range cells {
+						cm, _ := cell.(map[string]any)
+						cprops, _ := cm["props"].(map[string]any)
+						key, _ := cprops["columnKey"].(string)
+						if !validKeys[key] {
+							id, _ := cm["id"].(string)
+							return &RuleViolation{Code: "DATATABLE_INVALID_COLUMN_KEY", BlockID: id, Message: "columnKey not declared in parent DataTable"}
+						}
+					}
 				}
 			}
 			if children, ok := bm["children"].([]any); ok {

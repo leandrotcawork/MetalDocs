@@ -10,7 +10,7 @@ import (
 
 func newTestMDDMHandler(t *testing.T) *MDDMHandler {
 	t.Helper()
-	return NewMDDMHandler()
+	return NewMDDMHandler(nil)
 }
 
 func TestMDDMHandler_SaveDraft_RejectsInvalidJSON(t *testing.T) {

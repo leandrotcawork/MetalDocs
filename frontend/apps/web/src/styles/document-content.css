@@ -15,7 +15,7 @@
   margin-left: auto;
   margin-right: auto;
   background: #ffffff;
-  padding: 2rem;
+  padding: 1.5rem;
 }
 
 /* ── Section ───────────────────────────────────────────────────── */
@@ -30,15 +30,40 @@
   margin-bottom: 0;
 }
 
-.ck-content .md-section > h2 {
-  font-size: 1rem;
+/* ── Section Header Bar ────────────────────────────────────────── */
+.ck-content .md-section-header {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 0.75rem;
+}
+
+.ck-content .md-section-header td {
+  background-color: #6b1f2a;
+  color: #ffffff;
+  padding: 8px 14px;
+  font-size: 13px;
   font-weight: 700;
-  color: #3e1018;
-  padding-left: 0.8rem;
-  border-left: 3px solid #6b1f2a;
-  margin-top: 0;
-  margin-bottom: 1.25rem;
-  line-height: 1.4;
+  letter-spacing: 0.5px;
+}
+
+/* ── Two-column layout ─────────────────────────────────────────── */
+.ck-content .md-two-col {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+}
+
+.ck-content .md-two-col > tbody > tr > td {
+  width: 50%;
+  vertical-align: top;
+}
+
+.ck-content .md-two-col > tbody > tr > td:first-child {
+  padding-right: 0.5rem;
+}
+
+.ck-content .md-two-col > tbody > tr > td:last-child {
+  padding-left: 0.5rem;
 }
 
 .ck-content .md-section-hint {

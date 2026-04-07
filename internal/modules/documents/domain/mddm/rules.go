@@ -3,6 +3,7 @@ package mddm
 import (
 	"context"
 	"fmt"
+	"strings"
 )
 
 const (
@@ -72,9 +73,11 @@ func EnforceLayer2(rctx RulesContext, envelope map[string]any) error {
 	if err := checkDataTableCellConsistency(blocks); err != nil {
 		return err
 	}
-	// Other validators are added by subsequent tasks: image existence,
-	// cross-doc references, block ID continuity.
-	// Each is wired here after its task lands.
+	if err := checkImageAuth(rctx, blocks); err != nil {
+		return err
+	}
+	// Other validators are added by subsequent tasks: cross-doc references,
+	// block ID continuity. Each is wired here after its task lands.
 	return nil
 }
 
@@ -230,6 +233,46 @@ func checkDataTableCellConsistency(blocks []any) error {
 							return &RuleViolation{Code: "DATATABLE_INVALID_COLUMN_KEY", BlockID: id, Message: "columnKey not declared in parent DataTable"}
 						}
 					}
+				}
+			}
+			if children, ok := bm["children"].([]any); ok {
+				if err := walk(children); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+	return walk(blocks)
+}
+
+func checkImageAuth(rctx RulesContext, blocks []any) error {
+	if rctx.ImageAuthChecker == nil {
+		return nil // skip when not configured (e.g., schema-only tests)
+	}
+	var walk func([]any) error
+	walk = func(bs []any) error {
+		for _, b := range bs {
+			bm, ok := b.(map[string]any)
+			if !ok {
+				continue
+			}
+			if t, _ := bm["type"].(string); t == "image" {
+				props, _ := bm["props"].(map[string]any)
+				src, _ := props["src"].(string)
+				const prefix = "/api/images/"
+				if !strings.HasPrefix(src, prefix) {
+					id, _ := bm["id"].(string)
+					return &RuleViolation{Code: "IMAGE_INVALID_SRC", BlockID: id, Message: "image src must be /api/images/{uuid}"}
+				}
+				imageID := strings.TrimPrefix(src, prefix)
+				ok, err := rctx.ImageAuthChecker.UserCanReadImage(rctx.Ctx, rctx.UserID, imageID)
+				if err != nil {
+					return err
+				}
+				if !ok {
+					id, _ := bm["id"].(string)
+					return &RuleViolation{Code: "IMAGE_FORBIDDEN", BlockID: id, Message: "user has no access to image " + imageID}
 				}
 			}
 			if children, ok := bm["children"].([]any); ok {

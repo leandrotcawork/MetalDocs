@@ -1,6 +1,7 @@
 package mddm
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -150,5 +151,33 @@ func TestRules_RejectDataTableCellMissingColumn(t *testing.T) {
 	err := EnforceLayer2(RulesContext{}, env)
 	if err == nil || !strings.Contains(err.Error(), "DATATABLE_INVALID_COLUMN_KEY") {
 		t.Errorf("expected DATATABLE_INVALID_COLUMN_KEY error, got %v", err)
+	}
+}
+
+type fakeImageAuthChecker struct {
+	allowed map[string]bool
+}
+
+func (f *fakeImageAuthChecker) UserCanReadImage(ctx context.Context, userID, imageID string) (bool, error) {
+	return f.allowed[imageID], nil
+}
+
+func TestRules_RejectImageWithoutAuth(t *testing.T) {
+	env := parseEnvelope(t, `{
+		"mddm_version":1,"template_ref":null,
+		"blocks":[{
+			"id":"11111111-1111-1111-1111-111111111111",
+			"type":"image",
+			"props":{"src":"/api/images/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa","alt":"x","caption":""}
+		}]
+	}`)
+	rctx := RulesContext{
+		Ctx:              context.Background(),
+		UserID:           "user-1",
+		ImageAuthChecker: &fakeImageAuthChecker{allowed: map[string]bool{}},
+	}
+	err := EnforceLayer2(rctx, env)
+	if err == nil || !strings.Contains(err.Error(), "IMAGE_FORBIDDEN") {
+		t.Errorf("expected IMAGE_FORBIDDEN error, got %v", err)
 	}
 }

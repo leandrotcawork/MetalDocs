@@ -332,12 +332,138 @@
         }
       }
     },
-    "Heading":          { "type": "object", "properties": { "type": { "const": "heading" } },           "required": ["type"] },
-    "BulletListItem":   { "type": "object", "properties": { "type": { "const": "bulletListItem" } },    "required": ["type"] },
-    "NumberedListItem": { "type": "object", "properties": { "type": { "const": "numberedListItem" } },  "required": ["type"] },
-    "Image":            { "type": "object", "properties": { "type": { "const": "image" } },             "required": ["type"] },
-    "Quote":            { "type": "object", "properties": { "type": { "const": "quote" } },             "required": ["type"] },
-    "Code":             { "type": "object", "properties": { "type": { "const": "code" } },              "required": ["type"] },
-    "Divider":          { "type": "object", "properties": { "type": { "const": "divider" } },           "required": ["type"] }
+    "Heading": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "props", "children"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "template_block_id": { "type": "string", "format": "uuid" },
+        "type": { "const": "heading" },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["level"],
+          "properties": {
+            "level": { "enum": [1, 2, 3] }
+          }
+        },
+        "children": { "$ref": "#/$defs/InlineContent" }
+      }
+    },
+    "BulletListItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "props", "children"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "template_block_id": { "type": "string", "format": "uuid" },
+        "type": { "const": "bulletListItem" },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["level"],
+          "properties": {
+            "level": { "type": "integer", "minimum": 0, "maximum": 6 }
+          }
+        },
+        "children": { "$ref": "#/$defs/InlineContent" }
+      }
+    },
+    "NumberedListItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "props", "children"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "template_block_id": { "type": "string", "format": "uuid" },
+        "type": { "const": "numberedListItem" },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["level"],
+          "properties": {
+            "level": { "type": "integer", "minimum": 0, "maximum": 6 }
+          }
+        },
+        "children": { "$ref": "#/$defs/InlineContent" }
+      }
+    },
+    "Image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "template_block_id": { "type": "string", "format": "uuid" },
+        "type": { "const": "image" },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["src", "alt", "caption"],
+          "properties": {
+            "src": { "type": "string", "pattern": "^/api/images/[a-f0-9-]{36}$" },
+            "alt": { "type": "string", "maxLength": 500 },
+            "caption": { "type": "string", "maxLength": 500 }
+          }
+        }
+      }
+    },
+    "Quote": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "props", "children"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "template_block_id": { "type": "string", "format": "uuid" },
+        "type": { "const": "quote" },
+        "props": { "type": "object", "additionalProperties": false },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Paragraph" }
+        }
+      }
+    },
+    "Code": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "props", "children"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "template_block_id": { "type": "string", "format": "uuid" },
+        "type": { "const": "code" },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["language"],
+          "properties": {
+            "language": { "type": "string", "maxLength": 30 }
+          }
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "text"],
+            "properties": {
+              "type": { "const": "text" },
+              "text": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "Divider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "template_block_id": { "type": "string", "format": "uuid" },
+        "type": { "const": "divider" },
+        "props": { "type": "object", "additionalProperties": false }
+      }
+    }
   }
 }

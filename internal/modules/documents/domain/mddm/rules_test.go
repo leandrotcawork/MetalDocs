@@ -181,3 +181,38 @@ func TestRules_RejectImageWithoutAuth(t *testing.T) {
 		t.Errorf("expected IMAGE_FORBIDDEN error, got %v", err)
 	}
 }
+
+type fakeDocLookup struct {
+	exists  map[string]bool
+	canRead map[string]bool
+}
+
+func (f *fakeDocLookup) Exists(ctx context.Context, id string) (bool, error) {
+	return f.exists[id], nil
+}
+func (f *fakeDocLookup) UserCanRead(ctx context.Context, userID, id string) (bool, error) {
+	return f.canRead[id], nil
+}
+
+func TestRules_RejectCrossDocRefMissing(t *testing.T) {
+	env := parseEnvelope(t, `{
+		"mddm_version":1,"template_ref":null,
+		"blocks":[{
+			"id":"11111111-1111-1111-1111-111111111111",
+			"type":"paragraph","props":{},
+			"children":[{
+				"text":"see PO-117",
+				"document_ref":{"target_document_id":"PO-117"}
+			}]
+		}]
+	}`)
+	rctx := RulesContext{
+		Ctx:            context.Background(),
+		UserID:         "user-1",
+		DocumentLookup: &fakeDocLookup{exists: map[string]bool{}, canRead: map[string]bool{}},
+	}
+	err := EnforceLayer2(rctx, env)
+	if err == nil || !strings.Contains(err.Error(), "CROSS_DOC_REF_NOT_FOUND") {
+		t.Errorf("expected CROSS_DOC_REF_NOT_FOUND error, got %v", err)
+	}
+}

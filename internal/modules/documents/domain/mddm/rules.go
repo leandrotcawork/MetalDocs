@@ -76,8 +76,11 @@ func EnforceLayer2(rctx RulesContext, envelope map[string]any) error {
 	if err := checkImageAuth(rctx, blocks); err != nil {
 		return err
 	}
-	// Other validators are added by subsequent tasks: cross-doc references,
-	// block ID continuity. Each is wired here after its task lands.
+	if err := checkCrossDocRefs(rctx, blocks); err != nil {
+		return err
+	}
+	// Other validators are added by subsequent tasks: block ID continuity.
+	// Each is wired here after its task lands.
 	return nil
 }
 
@@ -284,6 +287,74 @@ func checkImageAuth(rctx RulesContext, blocks []any) error {
 		return nil
 	}
 	return walk(blocks)
+}
+
+func checkCrossDocRefs(rctx RulesContext, blocks []any) error {
+	if rctx.DocumentLookup == nil {
+		return nil
+	}
+	var walkBlocks func([]any) error
+	walkBlocks = func(bs []any) error {
+		for _, b := range bs {
+			bm, ok := b.(map[string]any)
+			if !ok {
+				continue
+			}
+			if children, ok := bm["children"].([]any); ok {
+				// children may be inline content (TextRun[]) or nested blocks
+				blockType, _ := bm["type"].(string)
+				if isInlineParent(blockType) {
+					id, _ := bm["id"].(string)
+					if err := walkInline(rctx, id, children); err != nil {
+						return err
+					}
+				} else {
+					if err := walkBlocks(children); err != nil {
+						return err
+					}
+				}
+			}
+		}
+		return nil
+	}
+	return walkBlocks(blocks)
+}
+
+func isInlineParent(t string) bool {
+	switch t {
+	case "paragraph", "heading", "bulletListItem", "numberedListItem", "dataTableCell":
+		return true
+	}
+	return false
+}
+
+func walkInline(rctx RulesContext, parentBlockID string, runs []any) error {
+	for _, r := range runs {
+		rm, ok := r.(map[string]any)
+		if !ok {
+			continue
+		}
+		ref, ok := rm["document_ref"].(map[string]any)
+		if !ok {
+			continue
+		}
+		target, _ := ref["target_document_id"].(string)
+		exists, err := rctx.DocumentLookup.Exists(rctx.Ctx, target)
+		if err != nil {
+			return err
+		}
+		if !exists {
+			return &RuleViolation{Code: "CROSS_DOC_REF_NOT_FOUND", BlockID: parentBlockID, Message: "target=" + target}
+		}
+		canRead, err := rctx.DocumentLookup.UserCanRead(rctx.Ctx, rctx.UserID, target)
+		if err != nil {
+			return err
+		}
+		if !canRead {
+			return &RuleViolation{Code: "CROSS_DOC_REF_FORBIDDEN", BlockID: parentBlockID, Message: "target=" + target}
+		}
+	}
+	return nil
 }
 
 // allowedChildren returns the set of allowed child block types for each parent type.

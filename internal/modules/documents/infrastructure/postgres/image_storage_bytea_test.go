@@ -3,34 +3,11 @@ package postgres
 import (
 	"context"
 	"crypto/sha256"
-	"database/sql"
 	"encoding/hex"
-	"os"
 	"testing"
-
-	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"metaldocs/internal/modules/documents/domain/mddm"
 )
-
-// newTestDB opens a connection to the dev Postgres container for integration tests.
-// Reads TEST_DATABASE_URL from env; falls back to the default dev-container DSN.
-// Callers must close the returned *sql.DB.
-func newTestDB(t *testing.T) *sql.DB {
-	t.Helper()
-	dsn := os.Getenv("TEST_DATABASE_URL")
-	if dsn == "" {
-		dsn = "postgres://metaldocs_app:Lepa12%3C%3E%21@localhost:5433/metaldocs?sslmode=disable&search_path=metaldocs"
-	}
-	db, err := sql.Open("pgx", dsn)
-	if err != nil {
-		t.Fatalf("sql.Open: %v", err)
-	}
-	if err := db.Ping(); err != nil {
-		t.Skipf("dev Postgres not reachable at %s: %v", dsn, err)
-	}
-	return db
-}
 
 func TestPostgresByteaStorage_PutGetExists(t *testing.T) {
 	if testing.Short() {

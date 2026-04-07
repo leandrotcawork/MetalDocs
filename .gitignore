@@ -18,5 +18,6 @@ frontend/apps/web/playwright-report/
 frontend/apps/web/.cache/
 apps/docgen/node_modules/
 apps/docgen/dist/
+shared/schemas/node_modules/
 
 .worktrees/

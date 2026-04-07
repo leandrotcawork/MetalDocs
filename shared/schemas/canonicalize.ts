@@ -84,9 +84,12 @@ function canonicalizeBlock(block: Json): Json {
   }
 
   // NFC string fields except code blocks
-  if (block.type !== "code") {
-    if (block.props?.title) result.props = { ...block.props, title: nfc(block.props.title) };
-    if (block.props?.label) result.props = { ...block.props, label: nfc(block.props.label) };
+  if (block.type !== "code" && block.props) {
+    const titleNfc = block.props.title ? { title: nfc(block.props.title) } : {};
+    const labelNfc = block.props.label ? { label: nfc(block.props.label) } : {};
+    if (block.props.title || block.props.label) {
+      result.props = { ...block.props, ...titleNfc, ...labelNfc };
+    }
   }
 
   return result;

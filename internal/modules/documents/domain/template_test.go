@@ -110,20 +110,8 @@ func TestDefaultDocumentTemplateVersionsPODefaultIsLast(t *testing.T) {
 }
 
 func TestPOBrowserTemplateGoSQLParity(t *testing.T) {
-	// Load Go seed template
-	var goTemplate *DocumentTemplateVersion
-	for _, tmpl := range DefaultDocumentTemplateVersions() {
-		if tmpl.TemplateKey == "po-default-browser" {
-			found := tmpl
-			goTemplate = &found
-			break
-		}
-	}
-	if goTemplate == nil {
-		t.Fatal("po-default-browser template not found in Go seed")
-	}
-
-	// Read SQL migration file
+	// 0057 is the seed migration; body parity is tracked by TestPOBrowserTemplate0060Parity.
+	// This test only validates identity and profile-default fields.
 	migrationPath := "../../../../migrations/0057_seed_po_browser_template.sql"
 	sqlBytes, err := os.ReadFile(migrationPath)
 	if err != nil {
@@ -157,25 +145,43 @@ func TestPOBrowserTemplateGoSQLParity(t *testing.T) {
 	if !strings.Contains(sqlContent, "template_version = 1") {
 		t.Error("migration SQL does not set profile default version to 1")
 	}
-
-	// Extract body_html between $$ delimiters and compare with Go seed
-	parts := strings.SplitN(sqlContent, "$$", 3)
-	if len(parts) < 3 {
-		t.Fatal("migration file does not contain $$ delimited body_html")
-	}
-	sqlBody := parts[1]
-
-	goNormalized := strings.TrimSpace(strings.ReplaceAll(goTemplate.Body, "\r\n", "\n"))
-	sqlNormalized := strings.TrimSpace(strings.ReplaceAll(sqlBody, "\r\n", "\n"))
-
-	if goNormalized != sqlNormalized {
-		t.Fatalf("Go seed body and SQL migration body differ.\nGo length=%d, SQL length=%d\nFirst difference at character %d",
-			len(goNormalized), len(sqlNormalized), firstDiffIndex(goNormalized, sqlNormalized))
-	}
 }
 
 func TestPOBrowserTemplate0058Parity(t *testing.T) {
-	// Get canonical Go template body (same lookup as TestPOBrowserTemplateGoSQLParity)
+	// 0057 and 0058 share the same body (final-form layout, pre-visual-polish).
+	// Verify they are consistent with each other.
+	read0057Body := func() string {
+		b, err := os.ReadFile("../../../../migrations/0057_seed_po_browser_template.sql")
+		if err != nil {
+			t.Fatalf("read 0057: %v", err)
+		}
+		parts := strings.SplitN(string(b), "$$", 3)
+		if len(parts) < 3 {
+			t.Fatal("0057 missing $$ delimited body")
+		}
+		return strings.TrimSpace(strings.ReplaceAll(parts[1], "\r\n", "\n"))
+	}
+
+	sqlBytes, err := os.ReadFile("../../../../migrations/0058_update_po_browser_template.sql")
+	if err != nil {
+		t.Fatalf("read 0058 migration file: %v", err)
+	}
+	parts := strings.SplitN(string(sqlBytes), "$$", 3)
+	if len(parts) < 3 {
+		t.Fatal("0058 migration does not contain $$ delimited body_html")
+	}
+	body0057 := read0057Body()
+	body0058 := strings.TrimSpace(strings.ReplaceAll(parts[1], "\r\n", "\n"))
+
+	if body0057 != body0058 {
+		t.Fatalf("0057 and 0058 bodies differ.\n0057 length=%d, 0058 length=%d\nFirst difference at character %d",
+			len(body0057), len(body0058), firstDiffIndex(body0057, body0058))
+	}
+}
+
+func TestPOBrowserTemplate0060Parity(t *testing.T) {
+	// 0060 applies the visual-polish body (section header bars, two-column Section 3).
+	// It must match the Go canonical seed exactly.
 	var goTemplate *DocumentTemplateVersion
 	for _, tmpl := range DefaultDocumentTemplateVersions() {
 		if tmpl.TemplateKey == "po-default-browser" {
@@ -188,18 +194,15 @@ func TestPOBrowserTemplate0058Parity(t *testing.T) {
 		t.Fatal("po-default-browser template not found in Go seed")
 	}
 
-	// Read 0058 migration file
-	migrationPath := "../../../../migrations/0058_update_po_browser_template.sql"
-	sqlBytes, err := os.ReadFile(migrationPath)
+	sqlBytes, err := os.ReadFile("../../../../migrations/0060_update_po_browser_template_visual_polish.sql")
 	if err != nil {
-		t.Fatalf("read 0058 migration file: %v", err)
+		t.Fatalf("read 0060 migration file: %v", err)
 	}
 	sqlContent := string(sqlBytes)
 
-	// Extract body between $$ delimiters (same as 0057 parity test)
 	parts := strings.SplitN(sqlContent, "$$", 3)
 	if len(parts) < 3 {
-		t.Fatal("0058 migration does not contain $$ delimited body_html")
+		t.Fatal("0060 migration does not contain $$ delimited body_html")
 	}
 	sqlBody := parts[1]
 
@@ -207,7 +210,7 @@ func TestPOBrowserTemplate0058Parity(t *testing.T) {
 	sqlNormalized := strings.TrimSpace(strings.ReplaceAll(sqlBody, "\r\n", "\n"))
 
 	if goNormalized != sqlNormalized {
-		t.Fatalf("0058 body_html differs from Go canonical body.\nGo length=%d, SQL length=%d\nFirst difference at character %d",
+		t.Fatalf("0060 body_html differs from Go canonical body.\nGo length=%d, SQL length=%d\nFirst difference at character %d",
 			len(goNormalized), len(sqlNormalized), firstDiffIndex(goNormalized, sqlNormalized))
 	}
 }

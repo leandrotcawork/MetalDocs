@@ -1,103 +1,11 @@
-package domain
+-- 0060_update_po_browser_template_visual_polish.sql
+-- Updates po-default-browser v1 with visual-polish changes:
+-- colored md-section-header bars, Section 3 two-column layout, and export_config margins.
+-- IMPORTANT: body_html must match the Go seed in domain/template.go (validated by TestPOBrowserTemplate0060Parity).
 
-import (
-	"strings"
-	"time"
-)
-
-type TemplateExportConfig struct {
-	MarginTop    float64 `json:"marginTop"`
-	MarginRight  float64 `json:"marginRight"`
-	MarginBottom float64 `json:"marginBottom"`
-	MarginLeft   float64 `json:"marginLeft"`
-}
-
-type DocumentTemplateVersion struct {
-	TemplateKey   string
-	Version       int
-	ProfileCode   string
-	SchemaVersion int
-	Name          string
-	Editor        string
-	ContentFormat string
-	Body          string
-	Definition    map[string]any
-	CreatedAt     time.Time
-	ExportConfig  *TemplateExportConfig
-}
-
-type DocumentTemplateAssignment struct {
-	DocumentID      string
-	TemplateKey     string
-	TemplateVersion int
-	AssignedAt      time.Time
-}
-
-type DocumentTemplateSnapshot struct {
-	TemplateKey   string
-	Version       int
-	ProfileCode   string
-	SchemaVersion int
-	Editor        string
-	ContentFormat string
-	Body          string
-	Definition    map[string]any
-	ExportConfig  *TemplateExportConfig
-}
-
-func (v DocumentTemplateVersion) IsBrowserHTML() bool {
-	return strings.EqualFold(v.Editor, "ckeditor5") && strings.EqualFold(v.ContentFormat, "html")
-}
-
-func (s DocumentTemplateSnapshot) IsBrowserHTML() bool {
-	return strings.EqualFold(s.Editor, "ckeditor5") && strings.EqualFold(s.ContentFormat, "html")
-}
-
-func DefaultDocumentTemplateVersions() []DocumentTemplateVersion {
-	return []DocumentTemplateVersion{
-		{
-			TemplateKey:   "po-default-canvas",
-			Version:       1,
-			ProfileCode:   "po",
-			SchemaVersion: 3,
-			Name:          "PO Governed Canvas v1",
-			Editor:        "ckeditor5",
-			ContentFormat: "html",
-			Body: `<section class="md-doc-shell">
-  <h1>Procedimento Operacional</h1>
-  <p><strong>Objetivo</strong></p>
-  <p><span class="restricted-editing-exception">Preencha o objetivo.</span></p>
-  <p><strong>Descricao do processo</strong></p>
-  <div class="restricted-editing-exception"><p>Descreva o processo.</p></div>
-</section>`,
-			Definition: map[string]any{
-				"type": "page",
-				"id":   "po-root",
-				"children": []any{
-					map[string]any{
-						"type":  "section-frame",
-						"id":    "identificacao-processo",
-						"title": "Identificacao do Processo",
-						"children": []any{
-							map[string]any{"type": "label", "id": "lbl-objetivo", "text": "Objetivo"},
-							map[string]any{"type": "field-slot", "id": "slot-objetivo", "path": "identificacaoProcesso.objetivo", "fieldKind": "scalar"},
-							map[string]any{"type": "label", "id": "lbl-descricao", "text": "Descricao do processo"},
-							map[string]any{"type": "rich-slot", "id": "slot-descricao", "path": "visaoGeral.descricaoProcesso", "fieldKind": "rich"},
-						},
-					},
-				},
-			},
-			CreatedAt: time.Unix(0, 0).UTC(),
-		},
-		{
-			TemplateKey:   "po-default-browser",
-			Version:       1,
-			ProfileCode:   "po",
-			SchemaVersion: 3,
-			Name:          "Procedimento Operacional",
-			Editor:        "ckeditor5",
-			ContentFormat: "html",
-			Body: `<section class="md-doc-shell">
+UPDATE metaldocs.document_template_versions
+SET
+  body_html = $$<section class="md-doc-shell">
   <section class="md-section">
     <table class="md-section-header" style="width:100%;border-collapse:collapse;margin-bottom:0.75rem;">
       <tr>
@@ -306,15 +214,6 @@ func DefaultDocumentTemplateVersions() []DocumentTemplateVersion {
       </table>
     </figure>
   </section>
-</section>`,
-			Definition: map[string]any{},
-			CreatedAt:  time.Unix(0, 0).UTC(),
-			ExportConfig: &TemplateExportConfig{
-				MarginTop:    0.625,
-				MarginRight:  0.625,
-				MarginBottom: 0.625,
-				MarginLeft:   0.625,
-			},
-		},
-	}
-}
+</section>$$,
+  export_config = '{"marginTop":0.625,"marginRight":0.625,"marginBottom":0.625,"marginLeft":0.625}'::jsonb
+WHERE template_key = 'po-default-browser' AND version = 1;

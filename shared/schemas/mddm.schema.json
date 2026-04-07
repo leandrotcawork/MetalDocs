@@ -189,12 +189,149 @@
         }
       }
     },
-    "Repeatable":       { "type": "object", "properties": { "type": { "const": "repeatable" } },        "required": ["type"] },
-    "RepeatableItem":   { "type": "object", "properties": { "type": { "const": "repeatableItem" } },    "required": ["type"] },
-    "DataTable":        { "type": "object", "properties": { "type": { "const": "dataTable" } },         "required": ["type"] },
-    "DataTableRow":     { "type": "object", "properties": { "type": { "const": "dataTableRow" } },      "required": ["type"] },
-    "DataTableCell":    { "type": "object", "properties": { "type": { "const": "dataTableCell" } },     "required": ["type"] },
-    "RichBlock":        { "type": "object", "properties": { "type": { "const": "richBlock" } },         "required": ["type"] },
+    "Repeatable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "props", "children"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "template_block_id": { "type": "string", "format": "uuid" },
+        "type": { "const": "repeatable" },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["label", "itemPrefix", "locked", "minItems", "maxItems"],
+          "properties": {
+            "label": { "type": "string", "minLength": 1, "maxLength": 100 },
+            "itemPrefix": { "type": "string", "minLength": 1, "maxLength": 30 },
+            "locked": { "type": "boolean" },
+            "minItems": { "type": "integer", "minimum": 0 },
+            "maxItems": { "type": "integer", "minimum": 1, "maximum": 200 }
+          }
+        },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/RepeatableItem" }
+        }
+      }
+    },
+    "RepeatableItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "props", "children"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "type": { "const": "repeatableItem" },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["title"],
+          "properties": {
+            "title": { "type": "string", "maxLength": 200 }
+          }
+        },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Block" }
+        }
+      }
+    },
+    "DataTable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "props", "children"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "template_block_id": { "type": "string", "format": "uuid" },
+        "type": { "const": "dataTable" },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["label", "columns", "locked", "minRows", "maxRows"],
+          "properties": {
+            "label": { "type": "string", "minLength": 1, "maxLength": 100 },
+            "columns": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 20,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["key", "label", "type", "required"],
+                "properties": {
+                  "key": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+                  "label": { "type": "string", "minLength": 1, "maxLength": 50 },
+                  "type": { "enum": ["text", "number", "date"] },
+                  "required": { "type": "boolean" }
+                }
+              }
+            },
+            "locked": { "type": "boolean" },
+            "minRows": { "type": "integer", "minimum": 0 },
+            "maxRows": { "type": "integer", "minimum": 1, "maximum": 500 }
+          }
+        },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/DataTableRow" }
+        }
+      }
+    },
+    "DataTableRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "props", "children"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "type": { "const": "dataTableRow" },
+        "props": { "type": "object", "additionalProperties": false },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/DataTableCell" }
+        }
+      }
+    },
+    "DataTableCell": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "props", "children"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "type": { "const": "dataTableCell" },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["columnKey"],
+          "properties": {
+            "columnKey": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" }
+          }
+        },
+        "children": { "$ref": "#/$defs/InlineContent" }
+      }
+    },
+    "RichBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "props", "children"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "template_block_id": { "type": "string", "format": "uuid" },
+        "type": { "const": "richBlock" },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["label", "locked"],
+          "properties": {
+            "label": { "type": "string", "minLength": 1, "maxLength": 100 },
+            "locked": { "type": "boolean" }
+          }
+        },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Block" }
+        }
+      }
+    },
     "Heading":          { "type": "object", "properties": { "type": { "const": "heading" } },           "required": ["type"] },
     "BulletListItem":   { "type": "object", "properties": { "type": { "const": "bulletListItem" } },    "required": ["type"] },
     "NumberedListItem": { "type": "object", "properties": { "type": { "const": "numberedListItem" } },  "required": ["type"] },

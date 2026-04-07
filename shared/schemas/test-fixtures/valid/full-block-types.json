@@ -1,0 +1,80 @@
+{
+  "mddm_version": 1,
+  "template_ref": null,
+  "blocks": [
+    {
+      "id": "11111111-1111-1111-1111-111111111111",
+      "type": "section",
+      "props": { "title": "Etapas", "color": "#6b1f2a", "locked": true },
+      "children": [
+        {
+          "id": "22222222-2222-2222-2222-222222222222",
+          "type": "repeatable",
+          "props": {
+            "label": "Etapas do Processo",
+            "itemPrefix": "Etapa",
+            "locked": true,
+            "minItems": 1,
+            "maxItems": 100
+          },
+          "children": [
+            {
+              "id": "33333333-3333-3333-3333-333333333333",
+              "type": "repeatableItem",
+              "props": { "title": "Receber pedido" },
+              "children": [
+                {
+                  "id": "44444444-4444-4444-4444-444444444444",
+                  "type": "paragraph",
+                  "props": {},
+                  "children": [{ "text": "Conteúdo da etapa." }]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "55555555-5555-5555-5555-555555555555",
+          "type": "dataTable",
+          "props": {
+            "label": "KPIs",
+            "columns": [
+              { "key": "indicator", "label": "Indicador", "type": "text", "required": false },
+              { "key": "target", "label": "Meta", "type": "text", "required": false }
+            ],
+            "locked": true,
+            "minRows": 0,
+            "maxRows": 500
+          },
+          "children": [
+            {
+              "id": "66666666-6666-6666-6666-666666666666",
+              "type": "dataTableRow",
+              "props": {},
+              "children": [
+                {
+                  "id": "77777777-7777-7777-7777-777777777777",
+                  "type": "dataTableCell",
+                  "props": { "columnKey": "indicator" },
+                  "children": [{ "text": "Tempo médio" }]
+                },
+                {
+                  "id": "88888888-8888-8888-8888-888888888888",
+                  "type": "dataTableCell",
+                  "props": { "columnKey": "target" },
+                  "children": [{ "text": "< 5 min" }]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "99999999-9999-9999-9999-999999999999",
+          "type": "richBlock",
+          "props": { "label": "Diagrama", "locked": true },
+          "children": []
+        }
+      ]
+    }
+  ]
+}

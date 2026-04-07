@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://metaldocs.local/schemas/mddm.schema.json",
+  "title": "MetalDocs Document Model",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["mddm_version", "blocks", "template_ref"],
+  "properties": {
+    "mddm_version": { "const": 1 },
+    "blocks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Block" }
+    },
+    "template_ref": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/TemplateRef" }
+      ]
+    }
+  },
+  "$defs": {
+    "TemplateRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template_id", "template_version", "template_mddm_version", "template_content_hash"],
+      "properties": {
+        "template_id": { "type": "string", "format": "uuid" },
+        "template_version": { "type": "integer", "minimum": 1 },
+        "template_mddm_version": { "type": "integer", "minimum": 1 },
+        "template_content_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "Block": {
+      "type": "object",
+      "required": ["id", "type"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "template_block_id": { "type": "string", "format": "uuid" }
+      }
+    }
+  }
+}

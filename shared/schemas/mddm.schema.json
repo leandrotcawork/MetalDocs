@@ -31,12 +31,108 @@
       }
     },
     "Block": {
+      "oneOf": [
+        { "$ref": "#/$defs/Section" },
+        { "$ref": "#/$defs/FieldGroup" },
+        { "$ref": "#/$defs/Field" },
+        { "$ref": "#/$defs/Repeatable" },
+        { "$ref": "#/$defs/RepeatableItem" },
+        { "$ref": "#/$defs/DataTable" },
+        { "$ref": "#/$defs/DataTableRow" },
+        { "$ref": "#/$defs/DataTableCell" },
+        { "$ref": "#/$defs/RichBlock" },
+        { "$ref": "#/$defs/Paragraph" },
+        { "$ref": "#/$defs/Heading" },
+        { "$ref": "#/$defs/BulletListItem" },
+        { "$ref": "#/$defs/NumberedListItem" },
+        { "$ref": "#/$defs/Image" },
+        { "$ref": "#/$defs/Quote" },
+        { "$ref": "#/$defs/Code" },
+        { "$ref": "#/$defs/Divider" }
+      ]
+    },
+    "BaseBlockProps": {
       "type": "object",
-      "required": ["id", "type"],
+      "required": ["id", "type", "props"],
       "properties": {
         "id": { "type": "string", "format": "uuid" },
         "template_block_id": { "type": "string", "format": "uuid" }
       }
-    }
+    },
+    "InlineContent": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/TextRun" }
+    },
+    "TextRun": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text"],
+      "properties": {
+        "text": { "type": "string", "maxLength": 10000 },
+        "marks": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Mark" }
+        },
+        "link": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["href"],
+          "properties": {
+            "href": { "type": "string" },
+            "title": { "type": "string" }
+          }
+        },
+        "document_ref": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["target_document_id"],
+          "properties": {
+            "target_document_id": { "type": "string", "format": "uuid" },
+            "target_revision_label": { "type": "string" }
+          }
+        }
+      }
+    },
+    "Mark": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["bold", "italic", "underline", "strike", "code"] }
+      }
+    },
+    "Paragraph": {
+      "allOf": [
+        { "$ref": "#/$defs/BaseBlockProps" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id": true,
+            "template_block_id": true,
+            "type": { "const": "paragraph" },
+            "props": { "type": "object", "additionalProperties": false },
+            "children": { "$ref": "#/$defs/InlineContent" }
+          },
+          "required": ["children"]
+        }
+      ]
+    },
+    "Section":          { "type": "object", "properties": { "type": { "const": "section" } },           "required": ["type"] },
+    "FieldGroup":       { "type": "object", "properties": { "type": { "const": "fieldGroup" } },        "required": ["type"] },
+    "Field":            { "type": "object", "properties": { "type": { "const": "field" } },             "required": ["type"] },
+    "Repeatable":       { "type": "object", "properties": { "type": { "const": "repeatable" } },        "required": ["type"] },
+    "RepeatableItem":   { "type": "object", "properties": { "type": { "const": "repeatableItem" } },    "required": ["type"] },
+    "DataTable":        { "type": "object", "properties": { "type": { "const": "dataTable" } },         "required": ["type"] },
+    "DataTableRow":     { "type": "object", "properties": { "type": { "const": "dataTableRow" } },      "required": ["type"] },
+    "DataTableCell":    { "type": "object", "properties": { "type": { "const": "dataTableCell" } },     "required": ["type"] },
+    "RichBlock":        { "type": "object", "properties": { "type": { "const": "richBlock" } },         "required": ["type"] },
+    "Heading":          { "type": "object", "properties": { "type": { "const": "heading" } },           "required": ["type"] },
+    "BulletListItem":   { "type": "object", "properties": { "type": { "const": "bulletListItem" } },    "required": ["type"] },
+    "NumberedListItem": { "type": "object", "properties": { "type": { "const": "numberedListItem" } },  "required": ["type"] },
+    "Image":            { "type": "object", "properties": { "type": { "const": "image" } },             "required": ["type"] },
+    "Quote":            { "type": "object", "properties": { "type": { "const": "quote" } },             "required": ["type"] },
+    "Code":             { "type": "object", "properties": { "type": { "const": "code" } },              "required": ["type"] },
+    "Divider":          { "type": "object", "properties": { "type": { "const": "divider" } },           "required": ["type"] }
   }
 }

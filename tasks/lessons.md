@@ -1103,3 +1103,10 @@ Wrong:   Keeping extra docx imports, exported helpers, alternate underline typin
 Correct: Match the scaffold literally: only export `exportMDDMToDocx`, keep helper functions internal, use the requested docx imports, and preserve the exact section/mark behavior
 Rule:    When a file is being normalized to a scaffold, any extra fallback or helper export is a regression until removed.
 Layer:   process
+
+## Lesson EX - Scaffold section titles must follow the exact numbering format
+Date: 2026-04-08 | Trigger: correction
+Wrong:   Rendering section headings with a default fallback title and unformatted text in `renderSection`
+Correct: Use the block title as-is with an empty-string fallback and render headings as `${num}. ${title}` in bold text
+Rule:    When aligning a renderer to a scaffold, heading text must match the scaffold's literal title and numbering contract.
+Layer:   process

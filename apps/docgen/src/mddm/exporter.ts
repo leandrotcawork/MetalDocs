@@ -1,4 +1,5 @@
-import { Document, HeadingLevel, Packer, Paragraph, Table, TextRun } from "docx";
+import { BorderStyle, Document, HeadingLevel, Packer, Paragraph, Table, TextRun } from "docx";
+import { renderDataTable } from "./render-data-table.js";
 import { renderFieldGroup } from "./render-tables.js";
 import type { InlineRun, MDDMBlock, MDDMEnvelope, MDDMExportRequest } from "./types.js";
 
@@ -201,6 +202,39 @@ function renderHeading(block: MDDMBlock): Paragraph {
   return new Paragraph({ heading: headingLevel, children: children.map(runToTextRun) });
 }
 
+function renderListItem(block: MDDMBlock, isNumbered: boolean): Paragraph {
+  const children = (block.children as InlineRun[] | undefined) ?? [];
+  const level = (block.props.level as number) ?? 0;
+
+  return new Paragraph({
+    children: children.map(runToTextRun),
+    bullet: isNumbered ? undefined : { level },
+    numbering: isNumbered ? { reference: "default-numbering", level } : undefined,
+  });
+}
+
+function renderCode(block: MDDMBlock): Paragraph {
+  const children = Array.isArray(block.children) ? block.children : [];
+  return new Paragraph({
+    shading: { fill: "F4F4F4" },
+    children: children.map((child) => new TextRun({ text: (child as InlineRun).text, font: "Courier New" })),
+  });
+}
+
+function renderDivider(): Paragraph {
+  return new Paragraph({
+    border: {
+      bottom: {
+        color: "999999",
+        space: 1,
+        style: BorderStyle.SINGLE,
+        size: 6,
+      },
+    },
+    children: [],
+  });
+}
+
 function renderRepeatable(block: MDDMBlock, sectionPath: number[]): Paragraph[] {
   const items = (block.children as MDDMBlock[]) ?? [];
   const sectionNum = sectionPath[sectionPath.length - 1] ?? 0;
@@ -246,10 +280,20 @@ function renderBlock(block: MDDMBlock, sectionPath: number[] = []): RenderedNode
       return renderSection(block, 1, sectionPath.length > 0 ? [...sectionPath, 1] : [1]);
     case "fieldGroup":
       return [renderFieldGroup(block)];
+    case "dataTable":
+      return [renderDataTable(block)];
     case "paragraph":
       return [renderParagraph(block)];
     case "heading":
       return [renderHeading(block)];
+    case "bulletListItem":
+      return [renderListItem(block, false)];
+    case "numberedListItem":
+      return [renderListItem(block, true)];
+    case "code":
+      return [renderCode(block)];
+    case "divider":
+      return [renderDivider()];
     case "repeatable":
       return renderRepeatable(block, sectionPath);
     case "repeatableItem":

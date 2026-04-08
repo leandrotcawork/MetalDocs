@@ -10,7 +10,10 @@
     "e2e:smoke": "playwright test"
   },
   "dependencies": {
-    "@ckeditor/ckeditor5-react": "^11.0.0",
+    "@blocknote/core": "^0.47.3",
+    "@blocknote/mantine": "^0.47.3",
+    "@blocknote/react": "^0.47.3",
+    "@blocknote/xl-docx-exporter": "^0.47.3",
     "@fontsource/dm-mono": "^5.2.7",
     "@fontsource/dm-sans": "^5.2.8",
     "@tiptap/extension-color": "^2.11.5",
@@ -22,7 +25,6 @@
     "@tiptap/extension-text-style": "^2.11.5",
     "@tiptap/react": "^2.11.5",
     "@tiptap/starter-kit": "^2.11.5",
-    "ckeditor5": "^46.0.3",
     "dompurify": "^3.1.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -38,6 +40,7 @@
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.1",
     "typescript": "^5.6.3",
-    "vite": "^5.4.10"
+    "vite": "^5.4.10",
+    "vitest": "^4.1.3"
   }
 }

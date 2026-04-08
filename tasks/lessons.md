@@ -1096,3 +1096,10 @@ Wrong:   Default PO template referenced schema version 3 while default profile s
 Correct: Keep default profile `ActiveSchemaVersion` and seeded profile schema versions aligned with the default template's declared schema version
 Rule:    Any versioned template shipped by default must have a matching seeded schema snapshot, or create/search/runtime flows will fail closed with `ErrInvalidCommand`.
 Layer:   process
+
+## Lesson EW - MDDM code block runs must keep explicit text node type
+Date: 2026-04-08 | Trigger: correction
+Wrong:   Adapter round-trip removed `type: "text"` from `code` block children.
+Correct: Preserve `type: "text"` on every code-run when converting BlockNote content back to MDDM.
+Rule:    Any adapter crossing between editor JSON models must preserve discriminator fields required by the canonical schema.
+Layer:   frontend

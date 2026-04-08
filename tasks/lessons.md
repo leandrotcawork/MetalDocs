@@ -1124,3 +1124,17 @@ Wrong:   `/render/mddm-docx` passed raw request bodies into the exporter and ret
 Correct: Validate the request shape before rendering, return `DOCGEN_INVALID_REQUEST` for malformed payloads, and emit a stable `DOCGEN_GENERATE_FAILED` envelope for unexpected failures
 Rule:    Renderer endpoints must not leak raw exception text and should classify invalid input separately from internal render failures.
 Layer:   delivery
+
+## Lesson FA - Docx width and underline helpers need exact structural types
+Date: 2026-04-08 | Trigger: build failure
+Wrong:   Passed `underline: true` into `TextRun` and spread loose width arrays into fixed-arity cell/table builders
+Correct: Use `UnderlineType.SINGLE` for underline runs and normalize width results into explicit tuples before spreading them into docx helpers
+Rule:    Docx builder APIs and TypeScript tuple spreads often require exact object shapes, not booleans or untyped arrays.
+Layer:   infrastructure
+
+## Lesson FB - Union-typed child arrays must be narrowed before field access
+Date: 2026-04-08 | Trigger: build failure
+Wrong:   Checked `child.type` on `block.children` before narrowing the union away from `InlineRun[]`
+Correct: Guard the array as blocks first, then access block-specific fields like `type`
+Rule:    When a property can be either block-shaped or inline-shaped, narrow the array element type before reading discriminant fields.
+Layer:   infrastructure

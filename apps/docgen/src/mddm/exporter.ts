@@ -1,4 +1,5 @@
 import { Document, HeadingLevel, Packer, Paragraph, TextRun } from "docx";
+import { renderField, renderFieldGroup, renderRichBlock } from "./render-tables.js";
 import type { InlineRun, MDDMBlock, MDDMEnvelope, MDDMExportRequest } from "./types.js";
 
 function invalid(code: string): never {
@@ -54,25 +55,85 @@ function validateInlineRun(run: unknown): void {
   }
 }
 
+function isInlineRunArray(value: unknown): value is InlineRun[] {
+  return Array.isArray(value) && value.every(isInlineRun);
+}
+
+function isBlockArray(value: unknown): value is MDDMBlock[] {
+  return Array.isArray(value) && value.every((child) => isObject(child) && typeof child.type === "string" && isObject(child.props));
+}
+
+function validateMDDMChildren(block: MDDMBlock): void {
+  if (!Array.isArray(block.children)) {
+    return;
+  }
+
+  if (block.type === "fieldGroup") {
+    if (!isBlockArray(block.children)) {
+      invalid("DOCGEN_INVALID_REQUEST");
+    }
+    block.children.forEach((child) => {
+      if (child.type !== "field") {
+        invalid("DOCGEN_INVALID_REQUEST");
+      }
+      validateMDDMBlock(child);
+    });
+    return;
+  }
+
+  if (block.type === "section" || block.type === "richBlock") {
+    block.children.forEach((child) => validateMDDMBlock(child));
+    return;
+  }
+
+  if (block.type === "paragraph" || block.type === "heading") {
+    block.children.forEach((child) => validateInlineRun(child));
+    return;
+  }
+
+  if (block.type === "field") {
+    const valueMode = typeof block.props.valueMode === "string" ? block.props.valueMode : "inline";
+    if (valueMode === "multiParagraph") {
+      if (!isBlockArray(block.children)) {
+        invalid("DOCGEN_INVALID_REQUEST");
+      }
+      block.children.forEach((child) => validateMDDMBlock(child));
+      return;
+    }
+
+    if (!isInlineRunArray(block.children)) {
+      invalid("DOCGEN_INVALID_REQUEST");
+    }
+    block.children.forEach((child) => validateInlineRun(child));
+  }
+}
+
 function validateMDDMBlock(block: unknown): void {
   if (!isObject(block) || typeof block.type !== "string" || !isObject(block.props)) {
     invalid("DOCGEN_INVALID_REQUEST");
+  }
+
+  if (block.type === "fieldGroup") {
+    const columns = (block.props as Record<string, unknown>).columns;
+    if (columns !== undefined && columns !== 1 && columns !== 2) {
+      invalid("DOCGEN_INVALID_REQUEST");
+    }
+  }
+
+  if (block.type === "field") {
+    const valueMode = (block.props as Record<string, unknown>).valueMode;
+    if (valueMode !== undefined && valueMode !== "inline" && valueMode !== "multiParagraph") {
+      invalid("DOCGEN_INVALID_REQUEST");
+    }
   }
 
   if (block.children !== undefined) {
     if (!Array.isArray(block.children)) {
       invalid("DOCGEN_INVALID_REQUEST");
     }
-
-    if (block.type === "section") {
-      block.children.forEach((child) => validateMDDMBlock(child));
-      return;
-    }
-
-    if (block.type === "paragraph" || block.type === "heading") {
-      block.children.forEach((child) => validateInlineRun(child));
-    }
   }
+
+  validateMDDMChildren(block as MDDMBlock);
 }
 
 function validateMDDMEnvelope(envelope: unknown): asserts envelope is MDDMEnvelope {
@@ -160,6 +221,12 @@ function renderBlock(block: MDDMBlock): Paragraph[] {
   switch (block.type) {
     case "section":
       return renderSection(block, 1);
+    case "fieldGroup":
+      return [renderFieldGroup(block) as unknown as Paragraph];
+    case "field":
+      return renderField(block);
+    case "richBlock":
+      return renderRichBlock(block);
     case "paragraph":
       return [renderParagraph(block)];
     case "heading":

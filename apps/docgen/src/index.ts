@@ -56,12 +56,8 @@ app.post("/render/mddm-docx", express.json({ limit: "10mb" }), async (req, res) 
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     );
     res.send(Buffer.from(buf));
-  } catch (err) {
-    console.error("MDDM_RENDER_FAILED", err);
-    res.status(500).json({
-      error: "render_failed",
-      message: err instanceof Error ? err.message : "render_failed",
-    });
+  } catch (err: any) {
+    res.status(500).json({ error: "render_failed", message: err.message });
   }
 });
 

@@ -1152,3 +1152,10 @@ Wrong:   Section children were accepted without recursive validation, and inline
 Correct: Recurse through nested section blocks during validation and filter mark entries before reading `type`
 Rule:    Validation must walk every nested block it accepts, and render paths must tolerate malformed optional arrays without crashing.
 Layer:   infrastructure
+
+## Lesson FE - Field validation must match declared value mode
+Date: 2026-04-08 | Trigger: correction
+Wrong:   `field.children` could pass validation without being checked against `valueMode`, so malformed inline vs multiParagraph payloads were not rejected
+Correct: Validate `field.children` as inline runs for `valueMode=inline` and as recursive block arrays for `valueMode=multiParagraph`
+Rule:    Shape validation must enforce the declared content mode, not just the presence of a children array.
+Layer:   infrastructure

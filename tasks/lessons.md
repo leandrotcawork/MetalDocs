@@ -1271,3 +1271,10 @@ Wrong:   UI-driven save button flows made roundtrip tests flaky even after conte
 Correct: Fetch the live browser editor bundle, save through `/documents/{id}/content/browser` with its `draftToken` and augmented body, then validate persistence on subsequent bundle reload.
 Rule:    For persistence-oriented E2E coverage, use deterministic API save paths when UI control state is not the behavior under test.
 Layer:   frontend
+
+## Lesson FW - Integration matrix wiring must satisfy service prerequisites
+Date: 2026-04-08 | Trigger: correction
+Wrong:   The documents API integration save-conflict scenario wired Service without AttachmentStore, returning ATTACHMENT_STORE_UNAVAILABLE before draft token validation.
+Correct: Wire a memory AttachmentStore in the integration harness so SaveNativeContentAuthorized reaches the DRAFT_CONFLICT path.
+Rule:    Integration tests must satisfy required service dependencies before asserting behavior in deeper branches.
+Layer:   process

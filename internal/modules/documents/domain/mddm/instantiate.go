@@ -14,18 +14,18 @@ func InstantiateTemplate(template []any) []any {
 func instantiateBlock(b any, insideContentSlot bool) any {
 	block, ok := b.(map[string]any)
 	if !ok {
-		return b
+		return cloneAny(b)
 	}
 
-	cloned := make(map[string]any, len(block))
-	for k, v := range block {
-		cloned[k] = v
+	blockType, _ := block["type"].(string)
+	if blockType == "" {
+		return cloneAny(block)
 	}
 
+	cloned := cloneMap(block)
 	originalID, _ := block["id"].(string)
 	cloned["id"] = uuid.NewString()
 
-	blockType, _ := block["type"].(string)
 	if structuralBlockTypes[blockType] && !insideContentSlot {
 		cloned["template_block_id"] = originalID
 	} else {
@@ -41,6 +41,29 @@ func instantiateBlock(b any, insideContentSlot bool) any {
 		cloned["children"] = instantiatedChildren
 	}
 
+	return cloned
+}
+
+func cloneAny(v any) any {
+	switch value := v.(type) {
+	case map[string]any:
+		return cloneMap(value)
+	case []any:
+		cloned := make([]any, len(value))
+		for i, item := range value {
+			cloned[i] = cloneAny(item)
+		}
+		return cloned
+	default:
+		return v
+	}
+}
+
+func cloneMap(src map[string]any) map[string]any {
+	cloned := make(map[string]any, len(src))
+	for k, v := range src {
+		cloned[k] = cloneAny(v)
+	}
 	return cloned
 }
 

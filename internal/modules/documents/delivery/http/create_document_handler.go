@@ -2,10 +2,11 @@ package httpdelivery
 
 import (
 	"encoding/json"
-	"io"
 	"net/http"
 	"strings"
 )
+
+const maxCreateDocumentPayloadBytes = 5 * 1024 * 1024
 
 type CreateDocumentHandler struct{}
 
@@ -25,20 +26,19 @@ type createDocumentResponse struct {
 }
 
 func (h *CreateDocumentHandler) CreateDocument(w http.ResponseWriter, r *http.Request) {
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
-		return
-	}
+	traceID := requestTraceID(r)
+	r.Body = http.MaxBytesReader(w, r.Body, maxCreateDocumentPayloadBytes)
 
 	var req createDocumentRequest
-	if err := json.Unmarshal(body, &req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&req); err != nil {
+		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid JSON payload", traceID)
 		return
 	}
 
 	if strings.TrimSpace(req.TemplateID) == "" || strings.TrimSpace(req.Title) == "" || strings.TrimSpace(req.Profile) == "" {
-		http.Error(w, "missing required fields", http.StatusBadRequest)
+		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "template_id, title, profile are required", traceID)
 		return
 	}
 

@@ -1173,3 +1173,10 @@ Wrong:   `flatIndex` indexed inline text maps as blocks and diff slices inherite
 Correct: Only index nodes with both non-empty `id` and `type`, then sort Added/Removed/Modified entries by ID before returning
 Rule:    Tree diffing must exclude non-block inline runs from identity indexing and must normalize output order for deterministic tests and reviews.
 Layer:   infrastructure
+
+## Lesson FG - Create handlers must bound bodies and return structured validation errors
+Date: 2026-04-08 | Trigger: correction
+Wrong:   `CreateDocument` read `io.ReadAll(r.Body)` and returned plain `http.Error` text for invalid JSON and missing fields
+Correct: Use `http.MaxBytesReader` plus `json.Decoder` with `DisallowUnknownFields`, then emit `writeAPIError(..., "VALIDATION_ERROR", ...)` with `requestTraceID(r)`
+Rule:    Mutation handlers should cap request size and normalize all validation failures into the API error envelope.
+Layer:   delivery

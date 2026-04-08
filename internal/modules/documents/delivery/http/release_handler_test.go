@@ -27,6 +27,19 @@ func newTestReleaseHandler(t interface{ Helper() }) *ReleaseHandler {
 	return NewReleaseHandler(nil)
 }
 
+func TestReleaseHandler_RequiresApprover(t *testing.T) {
+	handler := newTestReleaseHandler(t)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/documents/PO-118/release", nil)
+	rec := httptest.NewRecorder()
+
+	handler.Release(rec, req)
+
+	if rec.Code != http.StatusUnauthorized && rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want %d or %d", rec.Code, http.StatusUnauthorized, http.StatusForbidden)
+	}
+}
+
 func TestReleaseHandler_UnauthenticatedRequest(t *testing.T) {
 	handler := newTestReleaseHandler(t)
 

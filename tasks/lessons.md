@@ -1166,3 +1166,10 @@ Wrong:   `field.children` could pass validation without being checked against `v
 Correct: Validate `field.children` as inline runs for `valueMode=inline` and as recursive block arrays for `valueMode=multiParagraph`
 Rule:    Shape validation must enforce the declared content mode, not just the presence of a children array.
 Layer:   infrastructure
+
+## Lesson FF - Table renderers must narrow union-typed rows before child access
+Date: 2026-04-08 | Trigger: build failure
+Wrong:   Treating `block.children` as row objects in the docgen table renderer before proving they were blocks
+Correct: Narrow `block.children` to `MDDMBlock[]` with an explicit block-array guard before reading `row.children`
+Rule:    Union-typed collection members must be narrowed before accessing member-specific fields.
+Layer:   infrastructure

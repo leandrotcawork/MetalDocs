@@ -24,22 +24,28 @@ function renderHeading(block: MDDMBlock): Paragraph {
   return new Paragraph({ heading: headingLevel, children: children.map(runToTextRun) });
 }
 
-function renderSection(block: MDDMBlock, path: number[]): Paragraph[] {
-  const num = path.length === 0 ? 1 : path[path.length - 1] + 1;
+function renderSection(block: MDDMBlock, num: number): Paragraph[] {
   const title = (block.props.title as string) ?? "";
   const children: Paragraph[] = [new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun({ text: `${num}. ${title}`, bold: true })] })];
 
+  let sectionNumber = 1;
   for (const child of (block.children as MDDMBlock[] | undefined) ?? []) {
-    children.push(...renderBlock(child, [...path, num]));
+    if (child.type === "section") {
+      children.push(...renderSection(child, sectionNumber));
+      sectionNumber++;
+      continue;
+    }
+
+    children.push(...renderBlock(child));
   }
 
   return children;
 }
 
-function renderBlock(block: MDDMBlock, path: number[]): Paragraph[] {
+function renderBlock(block: MDDMBlock): Paragraph[] {
   switch (block.type) {
     case "section":
-      return renderSection(block, path);
+      return renderSection(block, 1);
     case "paragraph":
       return [renderParagraph(block)];
     case "heading":
@@ -51,8 +57,15 @@ function renderBlock(block: MDDMBlock, path: number[]): Paragraph[] {
 
 function renderEnvelope(envelope: MDDMEnvelope): Paragraph[] {
   const children: Paragraph[] = [];
+  let sectionNumber = 1;
   for (const block of envelope.blocks) {
-    children.push(...renderBlock(block, []));
+    if (block.type === "section") {
+      children.push(...renderSection(block, sectionNumber));
+      sectionNumber++;
+      continue;
+    }
+
+    children.push(...renderBlock(block));
   }
   return children;
 }

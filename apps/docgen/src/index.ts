@@ -48,7 +48,7 @@ app.post("/generate-browser", async (req, res) => {
   }
 });
 
-app.post("/render/mddm-docx", express.json({ limit: "10mb" }), async (req, res) => {
+app.post("/render/mddm-docx", async (req, res) => {
   try {
     const buf = await exportMDDMToDocx(req.body);
     res.setHeader(

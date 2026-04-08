@@ -35,6 +35,11 @@ type loadDocumentResponse struct {
 
 // Load handles GET /api/v1/documents/{id}/load.
 func (h *LoadHandler) Load(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
 	traceID := requestTraceID(r)
 	userID := strings.TrimSpace(authn.UserIDFromContext(r.Context()))
 	if userID == "" {

@@ -37,6 +37,7 @@ When v2 swaps from PostgresByteaStorage to S3Storage:
 3. Set env: `MDDM_IMAGE_STORAGE=s3`
 4. Restart the backend
 5. After validation period: drop the `bytes` column from `document_images` (still keep id, sha256, mime_type, byte_size for indexing)
+6. Because this is a destructive migration, record and approve an ADR before applying it in production
 
 ## Template repair / rebind
 

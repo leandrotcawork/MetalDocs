@@ -1299,3 +1299,10 @@ Wrong:   Changed Task 60 handler generic error mapping from 422 to 500 to satisf
 Correct: Keep Task 60 generic service error mapping at 422 because the locked plan defines that behavior for this endpoint slice
 Rule:    For locked sprint tasks, implementer and reviewer quality improvements cannot override explicit contract behavior unless the plan itself is amended.
 Layer:   process
+
+## Lesson FH - Endpoint-specific method guards prevent permission bypass via alternate verbs
+Date: 2026-04-08 | Trigger: correction
+Wrong:   `LoadHandler.Load` did not enforce `GET`, allowing alternate HTTP verbs to hit the handler path when wired
+Correct: Add an explicit `r.Method == http.MethodGet` guard and return 405 otherwise
+Rule:    Every dedicated handler must enforce its allowed method set explicitly, even when route dispatch is expected to constrain verbs.
+Layer:   delivery

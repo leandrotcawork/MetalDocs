@@ -1103,3 +1103,10 @@ Wrong:   Adapter round-trip removed `type: "text"` from `code` block children.
 Correct: Preserve `type: "text"` on every code-run when converting BlockNote content back to MDDM.
 Rule:    Any adapter crossing between editor JSON models must preserve discriminator fields required by the canonical schema.
 Layer:   frontend
+
+## Lesson EX - Scaffold parity changes must remove non-scaffold exporter behavior
+Date: 2026-04-08 | Trigger: correction
+Wrong:   Keeping extra docx imports, exported helpers, alternate underline typing, and non-scaffold section recursion in `apps/docgen/src/mddm/exporter.ts`
+Correct: Match the scaffold literally: only export `exportMDDMToDocx`, keep helper functions internal, use the requested docx imports, and preserve the exact section/mark behavior
+Rule:    When a file is being normalized to a scaffold, any extra fallback or helper export is a regression until removed.
+Layer:   process

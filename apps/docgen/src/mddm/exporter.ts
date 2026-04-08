@@ -1,63 +1,45 @@
-import { Document, HeadingLevel, Packer, Paragraph, TextRun, UnderlineType } from "docx";
-import type { ParagraphChild } from "docx";
+import { Document, HeadingLevel, Packer, Paragraph, TextRun } from "docx";
 import type { InlineRun, MDDMBlock, MDDMEnvelope, MDDMExportRequest } from "./types.js";
 
-type RenderedNode = Paragraph;
-
-function markSet(run: InlineRun): Set<string> {
-  return new Set((run.marks ?? []).map((mark) => mark.type));
-}
-
-export function runToTextRun(run: InlineRun): TextRun {
-  const marks = markSet(run);
+function runToTextRun(run: InlineRun): TextRun {
+  const marks = new Set((run.marks ?? []).map((mark) => mark.type));
   return new TextRun({
     text: run.text,
     bold: marks.has("bold"),
     italics: marks.has("italic"),
-    underline: marks.has("underline") ? { type: UnderlineType.SINGLE } : undefined,
+    underline: marks.has("underline") ? {} : undefined,
     strike: marks.has("strike"),
   });
 }
 
-function renderInlineChildren(children: InlineRun[]): ParagraphChild[] {
-  return children.map((run) => runToTextRun(run));
+function renderParagraph(block: MDDMBlock): Paragraph {
+  const children = (block.children as InlineRun[] | undefined) ?? [];
+  return new Paragraph({ children: children.map(runToTextRun) });
 }
 
-export function renderParagraph(block: MDDMBlock): RenderedNode {
-  const runs = (block.children as InlineRun[] | undefined) ?? [];
-  return new Paragraph({ children: renderInlineChildren(runs) });
-}
-
-export function renderHeading(block: MDDMBlock): RenderedNode {
+function renderHeading(block: MDDMBlock): Paragraph {
   const level = (block.props.level as number) ?? 2;
-  const headingLevel =
-    level === 1 ? HeadingLevel.HEADING_1 : level === 2 ? HeadingLevel.HEADING_2 : HeadingLevel.HEADING_3;
-
-  return new Paragraph({
-    heading: headingLevel,
-    children: renderInlineChildren((block.children as InlineRun[] | undefined) ?? []),
-  });
+  const headingLevel = level === 1 ? HeadingLevel.HEADING_1 : level === 2 ? HeadingLevel.HEADING_2 : HeadingLevel.HEADING_3;
+  const children = (block.children as InlineRun[] | undefined) ?? [];
+  return new Paragraph({ heading: headingLevel, children: children.map(runToTextRun) });
 }
 
-export function renderSection(block: MDDMBlock, _sectionPath: number[]): RenderedNode[] {
-  const heading = new Paragraph({
-    heading: HeadingLevel.HEADING_1,
-    children: [new TextRun((block.props.title as string) ?? "Section")],
-  });
-
-  const nodes: RenderedNode[] = [heading];
+function renderSection(block: MDDMBlock, path: number[]): Paragraph[] {
+  const num = path.length === 0 ? 1 : path[path.length - 1] + 1;
+  const title = (block.props.title as string) ?? "Section";
+  const children: Paragraph[] = [new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun(title)] })];
 
   for (const child of (block.children as MDDMBlock[] | undefined) ?? []) {
-    nodes.push(...renderBlock(child, []));
+    children.push(...renderBlock(child, [...path, num]));
   }
 
-  return nodes;
+  return children;
 }
 
-export function renderBlock(block: MDDMBlock, sectionPath: number[]): RenderedNode[] {
+function renderBlock(block: MDDMBlock, path: number[]): Paragraph[] {
   switch (block.type) {
     case "section":
-      return renderSection(block, sectionPath);
+      return renderSection(block, path);
     case "paragraph":
       return [renderParagraph(block)];
     case "heading":
@@ -67,15 +49,15 @@ export function renderBlock(block: MDDMBlock, sectionPath: number[]): RenderedNo
   }
 }
 
-export function renderEnvelope(envelope: MDDMEnvelope): RenderedNode[] {
-  const out: RenderedNode[] = [];
-  for (const block of envelope.blocks) out.push(...renderBlock(block, []));
-  return out;
+function renderEnvelope(envelope: MDDMEnvelope): Paragraph[] {
+  const children: Paragraph[] = [];
+  for (const block of envelope.blocks) {
+    children.push(...renderBlock(block, []));
+  }
+  return children;
 }
 
 export async function exportMDDMToDocx(req: MDDMExportRequest): Promise<Uint8Array> {
-  const sections = renderEnvelope(req.envelope);
-
   const doc = new Document({
     sections: [
       {
@@ -89,12 +71,11 @@ export async function exportMDDMToDocx(req: MDDMExportRequest): Promise<Uint8Arr
             },
           },
         },
-        children: [
-          ...sections,
-        ],
+        children: renderEnvelope(req.envelope),
       },
     ],
   });
 
-  return Packer.toBuffer(doc);
+  const buf = await Packer.toBuffer(doc);
+  return new Uint8Array(buf);
 }

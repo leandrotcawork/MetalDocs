@@ -26,8 +26,8 @@ function renderHeading(block: MDDMBlock): Paragraph {
 
 function renderSection(block: MDDMBlock, path: number[]): Paragraph[] {
   const num = path.length === 0 ? 1 : path[path.length - 1] + 1;
-  const title = (block.props.title as string) ?? "Section";
-  const children: Paragraph[] = [new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun(title)] })];
+  const title = (block.props.title as string) ?? "";
+  const children: Paragraph[] = [new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun({ text: `${num}. ${title}`, bold: true })] })];
 
   for (const child of (block.children as MDDMBlock[] | undefined) ?? []) {
     children.push(...renderBlock(child, [...path, num]));

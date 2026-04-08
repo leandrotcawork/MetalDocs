@@ -57,7 +57,14 @@ app.post("/render/mddm-docx", async (req, res) => {
     );
     res.send(Buffer.from(buf));
   } catch (err: any) {
-    res.status(500).json({ error: "render_failed", message: err.message });
+    const message = err instanceof Error ? err.message : "DOCGEN_GENERATE_FAILED";
+    if (message === "DOCGEN_INVALID_REQUEST" || message.startsWith("DOCGEN_INVALID_")) {
+      res.status(400).json({ error: "DOCGEN_INVALID_REQUEST" });
+      return;
+    }
+
+    console.error("DOCGEN_GENERATE_FAILED", err);
+    res.status(500).json({ error: "DOCGEN_GENERATE_FAILED" });
   }
 });
 

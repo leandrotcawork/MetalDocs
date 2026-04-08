@@ -90,10 +90,9 @@ test("mddm image upload + save + reload roundtrip", async ({ page }) => {
   expect(bundleBodyAfterSave).toContain(altText);
   expect(bundleBodyAfterSave).toContain("data:image/png;base64");
 
-  // Force a fresh open path before validating reload behavior.
-  await page.goto("/#/documents");
-  await expect(page.getByRole("button", { name: "Todos Documentos" })).toBeVisible();
   await page.goto(documentUrl);
+  const openButton = page.getByRole("button", { name: "Abrir documento" });
+  await expect(openButton).toBeVisible({ timeout: 20_000 });
 
   const bundlePath = `/api/v1/documents/${encodeURIComponent(documentId)}/browser-editor-bundle`;
   const bundleReloadResponse = page.waitForResponse(
@@ -106,7 +105,11 @@ test("mddm image upload + save + reload roundtrip", async ({ page }) => {
     { timeout: 20_000 },
   );
 
-  await openDocumentEditorFromDetail(page);
+  // Force a deterministic SPA restart on the detail route before reopening the editor.
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(openButton).toBeVisible({ timeout: 20_000 });
+  await openButton.click();
+
   const bundleResponse = await bundleReloadResponse;
   const bundlePayload = await bundleResponse.json() as { body?: string };
   expect(typeof bundlePayload.body).toBe("string");
@@ -193,9 +196,22 @@ async function openDocumentEditorFromDetail(page: Page) {
     return;
   }
 
-  const openButton = page.getByRole("button", { name: "Abrir documento" });
-  await expect(openButton).toBeVisible({ timeout: 20_000 });
-  await openButton.click();
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const openButton = page.getByRole("button", { name: "Abrir documento" });
+    await expect(openButton).toBeVisible({ timeout: 20_000 });
+    try {
+      await openButton.click({ timeout: 5_000 });
+      return;
+    } catch {
+      if (await editor.isVisible()) {
+        return;
+      }
+      if (attempt === 2) {
+        throw new Error("failed to click 'Abrir documento' after retries");
+      }
+      await page.waitForTimeout(250);
+    }
+  }
 }
 
 async function ensureBrowserEditorReady(page: Page) {

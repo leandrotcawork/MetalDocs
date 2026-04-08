@@ -1222,3 +1222,24 @@ Wrong:   An e2e roundtrip test waited for `browser-editor-bundle` after `page.go
 Correct: Navigate away first, return to the document route, then trigger editor open and wait for the bundle request during that explicit reopen flow.
 Rule:    Network-based reload assertions in UI tests must include a guaranteed state transition that causes the request.
 Layer:   frontend
+
+## Lesson FM - Reopen assertions must gate on detail readiness before reload
+Date: 2026-04-08 | Trigger: correction
+Wrong:   Reopen logic conditionally skipped the "Abrir documento" click when editor state lagged route state, leaving `waitForResponse` hanging on `browser-editor-bundle`.
+Correct: In roundtrip e2e flows, first assert detail-route open-button visibility, then reload, reopen, and only then assert the bundle GET and editor image state.
+Rule:    UI reload tests must synchronize on deterministic route-specific UI checkpoints before waiting on network side effects.
+Layer:   frontend
+
+## Lesson FN - E2E clicks on route-changing actions need detachment-tolerant retries
+Date: 2026-04-08 | Trigger: correction
+Wrong:   A single click attempt on "Abrir documento" failed when the button detached during route/state rerender, causing a full test timeout.
+Correct: Wrap route-changing click actions in bounded retries, re-querying visibility each attempt and short-circuiting if target editor state becomes visible.
+Rule:    UI actions that trigger rerenders should be retried defensively in e2e when DOM detachment is expected.
+Layer:   frontend
+
+## Lesson FO - CKEditor DOM rendering is not a stable persistence oracle in roundtrip e2e
+Date: 2026-04-08 | Trigger: correction
+Wrong:   Roundtrip validation required `img[alt=...]` visibility inside `.ck-editor__editable`, creating flakiness even when the reloaded bundle body already contained the injected image payload.
+Correct: Assert persistence on the reloaded `browser-editor-bundle` body (the canonical save/load payload) and treat editor-surface readiness as a separate UI availability check.
+Rule:    In editor e2e tests, persistence should be validated from canonical API payloads when DOM rendering can diverge from serialized content.
+Layer:   frontend

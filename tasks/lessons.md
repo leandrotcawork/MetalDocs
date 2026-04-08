@@ -1124,3 +1124,10 @@ Wrong:   Deriving section numbers from ancestry depth or reusing a fixed `1` for
 Correct: Assign section numbers from the current sibling index within each container so sibling sections increase in document order
 Rule:    Numbered document trees must compute labels from sibling position, not from recursive depth alone.
 Layer:   process
+
+## Lesson EZ - Render endpoints must fail closed on malformed envelopes
+Date: 2026-04-08 | Trigger: correction
+Wrong:   `/render/mddm-docx` passed raw request bodies into the exporter and returned `err.message` in the HTTP response
+Correct: Validate the request shape before rendering, return `DOCGEN_INVALID_REQUEST` for malformed payloads, and emit a stable `DOCGEN_GENERATE_FAILED` envelope for unexpected failures
+Rule:    Renderer endpoints must not leak raw exception text and should classify invalid input separately from internal render failures.
+Layer:   delivery

@@ -1,6 +1,120 @@
 import { Document, HeadingLevel, Packer, Paragraph, TextRun } from "docx";
 import type { InlineRun, MDDMBlock, MDDMEnvelope, MDDMExportRequest } from "./types.js";
 
+function invalid(code: string): never {
+  throw new Error(code);
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isInlineRun(value: unknown): value is InlineRun {
+  return isObject(value) && typeof value.text === "string";
+}
+
+function validateInlineRun(run: unknown): void {
+  if (!isInlineRun(run)) {
+    invalid("DOCGEN_INVALID_REQUEST");
+  }
+
+  if (run.marks !== undefined) {
+    if (!Array.isArray(run.marks)) {
+      invalid("DOCGEN_INVALID_REQUEST");
+    }
+    run.marks.forEach((mark) => {
+      if (!isObject(mark) || typeof mark.type !== "string") {
+        invalid("DOCGEN_INVALID_REQUEST");
+      }
+    });
+  }
+
+  if (run.link !== undefined) {
+    if (!isObject(run.link) || typeof run.link.href !== "string") {
+      invalid("DOCGEN_INVALID_REQUEST");
+    }
+    if (run.link.title !== undefined && typeof run.link.title !== "string") {
+      invalid("DOCGEN_INVALID_REQUEST");
+    }
+  }
+
+  if (run.document_ref !== undefined) {
+    if (
+      !isObject(run.document_ref) ||
+      typeof run.document_ref.target_document_id !== "string"
+    ) {
+      invalid("DOCGEN_INVALID_REQUEST");
+    }
+    if (
+      run.document_ref.target_revision_label !== undefined &&
+      typeof run.document_ref.target_revision_label !== "string"
+    ) {
+      invalid("DOCGEN_INVALID_REQUEST");
+    }
+  }
+}
+
+function validateMDDMBlock(block: unknown): void {
+  if (!isObject(block) || typeof block.type !== "string" || !isObject(block.props)) {
+    invalid("DOCGEN_INVALID_REQUEST");
+  }
+
+  if (block.children !== undefined) {
+    if (!Array.isArray(block.children)) {
+      invalid("DOCGEN_INVALID_REQUEST");
+    }
+
+    if (block.type === "section") {
+      block.children.forEach((child) => validateMDDMBlock(child));
+      return;
+    }
+
+    if (block.type === "paragraph" || block.type === "heading") {
+      block.children.forEach((child) => validateInlineRun(child));
+    }
+  }
+}
+
+function validateMDDMEnvelope(envelope: unknown): asserts envelope is MDDMEnvelope {
+  if (
+    !isObject(envelope) ||
+    typeof envelope.mddm_version !== "number" ||
+    !Array.isArray(envelope.blocks)
+  ) {
+    invalid("DOCGEN_INVALID_REQUEST");
+  }
+
+  envelope.blocks.forEach((block) => validateMDDMBlock(block));
+}
+
+function normalizeMDDMExportRequest(input: unknown): MDDMExportRequest {
+  if (!isObject(input) || !isObject(input.metadata)) {
+    invalid("DOCGEN_INVALID_REQUEST");
+  }
+
+  const metadata = input.metadata;
+  if (
+    typeof metadata.document_code !== "string" ||
+    typeof metadata.title !== "string" ||
+    typeof metadata.revision_label !== "string" ||
+    (metadata.mode !== "production" && metadata.mode !== "debug")
+  ) {
+    invalid("DOCGEN_INVALID_REQUEST");
+  }
+
+  validateMDDMEnvelope(input.envelope);
+
+  return {
+    envelope: input.envelope,
+    metadata: {
+      document_code: metadata.document_code,
+      title: metadata.title,
+      revision_label: metadata.revision_label,
+      mode: metadata.mode,
+    },
+  };
+}
+
 function runToTextRun(run: InlineRun): TextRun {
   const marks = new Set((run.marks ?? []).map((mark) => mark.type));
   return new TextRun({
@@ -71,6 +185,7 @@ function renderEnvelope(envelope: MDDMEnvelope): Paragraph[] {
 }
 
 export async function exportMDDMToDocx(req: MDDMExportRequest): Promise<Uint8Array> {
+  const runtime = normalizeMDDMExportRequest(req);
   const doc = new Document({
     sections: [
       {
@@ -84,7 +199,7 @@ export async function exportMDDMToDocx(req: MDDMExportRequest): Promise<Uint8Arr
             },
           },
         },
-        children: renderEnvelope(req.envelope),
+        children: renderEnvelope(runtime.envelope),
       },
     ],
   });

@@ -1167,6 +1167,13 @@ Correct: Validate `field.children` as inline runs for `valueMode=inline` and as 
 Rule:    Shape validation must enforce the declared content mode, not just the presence of a children array.
 Layer:   infrastructure
 
+## Lesson FF - E2E assertions should target stable error surfaces
+Date: 2026-04-08 | Trigger: correction
+Wrong:   Validation-rejection E2E asserted the optional "Tentar salvar novamente" action, which may not render even when the inline error banner is correctly shown.
+Correct: Assert deterministic signals only: backend error envelope (`code/message/details/trace_id`) and the inline error banner copy.
+Rule:    E2E checks must avoid optional UI affordances and prioritize stable contract-level and user-visible error outputs.
+Layer:   process
+
 ## Lesson FF - Diff indexing must ignore inline runs and return sorted buckets
 Date: 2026-04-08 | Trigger: correction
 Wrong:   `flatIndex` indexed inline text maps as blocks and diff slices inherited map iteration order

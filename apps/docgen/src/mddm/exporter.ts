@@ -2,32 +2,7 @@ import { Document, HeadingLevel, Packer, Paragraph, TextRun, UnderlineType } fro
 import type { ParagraphChild } from "docx";
 import type { InlineRun, MDDMBlock, MDDMEnvelope, MDDMExportRequest } from "./types.js";
 
-const CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-
 type RenderedNode = Paragraph;
-type HeadingLevelValue = (typeof HeadingLevel)[keyof typeof HeadingLevel];
-
-function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function isInlineRunArray(children: unknown): children is InlineRun[] {
-  return Array.isArray(children) && children.every((child) => isObject(child) && typeof child.text === "string");
-}
-
-function isBlockArray(children: unknown): children is MDDMBlock[] {
-  return Array.isArray(children) && children.every((child) => isObject(child) && typeof child.type === "string" && typeof child.id === "string");
-}
-
-function asString(value: unknown): string {
-  if (typeof value === "string") {
-    return value;
-  }
-  if (typeof value === "number" || typeof value === "boolean") {
-    return String(value);
-  }
-  return "";
-}
 
 function markSet(run: InlineRun): Set<string> {
   return new Set((run.marks ?? []).map((mark) => mark.type));
@@ -49,68 +24,31 @@ function renderInlineChildren(children: InlineRun[]): ParagraphChild[] {
 }
 
 export function renderParagraph(block: MDDMBlock): RenderedNode {
-  const inlineChildren = isInlineRunArray(block.children) ? renderInlineChildren(block.children) : [];
-  const text = asString(block.props.text) || asString(block.props.content) || asString(block.props.body);
-
-  if (inlineChildren.length > 0) {
-    return new Paragraph({ children: inlineChildren });
-  }
-
-  return new Paragraph({ children: [new TextRun(text)] });
-}
-
-function headingLevelFromValue(value: unknown, fallback: HeadingLevelValue): HeadingLevelValue {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return fallback;
-  }
-  const level = Math.trunc(value);
-  switch (level) {
-    case 1:
-      return HeadingLevel.HEADING_1;
-    case 2:
-      return HeadingLevel.HEADING_2;
-    case 3:
-      return HeadingLevel.HEADING_3;
-    case 4:
-      return HeadingLevel.HEADING_4;
-    case 5:
-      return HeadingLevel.HEADING_5;
-    default:
-      return HeadingLevel.HEADING_6;
-  }
+  const runs = (block.children as InlineRun[] | undefined) ?? [];
+  return new Paragraph({ children: renderInlineChildren(runs) });
 }
 
 export function renderHeading(block: MDDMBlock): RenderedNode {
-  const inlineChildren = isInlineRunArray(block.children) ? renderInlineChildren(block.children) : [];
-  const title = inlineChildren.length > 0 ? inlineChildren : [new TextRun(asString(block.props.text) || asString(block.props.title) || "Heading")];
-  const level = headingLevelFromValue(block.props.level, HeadingLevel.HEADING_1);
+  const level = (block.props.level as number) ?? 2;
+  const headingLevel =
+    level === 1 ? HeadingLevel.HEADING_1 : level === 2 ? HeadingLevel.HEADING_2 : HeadingLevel.HEADING_3;
 
   return new Paragraph({
-    heading: level,
-    children: title,
+    heading: headingLevel,
+    children: renderInlineChildren((block.children as InlineRun[] | undefined) ?? []),
   });
 }
 
-export function renderSection(block: MDDMBlock, sectionPath: number[]): RenderedNode[] {
-  const title = asString(block.props.title) || asString(block.props.label) || "Section";
-  const inlineChildren = isInlineRunArray(block.children) ? renderInlineChildren(block.children) : [];
-  const headingChildren = inlineChildren.length > 0 ? inlineChildren : [new TextRun(title)];
+export function renderSection(block: MDDMBlock, _sectionPath: number[]): RenderedNode[] {
   const heading = new Paragraph({
     heading: HeadingLevel.HEADING_1,
-    children: sectionPath.length > 0 ? [new TextRun(`${sectionPath.join(".")} `), ...headingChildren] : headingChildren,
+    children: [new TextRun((block.props.title as string) ?? "Section")],
   });
 
   const nodes: RenderedNode[] = [heading];
 
-  if (isBlockArray(block.children)) {
-    block.children.forEach((child, index) => {
-      nodes.push(...renderBlock(child, [...sectionPath, index + 1]));
-    });
-    return nodes;
-  }
-
-  if (inlineChildren.length > 0) {
-    nodes.push(new Paragraph({ children: inlineChildren }));
+  for (const child of (block.children as MDDMBlock[] | undefined) ?? []) {
+    nodes.push(...renderBlock(child, []));
   }
 
   return nodes;
@@ -130,7 +68,9 @@ export function renderBlock(block: MDDMBlock, sectionPath: number[]): RenderedNo
 }
 
 export function renderEnvelope(envelope: MDDMEnvelope): RenderedNode[] {
-  return envelope.blocks.flatMap((block, index) => renderBlock(block, [index + 1]));
+  const out: RenderedNode[] = [];
+  for (const block of envelope.blocks) out.push(...renderBlock(block, []));
+  return out;
 }
 
 export async function exportMDDMToDocx(req: MDDMExportRequest): Promise<Uint8Array> {

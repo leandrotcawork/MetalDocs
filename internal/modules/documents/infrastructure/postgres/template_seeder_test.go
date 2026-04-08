@@ -47,6 +47,33 @@ func TestTemplateSeeder_IsIdempotent(t *testing.T) {
 	}
 }
 
+func TestTemplateSeeder_PreservesPublishedState(t *testing.T) {
+	if testing.Short() {
+		t.Skip("integration")
+	}
+
+	ctx := context.Background()
+	db := newTestDB(t)
+	defer db.Close()
+
+	templateID := DefaultPOTemplateID
+	seeder := NewTemplateSeeder(db)
+
+	if err := seeder.SeedPOTemplate(ctx, templateID); err != nil {
+		t.Fatalf("initial seed: %v", err)
+	}
+	if !loadTemplatePublishedState(t, ctx, db, templateID) {
+		t.Fatal("expected initial canonical seed to be published")
+	}
+
+	if err := seeder.SeedPOTemplate(ctx, templateID); err != nil {
+		t.Fatalf("repeat seed: %v", err)
+	}
+	if !loadTemplatePublishedState(t, ctx, db, templateID) {
+		t.Fatal("expected seeded template row to be published")
+	}
+}
+
 func TestTemplateSeeder_RejectsEmptyCanonicalBlocks(t *testing.T) {
 	ctx := context.Background()
 	seeder := NewTemplateSeeder(nil)
@@ -75,6 +102,20 @@ func loadTemplateSeedState(t *testing.T, ctx context.Context, db *sql.DB, templa
 		t.Fatalf("load template seed state: %v", err)
 	}
 	return count, []byte(content.String), hash.String
+}
+
+func loadTemplatePublishedState(t *testing.T, ctx context.Context, db *sql.DB, templateID uuid.UUID) bool {
+	t.Helper()
+
+	var published bool
+	if err := db.QueryRowContext(ctx, `
+		SELECT is_published
+		FROM metaldocs.document_template_versions_mddm
+		WHERE template_id = $1 AND version = 1
+	`, templateID).Scan(&published); err != nil {
+		t.Fatalf("load template published state: %v", err)
+	}
+	return published
 }
 
 func seedStaleTemplateRow(t *testing.T, ctx context.Context, db *sql.DB, templateID uuid.UUID) {

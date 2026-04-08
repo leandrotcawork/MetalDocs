@@ -2,10 +2,11 @@ package application
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
+
+	"metaldocs/internal/modules/documents/domain"
 )
 
 type ExportRepo interface {
@@ -33,22 +34,25 @@ func (s *ExportService) ExportDocx(ctx context.Context, versionID uuid.UUID, mod
 		return nil, err
 	}
 	if version == nil {
-		return nil, fmt.Errorf("export version not found: %s", versionID)
+		return nil, domain.ErrVersionNotFound
 	}
 
 	switch strings.ToLower(strings.TrimSpace(version.Status)) {
 	case "released", "archived":
 		if len(version.DocxBytes) == 0 {
-			return nil, fmt.Errorf("missing cached docx bytes for version %s", versionID)
+			return nil, domain.ErrInvalidCommand
 		}
 		return version.DocxBytes, nil
 	case "draft", "pending_approval":
 		if !isValidExportMode(mode) {
-			return nil, fmt.Errorf("invalid export mode for version %s: %s", versionID, mode)
+			return nil, domain.ErrInvalidCommand
+		}
+		if s.renderer == nil {
+			return nil, domain.ErrRenderUnavailable
 		}
 		return s.renderer.RenderDocx(ctx, version.ContentBlocks)
 	default:
-		return nil, fmt.Errorf("unknown export status for version %s: %s", versionID, version.Status)
+		return nil, domain.ErrInvalidCommand
 	}
 }
 

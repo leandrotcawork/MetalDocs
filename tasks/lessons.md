@@ -1187,3 +1187,10 @@ Wrong:   A new DOCX export path would have rendered draft-like content even when
 Correct: Return cached `DocxBytes` for released/archived versions, require a valid export mode for draft/pending approval, and render fresh only for mutable statuses
 Rule:    Cached export artifacts are authoritative for immutable statuses; only mutable statuses should pay the renderer cost.
 Layer:   application
+
+## Lesson FI - Export service errors should be sentinel-typed for upstream mapping
+Date: 2026-04-08 | Trigger: correction
+Wrong:   Export branches returned ad-hoc formatted errors for nil versions, invalid modes, missing cached bytes, and unknown statuses
+Correct: Return domain sentinels (`ErrVersionNotFound`, `ErrInvalidCommand`, `ErrRenderUnavailable`) so callers can classify failures predictably with `errors.Is`
+Rule:    Application services should expose stable sentinel errors for known failure classes instead of string-formatted diagnostics.
+Layer:   application

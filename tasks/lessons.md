@@ -1194,3 +1194,10 @@ Wrong:   Export branches returned ad-hoc formatted errors for nil versions, inva
 Correct: Return domain sentinels (`ErrVersionNotFound`, `ErrInvalidCommand`, `ErrRenderUnavailable`) so callers can classify failures predictably with `errors.Is`
 Rule:    Application services should expose stable sentinel errors for known failure classes instead of string-formatted diagnostics.
 Layer:   application
+
+## Lesson FJ - E2E seed must upsert PO template defaults after template cleanup
+Date: 2026-04-08 | Trigger: correction
+Wrong:   E2E seed only created admin auth data and left `document_profile_template_defaults` empty after migration cleanup, so new PO drafts were created without template snapshot.
+Correct: E2E seed must idempotently upsert `profile_code=po` to `template_key=po-default-canvas` and `template_version=1` before browser-editor scenarios run.
+Rule:    Any E2E bootstrap that relies on template-bound editor bundles must seed profile default template bindings explicitly.
+Layer:   process

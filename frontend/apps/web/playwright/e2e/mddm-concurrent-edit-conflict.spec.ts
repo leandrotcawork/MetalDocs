@@ -36,7 +36,6 @@ test("mddm concurrent edit shows conflict for stale save", async ({ browser }) =
     const documentTitle = `PO Concurrent ${suffix}`;
     const documentId = await createPoDocumentThroughUi(pageA, documentTitle);
     await assignBrowserTemplate(ctxA.request, documentId);
-    await primeNativeVersionWithAssignedTemplate(ctxA.request, documentId);
 
     const documentUrl = `/#/documents/doc/${encodeURIComponent(documentId)}`;
     await pageA.goto(documentUrl);
@@ -121,20 +120,6 @@ async function assignBrowserTemplate(apiContext: APIRequestContext, documentId: 
     },
   });
   expect(assignmentResponse.ok(), `template assignment failed: ${assignmentResponse.status()} ${await assignmentResponse.text()}`).toBeTruthy();
-}
-
-async function primeNativeVersionWithAssignedTemplate(apiContext: APIRequestContext, documentId: string) {
-  const nativeSaveResponse = await apiContext.post(`/api/v1/documents/${encodeURIComponent(documentId)}/content/native`, {
-    headers: sameSiteHeaders,
-    data: {
-      content: {},
-    },
-  });
-
-  if (!nativeSaveResponse.ok()) {
-    const body = await nativeSaveResponse.text();
-    throw new Error(`native content save failed: status=${nativeSaveResponse.status()} body=${body}`);
-  }
 }
 
 type AssignableTemplateItem = {

@@ -1110,3 +1110,10 @@ Wrong:   Rendering section headings with a default fallback title and unformatte
 Correct: Use the block title as-is with an empty-string fallback and render headings as `${num}. ${title}` in bold text
 Rule:    When aligning a renderer to a scaffold, heading text must match the scaffold's literal title and numbering contract.
 Layer:   process
+
+## Lesson EY - Section numbering must be driven by sibling order
+Date: 2026-04-08 | Trigger: correction
+Wrong:   Deriving section numbers from ancestry depth or reusing a fixed `1` for every section node
+Correct: Assign section numbers from the current sibling index within each container so sibling sections increase in document order
+Rule:    Numbered document trees must compute labels from sibling position, not from recursive depth alone.
+Layer:   process

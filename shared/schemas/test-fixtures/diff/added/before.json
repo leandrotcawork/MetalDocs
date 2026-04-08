@@ -1,0 +1,16 @@
+{
+  "mddm_version": 1,
+  "template_ref": null,
+  "blocks": [
+    {
+      "id": "doc-1",
+      "type": "paragraph",
+      "props": {},
+      "children": [
+        {
+          "text": "x"
+        }
+      ]
+    }
+  ]
+}

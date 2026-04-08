@@ -108,14 +108,6 @@ function validateMDDMBlockChildren(block: MDDMBlock): void {
     return;
   }
 
-  if (block.type === "repeatable" || block.type === "repeatableItem") {
-    if (!isBlockArray(block.children)) {
-      invalid("DOCGEN_INVALID_REQUEST");
-    }
-    block.children.forEach((child) => validateMDDMBlock(child));
-    return;
-  }
-
   if (block.type === "paragraph" || block.type === "heading") {
     block.children.forEach((child) => validateInlineRun(child));
   }

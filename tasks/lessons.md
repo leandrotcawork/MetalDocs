@@ -1166,10 +1166,3 @@ Wrong:   `field.children` could pass validation without being checked against `v
 Correct: Validate `field.children` as inline runs for `valueMode=inline` and as recursive block arrays for `valueMode=multiParagraph`
 Rule:    Shape validation must enforce the declared content mode, not just the presence of a children array.
 Layer:   infrastructure
-
-## Lesson FF - Repeatable render helpers must match the existing block union
-Date: 2026-04-08 | Trigger: build failure
-Wrong:   A repeatable helper was typed as `Paragraph[]` while pushing `renderBlock(...)` results that can also be `Table`
-Correct: Either widen the helper to the actual rendered union or narrow/cast at the boundary before pushing into the array
-Rule:    When adding a renderer around a broader block union, the helper return type must cover every child shape it forwards.
-Layer:   infrastructure

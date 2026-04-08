@@ -1292,3 +1292,10 @@ Wrong:   A subagent generated Task 59 files under the parent repository path (`.
 Correct: Always set subagent execution context explicitly to the active worktree and verify file paths before accepting implementation output
 Rule:    In worktree-based development, every delegated edit and review must target the active worktree path to avoid branch contamination.
 Layer:   process
+
+## Lesson FG - When plan contract and generic policy conflict, task contract wins for that slice
+Date: 2026-04-08 | Trigger: correction
+Wrong:   Changed Task 60 handler generic error mapping from 422 to 500 to satisfy general API policy, diverging from the locked task contract
+Correct: Keep Task 60 generic service error mapping at 422 because the locked plan defines that behavior for this endpoint slice
+Rule:    For locked sprint tasks, implementer and reviewer quality improvements cannot override explicit contract behavior unless the plan itself is amended.
+Layer:   process

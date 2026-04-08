@@ -85,7 +85,30 @@ func (r *MDDMRepository) UpdateDraftContent(ctx context.Context, id uuid.UUID, c
 	if err != nil {
 		return err
 	}
-	rows, _ := res.RowsAffected()
+	rows, rowsErr := res.RowsAffected()
+	if rowsErr != nil {
+		return rowsErr
+	}
+	if rows == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+func (r *MDDMRepository) TransitionDraftToPendingApproval(ctx context.Context, draftID uuid.UUID) error {
+	res, err := r.db.ExecContext(ctx, `
+		UPDATE metaldocs.document_versions_mddm
+		SET status = 'pending_approval'
+		WHERE id = $1 AND status = 'draft'
+	`, draftID)
+	if err != nil {
+		return err
+	}
+
+	rows, rowsErr := res.RowsAffected()
+	if rowsErr != nil {
+		return rowsErr
+	}
 	if rows == 0 {
 		return sql.ErrNoRows
 	}

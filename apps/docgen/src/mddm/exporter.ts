@@ -1,10 +1,12 @@
-import { Document, HeadingLevel, Packer, Paragraph, TextRun } from "docx";
+import { Document, HeadingLevel, Packer, Paragraph, Table, TextRun } from "docx";
 import { renderFieldGroup } from "./render-tables.js";
 import type { InlineRun, MDDMBlock, MDDMEnvelope, MDDMExportRequest } from "./types.js";
 
 function invalid(code: string): never {
   throw new Error(code);
 }
+
+type RenderedNode = Paragraph | Table;
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -77,6 +79,14 @@ function validateMDDMChildren(block: MDDMBlock): void {
     return;
   }
 
+  if (block.type === "section") {
+    if (!isBlockArray(block.children)) {
+      invalid("DOCGEN_INVALID_REQUEST");
+    }
+    block.children.forEach((child) => validateMDDMBlock(child));
+    return;
+  }
+
   if (block.type === "paragraph" || block.type === "heading") {
     block.children.forEach((child) => validateInlineRun(child));
     return;
@@ -145,7 +155,11 @@ function normalizeMDDMExportRequest(input: unknown): MDDMExportRequest {
 }
 
 function runToTextRun(run: InlineRun): TextRun {
-  const marks = new Set((run.marks ?? []).map((mark) => mark.type));
+  const marks = new Set(
+    (run.marks ?? [])
+      .filter((mark): mark is { type: string } => isObject(mark) && typeof mark.type === "string")
+      .map((mark) => mark.type),
+  );
   return new TextRun({
     text: run.text,
     bold: marks.has("bold"),
@@ -167,9 +181,9 @@ function renderHeading(block: MDDMBlock): Paragraph {
   return new Paragraph({ heading: headingLevel, children: children.map(runToTextRun) });
 }
 
-function renderSection(block: MDDMBlock, num: number): Paragraph[] {
+function renderSection(block: MDDMBlock, num: number): RenderedNode[] {
   const title = (block.props.title as string) ?? "";
-  const children: Paragraph[] = [new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun({ text: `${num}. ${title}`, bold: true })] })];
+  const children: RenderedNode[] = [new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun({ text: `${num}. ${title}`, bold: true })] })];
 
   let sectionNumber = 1;
   for (const child of (block.children as MDDMBlock[] | undefined) ?? []) {
@@ -185,12 +199,12 @@ function renderSection(block: MDDMBlock, num: number): Paragraph[] {
   return children;
 }
 
-function renderBlock(block: MDDMBlock): Paragraph[] {
+function renderBlock(block: MDDMBlock): RenderedNode[] {
   switch (block.type) {
     case "section":
       return renderSection(block, 1);
     case "fieldGroup":
-      return [renderFieldGroup(block) as unknown as Paragraph];
+      return [renderFieldGroup(block)];
     case "paragraph":
       return [renderParagraph(block)];
     case "heading":
@@ -200,8 +214,8 @@ function renderBlock(block: MDDMBlock): Paragraph[] {
   }
 }
 
-function renderEnvelope(envelope: MDDMEnvelope): Paragraph[] {
-  const children: Paragraph[] = [];
+function renderEnvelope(envelope: MDDMEnvelope): RenderedNode[] {
+  const children: RenderedNode[] = [];
   let sectionNumber = 1;
   for (const block of envelope.blocks) {
     if (block.type === "section") {

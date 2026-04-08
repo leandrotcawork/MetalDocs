@@ -1,5 +1,5 @@
 import { BorderStyle, Paragraph, Table, TableCell, TableRow, TextRun, UnderlineType } from "docx";
-import { C, CONTENT_WIDTH, fieldParagraph, makeCell, makeTable, paragraph, run, tableBorder } from "../runtime/docx.js";
+import { C, CONTENT_WIDTH, fieldParagraph, makeCell, makeTable, paragraph, tableBorder } from "../runtime/docx.js";
 import type { InlineRun, MDDMBlock } from "./types.js";
 
 const FIELD_GROUP_LABEL_FILL = "F9F3F3";
@@ -40,7 +40,11 @@ function inlineRunsToParagraph(runs: InlineRun[]): Paragraph {
 }
 
 function runToTextRun(runValue: InlineRun): TextRun {
-  const marks = new Set((runValue.marks ?? []).map((mark) => mark.type));
+  const marks = new Set(
+    (runValue.marks ?? [])
+      .filter((mark): mark is { type: string } => isObject(mark) && typeof mark.type === "string")
+      .map((mark) => mark.type),
+  );
   return new TextRun({
     text: runValue.text,
     bold: marks.has("bold"),
@@ -137,7 +141,7 @@ function renderFieldPairRow(left: MDDMBlock, right?: MDDMBlock): TableRow {
 export function renderFieldGroup(block: MDDMBlock): Table {
   const columns = typeof block.props.columns === "number" && block.props.columns === 2 ? 2 : 1;
   const fields = Array.isArray(block.children) && block.children.every(isMDDMBlock) ? block.children : [];
-  const rows = [];
+  const rows: TableRow[] = [];
 
   if (columns === 2) {
     for (let index = 0; index < fields.length; index += 2) {

@@ -16,12 +16,15 @@ import (
 type ReleaseRepo struct {
 	db *sql.DB
 
-	mu sync.Mutex
-	tx *sql.Tx
+	mu  sync.Mutex
+	txs map[context.Context]*sql.Tx
 }
 
 func NewReleaseRepo(db *sql.DB) *ReleaseRepo {
-	return &ReleaseRepo{db: db}
+	return &ReleaseRepo{
+		db:  db,
+		txs: make(map[context.Context]*sql.Tx),
+	}
 }
 
 func (r *ReleaseRepo) GetDraft(ctx context.Context, id uuid.UUID) (*application.DraftSnapshot, error) {
@@ -57,7 +60,7 @@ func (r *ReleaseRepo) ArchivePreviousReleased(ctx context.Context, documentID st
 		return uuid.Nil, nil, nil
 	}
 	if err != nil {
-		return uuid.Nil, nil, r.rollbackWithError(fmt.Errorf("archive previous released lookup for %s: %w", documentID, err))
+		return uuid.Nil, nil, r.rollbackWithError(ctx, fmt.Errorf("archive previous released lookup for %s: %w", documentID, err))
 	}
 
 	if _, err := tx.ExecContext(ctx, `
@@ -65,7 +68,7 @@ func (r *ReleaseRepo) ArchivePreviousReleased(ctx context.Context, documentID st
 		SET status = 'archived', content_blocks = NULL
 		WHERE id = $1
 	`, prevID); err != nil {
-		return uuid.Nil, nil, r.rollbackWithError(fmt.Errorf("archive previous released %s: %w", prevID, err))
+		return uuid.Nil, nil, r.rollbackWithError(ctx, fmt.Errorf("archive previous released %s: %w", prevID, err))
 	}
 
 	return prevID, prevDocx, nil
@@ -83,15 +86,15 @@ func (r *ReleaseRepo) PromoteDraftToReleased(ctx context.Context, draftID uuid.U
 		WHERE id = $3 AND status IN ('draft', 'pending_approval')
 	`, docxBytes, approvedBy, draftID)
 	if err != nil {
-		return r.rollbackWithError(fmt.Errorf("promote draft %s: %w", draftID, err))
+		return r.rollbackWithError(ctx, fmt.Errorf("promote draft %s: %w", draftID, err))
 	}
 
 	rows, err := res.RowsAffected()
 	if err != nil {
-		return r.rollbackWithError(fmt.Errorf("promote draft %s rows affected: %w", draftID, err))
+		return r.rollbackWithError(ctx, fmt.Errorf("promote draft %s rows affected: %w", draftID, err))
 	}
 	if rows == 0 {
-		return r.rollbackWithError(fmt.Errorf("promote draft %s: %w", draftID, sql.ErrNoRows))
+		return r.rollbackWithError(ctx, fmt.Errorf("promote draft %s: %w", draftID, sql.ErrNoRows))
 	}
 
 	return nil
@@ -109,15 +112,15 @@ func (r *ReleaseRepo) StoreRevisionDiff(ctx context.Context, versionID uuid.UUID
 		WHERE id = $2
 	`, diff, versionID)
 	if err != nil {
-		return r.rollbackWithError(fmt.Errorf("store revision diff for %s: %w", versionID, err))
+		return r.rollbackWithError(ctx, fmt.Errorf("store revision diff for %s: %w", versionID, err))
 	}
 
 	rows, err := res.RowsAffected()
 	if err != nil {
-		return r.rollbackWithError(fmt.Errorf("store revision diff %s rows affected: %w", versionID, err))
+		return r.rollbackWithError(ctx, fmt.Errorf("store revision diff %s rows affected: %w", versionID, err))
 	}
 	if rows == 0 {
-		return r.rollbackWithError(fmt.Errorf("store revision diff %s: %w", versionID, sql.ErrNoRows))
+		return r.rollbackWithError(ctx, fmt.Errorf("store revision diff %s: %w", versionID, sql.ErrNoRows))
 	}
 
 	return nil
@@ -133,7 +136,7 @@ func (r *ReleaseRepo) DeleteImageRefs(ctx context.Context, versionID uuid.UUID) 
 		DELETE FROM metaldocs.document_version_images
 		WHERE document_version_id = $1
 	`, versionID); err != nil {
-		return r.rollbackWithError(fmt.Errorf("delete image refs for %s: %w", versionID, err))
+		return r.rollbackWithError(ctx, fmt.Errorf("delete image refs for %s: %w", versionID, err))
 	}
 
 	return nil
@@ -153,10 +156,10 @@ func (r *ReleaseRepo) CleanupOrphanImages(ctx context.Context) error {
 			WHERE image_id = document_images.id
 		)
 	`); err != nil {
-		return r.rollbackWithError(fmt.Errorf("cleanup orphan images: %w", err))
+		return r.rollbackWithError(ctx, fmt.Errorf("cleanup orphan images: %w", err))
 	}
 
-	if err := r.commitActiveTx(); err != nil {
+	if err := r.commitActiveTx(ctx); err != nil {
 		return fmt.Errorf("commit release transaction: %w", err)
 	}
 
@@ -167,8 +170,8 @@ func (r *ReleaseRepo) beginOrReuseTx(ctx context.Context) (*sql.Tx, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if r.tx != nil {
-		return r.tx, nil
+	if tx, ok := r.txs[ctx]; ok {
+		return tx, nil
 	}
 
 	tx, err := r.db.BeginTx(ctx, nil)
@@ -176,19 +179,19 @@ func (r *ReleaseRepo) beginOrReuseTx(ctx context.Context) (*sql.Tx, error) {
 		return nil, fmt.Errorf("begin release transaction: %w", err)
 	}
 
-	r.tx = tx
+	r.txs[ctx] = tx
 	return tx, nil
 }
 
-func (r *ReleaseRepo) rollbackWithError(err error) error {
-	r.rollbackActiveTx()
+func (r *ReleaseRepo) rollbackWithError(ctx context.Context, err error) error {
+	r.rollbackActiveTx(ctx)
 	return err
 }
 
-func (r *ReleaseRepo) rollbackActiveTx() {
+func (r *ReleaseRepo) rollbackActiveTx(ctx context.Context) {
 	r.mu.Lock()
-	tx := r.tx
-	r.tx = nil
+	tx := r.txs[ctx]
+	delete(r.txs, ctx)
 	r.mu.Unlock()
 
 	if tx != nil {
@@ -196,10 +199,10 @@ func (r *ReleaseRepo) rollbackActiveTx() {
 	}
 }
 
-func (r *ReleaseRepo) commitActiveTx() error {
+func (r *ReleaseRepo) commitActiveTx(ctx context.Context) error {
 	r.mu.Lock()
-	tx := r.tx
-	r.tx = nil
+	tx := r.txs[ctx]
+	delete(r.txs, ctx)
 	r.mu.Unlock()
 
 	if tx == nil {

@@ -46,12 +46,7 @@ func TestExportHandler_RequiresVersionID(t *testing.T) {
 
 	handler.ExportDocx(rec, req)
 
-	if rec.Code != http.StatusNotFound && rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d or %d", rec.Code, http.StatusNotFound, http.StatusOK)
-	}
-	if rec.Code == http.StatusNotFound {
-		requireAPIError(t, rec, http.StatusNotFound, "VERSION_NOT_FOUND")
-	}
+	requireAPIError(t, rec, http.StatusNotFound, "VERSION_NOT_FOUND")
 }
 
 func TestExportHandler_UnauthenticatedRequest(t *testing.T) {

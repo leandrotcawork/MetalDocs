@@ -1201,3 +1201,10 @@ Wrong:   E2E seed only created admin auth data and left `document_profile_templa
 Correct: E2E seed must idempotently upsert `profile_code=po` to `template_key=po-default-canvas` and `template_version=1` before browser-editor scenarios run.
 Rule:    Any E2E bootstrap that relies on template-bound editor bundles must seed profile default template bindings explicitly.
 Layer:   process
+
+## Lesson FK - Seeders must not overwrite existing runtime defaults
+Date: 2026-04-08 | Trigger: correction
+Wrong:   E2E seed used `ON CONFLICT DO UPDATE` for `document_profile_template_defaults`, mutating existing PO default bindings on every run.
+Correct: E2E seed should insert PO default binding only when missing (`ON CONFLICT DO NOTHING`) after verifying the canonical template version exists.
+Rule:    Environment seeders should establish required prerequisites without overriding already configured defaults.
+Layer:   process

@@ -140,15 +140,12 @@ func ensurePODefaultTemplateBinding(ctx context.Context) error {
 			(profile_code, template_key, template_version, assigned_at)
 		VALUES ($1, $2, $3, NOW())
 		ON CONFLICT (profile_code)
-		DO UPDATE SET
-			template_key = EXCLUDED.template_key,
-			template_version = EXCLUDED.template_version,
-			assigned_at = NOW()`,
+		DO NOTHING`,
 		profileCode,
 		templateKey,
 		templateVersion,
 	); err != nil {
-		return fmt.Errorf("upsert profile template default: %w", err)
+		return fmt.Errorf("insert profile template default when missing: %w", err)
 	}
 
 	return nil

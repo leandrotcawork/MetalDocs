@@ -12,6 +12,8 @@ const seedScript = resolve(repoRoot, "scripts/e2e-seed.ps1");
 const adminUsername = process.env.METALDOCS_E2E_ADMIN_USERNAME ?? "e2e.admin";
 const adminPassword = process.env.METALDOCS_E2E_ADMIN_PASSWORD ?? "E2eAdmin123!";
 const sameSiteHeaders = { Origin: "http://127.0.0.1:4173" };
+const deterministicTemplateKey = "po-default-canvas";
+const deterministicTemplateVersion = 1;
 
 test.beforeAll(() => {
   execFileSync(
@@ -111,101 +113,40 @@ async function createPoDocumentThroughUi(page: Page, documentTitle: string) {
 }
 
 async function assignBrowserTemplate(apiContext: APIRequestContext, documentId: string) {
-  const selectedTemplate = await resolveAssignableTemplate(apiContext);
+  await ensureDeterministicTemplateAvailable(apiContext);
   const assignmentResponse = await apiContext.put(`/api/v1/documents/${encodeURIComponent(documentId)}/template-assignment`, {
     headers: sameSiteHeaders,
     data: {
-      templateKey: selectedTemplate.templateKey,
-      templateVersion: selectedTemplate.templateVersion,
+      templateKey: deterministicTemplateKey,
+      templateVersion: deterministicTemplateVersion,
     },
   });
   expect(assignmentResponse.ok(), `template assignment failed: ${assignmentResponse.status()} ${await assignmentResponse.text()}`).toBeTruthy();
 }
 
-type AssignableTemplateItem = {
-  templateKey?: string;
-  template_key?: string;
-  version?: number;
-  templateVersion?: number;
-  template_version?: number;
-  editor?: string;
-  editorType?: string;
-  editor_type?: string;
-  contentFormat?: string;
-  content_format?: string;
+type DocumentTemplateItem = {
+  templateKey: string;
+  version: number;
 };
 
-async function resolveAssignableTemplate(apiContext: APIRequestContext) {
+async function ensureDeterministicTemplateAvailable(apiContext: APIRequestContext) {
   const templatesResponse = await apiContext.get("/api/v1/document-templates?profileCode=po", {
     headers: sameSiteHeaders,
   });
   expect(templatesResponse.ok(), `list templates failed: ${templatesResponse.status()} ${await templatesResponse.text()}`).toBeTruthy();
 
-  const templatesBody = await templatesResponse.json() as { items?: AssignableTemplateItem[] };
-  const assignableTemplates = Array.isArray(templatesBody.items)
-    ? templatesBody.items
-      .map(normalizeAssignableTemplate)
-      .filter((item): item is { templateKey: string; version: number; editor?: string; contentFormat?: string } => item !== null)
-    : [];
-
-  expect(assignableTemplates.length, "no assignable templates returned for profileCode=po").toBeGreaterThan(0);
-
-  const browserTemplate = assignableTemplates.find(
-    (item) => item.editor?.toLowerCase() === "ckeditor5" && item.contentFormat?.toLowerCase() === "html",
+  const templatesBody = await templatesResponse.json() as { items?: DocumentTemplateItem[] };
+  const templates = Array.isArray(templatesBody.items) ? templatesBody.items : [];
+  const hasDeterministicTemplate = templates.some(
+    (item) => item.templateKey === deterministicTemplateKey && item.version === deterministicTemplateVersion,
   );
-  const selectedTemplate = browserTemplate ?? assignableTemplates[0];
-
-  return {
-    templateKey: selectedTemplate.templateKey,
-    templateVersion: selectedTemplate.version,
-  };
-}
-
-function normalizeAssignableTemplate(item: AssignableTemplateItem): {
-  templateKey: string;
-  version: number;
-  editor?: string;
-  contentFormat?: string;
-} | null {
-  const templateKey = firstNonEmptyString(item.templateKey, item.template_key);
-  const version = firstPositiveNumber(item.version, item.templateVersion, item.template_version);
-  if (!templateKey || !version) {
-    return null;
-  }
-
-  return {
-    templateKey,
-    version,
-    editor: firstNonEmptyString(item.editor, item.editorType, item.editor_type),
-    contentFormat: firstNonEmptyString(item.contentFormat, item.content_format),
-  };
-}
-
-function firstNonEmptyString(...values: Array<unknown>) {
-  for (const value of values) {
-    if (typeof value === "string") {
-      const trimmed = value.trim();
-      if (trimmed.length > 0) {
-        return trimmed;
-      }
-    }
-  }
-  return undefined;
-}
-
-function firstPositiveNumber(...values: Array<unknown>) {
-  for (const value of values) {
-    if (typeof value === "number" && Number.isFinite(value) && value > 0) {
-      return value;
-    }
-    if (typeof value === "string") {
-      const parsed = Number(value);
-      if (Number.isFinite(parsed) && parsed > 0) {
-        return parsed;
-      }
-    }
-  }
-  return undefined;
+  const available = templates
+    .map((item) => `${item.templateKey}@${item.version}`)
+    .join(", ");
+  expect(
+    hasDeterministicTemplate,
+    `deterministic template ${deterministicTemplateKey}@${deterministicTemplateVersion} missing; available: ${available || "none"}`,
+  ).toBeTruthy();
 }
 
 async function openDocumentEditorFromDetail(page: Page) {

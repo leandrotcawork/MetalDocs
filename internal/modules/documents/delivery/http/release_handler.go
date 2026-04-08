@@ -1,11 +1,7 @@
 package httpdelivery
 
 import (
-	"context"
 	"net/http"
-	"strings"
-
-	"metaldocs/internal/platform/authn"
 )
 
 type ReleaseHandler struct {
@@ -40,20 +36,4 @@ func (h *ReleaseHandler) Release(w http.ResponseWriter, r *http.Request) {
 func newTestReleaseHandler(t interface{ Helper() }) *ReleaseHandler {
 	t.Helper()
 	return NewReleaseHandler(nil)
-}
-
-func userIDFromContext(ctx context.Context) string {
-	if ctx == nil {
-		return ""
-	}
-	return strings.TrimSpace(authn.UserIDFromContext(ctx))
-}
-
-func extractDocIDFromPath(path string) string {
-	trimmed := strings.TrimSpace(path)
-	trimmed = strings.TrimPrefix(trimmed, "/api/v1/documents/")
-	trimmed = strings.TrimPrefix(trimmed, "/api/documents/")
-	trimmed = strings.TrimSuffix(trimmed, "/release")
-	trimmed = strings.Trim(trimmed, "/")
-	return strings.TrimSpace(trimmed)
 }

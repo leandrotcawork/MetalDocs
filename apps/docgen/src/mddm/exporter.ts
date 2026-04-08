@@ -1,4 +1,4 @@
-import { AlignmentType, Document, HeadingLevel, Packer, Paragraph, TextRun, UnderlineType } from "docx";
+import { Document, HeadingLevel, Packer, Paragraph, TextRun, UnderlineType } from "docx";
 import type { ParagraphChild } from "docx";
 import type { InlineRun, MDDMBlock, MDDMEnvelope, MDDMExportRequest } from "./types.js";
 
@@ -35,32 +35,28 @@ function markSet(run: InlineRun): Set<string> {
 
 export function runToTextRun(run: InlineRun): TextRun {
   const marks = markSet(run);
-  const styledRun = new TextRun({
+  return new TextRun({
     text: run.text,
     bold: marks.has("bold"),
     italics: marks.has("italic"),
     underline: marks.has("underline") ? { type: UnderlineType.SINGLE } : undefined,
     strike: marks.has("strike"),
-    color: run.link || run.document_ref ? "0563C1" : undefined,
-    style: run.link || run.document_ref ? "Hyperlink" : undefined,
   });
-
-  return styledRun;
 }
 
 function renderInlineChildren(children: InlineRun[]): ParagraphChild[] {
   return children.map((run) => runToTextRun(run));
 }
 
-export function renderParagraph(block: MDDMBlock): RenderedNode[] {
+export function renderParagraph(block: MDDMBlock): RenderedNode {
   const inlineChildren = isInlineRunArray(block.children) ? renderInlineChildren(block.children) : [];
   const text = asString(block.props.text) || asString(block.props.content) || asString(block.props.body);
 
   if (inlineChildren.length > 0) {
-    return [new Paragraph({ children: inlineChildren })];
+    return new Paragraph({ children: inlineChildren });
   }
 
-  return [new Paragraph({ children: [new TextRun(text)] })];
+  return new Paragraph({ children: [new TextRun(text)] });
 }
 
 function headingLevelFromValue(value: unknown, fallback: HeadingLevelValue): HeadingLevelValue {
@@ -84,31 +80,27 @@ function headingLevelFromValue(value: unknown, fallback: HeadingLevelValue): Hea
   }
 }
 
-export function renderHeading(block: MDDMBlock, sectionPath: number[]): RenderedNode[] {
+export function renderHeading(block: MDDMBlock): RenderedNode {
   const inlineChildren = isInlineRunArray(block.children) ? renderInlineChildren(block.children) : [];
   const title = inlineChildren.length > 0 ? inlineChildren : [new TextRun(asString(block.props.text) || asString(block.props.title) || "Heading")];
-  const prefix = sectionPath.length > 0 ? `${sectionPath.join(".")} ` : "";
   const level = headingLevelFromValue(block.props.level, HeadingLevel.HEADING_1);
 
-  return [
-    new Paragraph({
-      heading: level,
-      children: prefix ? [new TextRun(prefix), ...title] : title,
-    }),
-  ];
+  return new Paragraph({
+    heading: level,
+    children: title,
+  });
 }
 
 export function renderSection(block: MDDMBlock, sectionPath: number[]): RenderedNode[] {
   const title = asString(block.props.title) || asString(block.props.label) || "Section";
   const inlineChildren = isInlineRunArray(block.children) ? renderInlineChildren(block.children) : [];
   const headingChildren = inlineChildren.length > 0 ? inlineChildren : [new TextRun(title)];
+  const heading = new Paragraph({
+    heading: HeadingLevel.HEADING_1,
+    children: sectionPath.length > 0 ? [new TextRun(`${sectionPath.join(".")} `), ...headingChildren] : headingChildren,
+  });
 
-  const nodes: RenderedNode[] = [
-    new Paragraph({
-      heading: HeadingLevel.HEADING_1,
-      children: sectionPath.length > 0 ? [new TextRun(`${sectionPath.join(".")} `), ...headingChildren] : headingChildren,
-    }),
-  ];
+  const nodes: RenderedNode[] = [heading];
 
   if (isBlockArray(block.children)) {
     block.children.forEach((child, index) => {
@@ -129,9 +121,9 @@ export function renderBlock(block: MDDMBlock, sectionPath: number[]): RenderedNo
     case "section":
       return renderSection(block, sectionPath);
     case "paragraph":
-      return renderParagraph(block);
+      return [renderParagraph(block)];
     case "heading":
-      return renderHeading(block, sectionPath);
+      return [renderHeading(block)];
     default:
       return [new Paragraph({ children: [new TextRun(`[Unsupported block: ${block.type}]`)] })];
   }
@@ -147,26 +139,17 @@ export async function exportMDDMToDocx(req: MDDMExportRequest): Promise<Uint8Arr
   const doc = new Document({
     sections: [
       {
+        properties: {
+          page: {
+            margin: {
+              top: 900,
+              right: 900,
+              bottom: 900,
+              left: 900,
+            },
+          },
+        },
         children: [
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            children: [
-              new TextRun({
-                text: req.metadata.title,
-                bold: true,
-                size: 28,
-              }),
-            ],
-          }),
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            children: [
-              new TextRun({
-                text: `${req.metadata.document_code} | ${req.metadata.revision_label} | ${req.metadata.mode}`,
-                size: 18,
-              }),
-            ],
-          }),
           ...sections,
         ],
       },

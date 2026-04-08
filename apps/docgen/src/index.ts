@@ -57,9 +57,11 @@ app.post("/render/mddm-docx", express.json({ limit: "10mb" }), async (req, res) 
     );
     res.send(Buffer.from(buf));
   } catch (err) {
-    const message = err instanceof Error ? err.message : "render_failed";
     console.error("MDDM_RENDER_FAILED", err);
-    res.status(500).json({ error: "render_failed", message });
+    res.status(500).json({
+      error: "render_failed",
+      message: err instanceof Error ? err.message : "render_failed",
+    });
   }
 });
 

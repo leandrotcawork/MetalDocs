@@ -39,6 +39,7 @@ import (
 
 type APIDependencies struct {
 	DocumentsRepo     docdomain.Repository
+	MDDMRepo          *pgrepo.MDDMRepository
 	WorkflowApprovals workflowdomain.ApprovalRepository
 	AttachmentStore   docdomain.AttachmentStore
 	RoleProvider      iamdomain.RoleProvider
@@ -90,6 +91,7 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 		authRepo := authpg.NewRepository(db)
 		return APIDependencies{
 			DocumentsRepo:     pgrepo.NewRepository(db),
+			MDDMRepo:          pgrepo.NewMDDMRepository(db),
 			WorkflowApprovals: workflowpg.NewApprovalRepository(db),
 			AttachmentStore:   store,
 			RoleProvider:      iampg.NewRoleProvider(db),
@@ -124,6 +126,7 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 		auditStore := auditmemory.NewWriter()
 		return APIDependencies{
 			DocumentsRepo:     memoryrepo.NewRepository(),
+			MDDMRepo:          nil,
 			WorkflowApprovals: workflowmemory.NewApprovalRepository(),
 			AttachmentStore:   store,
 			RoleProvider:      authRepo,

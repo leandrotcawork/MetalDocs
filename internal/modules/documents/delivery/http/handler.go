@@ -19,9 +19,11 @@ import (
 )
 
 type Handler struct {
-	service     *application.Service
-	signer      *security.AttachmentSigner
-	downloadTTL time.Duration
+	service                  *application.Service
+	signer                   *security.AttachmentSigner
+	downloadTTL              time.Duration
+	loadHandler              *LoadHandler
+	submitForApprovalHandler *SubmitForApprovalHandler
 }
 
 type CreateDocumentRequest struct {
@@ -442,6 +444,16 @@ func (h *Handler) WithAttachmentDownloads(signer *security.AttachmentSigner, ttl
 	}
 	if ttl > 0 {
 		h.downloadTTL = ttl
+	}
+	return h
+}
+
+func (h *Handler) WithMDDMHandlers(load *application.LoadService, submit *application.SubmitForApprovalService) *Handler {
+	if load != nil {
+		h.loadHandler = NewLoadHandler(load)
+	}
+	if submit != nil {
+		h.submitForApprovalHandler = NewSubmitForApprovalHandler(submit)
 	}
 	return h
 }
@@ -1489,6 +1501,22 @@ func (h *Handler) handleDocumentSubRoutes(w http.ResponseWriter, r *http.Request
 	}
 	if len(parts) == 2 && strings.TrimSpace(parts[0]) != "" && parts[1] == "browser-editor-bundle" && r.Method == http.MethodGet {
 		h.handleDocumentBrowserEditorBundle(w, r, parts[0])
+		return
+	}
+	if len(parts) == 2 && strings.TrimSpace(parts[0]) != "" && parts[1] == "load" && r.Method == http.MethodGet {
+		if h.loadHandler == nil {
+			writeAPIError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Load handler is not configured", requestTraceID(r))
+			return
+		}
+		h.loadHandler.Load(w, r)
+		return
+	}
+	if len(parts) == 2 && strings.TrimSpace(parts[0]) != "" && parts[1] == "submit-for-approval" && r.Method == http.MethodPost {
+		if h.submitForApprovalHandler == nil {
+			writeAPIError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Submit-for-approval handler is not configured", requestTraceID(r))
+			return
+		}
+		h.submitForApprovalHandler.SubmitForApproval(w, r)
 		return
 	}
 	if len(parts) == 2 && strings.TrimSpace(parts[0]) != "" && parts[1] == "template-assignment" && r.Method == http.MethodPut {

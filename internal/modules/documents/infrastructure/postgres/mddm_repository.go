@@ -76,6 +76,21 @@ func (r *MDDMRepository) GetActiveDraft(ctx context.Context, documentID string) 
 	return &v, err
 }
 
+func (r *MDDMRepository) GetActiveDraftForUser(ctx context.Context, documentID, userID string) (*DocumentVersion, error) {
+	var v DocumentVersion
+	err := r.db.QueryRowContext(ctx, `
+		SELECT id, document_id, version_number, revision_label, status, content_blocks, docx_bytes, template_ref, content_hash, revision_diff
+		FROM metaldocs.document_versions_mddm
+		WHERE document_id = $1 AND created_by = $2 AND status IN ('draft', 'pending_approval')
+		ORDER BY version_number DESC
+		LIMIT 1
+	`, documentID, userID).Scan(&v.ID, &v.DocumentID, &v.VersionNumber, &v.RevisionLabel, &v.Status, &v.ContentBlocks, &v.DocxBytes, &v.TemplateRef, &v.ContentHash, &v.RevisionDiff)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	return &v, err
+}
+
 func (r *MDDMRepository) UpdateDraftContent(ctx context.Context, id uuid.UUID, content json.RawMessage, hash string) error {
 	res, err := r.db.ExecContext(ctx, `
 		UPDATE metaldocs.document_versions_mddm

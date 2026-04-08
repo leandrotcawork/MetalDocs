@@ -2045,6 +2045,80 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
+  /documents/{documentId}/load:
+    get:
+      summary: Carrega conteudo MDDM para edicao (draft ativo do usuario ou fallback released)
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      responses:
+        '200':
+          description: Conteudo MDDM carregado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentMDDMLoadResponse'
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '404':
+          description: Documento nao encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+  /documents/{documentId}/submit-for-approval:
+    post:
+      summary: Transiciona draft MDDM para pending_approval
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+        - name: draft_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Draft submetido para aprovacao
+        '400':
+          description: Requisicao invalida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Nao autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Sem permissao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '422':
+          description: Draft em estado invalido para transicao
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
   /documents/{documentId}/template-assignment:
     put:
       summary: Atribui um override de template ao lineage do documento
@@ -3848,6 +3922,34 @@ components:
         draftToken:
           type: string
           description: Token atual do draft snapshot carregado no browser editor; clients devem enviar este valor de volta no save.
+    DocumentMDDMLoadTemplate:
+      type: object
+      required: [key, version]
+      properties:
+        key:
+          type: string
+        version:
+          type: integer
+          minimum: 0
+    DocumentMDDMLoadResponse:
+      type: object
+      required: [documentId, version, status, content, template, contentHash]
+      properties:
+        documentId:
+          type: string
+        version:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum: [draft, pending_approval, released]
+        content:
+          type: object
+          additionalProperties: true
+        template:
+          $ref: '#/components/schemas/DocumentMDDMLoadTemplate'
+        contentHash:
+          type: string
     AcquireDocumentEditLockRequest:
       type: object
       properties:

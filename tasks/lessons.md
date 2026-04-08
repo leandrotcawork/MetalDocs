@@ -1306,3 +1306,10 @@ Wrong:   `LoadHandler.Load` did not enforce `GET`, allowing alternate HTTP verbs
 Correct: Add an explicit `r.Method == http.MethodGet` guard and return 405 otherwise
 Rule:    Every dedicated handler must enforce its allowed method set explicitly, even when route dispatch is expected to constrain verbs.
 Layer:   delivery
+
+## Lesson FI - Final slice review must verify tracked state, not just passing local tests
+Date: 2026-04-08 | Trigger: correction
+Wrong:   Completed wiring and tests but left newly created adapter/test files untracked, making the change incomplete in a clean checkout
+Correct: During final review, always validate `git status --short` and ensure all required new files are tracked before declaring compliance
+Rule:    A task is only complete when behavior, tests, and git tracking state all align.
+Layer:   process

@@ -61,7 +61,11 @@ function isBlockArray(value: unknown): value is MDDMBlock[] {
   return Array.isArray(value) && value.every((child) => isObject(child) && typeof child.type === "string" && isObject(child.props));
 }
 
-function validateMDDMChildren(block: MDDMBlock): void {
+function isInlineRunArray(value: unknown): value is InlineRun[] {
+  return Array.isArray(value) && value.every((child) => isInlineRun(child));
+}
+
+function validateMDDMBlockChildren(block: MDDMBlock): void {
   if (!Array.isArray(block.children)) {
     return;
   }
@@ -79,6 +83,23 @@ function validateMDDMChildren(block: MDDMBlock): void {
     return;
   }
 
+  if (block.type === "field") {
+    const valueMode = block.props.valueMode === "multiParagraph" ? "multiParagraph" : "inline";
+    if (valueMode === "inline") {
+      if (!isInlineRunArray(block.children)) {
+        invalid("DOCGEN_INVALID_REQUEST");
+      }
+      block.children.forEach((child) => validateInlineRun(child));
+      return;
+    }
+
+    if (!isBlockArray(block.children)) {
+      invalid("DOCGEN_INVALID_REQUEST");
+    }
+    block.children.forEach((child) => validateMDDMBlock(child));
+    return;
+  }
+
   if (block.type === "section") {
     if (!isBlockArray(block.children)) {
       invalid("DOCGEN_INVALID_REQUEST");
@@ -89,7 +110,6 @@ function validateMDDMChildren(block: MDDMBlock): void {
 
   if (block.type === "paragraph" || block.type === "heading") {
     block.children.forEach((child) => validateInlineRun(child));
-    return;
   }
 }
 
@@ -111,7 +131,7 @@ function validateMDDMBlock(block: unknown): void {
     }
   }
 
-  validateMDDMChildren(block as MDDMBlock);
+  validateMDDMBlockChildren(block as MDDMBlock);
 }
 
 function validateMDDMEnvelope(envelope: unknown): asserts envelope is MDDMEnvelope {

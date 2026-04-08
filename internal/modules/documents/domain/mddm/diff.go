@@ -1,6 +1,9 @@
 package mddm
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"sort"
+)
 
 type DiffEntry struct {
 	ID       string `json:"id"`
@@ -47,6 +50,10 @@ func ComputeDiff(prev, curr []any) Diff {
 		}
 	}
 
+	sortDiffEntries(diff.Added)
+	sortDiffEntries(diff.Removed)
+	sortDiffEntries(diff.Modified)
+
 	return diff
 }
 
@@ -65,14 +72,32 @@ func flatIndex(blocks []any, parentID string) map[string]flatNode {
 		}
 		id, _ := bm["id"].(string)
 		t, _ := bm["type"].(string)
-		out[id] = flatNode{block: bm, blockType: t, parentID: parentID}
+		if id != "" && t != "" {
+			out[id] = flatNode{block: bm, blockType: t, parentID: parentID}
+		}
 		if children, ok := bm["children"].([]any); ok {
-			for k, v := range flatIndex(children, id) {
+			nextParentID := parentID
+			if id != "" && t != "" {
+				nextParentID = id
+			}
+			for k, v := range flatIndex(children, nextParentID) {
 				out[k] = v
 			}
 		}
 	}
 	return out
+}
+
+func sortDiffEntries(entries []DiffEntry) {
+	sort.SliceStable(entries, func(i, j int) bool {
+		if entries[i].ID != entries[j].ID {
+			return entries[i].ID < entries[j].ID
+		}
+		if entries[i].Type != entries[j].Type {
+			return entries[i].Type < entries[j].Type
+		}
+		return entries[i].ParentID < entries[j].ParentID
+	})
 }
 
 func propsEqualBlocks(a, b map[string]any) bool {

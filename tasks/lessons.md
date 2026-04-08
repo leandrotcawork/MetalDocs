@@ -1166,3 +1166,10 @@ Wrong:   `field.children` could pass validation without being checked against `v
 Correct: Validate `field.children` as inline runs for `valueMode=inline` and as recursive block arrays for `valueMode=multiParagraph`
 Rule:    Shape validation must enforce the declared content mode, not just the presence of a children array.
 Layer:   infrastructure
+
+## Lesson FF - Diff indexing must ignore inline runs and return sorted buckets
+Date: 2026-04-08 | Trigger: correction
+Wrong:   `flatIndex` indexed inline text maps as blocks and diff slices inherited map iteration order
+Correct: Only index nodes with both non-empty `id` and `type`, then sort Added/Removed/Modified entries by ID before returning
+Rule:    Tree diffing must exclude non-block inline runs from identity indexing and must normalize output order for deterministic tests and reviews.
+Layer:   infrastructure

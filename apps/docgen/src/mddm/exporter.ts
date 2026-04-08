@@ -108,6 +108,14 @@ function validateMDDMBlockChildren(block: MDDMBlock): void {
     return;
   }
 
+  if (block.type === "repeatable" || block.type === "repeatableItem") {
+    if (!isBlockArray(block.children)) {
+      invalid("DOCGEN_INVALID_REQUEST");
+    }
+    block.children.forEach((child) => validateMDDMBlock(child));
+    return;
+  }
+
   if (block.type === "paragraph" || block.type === "heading") {
     block.children.forEach((child) => validateInlineRun(child));
   }
@@ -201,34 +209,59 @@ function renderHeading(block: MDDMBlock): Paragraph {
   return new Paragraph({ heading: headingLevel, children: children.map(runToTextRun) });
 }
 
-function renderSection(block: MDDMBlock, num: number): RenderedNode[] {
+function renderRepeatable(block: MDDMBlock, sectionPath: number[]): Paragraph[] {
+  const items = (block.children as MDDMBlock[]) ?? [];
+  const sectionNum = sectionPath[sectionPath.length - 1] ?? 0;
+  const out: Paragraph[] = [];
+  items.forEach((item, idx) => {
+    const num = `${sectionNum}.${idx + 1}`;
+    const title = (item.props.title as string) ?? "";
+    out.push(
+      new Paragraph({
+        heading: HeadingLevel.HEADING_2,
+        children: [new TextRun({ text: `${num} ${title}`, bold: true })],
+      }),
+    );
+    const body = (item.children as MDDMBlock[]) ?? [];
+    for (const b of body) {
+      out.push(...(renderBlock(b, [...sectionPath, idx + 1]) as Paragraph[]));
+    }
+  });
+  return out;
+}
+
+function renderSection(block: MDDMBlock, num: number, sectionPath: number[] = [num]): RenderedNode[] {
   const title = (block.props.title as string) ?? "";
   const children: RenderedNode[] = [new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun({ text: `${num}. ${title}`, bold: true })] })];
 
   let sectionNumber = 1;
   for (const child of (block.children as MDDMBlock[] | undefined) ?? []) {
     if (child.type === "section") {
-      children.push(...renderSection(child, sectionNumber));
+      children.push(...renderSection(child, sectionNumber, [...sectionPath, sectionNumber]));
       sectionNumber++;
       continue;
     }
 
-    children.push(...renderBlock(child));
+    children.push(...renderBlock(child, sectionPath));
   }
 
   return children;
 }
 
-function renderBlock(block: MDDMBlock): RenderedNode[] {
+function renderBlock(block: MDDMBlock, sectionPath: number[] = []): RenderedNode[] {
   switch (block.type) {
     case "section":
-      return renderSection(block, 1);
+      return renderSection(block, 1, sectionPath.length > 0 ? [...sectionPath, 1] : [1]);
     case "fieldGroup":
       return [renderFieldGroup(block)];
     case "paragraph":
       return [renderParagraph(block)];
     case "heading":
       return [renderHeading(block)];
+    case "repeatable":
+      return renderRepeatable(block, sectionPath);
+    case "repeatableItem":
+      return [];
     default:
       return [new Paragraph({ children: [new TextRun(`[Unsupported block: ${block.type}]`)] })];
   }
@@ -239,12 +272,12 @@ function renderEnvelope(envelope: MDDMEnvelope): RenderedNode[] {
   let sectionNumber = 1;
   for (const block of envelope.blocks) {
     if (block.type === "section") {
-      children.push(...renderSection(block, sectionNumber));
+      children.push(...renderSection(block, sectionNumber, [sectionNumber]));
       sectionNumber++;
       continue;
     }
 
-    children.push(...renderBlock(block));
+    children.push(...renderBlock(block, []));
   }
   return children;
 }

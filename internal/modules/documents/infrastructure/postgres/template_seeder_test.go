@@ -20,9 +20,9 @@ func TestTemplateSeeder_IsIdempotent(t *testing.T) {
 
 	ctx := context.Background()
 	db := newTestDB(t)
-	defer db.Close()
+	t.Cleanup(func() { _ = db.Close() })
 
-	templateID := DefaultPOTemplateID
+	templateID := newTestTemplateID(t, ctx, db)
 	seeder := NewTemplateSeeder(db)
 	expectedContent, expectedHash := expectedCanonicalTemplateSeed(t)
 
@@ -54,9 +54,9 @@ func TestTemplateSeeder_PreservesPublishedState(t *testing.T) {
 
 	ctx := context.Background()
 	db := newTestDB(t)
-	defer db.Close()
+	t.Cleanup(func() { _ = db.Close() })
 
-	templateID := DefaultPOTemplateID
+	templateID := newTestTemplateID(t, ctx, db)
 	seeder := NewTemplateSeeder(db)
 
 	if err := seeder.SeedPOTemplate(ctx, templateID); err != nil {
@@ -78,7 +78,7 @@ func TestTemplateSeeder_RejectsEmptyCanonicalBlocks(t *testing.T) {
 	ctx := context.Background()
 	seeder := NewTemplateSeeder(nil)
 
-	err := seeder.seedTemplateVersion(ctx, DefaultPOTemplateID, map[string]any{
+	err := seeder.seedTemplateVersion(ctx, uuid.New(), map[string]any{
 		"mddm_version": 1,
 		"template_ref": nil,
 		"blocks":       []any{},
@@ -86,6 +86,21 @@ func TestTemplateSeeder_RejectsEmptyCanonicalBlocks(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected empty canonical blocks to fail")
 	}
+}
+
+func newTestTemplateID(t *testing.T, ctx context.Context, db *sql.DB) uuid.UUID {
+	t.Helper()
+
+	templateID := uuid.New()
+	t.Cleanup(func() {
+		if _, err := db.ExecContext(ctx, `
+			DELETE FROM metaldocs.document_template_versions_mddm
+			WHERE template_id = $1
+		`, templateID); err != nil {
+			t.Fatalf("cleanup template seed row: %v", err)
+		}
+	})
+	return templateID
 }
 
 func loadTemplateSeedState(t *testing.T, ctx context.Context, db *sql.DB, templateID uuid.UUID) (int, []byte, string) {

@@ -1285,3 +1285,10 @@ Wrong:   The integration test docgen httptest server called t.Fatalf inside the 
 Correct: The handler now returns deterministic HTTP status/body for invalid method/path, and assertions verify recorded method/path at test call sites.
 Rule:    Request handlers in tests should expose failures through deterministic responses and explicit assertions, not fatal calls from handler goroutines.
 Layer:   process
+
+## Lesson FF - Subagents must execute inside the active worktree
+Date: 2026-04-08 | Trigger: correction
+Wrong:   A subagent generated Task 59 files under the parent repository path (`...\MetalDocs\...`) while implementation was supposed to happen in `.worktrees\mddm-foundational`
+Correct: Always set subagent execution context explicitly to the active worktree and verify file paths before accepting implementation output
+Rule:    In worktree-based development, every delegated edit and review must target the active worktree path to avoid branch contamination.
+Layer:   process

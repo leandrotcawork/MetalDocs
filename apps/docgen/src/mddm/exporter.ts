@@ -1,5 +1,5 @@
 import { Document, HeadingLevel, Packer, Paragraph, TextRun } from "docx";
-import { renderField, renderFieldGroup, renderRichBlock } from "./render-tables.js";
+import { renderFieldGroup } from "./render-tables.js";
 import type { InlineRun, MDDMBlock, MDDMEnvelope, MDDMExportRequest } from "./types.js";
 
 function invalid(code: string): never {
@@ -55,10 +55,6 @@ function validateInlineRun(run: unknown): void {
   }
 }
 
-function isInlineRunArray(value: unknown): value is InlineRun[] {
-  return Array.isArray(value) && value.every(isInlineRun);
-}
-
 function isBlockArray(value: unknown): value is MDDMBlock[] {
   return Array.isArray(value) && value.every((child) => isObject(child) && typeof child.type === "string" && isObject(child.props));
 }
@@ -81,30 +77,9 @@ function validateMDDMChildren(block: MDDMBlock): void {
     return;
   }
 
-  if (block.type === "section" || block.type === "richBlock") {
-    block.children.forEach((child) => validateMDDMBlock(child));
-    return;
-  }
-
   if (block.type === "paragraph" || block.type === "heading") {
     block.children.forEach((child) => validateInlineRun(child));
     return;
-  }
-
-  if (block.type === "field") {
-    const valueMode = typeof block.props.valueMode === "string" ? block.props.valueMode : "inline";
-    if (valueMode === "multiParagraph") {
-      if (!isBlockArray(block.children)) {
-        invalid("DOCGEN_INVALID_REQUEST");
-      }
-      block.children.forEach((child) => validateMDDMBlock(child));
-      return;
-    }
-
-    if (!isInlineRunArray(block.children)) {
-      invalid("DOCGEN_INVALID_REQUEST");
-    }
-    block.children.forEach((child) => validateInlineRun(child));
   }
 }
 
@@ -116,13 +91,6 @@ function validateMDDMBlock(block: unknown): void {
   if (block.type === "fieldGroup") {
     const columns = (block.props as Record<string, unknown>).columns;
     if (columns !== undefined && columns !== 1 && columns !== 2) {
-      invalid("DOCGEN_INVALID_REQUEST");
-    }
-  }
-
-  if (block.type === "field") {
-    const valueMode = (block.props as Record<string, unknown>).valueMode;
-    if (valueMode !== undefined && valueMode !== "inline" && valueMode !== "multiParagraph") {
       invalid("DOCGEN_INVALID_REQUEST");
     }
   }
@@ -223,10 +191,6 @@ function renderBlock(block: MDDMBlock): Paragraph[] {
       return renderSection(block, 1);
     case "fieldGroup":
       return [renderFieldGroup(block) as unknown as Paragraph];
-    case "field":
-      return renderField(block);
-    case "richBlock":
-      return renderRichBlock(block);
     case "paragraph":
       return [renderParagraph(block)];
     case "heading":

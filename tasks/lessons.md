@@ -1138,3 +1138,10 @@ Wrong:   Checked `child.type` on `block.children` before narrowing the union awa
 Correct: Guard the array as blocks first, then access block-specific fields like `type`
 Rule:    When a property can be either block-shaped or inline-shaped, narrow the array element type before reading discriminant fields.
 Layer:   infrastructure
+
+## Lesson FC - Scope trims must remove dead imports and switch branches
+Date: 2026-04-08 | Trigger: correction
+Wrong:   Kept `renderField` / `renderRichBlock` imports and `field` / `richBlock` cases after narrowing docgen to `fieldGroup` only
+Correct: Remove unused helpers, imports, and validation branches when the task scope no longer needs them
+Rule:    When reducing feature scope, the implementation should shrink everywhere the removed behavior was wired, not just at the call site.
+Layer:   process

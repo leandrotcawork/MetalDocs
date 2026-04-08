@@ -134,20 +134,6 @@ function renderFieldPairRow(left: MDDMBlock, right?: MDDMBlock): TableRow {
   });
 }
 
-export function renderField(block: MDDMBlock): Paragraph[] {
-  const label = typeof block.props.label === "string" ? block.props.label : "";
-  return [fieldParagraph(label, { bold: true, color: C.gray, size: 18 }), ...renderFieldValue(block)];
-}
-
-export function renderRichBlock(block: MDDMBlock): Paragraph[] {
-  const label = typeof block.props.label === "string" ? block.props.label : "";
-  const children = Array.isArray(block.children) && block.children.every(isMDDMBlock) ? block.children : [];
-  return [
-    fieldParagraph(label, { bold: true, color: C.gray, size: 18 }),
-    ...children.flatMap((child) => renderBlockContent(child)),
-  ];
-}
-
 export function renderFieldGroup(block: MDDMBlock): Table {
   const columns = typeof block.props.columns === "number" && block.props.columns === 2 ? 2 : 1;
   const fields = Array.isArray(block.children) && block.children.every(isMDDMBlock) ? block.children : [];

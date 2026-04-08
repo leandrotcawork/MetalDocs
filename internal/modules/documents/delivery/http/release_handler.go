@@ -2,6 +2,8 @@ package httpdelivery
 
 import (
 	"net/http"
+
+	"metaldocs/internal/platform/authn"
 )
 
 type ReleaseHandler struct {
@@ -17,7 +19,7 @@ func NewReleaseHandler(auth ReleaseAuthChecker) *ReleaseHandler {
 }
 
 func (h *ReleaseHandler) Release(w http.ResponseWriter, r *http.Request) {
-	userID := userIDFromContext(r.Context())
+	userID := authn.UserIDFromContext(r.Context())
 	if userID == "" {
 		writeAPIError(w, http.StatusUnauthorized, "AUTH_UNAUTHORIZED", "Authentication required", requestTraceID(r))
 		return
@@ -31,9 +33,4 @@ func (h *ReleaseHandler) Release(w http.ResponseWriter, r *http.Request) {
 
 	// TODO: real wiring (later task) calls ReleaseService.ReleaseDraft.
 	w.WriteHeader(http.StatusOK)
-}
-
-func newTestReleaseHandler(t interface{ Helper() }) *ReleaseHandler {
-	t.Helper()
-	return NewReleaseHandler(nil)
 }

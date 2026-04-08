@@ -1215,3 +1215,10 @@ Wrong:   E2E seed used `ON CONFLICT DO UPDATE` for `document_profile_template_de
 Correct: E2E seed should insert PO default binding only when missing (`ON CONFLICT DO NOTHING`) after verifying the canonical template version exists.
 Rule:    Environment seeders should establish required prerequisites without overriding already configured defaults.
 Layer:   process
+
+## Lesson FL - Reload assertions must force a real navigation transition
+Date: 2026-04-08 | Trigger: correction
+Wrong:   An e2e roundtrip test waited for `browser-editor-bundle` after `page.goto(documentUrl)` while already on the same route, so no reload request was emitted.
+Correct: Navigate away first, return to the document route, then trigger editor open and wait for the bundle request during that explicit reopen flow.
+Rule:    Network-based reload assertions in UI tests must include a guaranteed state transition that causes the request.
+Layer:   frontend

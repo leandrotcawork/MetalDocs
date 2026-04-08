@@ -1243,3 +1243,24 @@ Wrong:   Roundtrip validation required `img[alt=...]` visibility inside `.ck-edi
 Correct: Assert persistence on the reloaded `browser-editor-bundle` body (the canonical save/load payload) and treat editor-surface readiness as a separate UI availability check.
 Rule:    In editor e2e tests, persistence should be validated from canonical API payloads when DOM rendering can diverge from serialized content.
 Layer:   frontend
+
+## Lesson FS - Image roundtrip E2E must use attachment APIs, not synthetic data URLs
+Date: 2026-04-08 | Trigger: correction
+Wrong:   Injecting `data:image/png;base64,...` directly into saved editor HTML bypassed the real upload/download attachment path.
+Correct: Upload fixture bytes through `/documents/{id}/attachments`, resolve `/download-url`, and assert that URL persists through browser save + reload bundle.
+Rule:    E2E tests for media persistence should exercise the production storage reference flow end-to-end.
+Layer:   frontend
+
+## Lesson FT - Reload CTA clicks in editor readiness checks must tolerate DOM replacement
+Date: 2026-04-08 | Trigger: correction
+Wrong:   `ensureBrowserEditorReady` clicked a stale `Recarregar documento` locator and failed when the button detached during error-banner rerender.
+Correct: Re-query the reload button each attempt, click with guarded retry, and short-circuit when editor surface becomes visible.
+Rule:    E2E recovery actions on transient error UI must handle locator detachment caused by rerenders.
+Layer:   frontend
+
+## Lesson FU - Browser editor save tests must verify dirty-state before waiting on save network calls
+Date: 2026-04-08 | Trigger: correction
+Wrong:   Save assertions waited for `/content/browser` while "Salvar rascunho" remained disabled because typed text had not been committed reliably.
+Correct: Type a unique marker until it is present in editor text, then poll save-button enabled state before clicking.
+Rule:    E2E save flows should prove local edit mutation before asserting outbound save requests.
+Layer:   frontend

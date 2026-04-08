@@ -17,7 +17,7 @@ const sameSiteHeaders = { Origin: "http://127.0.0.1:4173" };
 const deterministicTemplateKey = "po-default-canvas";
 const deterministicTemplateVersion = 1;
 
-const fixtureImageDataUrl = `data:image/png;base64,${readFileSync(fixtureImagePath).toString("base64")}`;
+const fixtureImageBuffer = readFileSync(fixtureImagePath);
 
 type DocumentTemplateItem = {
   templateKey: string;
@@ -48,14 +48,16 @@ test("mddm image upload + save + reload roundtrip", async ({ page }) => {
   await openDocumentEditorFromDetail(page);
   await ensureBrowserEditorReady(page);
 
-  await appendEditorText(page, ` Roundtrip marker ${suffix}`);
+  const textMarker = `roundtrip-marker-${suffix}`;
+  await appendEditorText(page, ` ${textMarker}`, textMarker);
 
   const altText = `e2e-roundtrip-image-${suffix}`;
+  const uploadedImageDownloadUrl = await uploadFixtureAttachmentAndGetDownloadUrl(page.context().request, documentId);
   const savePath = `/api/v1/documents/${encodeURIComponent(documentId)}/content/browser`;
   let injectedBody = "";
 
-  // Current browser editor flow has no file-picker image control; inject a fixture-backed
-  // <img> into the outgoing save payload to verify persisted save/reload behavior deterministically.
+  // Current browser editor flow has no file-picker image control; upload a real attachment
+  // through the API, then inject that attachment URL into the outgoing editor save payload.
   await page.route(`**${savePath}`, async (route, request) => {
     if (request.method() !== "POST") {
       await route.continue();
@@ -64,7 +66,7 @@ test("mddm image upload + save + reload roundtrip", async ({ page }) => {
 
     const payload = request.postDataJSON() as { body?: string; draftToken?: string } | null;
     const currentBody = typeof payload?.body === "string" ? payload.body : "";
-    injectedBody = `${currentBody}<p><img src="${fixtureImageDataUrl}" alt="${altText}" /></p>`;
+    injectedBody = `${currentBody}<p><img src="${uploadedImageDownloadUrl}" alt="${altText}" /></p>`;
 
     await route.continue({
       headers: {
@@ -85,10 +87,12 @@ test("mddm image upload + save + reload roundtrip", async ({ page }) => {
   }
 
   expect(injectedBody).toContain(altText);
+  expect(injectedBody).toContain(uploadedImageDownloadUrl);
 
   const bundleBodyAfterSave = await fetchBrowserBundleBody(page.context().request, documentId);
   expect(bundleBodyAfterSave).toContain(altText);
-  expect(bundleBodyAfterSave).toContain("data:image/png;base64");
+  expect(bundleBodyAfterSave).toContain(uploadedImageDownloadUrl);
+  expect(bundleBodyAfterSave).not.toContain("data:image/png;base64");
 
   await page.goto(documentUrl);
   const openButton = page.getByRole("button", { name: "Abrir documento" });
@@ -114,7 +118,8 @@ test("mddm image upload + save + reload roundtrip", async ({ page }) => {
   const bundlePayload = await bundleResponse.json() as { body?: string };
   expect(typeof bundlePayload.body).toBe("string");
   expect(bundlePayload.body).toContain(altText);
-  expect(bundlePayload.body).toContain("data:image/png;base64");
+  expect(bundlePayload.body).toContain(uploadedImageDownloadUrl);
+  expect(bundlePayload.body).not.toContain("data:image/png;base64");
   await ensureBrowserEditorReady(page);
 });
 
@@ -190,6 +195,36 @@ async function ensureDeterministicTemplateAvailable(apiContext: APIRequestContex
   ).toBeTruthy();
 }
 
+async function uploadFixtureAttachmentAndGetDownloadUrl(apiContext: APIRequestContext, documentId: string) {
+  const uploadResponse = await apiContext.post(`/api/v1/documents/${encodeURIComponent(documentId)}/attachments`, {
+    headers: sameSiteHeaders,
+    multipart: {
+      file: {
+        name: "test-image.png",
+        mimeType: "image/png",
+        buffer: fixtureImageBuffer,
+      },
+    },
+  });
+  expect(uploadResponse.ok(), `attachment upload failed: ${uploadResponse.status()} ${await uploadResponse.text()}`).toBeTruthy();
+  const uploadBody = await uploadResponse.json() as { attachmentId?: string };
+  const attachmentId = typeof uploadBody.attachmentId === "string" ? uploadBody.attachmentId.trim() : "";
+  expect(attachmentId).toBeTruthy();
+
+  const downloadUrlResponse = await apiContext.get(
+    `/api/v1/documents/${encodeURIComponent(documentId)}/attachments/${encodeURIComponent(attachmentId)}/download-url`,
+    { headers: sameSiteHeaders },
+  );
+  expect(
+    downloadUrlResponse.ok(),
+    `attachment download-url failed: ${downloadUrlResponse.status()} ${await downloadUrlResponse.text()}`,
+  ).toBeTruthy();
+  const downloadUrlBody = await downloadUrlResponse.json() as { downloadUrl?: string };
+  const downloadUrl = typeof downloadUrlBody.downloadUrl === "string" ? downloadUrlBody.downloadUrl.trim() : "";
+  expect(downloadUrl).toBeTruthy();
+  return downloadUrl;
+}
+
 async function openDocumentEditorFromDetail(page: Page) {
   const editor = page.getByTestId("browser-document-editor");
   if (await editor.isVisible()) {
@@ -231,7 +266,6 @@ async function openDocumentEditorFromDetail(page: Page) {
 
 async function ensureBrowserEditorReady(page: Page) {
   const editorSurface = page.locator(".ck-editor__editable").first();
-  const reloadButton = page.getByRole("button", { name: "Recarregar documento" });
 
   await expect(page.getByTestId("browser-document-editor")).toBeVisible({ timeout: 20_000 });
 
@@ -242,15 +276,25 @@ async function ensureBrowserEditorReady(page: Page) {
 
     const branch = await Promise.race([
       editorSurface.waitFor({ state: "visible", timeout: 8_000 }).then(() => "editor"),
-      reloadButton.waitFor({ state: "visible", timeout: 8_000 }).then(() => "reload"),
+      page.getByRole("button", { name: "Recarregar documento" }).waitFor({ state: "visible", timeout: 8_000 }).then(() => "reload"),
     ]).catch(() => "timeout");
 
     if (branch === "editor") {
       return;
     }
 
-    if (branch === "reload" && await reloadButton.isVisible()) {
-      await reloadButton.click();
+    if (branch === "reload") {
+      const reloadButton = page.getByRole("button", { name: "Recarregar documento" });
+      if (!(await reloadButton.isVisible())) {
+        continue;
+      }
+      try {
+        await reloadButton.click({ timeout: 5_000 });
+      } catch {
+        if (await editorSurface.isVisible()) {
+          return;
+        }
+      }
       continue;
     }
   }
@@ -258,11 +302,33 @@ async function ensureBrowserEditorReady(page: Page) {
   await expect(editorSurface).toBeVisible({ timeout: 20_000 });
 }
 
-async function appendEditorText(page: Page, value: string) {
+async function appendEditorText(page: Page, value: string, marker: string) {
   const editable = page.locator(".ck-editor__editable").first();
   await expect(editable).toBeVisible();
-  await page.locator(".ck-editor__editable .restricted-editing-exception").first().click();
-  await page.keyboard.type(value);
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    if (attempt === 0) {
+      await page.locator(".ck-editor__editable .restricted-editing-exception").first().click();
+    } else {
+      await editable.click({ position: { x: 24, y: 24 } });
+    }
+    await page.keyboard.type(value);
+
+    const hasMarker = await expect
+      .poll(
+        async () => (await editable.innerText()).includes(marker),
+        { timeout: 5_000 },
+      )
+      .toBeTruthy()
+      .then(() => true)
+      .catch(() => false);
+
+    if (hasMarker) {
+      return;
+    }
+  }
+
+  throw new Error(`failed to append marker text in editor: ${marker}`);
 }
 
 async function saveDraftViaUi(page: Page, documentId: string) {
@@ -278,7 +344,12 @@ async function saveDraftViaUi(page: Page, documentId: string) {
   );
 
   const saveButton = page.getByRole("button", { name: "Salvar rascunho" });
-  await expect(saveButton).toBeEnabled();
+  await expect
+    .poll(
+      async () => saveButton.isEnabled(),
+      { timeout: 20_000 },
+    )
+    .toBeTruthy();
   await saveButton.click();
 
   const response = await saveResponse;

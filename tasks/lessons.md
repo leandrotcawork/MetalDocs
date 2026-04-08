@@ -1264,3 +1264,10 @@ Wrong:   Save assertions waited for `/content/browser` while "Salvar rascunho" r
 Correct: Type a unique marker until it is present in editor text, then poll save-button enabled state before clicking.
 Rule:    E2E save flows should prove local edit mutation before asserting outbound save requests.
 Layer:   frontend
+
+## Lesson FV - Browser roundtrip persistence tests should save via API with current draft token
+Date: 2026-04-08 | Trigger: correction
+Wrong:   UI-driven save button flows made roundtrip tests flaky even after content preparation was correct.
+Correct: Fetch the live browser editor bundle, save through `/documents/{id}/content/browser` with its `draftToken` and augmented body, then validate persistence on subsequent bundle reload.
+Rule:    For persistence-oriented E2E coverage, use deterministic API save paths when UI control state is not the behavior under test.
+Layer:   frontend

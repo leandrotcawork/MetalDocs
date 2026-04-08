@@ -49,55 +49,25 @@ test("mddm image upload + save + reload roundtrip", async ({ page }) => {
   await ensureBrowserEditorReady(page);
 
   const textMarker = `roundtrip-marker-${suffix}`;
-  await appendEditorText(page, ` ${textMarker}`, textMarker);
-
   const altText = `e2e-roundtrip-image-${suffix}`;
   const uploadedImageDownloadUrl = await uploadFixtureAttachmentAndGetDownloadUrl(page.context().request, documentId);
-  const savePath = `/api/v1/documents/${encodeURIComponent(documentId)}/content/browser`;
-  let injectedBody = "";
+  const initialBundle = await fetchBrowserBundle(page.context().request, documentId);
+  const bodyForSave = `${initialBundle.body}<p>${textMarker}</p><p><img src="${uploadedImageDownloadUrl}" alt="${altText}" /></p>`;
 
-  // Current browser editor flow has no file-picker image control; upload a real attachment
-  // through the API, then inject that attachment URL into the outgoing editor save payload.
-  await page.route(`**${savePath}`, async (route, request) => {
-    if (request.method() !== "POST") {
-      await route.continue();
-      return;
-    }
-
-    const payload = request.postDataJSON() as { body?: string; draftToken?: string } | null;
-    const currentBody = typeof payload?.body === "string" ? payload.body : "";
-    injectedBody = `${currentBody}<p><img src="${uploadedImageDownloadUrl}" alt="${altText}" /></p>`;
-
-    await route.continue({
-      headers: {
-        ...request.headers(),
-        "content-type": "application/json",
-      },
-      postData: JSON.stringify({
-        body: injectedBody,
-        draftToken: payload?.draftToken ?? "",
-      }),
-    });
+  const saveResponse = await saveBrowserBundleViaApi(page.context().request, documentId, {
+    body: bodyForSave,
+    draftToken: initialBundle.draftToken,
   });
+  expect(saveResponse.ok).toBeTruthy();
+  expect(saveResponse.draftToken).toBeTruthy();
 
-  try {
-    await saveDraftViaUi(page, documentId);
-  } finally {
-    await page.unroute(`**${savePath}`);
-  }
-
-  expect(injectedBody).toContain(altText);
-  expect(injectedBody).toContain(uploadedImageDownloadUrl);
-
-  const bundleBodyAfterSave = await fetchBrowserBundleBody(page.context().request, documentId);
-  expect(bundleBodyAfterSave).toContain(altText);
-  expect(bundleBodyAfterSave).toContain(uploadedImageDownloadUrl);
-  expect(bundleBodyAfterSave).not.toContain("data:image/png;base64");
+  const bundleAfterSave = await fetchBrowserBundle(page.context().request, documentId);
+  expect(bundleAfterSave.body).toContain(textMarker);
+  expect(bundleAfterSave.body).toContain(altText);
+  expect(bundleAfterSave.body).toContain(uploadedImageDownloadUrl);
+  expect(bundleAfterSave.body).not.toContain("data:image/png;base64");
 
   await page.goto(documentUrl);
-  const openButton = page.getByRole("button", { name: "Abrir documento" });
-  await expect(openButton).toBeVisible({ timeout: 20_000 });
-
   const bundlePath = `/api/v1/documents/${encodeURIComponent(documentId)}/browser-editor-bundle`;
   const bundleReloadResponse = page.waitForResponse(
     (response) => (
@@ -111,12 +81,14 @@ test("mddm image upload + save + reload roundtrip", async ({ page }) => {
 
   // Force a deterministic SPA restart on the detail route before reopening the editor.
   await page.reload({ waitUntil: "domcontentloaded" });
-  await expect(openButton).toBeVisible({ timeout: 20_000 });
-  await openButton.click();
+  await openDocumentEditorFromDetail(page);
 
   const bundleResponse = await bundleReloadResponse;
-  const bundlePayload = await bundleResponse.json() as { body?: string };
+  const bundlePayload = await bundleResponse.json() as { body?: string; draftToken?: string };
   expect(typeof bundlePayload.body).toBe("string");
+  expect(typeof bundlePayload.draftToken).toBe("string");
+  expect((bundlePayload.draftToken ?? "").trim().length).toBeGreaterThan(0);
+  expect(bundlePayload.body).toContain(textMarker);
   expect(bundlePayload.body).toContain(altText);
   expect(bundlePayload.body).toContain(uploadedImageDownloadUrl);
   expect(bundlePayload.body).not.toContain("data:image/png;base64");
@@ -302,67 +274,35 @@ async function ensureBrowserEditorReady(page: Page) {
   await expect(editorSurface).toBeVisible({ timeout: 20_000 });
 }
 
-async function appendEditorText(page: Page, value: string, marker: string) {
-  const editable = page.locator(".ck-editor__editable").first();
-  await expect(editable).toBeVisible();
-
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    if (attempt === 0) {
-      await page.locator(".ck-editor__editable .restricted-editing-exception").first().click();
-    } else {
-      await editable.click({ position: { x: 24, y: 24 } });
-    }
-    await page.keyboard.type(value);
-
-    const hasMarker = await expect
-      .poll(
-        async () => (await editable.innerText()).includes(marker),
-        { timeout: 5_000 },
-      )
-      .toBeTruthy()
-      .then(() => true)
-      .catch(() => false);
-
-    if (hasMarker) {
-      return;
-    }
-  }
-
-  throw new Error(`failed to append marker text in editor: ${marker}`);
-}
-
-async function saveDraftViaUi(page: Page, documentId: string) {
-  const savePath = `/api/v1/documents/${encodeURIComponent(documentId)}/content/browser`;
-  const saveResponse = page.waitForResponse(
-    (response) => (
-      response.request().method() === "POST"
-      && response.status() >= 200
-      && response.status() < 300
-      && new URL(response.url()).pathname === savePath
-    ),
-    { timeout: 20_000 },
-  );
-
-  const saveButton = page.getByRole("button", { name: "Salvar rascunho" });
-  await expect
-    .poll(
-      async () => saveButton.isEnabled(),
-      { timeout: 20_000 },
-    )
-    .toBeTruthy();
-  await saveButton.click();
-
-  const response = await saveResponse;
-  expect(response.ok()).toBeTruthy();
-  await expect(page.getByText(/Salvo agora|Salvo ha pouco|Salvo/i)).toBeVisible({ timeout: 10_000 });
-}
-
-async function fetchBrowserBundleBody(apiContext: APIRequestContext, documentId: string) {
+async function fetchBrowserBundle(apiContext: APIRequestContext, documentId: string) {
   const response = await apiContext.get(`/api/v1/documents/${encodeURIComponent(documentId)}/browser-editor-bundle`, {
     headers: sameSiteHeaders,
   });
   expect(response.ok(), `bundle reload failed: ${response.status()} ${await response.text()}`).toBeTruthy();
-  const body = await response.json() as { body?: string };
-  expect(typeof body.body).toBe("string");
-  return body.body as string;
+  const payload = await response.json() as { body?: string; draftToken?: string };
+  expect(typeof payload.body).toBe("string");
+  const body = typeof payload.body === "string" ? payload.body : "";
+  const draftToken = typeof payload.draftToken === "string" ? payload.draftToken.trim() : "";
+  expect(draftToken).toBeTruthy();
+  return { body, draftToken };
+}
+
+async function saveBrowserBundleViaApi(
+  apiContext: APIRequestContext,
+  documentId: string,
+  body: { body: string; draftToken: string },
+) {
+  const response = await apiContext.post(`/api/v1/documents/${encodeURIComponent(documentId)}/content/browser`, {
+    headers: {
+      ...sameSiteHeaders,
+      "content-type": "application/json",
+    },
+    data: body,
+  });
+  const payload = await response.json() as { draftToken?: string };
+  return {
+    ok: response.ok(),
+    status: response.status(),
+    draftToken: typeof payload.draftToken === "string" ? payload.draftToken.trim() : "",
+  };
 }

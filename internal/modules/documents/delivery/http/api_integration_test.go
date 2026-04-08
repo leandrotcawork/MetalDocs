@@ -7,30 +7,50 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 
 	docapp "metaldocs/internal/modules/documents/application"
 	documentmemory "metaldocs/internal/modules/documents/infrastructure/memory"
 	iamdomain "metaldocs/internal/modules/iam/domain"
-	"metaldocs/internal/platform/config"
-	"metaldocs/internal/platform/render/docgen"
 	workflowapp "metaldocs/internal/modules/workflow/application"
 	workflowdelivery "metaldocs/internal/modules/workflow/delivery/http"
 	workflowmemory "metaldocs/internal/modules/workflow/infrastructure/memory"
+	"metaldocs/internal/platform/config"
+	"metaldocs/internal/platform/render/docgen"
 )
 
 func TestAPI_DocumentMatrix_CreateSaveConflictReleaseExport(t *testing.T) {
+	type docgenRequest struct {
+		Method string
+		Path   string
+	}
+
+	var (
+		docgenMu       sync.Mutex
+		docgenRequests []docgenRequest
+	)
+
 	docgenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		docgenMu.Lock()
+		docgenRequests = append(docgenRequests, docgenRequest{
+			Method: r.Method,
+			Path:   r.URL.Path,
+		})
+		docgenMu.Unlock()
+
 		if r.Method != http.MethodPost {
-			t.Fatalf("docgen method = %s, want %s", r.Method, http.MethodPost)
+			http.Error(w, "docgen method not allowed", http.StatusMethodNotAllowed)
+			return
 		}
-		switch r.URL.Path {
-		case "/generate", "/generate-browser":
-			w.Header().Set("Content-Type", docxContentType)
-			_, _ = w.Write([]byte("docx-integration"))
-		default:
-			t.Fatalf("docgen path = %s", r.URL.Path)
+
+		if r.URL.Path != "/generate" && r.URL.Path != "/generate-browser" {
+			http.Error(w, "docgen route not found", http.StatusNotFound)
+			return
 		}
+
+		w.Header().Set("Content-Type", docxContentType)
+		_, _ = w.Write([]byte("docx-integration"))
 	}))
 	defer docgenServer.Close()
 
@@ -53,6 +73,9 @@ func TestAPI_DocumentMatrix_CreateSaveConflictReleaseExport(t *testing.T) {
 	workflowHandler.RegisterRoutes(mux)
 
 	var created DocumentCreatedResponse
+	withOwnerAuth := func(req *http.Request) *http.Request {
+		return req.WithContext(iamdomain.WithAuthContext(req.Context(), "owner-1", nil))
+	}
 
 	t.Run("create", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/api/v1/documents", strings.NewReader(`{
@@ -65,6 +88,7 @@ func TestAPI_DocumentMatrix_CreateSaveConflictReleaseExport(t *testing.T) {
 			"classification":"INTERNAL"
 		}`))
 		req.Header.Set("Content-Type", "application/json")
+		req = withOwnerAuth(req)
 		rec := httptest.NewRecorder()
 
 		mux.ServeHTTP(rec, req)
@@ -89,6 +113,7 @@ func TestAPI_DocumentMatrix_CreateSaveConflictReleaseExport(t *testing.T) {
 			"content":{"field":"value"}
 		}`))
 		req.Header.Set("Content-Type", "application/json")
+		req = withOwnerAuth(req)
 		rec := httptest.NewRecorder()
 
 		mux.ServeHTTP(rec, req)
@@ -106,14 +131,14 @@ func TestAPI_DocumentMatrix_CreateSaveConflictReleaseExport(t *testing.T) {
 		}
 	})
 
-	t.Run("release shape via workflow transition", func(t *testing.T) {
+	t.Run("transition shape via workflow", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/api/v1/workflow/documents/"+created.DocumentID+"/transitions", strings.NewReader(`{
 			"toStatus":"IN_REVIEW",
 			"reason":"integration matrix release request",
 			"assignedReviewer":"reviewer-1"
 		}`))
 		req.Header.Set("Content-Type", "application/json")
-		req = req.WithContext(iamdomain.WithAuthContext(req.Context(), "owner-1", nil))
+		req = withOwnerAuth(req)
 		rec := httptest.NewRecorder()
 
 		mux.ServeHTTP(rec, req)
@@ -139,7 +164,7 @@ func TestAPI_DocumentMatrix_CreateSaveConflictReleaseExport(t *testing.T) {
 
 	t.Run("export", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/api/v1/documents/"+created.DocumentID+"/export/docx", nil)
-		req = req.WithContext(iamdomain.WithAuthContext(req.Context(), "owner-1", nil))
+		req = withOwnerAuth(req)
 		rec := httptest.NewRecorder()
 
 		mux.ServeHTTP(rec, req)
@@ -152,6 +177,20 @@ func TestAPI_DocumentMatrix_CreateSaveConflictReleaseExport(t *testing.T) {
 		}
 		if body := rec.Body.String(); body != "docx-integration" {
 			t.Fatalf("body = %q, want %q", body, "docx-integration")
+		}
+
+		docgenMu.Lock()
+		recorded := append([]docgenRequest(nil), docgenRequests...)
+		docgenMu.Unlock()
+
+		if len(recorded) != 1 {
+			t.Fatalf("docgen requests = %d, want %d", len(recorded), 1)
+		}
+		if recorded[0].Method != http.MethodPost {
+			t.Fatalf("docgen method = %q, want %q", recorded[0].Method, http.MethodPost)
+		}
+		if recorded[0].Path != "/generate-browser" {
+			t.Fatalf("docgen path = %q, want %q", recorded[0].Path, "/generate-browser")
 		}
 	})
 }

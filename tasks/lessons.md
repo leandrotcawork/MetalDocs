@@ -1278,3 +1278,10 @@ Wrong:   The documents API integration save-conflict scenario wired Service with
 Correct: Wire a memory AttachmentStore in the integration harness so SaveNativeContentAuthorized reaches the DRAFT_CONFLICT path.
 Rule:    Integration tests must satisfy required service dependencies before asserting behavior in deeper branches.
 Layer:   process
+
+## Lesson FX - Test server handlers must fail via HTTP contracts, not goroutine fatals
+Date: 2026-04-08 | Trigger: correction
+Wrong:   The integration test docgen httptest server called t.Fatalf inside the request handler on method/path mismatches.
+Correct: The handler now returns deterministic HTTP status/body for invalid method/path, and assertions verify recorded method/path at test call sites.
+Rule:    Request handlers in tests should expose failures through deterministic responses and explicit assertions, not fatal calls from handler goroutines.
+Layer:   process

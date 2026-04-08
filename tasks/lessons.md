@@ -1145,3 +1145,10 @@ Wrong:   Kept `renderField` / `renderRichBlock` imports and `field` / `richBlock
 Correct: Remove unused helpers, imports, and validation branches when the task scope no longer needs them
 Rule:    When reducing feature scope, the implementation should shrink everywhere the removed behavior was wired, not just at the call site.
 Layer:   process
+
+## Lesson FD - Docgen validation must recurse and mark reads must be shape-safe
+Date: 2026-04-08 | Trigger: correction
+Wrong:   Section children were accepted without recursive validation, and inline run rendering assumed every `marks` entry had a `type`
+Correct: Recurse through nested section blocks during validation and filter mark entries before reading `type`
+Rule:    Validation must walk every nested block it accepts, and render paths must tolerate malformed optional arrays without crashing.
+Layer:   infrastructure

@@ -22,13 +22,11 @@ func TestTemplateSeeder_IsIdempotent(t *testing.T) {
 	db := newTestDB(t)
 	defer db.Close()
 
-	templateID := uuid.MustParse("00000000-0000-0000-0000-0000000000a1")
-	initialCount, initialHash := loadTemplateSeedState(t, ctx, db, templateID)
-	if initialCount > 1 {
-		t.Fatalf("expected at most one existing seeded row for template %s, got %d", templateID, initialCount)
-	}
-
+	templateID := DefaultPOTemplateID
 	seeder := NewTemplateSeeder(db)
+	expectedContent, expectedHash := expectedCanonicalTemplateSeed(t)
+
+	seedStaleTemplateRow(t, ctx, db, templateID)
 
 	if err := seeder.SeedPOTemplate(ctx, templateID); err != nil {
 		t.Fatalf("first seed: %v", err)
@@ -37,18 +35,72 @@ func TestTemplateSeeder_IsIdempotent(t *testing.T) {
 		t.Fatalf("second seed: %v", err)
 	}
 
-	finalCount, finalHash := loadTemplateSeedState(t, ctx, db, templateID)
+	finalCount, contentBytes, storedHash := loadTemplateSeedState(t, ctx, db, templateID)
 	if finalCount != 1 {
 		t.Fatalf("expected exactly one seeded row after repeated seed calls, got %d", finalCount)
 	}
-	if initialCount == 1 {
-		if finalHash != initialHash {
-			t.Fatalf("expected existing seed hash to remain unchanged, got %q want %q", finalHash, initialHash)
-		}
-		return
+	if storedHash != expectedHash {
+		t.Fatalf("stored hash = %q, want %q", storedHash, expectedHash)
 	}
+	if !jsonEqualCanonicalBytes(t, contentBytes, expectedContent) {
+		t.Fatalf("stored canonical content does not match expected canonical template")
+	}
+}
 
-	envelope := mddm.POTemplateMDDM()
+func TestTemplateSeeder_RejectsEmptyCanonicalBlocks(t *testing.T) {
+	ctx := context.Background()
+	seeder := NewTemplateSeeder(nil)
+
+	err := seeder.seedTemplateVersion(ctx, DefaultPOTemplateID, map[string]any{
+		"mddm_version": 1,
+		"template_ref": nil,
+		"blocks":       []any{},
+	})
+	if err == nil {
+		t.Fatal("expected empty canonical blocks to fail")
+	}
+}
+
+func loadTemplateSeedState(t *testing.T, ctx context.Context, db *sql.DB, templateID uuid.UUID) (int, []byte, string) {
+	t.Helper()
+
+	var count int
+	var content sql.NullString
+	var hash sql.NullString
+	if err := db.QueryRowContext(ctx, `
+		SELECT COUNT(*), COALESCE(MAX(content_blocks::text), ''), COALESCE(MAX(content_hash), '')
+		FROM metaldocs.document_template_versions_mddm
+		WHERE template_id = $1 AND version = 1
+	`, templateID).Scan(&count, &content, &hash); err != nil {
+		t.Fatalf("load template seed state: %v", err)
+	}
+	return count, []byte(content.String), hash.String
+}
+
+func seedStaleTemplateRow(t *testing.T, ctx context.Context, db *sql.DB, templateID uuid.UUID) {
+	t.Helper()
+
+	if _, err := db.ExecContext(ctx, `
+		INSERT INTO metaldocs.document_template_versions_mddm
+		  (template_id, version, mddm_version, content_blocks, content_hash, is_published)
+		VALUES ($1, 1, 1, $2::jsonb, $3, false)
+		ON CONFLICT (template_id, version) DO UPDATE
+		SET mddm_version = EXCLUDED.mddm_version,
+		    content_blocks = EXCLUDED.content_blocks,
+		    content_hash = EXCLUDED.content_hash,
+		    is_published = EXCLUDED.is_published
+	`, templateID, `{"mddm_version":1,"template_ref":null,"blocks":[]}`, "stale-hash"); err != nil {
+		t.Fatalf("seed stale template row: %v", err)
+	}
+}
+
+func expectedCanonicalTemplateSeed(t *testing.T) ([]byte, string) {
+	t.Helper()
+
+	envelope, err := normalizeTemplateEnvelope(mddm.POTemplateMDDM())
+	if err != nil {
+		t.Fatalf("normalize template: %v", err)
+	}
 	canonicalEnvelope, err := mddm.CanonicalizeMDDM(envelope)
 	if err != nil {
 		t.Fatalf("canonicalize template: %v", err)
@@ -58,39 +110,7 @@ func TestTemplateSeeder_IsIdempotent(t *testing.T) {
 		t.Fatalf("marshal canonical template: %v", err)
 	}
 	expectedHashBytes := sha256.Sum256(canonicalBytes)
-	expectedHash := hex.EncodeToString(expectedHashBytes[:])
-
-	var contentBytes []byte
-	var storedHash string
-	if err := db.QueryRowContext(ctx, `
-		SELECT content_blocks::text, content_hash
-		FROM metaldocs.document_template_versions_mddm
-		WHERE template_id = $1 AND version = 1
-	`, templateID).Scan(&contentBytes, &storedHash); err != nil {
-		t.Fatalf("load seeded template row: %v", err)
-	}
-
-	if storedHash != expectedHash {
-		t.Fatalf("stored hash = %q, want %q", storedHash, expectedHash)
-	}
-	if !jsonEqualCanonicalBytes(t, contentBytes, canonicalBytes) {
-		t.Fatalf("stored canonical content does not match expected canonical template")
-	}
-}
-
-func loadTemplateSeedState(t *testing.T, ctx context.Context, db *sql.DB, templateID uuid.UUID) (int, string) {
-	t.Helper()
-
-	var count int
-	var hash sql.NullString
-	if err := db.QueryRowContext(ctx, `
-		SELECT COUNT(*), COALESCE(MAX(content_hash), '')
-		FROM metaldocs.document_template_versions_mddm
-		WHERE template_id = $1 AND version = 1
-	`, templateID).Scan(&count, &hash); err != nil {
-		t.Fatalf("load template seed state: %v", err)
-	}
-	return count, hash.String
+	return canonicalBytes, hex.EncodeToString(expectedHashBytes[:])
 }
 
 func jsonEqualCanonicalBytes(t *testing.T, got []byte, want []byte) bool {

@@ -9,6 +9,7 @@ import (
 
 	"metaldocs/internal/modules/documents/application"
 	"metaldocs/internal/modules/documents/domain/mddm"
+	"metaldocs/internal/platform/authn"
 )
 
 type MDDMHandler struct {
@@ -86,8 +87,11 @@ func extractDocIDFromPath(path string) string {
 }
 
 func userIDFromContext(ctx context.Context) string {
+	if userID := strings.TrimSpace(authn.UserIDFromContext(ctx)); userID != "" {
+		return userID
+	}
 	if v, ok := ctx.Value(ctxUserKey{}).(string); ok {
-		return v
+		return strings.TrimSpace(v)
 	}
 	return ""
 }

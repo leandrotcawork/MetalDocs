@@ -198,7 +198,22 @@ async function openDocumentEditorFromDetail(page: Page) {
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const openButton = page.getByRole("button", { name: "Abrir documento" });
-    await expect(openButton).toBeVisible({ timeout: 20_000 });
+    const branch = await Promise.race([
+      editor.waitFor({ state: "visible", timeout: 8_000 }).then(() => "editor"),
+      openButton.waitFor({ state: "visible", timeout: 8_000 }).then(() => "open"),
+    ]).catch(() => "timeout");
+
+    if (branch === "editor") {
+      return;
+    }
+
+    if (branch !== "open") {
+      if (attempt === 2) {
+        throw new Error("failed to detect either editor mount or 'Abrir documento' CTA");
+      }
+      continue;
+    }
+
     try {
       await openButton.click({ timeout: 5_000 });
       return;

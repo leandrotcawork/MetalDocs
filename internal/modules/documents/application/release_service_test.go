@@ -37,8 +37,8 @@ func (f *fakeReleaseRepo) CleanupOrphanImages(ctx context.Context) error {
 	return nil
 }
 
-func (f *fakeReleaseRepo) GetDraft(ctx context.Context, id uuid.UUID) (*draftSnapshot, error) {
-	return &draftSnapshot{ID: id, ContentBlocks: []byte(`{"mddm_version":1,"blocks":[],"template_ref":null}`)}, nil
+func (f *fakeReleaseRepo) GetDraft(ctx context.Context, id uuid.UUID) (*DraftSnapshot, error) {
+	return &DraftSnapshot{ID: id, ContentBlocks: []byte(`{"mddm_version":1,"blocks":[],"template_ref":null}`)}, nil
 }
 
 type fakeDocxRenderer struct{}

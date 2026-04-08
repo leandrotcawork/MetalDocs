@@ -18,7 +18,7 @@ type DocxRenderer interface {
 }
 
 type ReleaseRepo interface {
-	GetDraft(ctx context.Context, id uuid.UUID) (*draftSnapshot, error)
+	GetDraft(ctx context.Context, id uuid.UUID) (*DraftSnapshot, error)
 	ArchivePreviousReleased(ctx context.Context, documentID string) (versionID uuid.UUID, docxBytes []byte, err error)
 	PromoteDraftToReleased(ctx context.Context, draftID uuid.UUID, docxBytes []byte, approvedBy string) error
 	StoreRevisionDiff(ctx context.Context, versionID uuid.UUID, diff json.RawMessage) error
@@ -26,7 +26,7 @@ type ReleaseRepo interface {
 	CleanupOrphanImages(ctx context.Context) error
 }
 
-type draftSnapshot struct {
+type DraftSnapshot struct {
 	ID            uuid.UUID
 	ContentBlocks []byte
 }

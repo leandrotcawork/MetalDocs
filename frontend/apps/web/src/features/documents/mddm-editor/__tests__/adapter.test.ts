@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { canonicalizeMDDM } from "../../../../../../../../shared/schemas/canonicalize.ts";
 import {
   blockNoteToMDDM,
   mddmToBlockNote,
@@ -6,6 +7,50 @@ import {
 } from "../adapter";
 
 describe("MDDM ↔ BlockNote adapter", () => {
+  it("exports quote edits from BlockNote content (regression lock)", () => {
+    const input: MDDMEnvelope = {
+      mddm_version: 1,
+      template_ref: null,
+      blocks: [
+        {
+          id: "10000000-0000-0000-0000-000000000001",
+          type: "quote",
+          props: {},
+          children: [
+            {
+              id: "10000000-0000-0000-0000-000000000002",
+              type: "paragraph",
+              props: {},
+              children: [{ text: "OLD" }],
+            },
+          ],
+        },
+      ],
+    };
+
+    const blocks = mddmToBlockNote(input);
+
+    // Simulate editing quote content inside BlockNote: export should reflect this edit.
+    (blocks[0] as any).content = [{ type: "text", text: "NEW" }];
+
+    const output = blockNoteToMDDM(blocks);
+    expect(((output.blocks[0] as any).children[0] as any).children[0].text).toBe(
+      "NEW",
+    );
+  });
+
+  it("fails closed on unsupported BlockNote block types (regression lock)", () => {
+    expect(() =>
+      blockNoteToMDDM([
+        {
+          id: "10000000-0000-0000-0000-000000000001",
+          type: "audio",
+          props: {},
+        } as any,
+      ]),
+    ).toThrow(/unsupported block type/i);
+  });
+
   it("preserves id and template_block_id through round-trip", () => {
     const input: MDDMEnvelope = {
       mddm_version: 1,
@@ -213,6 +258,6 @@ describe("MDDM ↔ BlockNote adapter", () => {
     const blockNoteForm = mddmToBlockNote(input);
     const mddmForm = blockNoteToMDDM(blockNoteForm);
 
-    expect(mddmForm).toEqual(input);
+    expect(canonicalizeMDDM(mddmForm)).toEqual(canonicalizeMDDM(input));
   });
 });

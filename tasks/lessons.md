@@ -1180,3 +1180,10 @@ Wrong:   `CreateDocument` read `io.ReadAll(r.Body)` and returned plain `http.Err
 Correct: Use `http.MaxBytesReader` plus `json.Decoder` with `DisallowUnknownFields`, then emit `writeAPIError(..., "VALIDATION_ERROR", ...)` with `requestTraceID(r)`
 Rule:    Mutation handlers should cap request size and normalize all validation failures into the API error envelope.
 Layer:   delivery
+
+## Lesson FH - Export flows must treat released bytes as canonical and draft bytes as disposable
+Date: 2026-04-08 | Trigger: correction
+Wrong:   A new DOCX export path would have rendered draft-like content even when the stored version was already released or archived
+Correct: Return cached `DocxBytes` for released/archived versions, require a valid export mode for draft/pending approval, and render fresh only for mutable statuses
+Rule:    Cached export artifacts are authoritative for immutable statuses; only mutable statuses should pay the renderer cost.
+Layer:   application

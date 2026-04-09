@@ -5,7 +5,8 @@ export const Field = createReactBlockSpec(
     type: "field",
     propSchema: {
       label: { default: "" },
-      valueMode: { default: "inline", values: ["inline", "multiParagraph"] as const },
+      // Field currently renders BlockNote inline content only.
+      valueMode: { default: "inline", values: ["inline"] as const },
       locked: { default: true },
       __template_block_id: { default: undefined, type: "string" },
     },

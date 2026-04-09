@@ -10,9 +10,13 @@ export const DataTableCell = createReactBlockSpec(
   },
   {
     render: (props) => (
-      <td data-mddm-block="dataTableCell">
+      <div
+        data-mddm-block="dataTableCell"
+        data-column-key={props.block.props.columnKey}
+        role="cell"
+      >
         <div ref={props.contentRef} />
-      </td>
+      </div>
     ),
   },
 );

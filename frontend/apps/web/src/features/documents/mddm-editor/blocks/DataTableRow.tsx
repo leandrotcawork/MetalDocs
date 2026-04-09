@@ -7,6 +7,6 @@ export const DataTableRow = createReactBlockSpec(
     content: "none",
   },
   {
-    render: () => <tr data-mddm-block="dataTableRow" />,
+    render: () => <div data-mddm-block="dataTableRow" role="row" />,
   },
 );

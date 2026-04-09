@@ -322,7 +322,7 @@ func checkCrossDocRefs(rctx RulesContext, blocks []any) error {
 
 func isInlineParent(t string) bool {
 	switch t {
-	case "paragraph", "heading", "bulletListItem", "numberedListItem", "dataTableCell":
+	case "paragraph", "heading", "bulletListItem", "numberedListItem", "dataTableCell", "field":
 		return true
 	}
 	return false

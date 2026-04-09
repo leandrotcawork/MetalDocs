@@ -365,7 +365,7 @@ var allowedChildren = map[string]map[string]bool{
 	"repeatableItem": mapSet("paragraph", "heading", "bulletListItem", "numberedListItem", "image", "quote", "code", "divider", "richBlock"),
 	"dataTable":      mapSet("dataTableRow"),
 	"dataTableRow":   mapSet("dataTableCell"),
-	"richBlock":      mapSet("paragraph", "heading", "bulletListItem", "numberedListItem", "image", "quote", "code", "divider"),
+	"richBlock":      mapSet("paragraph", "heading", "bulletListItem", "numberedListItem", "image", "quote", "code", "divider", "dataTable"),
 	"quote":          mapSet("paragraph"),
 }
 

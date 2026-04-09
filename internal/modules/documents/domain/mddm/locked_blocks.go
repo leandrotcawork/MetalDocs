@@ -36,6 +36,9 @@ func EnforceLockedBlocks(templateBlocks, docBlocks []any) error {
 	for tbID, tNode := range templateIndex {
 		dNode, ok := docIndex[tbID]
 		if !ok {
+			if isOptionalTemplateNode(tNode.block) {
+				continue
+			}
 			return &LockViolationError{
 				BlockID: tbID,
 				Code:    "LOCKED_BLOCK_DELETED",
@@ -110,6 +113,18 @@ func isLocked(block map[string]any) bool {
 	}
 	locked, _ := props["locked"].(bool)
 	return locked
+}
+
+func isOptionalTemplateNode(block map[string]any) bool {
+	if blockType, _ := block["type"].(string); blockType != "section" {
+		return false
+	}
+	props, ok := block["props"].(map[string]any)
+	if !ok {
+		return false
+	}
+	optional, _ := props["optional"].(bool)
+	return optional
 }
 
 func propsEqual(a, b map[string]any) bool {

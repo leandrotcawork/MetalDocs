@@ -5,7 +5,6 @@ import type { DocumentBrowserEditorBundleResponse, DocumentListItem } from "../.
 import { formatDocumentDisplayName } from "../../shared/documentDisplay";
 import { normalizeDocumentProfileCode } from "../../shared/documentProfile";
 import styles from "./BrowserDocumentEditorView.module.css";
-import "../../../styles/document-content.css";
 import { DocumentEditorHeader } from "./DocumentEditorHeader";
 import { MDDMEditor } from "../mddm-editor/MDDMEditor";
 import { blockNoteToMDDM, mddmToBlockNote, type MDDMEnvelope } from "../mddm-editor/adapter";

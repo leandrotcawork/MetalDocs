@@ -96,7 +96,8 @@ async function createPoDocumentThroughUi(page: Page, documentTitle: string) {
 }
 
 async function addThreeEtapasViaUi(page: Page, suffix: string) {
-  const editable = page.locator('[contenteditable="true"]').first();
+  const editorRoot = page.getByTestId("browser-document-editor");
+  const editable = editorRoot.locator('[contenteditable="true"]').first();
   await expect(editable).toBeVisible({ timeout: 20_000 });
   await expect(editable).toContainText("Detalhamento das Etapas");
 
@@ -119,7 +120,8 @@ async function ensureBrowserEditorReady(page: Page, apiContext: APIRequestContex
   });
   expect(assignmentResponse.ok(), `template assignment failed: ${assignmentResponse.status()} ${await assignmentResponse.text()}`).toBeTruthy();
 
-  const editorSurface = page.locator('[contenteditable="true"]').first();
+  const editorRoot = page.getByTestId("browser-document-editor");
+  const editorSurface = editorRoot.locator('[contenteditable="true"]').first();
   const errorState = page.getByText("Editor indisponivel");
   if (await editorSurface.isVisible()) {
     return;
@@ -132,7 +134,7 @@ async function ensureBrowserEditorReady(page: Page, apiContext: APIRequestContex
     }
   }
 
-  await expect(page.getByTestId("browser-document-editor")).toBeVisible({ timeout: 20_000 });
+  await expect(editorRoot).toBeVisible({ timeout: 20_000 });
   await expect(editorSurface).toBeVisible({ timeout: 20_000 });
 }
 
@@ -152,11 +154,16 @@ async function findBrowserTemplate(apiContext: APIRequestContext) {
 
   const templatesBody = await templatesResponse.json() as { items?: DocumentTemplateItem[] };
   const templates = Array.isArray(templatesBody.items) ? templatesBody.items : [];
-  const browserTemplate = templates.find((item) => item.profileCode === "po" && item.contentFormat === "html");
+  const browserTemplate = templates.find(
+    (item) =>
+      item.templateKey === "po-mddm-canvas"
+      && item.editor === "mddm-blocknote"
+      && item.contentFormat === "mddm",
+  );
   const available = templates.map((item) => `${item.templateKey}@${item.version}`).join(", ");
   expect(browserTemplate, `browser template missing; available: ${available || "none"}`).toBeTruthy();
   if (!browserTemplate) {
-    throw new Error("Expected a browser-compatible PO template in the template catalog.");
+    throw new Error(`Expected a browser-compatible PO template in the template catalog; available: ${available || "none"}.`);
   }
   return browserTemplate;
 }

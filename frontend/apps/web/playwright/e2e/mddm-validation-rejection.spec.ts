@@ -151,11 +151,16 @@ async function findBrowserTemplate(apiContext: APIRequestContext) {
 
   const templatesBody = await templatesResponse.json() as { items?: DocumentTemplateItem[] };
   const templates = Array.isArray(templatesBody.items) ? templatesBody.items : [];
-  const browserTemplate = templates.find((item) => item.profileCode === "po" && item.contentFormat === "html");
+  const browserTemplate = templates.find(
+    (item) =>
+      item.templateKey === "po-mddm-canvas"
+      && item.editor === "mddm-blocknote"
+      && item.contentFormat === "mddm",
+  );
   const available = templates.map((item) => `${item.templateKey}@${item.version}`).join(", ");
   expect(browserTemplate, `browser template missing; available: ${available || "none"}`).toBeTruthy();
   if (!browserTemplate) {
-    throw new Error("Expected a browser-compatible PO template in the template catalog.");
+    throw new Error(`Expected a browser-compatible PO template in the template catalog; available: ${available || "none"}.`);
   }
   return browserTemplate;
 }
@@ -172,10 +177,11 @@ async function openDocumentEditorFromDetail(page: Page) {
 }
 
 async function ensureBrowserEditorReady(page: Page) {
-  const editorSurface = page.locator('[contenteditable="true"]').first();
+  const editorRoot = page.getByTestId("browser-document-editor");
+  const editorSurface = editorRoot.locator('[contenteditable="true"]').first();
   const reloadButton = page.getByRole("button", { name: "Recarregar documento" });
 
-  await expect(page.getByTestId("browser-document-editor")).toBeVisible({ timeout: 20_000 });
+  await expect(editorRoot).toBeVisible({ timeout: 20_000 });
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
     if (await editorSurface.isVisible()) {
@@ -201,7 +207,8 @@ async function ensureBrowserEditorReady(page: Page) {
 }
 
 async function appendEditorText(page: Page, value: string) {
-  const editable = page.locator('[contenteditable="true"]').first();
+  const editorRoot = page.getByTestId("browser-document-editor");
+  const editable = editorRoot.locator('[contenteditable="true"]').first();
   await expect(editable).toBeVisible();
   await editable.click();
   await page.keyboard.type(value);

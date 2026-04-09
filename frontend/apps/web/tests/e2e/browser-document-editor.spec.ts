@@ -41,10 +41,16 @@ test("browser document editor opens as a single document surface", async ({ page
     }>;
   };
   expect(Array.isArray(templatesBody.items)).toBeTruthy();
-  const browserTemplate = templatesBody.items?.find((item) => item.profileCode === "po" && item.contentFormat === "html");
+  const browserTemplate = templatesBody.items?.find(
+    (item) =>
+      item.templateKey === "po-mddm-canvas"
+      && item.editor === "mddm-blocknote"
+      && item.contentFormat === "mddm",
+  );
+  const available = templatesBody.items?.map((item) => `${item.templateKey}@${item.version}`).join(", ");
   expect(browserTemplate).toBeDefined();
   if (!browserTemplate) {
-    throw new Error("Expected a browser-compatible PO template in the template catalog.");
+    throw new Error(`Expected a browser-compatible PO template in the template catalog; available: ${available || "none"}.`);
   }
   expect(browserTemplate.templateKey).toBeTruthy();
   expect(browserTemplate.version).toBeGreaterThan(0);
@@ -61,10 +67,12 @@ test("browser document editor opens as a single document surface", async ({ page
   await page.goto(`/#/documents/doc/${encodeURIComponent(createdDocument.documentId)}`);
   await page.getByRole("button", { name: "Abrir documento" }).click();
 
-  await expect(page.getByTestId("browser-document-editor")).toBeVisible({ timeout: 20_000 });
+  const editorRoot = page.getByTestId("browser-document-editor");
+  const editable = editorRoot.locator('[contenteditable="true"]').first();
+
+  await expect(editorRoot).toBeVisible({ timeout: 20_000 });
   await expect(page.getByTestId("document-editor-header")).toBeVisible({ timeout: 5_000 });
 
-  const editable = page.locator('[contenteditable="true"]:visible').first();
   await expect(editable).toBeVisible();
   await editable.click();
   await page.keyboard.type(` Objetivo do teste ${Date.now()}`);
@@ -126,8 +134,11 @@ test("native create flow opens the browser editor with a persisted document id",
   );
   expect(bundleResponse.ok()).toBeTruthy();
 
-  await expect(page.getByTestId("browser-document-editor")).toBeVisible({ timeout: 20_000 });
-  await expect(page.locator('[contenteditable="true"]:visible').first()).toBeVisible();
+  const editorRoot = page.getByTestId("browser-document-editor");
+  const editable = editorRoot.locator('[contenteditable="true"]').first();
+
+  await expect(editorRoot).toBeVisible({ timeout: 20_000 });
+  await expect(editable).toBeVisible();
   await expect(page.getByTestId("document-editor-header")).toBeVisible({ timeout: 5_000 });
 });
 

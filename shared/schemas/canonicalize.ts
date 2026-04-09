@@ -19,7 +19,12 @@ function nfc(s: string): string {
 function sortMarks(marks: Json[] | undefined): Json[] | undefined {
   if (!marks) return undefined;
   return [...marks].sort((a, b) => {
-    return MARK_ORDER.indexOf(a.type) - MARK_ORDER.indexOf(b.type);
+    const left = MARK_ORDER.indexOf(a.type);
+    const right = MARK_ORDER.indexOf(b.type);
+    if (left === -1 && right === -1) return (a.type as string).localeCompare(b.type as string);
+    if (left === -1) return 1;
+    if (right === -1) return -1;
+    return left - right;
   });
 }
 
@@ -75,6 +80,7 @@ function canonicalizeBlock(block: Json): Json {
     "bulletListItem",
     "numberedListItem",
     "dataTableCell",
+    "field",
   ]);
 
   if (inlineParents.has(block.type) && Array.isArray(block.children)) {

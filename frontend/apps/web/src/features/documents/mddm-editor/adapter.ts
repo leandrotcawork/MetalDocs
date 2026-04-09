@@ -298,7 +298,7 @@ function toMDDMProps(type: string, props: UnknownRecord): UnknownRecord {
     case "heading": {
       const level = Number(next.level);
       const normalized =
-        Number.isFinite(level) && level >= 1 && level <= 6 ? Math.trunc(level) : 1;
+        Number.isFinite(level) && level >= 1 && level <= 3 ? Math.trunc(level) : 1;
       return { level: normalized };
     }
 
@@ -362,7 +362,7 @@ function toMDDMProps(type: string, props: UnknownRecord): UnknownRecord {
         itemPrefix: asString(next.itemPrefix),
         locked: Boolean(next.locked),
         minItems: normalizeInt(next.minItems, 0),
-        maxItems: normalizeInt(next.maxItems, 200),
+        maxItems: normalizeInt(next.maxItems, 100),
       };
 
     case "repeatableItem":

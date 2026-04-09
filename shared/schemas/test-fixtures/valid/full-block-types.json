@@ -100,8 +100,7 @@
         {
           "id": "dddddddd-dddd-dddd-dddd-dddddddddddd",
           "type": "image",
-          "props": { "alt": "Process diagram", "caption": "Figure 1: Process overview" },
-          "children": []
+          "props": { "src": "/api/images/dddddddd-dddd-dddd-dddd-000000000001", "alt": "Process diagram", "caption": "Figure 1: Process overview" }
         }
       ]
     }

@@ -97,7 +97,7 @@ describe("MDDM ↔ BlockNote adapter", () => {
     ]);
 
     expect((output.blocks[0] as any).props.minItems).toBe(0);
-    expect((output.blocks[0] as any).props.maxItems).toBe(200);
+    expect((output.blocks[0] as any).props.maxItems).toBe(100);
 
     expect((output.blocks[1] as any).props.minRows).toBe(0);
     expect((output.blocks[1] as any).props.maxRows).toBe(500);

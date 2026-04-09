@@ -96,12 +96,11 @@ async function createPoDocumentThroughUi(page: Page, documentTitle: string) {
 }
 
 async function addThreeEtapasViaUi(page: Page, suffix: string) {
-  const editable = page.locator(".ck-editor__editable").first();
+  const editable = page.locator('[contenteditable="true"]').first();
   await expect(editable).toBeVisible({ timeout: 20_000 });
   await expect(editable).toContainText("Detalhamento das Etapas");
 
-  const etapaBlock = editable.locator(".restricted-editing-exception").filter({ hasText: /Descreva esta etapa livremente/i }).first();
-  await etapaBlock.click();
+  await editable.click();
   await page.keyboard.type(` Etapa 1 - Preparar materiais (${suffix}) [imagem: etapa-1].`);
   await page.keyboard.press("Enter");
   await page.keyboard.type("Etapa 2 - Executar o fluxo principal [imagem: etapa-2].");
@@ -110,16 +109,17 @@ async function addThreeEtapasViaUi(page: Page, suffix: string) {
 }
 
 async function ensureBrowserEditorReady(page: Page, apiContext: APIRequestContext, documentId: string) {
+  const browserTemplate = await findBrowserTemplate(apiContext);
   const assignmentResponse = await apiContext.put(`/api/v1/documents/${encodeURIComponent(documentId)}/template-assignment`, {
     headers: sameSiteHeaders,
     data: {
-      templateKey: "po-default-browser",
-      templateVersion: 1,
+      templateKey: browserTemplate.templateKey,
+      templateVersion: browserTemplate.version,
     },
   });
   expect(assignmentResponse.ok(), `template assignment failed: ${assignmentResponse.status()} ${await assignmentResponse.text()}`).toBeTruthy();
 
-  const editorSurface = page.locator(".ck-editor__editable").first();
+  const editorSurface = page.locator('[contenteditable="true"]').first();
   const errorState = page.getByText("Editor indisponivel");
   if (await editorSurface.isVisible()) {
     return;
@@ -134,6 +134,31 @@ async function ensureBrowserEditorReady(page: Page, apiContext: APIRequestContex
 
   await expect(page.getByTestId("browser-document-editor")).toBeVisible({ timeout: 20_000 });
   await expect(editorSurface).toBeVisible({ timeout: 20_000 });
+}
+
+type DocumentTemplateItem = {
+  templateKey: string;
+  version: number;
+  profileCode?: string;
+  editor?: string;
+  contentFormat?: string;
+};
+
+async function findBrowserTemplate(apiContext: APIRequestContext) {
+  const templatesResponse = await apiContext.get("/api/v1/document-templates?profileCode=po", {
+    headers: sameSiteHeaders,
+  });
+  expect(templatesResponse.ok(), `list templates failed: ${templatesResponse.status()} ${await templatesResponse.text()}`).toBeTruthy();
+
+  const templatesBody = await templatesResponse.json() as { items?: DocumentTemplateItem[] };
+  const templates = Array.isArray(templatesBody.items) ? templatesBody.items : [];
+  const browserTemplate = templates.find((item) => item.profileCode === "po" && item.contentFormat === "html");
+  const available = templates.map((item) => `${item.templateKey}@${item.version}`).join(", ");
+  expect(browserTemplate, `browser template missing; available: ${available || "none"}`).toBeTruthy();
+  if (!browserTemplate) {
+    throw new Error("Expected a browser-compatible PO template in the template catalog.");
+  }
+  return browserTemplate;
 }
 
 async function saveDraftViaUi(page: Page, documentId: string) {

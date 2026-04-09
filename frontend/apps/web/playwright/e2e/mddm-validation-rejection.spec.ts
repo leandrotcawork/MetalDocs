@@ -12,8 +12,6 @@ const seedScript = resolve(repoRoot, "scripts/e2e-seed.ps1");
 const adminUsername = process.env.METALDOCS_E2E_ADMIN_USERNAME ?? "e2e.admin";
 const adminPassword = process.env.METALDOCS_E2E_ADMIN_PASSWORD ?? "E2eAdmin123!";
 const sameSiteHeaders = { Origin: "http://127.0.0.1:4173" };
-const deterministicTemplateKey = "po-default-canvas";
-const deterministicTemplateVersion = 1;
 
 type ApiErrorEnvelope = {
   error?: {
@@ -126,12 +124,12 @@ async function createPoDocumentThroughUi(page: Page, documentTitle: string) {
 }
 
 async function assignBrowserTemplate(apiContext: APIRequestContext, documentId: string) {
-  await ensureDeterministicTemplateAvailable(apiContext);
+  const browserTemplate = await findBrowserTemplate(apiContext);
   const assignmentResponse = await apiContext.put(`/api/v1/documents/${encodeURIComponent(documentId)}/template-assignment`, {
     headers: sameSiteHeaders,
     data: {
-      templateKey: deterministicTemplateKey,
-      templateVersion: deterministicTemplateVersion,
+      templateKey: browserTemplate.templateKey,
+      templateVersion: browserTemplate.version,
     },
   });
   expect(assignmentResponse.ok(), `template assignment failed: ${assignmentResponse.status()} ${await assignmentResponse.text()}`).toBeTruthy();
@@ -140,9 +138,12 @@ async function assignBrowserTemplate(apiContext: APIRequestContext, documentId: 
 type DocumentTemplateItem = {
   templateKey: string;
   version: number;
+  profileCode?: string;
+  editor?: string;
+  contentFormat?: string;
 };
 
-async function ensureDeterministicTemplateAvailable(apiContext: APIRequestContext) {
+async function findBrowserTemplate(apiContext: APIRequestContext) {
   const templatesResponse = await apiContext.get("/api/v1/document-templates?profileCode=po", {
     headers: sameSiteHeaders,
   });
@@ -150,16 +151,13 @@ async function ensureDeterministicTemplateAvailable(apiContext: APIRequestContex
 
   const templatesBody = await templatesResponse.json() as { items?: DocumentTemplateItem[] };
   const templates = Array.isArray(templatesBody.items) ? templatesBody.items : [];
-  const hasDeterministicTemplate = templates.some(
-    (item) => item.templateKey === deterministicTemplateKey && item.version === deterministicTemplateVersion,
-  );
-  const available = templates
-    .map((item) => `${item.templateKey}@${item.version}`)
-    .join(", ");
-  expect(
-    hasDeterministicTemplate,
-    `deterministic template ${deterministicTemplateKey}@${deterministicTemplateVersion} missing; available: ${available || "none"}`,
-  ).toBeTruthy();
+  const browserTemplate = templates.find((item) => item.profileCode === "po" && item.contentFormat === "html");
+  const available = templates.map((item) => `${item.templateKey}@${item.version}`).join(", ");
+  expect(browserTemplate, `browser template missing; available: ${available || "none"}`).toBeTruthy();
+  if (!browserTemplate) {
+    throw new Error("Expected a browser-compatible PO template in the template catalog.");
+  }
+  return browserTemplate;
 }
 
 async function openDocumentEditorFromDetail(page: Page) {
@@ -174,7 +172,7 @@ async function openDocumentEditorFromDetail(page: Page) {
 }
 
 async function ensureBrowserEditorReady(page: Page) {
-  const editorSurface = page.locator(".ck-editor__editable").first();
+  const editorSurface = page.locator('[contenteditable="true"]').first();
   const reloadButton = page.getByRole("button", { name: "Recarregar documento" });
 
   await expect(page.getByTestId("browser-document-editor")).toBeVisible({ timeout: 20_000 });
@@ -203,9 +201,9 @@ async function ensureBrowserEditorReady(page: Page) {
 }
 
 async function appendEditorText(page: Page, value: string) {
-  const editable = page.locator(".ck-editor__editable").first();
+  const editable = page.locator('[contenteditable="true"]').first();
   await expect(editable).toBeVisible();
-  await page.locator(".ck-editor__editable .restricted-editing-exception").first().click();
+  await editable.click();
   await page.keyboard.type(value);
 }
 

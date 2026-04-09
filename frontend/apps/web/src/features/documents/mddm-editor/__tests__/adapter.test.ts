@@ -51,6 +51,58 @@ describe("MDDM ↔ BlockNote adapter", () => {
     ).toThrow(/unsupported block type/i);
   });
 
+  it("fails closed on unsupported MDDM block types on import", () => {
+    expect(() =>
+      mddmToBlockNote({
+        mddm_version: 1,
+        template_ref: null,
+        blocks: [
+          {
+            id: "10000000-0000-0000-0000-000000000001",
+            type: "audio",
+            props: {},
+          },
+        ],
+      } as any),
+    ).toThrow(/unsupported block type/i);
+  });
+
+  it("fails closed when field valueMode is not inline", () => {
+    expect(() =>
+      blockNoteToMDDM([
+        {
+          id: "10000000-0000-0000-0000-000000000001",
+          type: "field",
+          props: { label: "X", valueMode: "multiParagraph", locked: true },
+          content: [{ type: "text", text: "value" }],
+        } as any,
+      ]),
+    ).toThrow(/valueMode/i);
+  });
+
+  it("defaults repeatable and dataTable max constraints to schema defaults", () => {
+    const output = blockNoteToMDDM([
+      {
+        id: "10000000-0000-0000-0000-000000000001",
+        type: "repeatable",
+        props: { label: "R", itemPrefix: "Item", locked: true },
+        children: [],
+      } as any,
+      {
+        id: "10000000-0000-0000-0000-000000000002",
+        type: "dataTable",
+        props: { label: "T", columnsJson: "[]", locked: true },
+        children: [],
+      } as any,
+    ]);
+
+    expect((output.blocks[0] as any).props.minItems).toBe(0);
+    expect((output.blocks[0] as any).props.maxItems).toBe(200);
+
+    expect((output.blocks[1] as any).props.minRows).toBe(0);
+    expect((output.blocks[1] as any).props.maxRows).toBe(500);
+  });
+
   it("preserves id and template_block_id through round-trip", () => {
     const input: MDDMEnvelope = {
       mddm_version: 1,

@@ -105,6 +105,14 @@ const LEAF_BLOCK_TYPES = new Set<string>(["image", "divider"]);
 
 const MARK_ORDER = ["bold", "code", "italic", "strike", "underline"];
 
+function normalizeInt(value: unknown, fallback: number): number {
+  if (value === null || value === undefined || value === "") {
+    return fallback;
+  }
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.trunc(n) : fallback;
+}
+
 function newUUID(): string {
   const cryptoValue = (globalThis as any)?.crypto;
   if (cryptoValue && typeof cryptoValue.randomUUID === "function") {
@@ -232,6 +240,9 @@ function toMDDMBlock(block: BlockNoteBlock): MDDMBlock {
 }
 
 function toBlockNoteType(mddmType: string): string {
+  if (!ALLOWED_MDDM_TYPES.has(mddmType)) {
+    throw new Error(`unsupported block type: ${mddmType}`);
+  }
   if (mddmType === "code") {
     return "codeBlock";
   }
@@ -313,19 +324,24 @@ function toMDDMProps(type: string, props: UnknownRecord): UnknownRecord {
         label: asString(next.label),
         columns: parseColumns(next.columnsJson ?? next.columns),
         locked: Boolean(next.locked),
-        minRows: Math.trunc(Number(next.minRows) || 0),
-        maxRows: Math.trunc(Number(next.maxRows) || 0),
+        minRows: normalizeInt(next.minRows, 0),
+        maxRows: normalizeInt(next.maxRows, 500),
       };
 
     case "dataTableCell":
       return { columnKey: asString(next.columnKey) };
 
-    case "field":
+    case "field": {
+      const valueMode = asOptionalString(next.valueMode);
+      if (valueMode && valueMode !== "inline") {
+        throw new Error(`unsupported field valueMode: ${valueMode}`);
+      }
       return {
         label: asString(next.label),
         valueMode: "inline",
         locked: Boolean(next.locked),
       };
+    }
 
     case "fieldGroup": {
       const columns = Number(next.columns);
@@ -345,8 +361,8 @@ function toMDDMProps(type: string, props: UnknownRecord): UnknownRecord {
         label: asString(next.label),
         itemPrefix: asString(next.itemPrefix),
         locked: Boolean(next.locked),
-        minItems: Math.trunc(Number(next.minItems) || 0),
-        maxItems: Math.trunc(Number(next.maxItems) || 0),
+        minItems: normalizeInt(next.minItems, 0),
+        maxItems: normalizeInt(next.maxItems, 200),
       };
 
     case "repeatableItem":

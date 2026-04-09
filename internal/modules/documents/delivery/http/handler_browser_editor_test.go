@@ -164,7 +164,7 @@ func TestHandleDocumentBrowserEditorBundleCreatedAt(t *testing.T) {
 	now := time.Date(2026, time.April, 4, 11, 0, 0, 0, time.UTC)
 	repo := documentmemory.NewRepository()
 	service := application.NewService(repo, nil, applicationFixedClock{now: now})
-	doc := seedBrowserHandlerDocument(t, ctx, repo, now, `<section><p>Original</p></section>`)
+	doc := seedBrowserHandlerDocument(t, ctx, repo, now, testMDDMBody)
 	handler := NewHandler(service)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/documents/"+doc.ID+"/browser-editor-bundle", nil)

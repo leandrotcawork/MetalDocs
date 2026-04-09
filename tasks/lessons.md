@@ -1355,3 +1355,10 @@ Wrong:   Verified the saved MDDM body without checking the derived `TextContent`
 Correct: Assert `TextContent` on the returned save result and the persisted version so MDDM text extraction stays covered end-to-end
 Rule:    When a mutation updates a derived field, tests must verify the service return value and the stored row to catch projection drift.
 Layer:   application
+
+## Lesson FG7 - Browser editor bundle tests should reuse the canonical MDDM seed body
+Date: 2026-04-09 | Trigger: correction
+Wrong:   `TestHandleDocumentBrowserEditorBundleCreatedAt` still seeded `<section><p>Original</p></section>` after the browser-handler path had standardized on MDDM fixtures
+Correct: Seed the browser editor bundle test with `testMDDMBody` so the handler exercises the same MDDM serialization path as the rest of the browser-content suite
+Rule:    Once a browser-content flow is standardized on one content format, its tests should share the canonical fixture instead of an ad hoc HTML seed.
+Layer:   delivery

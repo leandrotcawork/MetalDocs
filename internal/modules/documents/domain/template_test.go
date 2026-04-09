@@ -1,6 +1,10 @@
 package domain
 
-import "testing"
+import (
+	"os"
+	"regexp"
+	"testing"
+)
 
 func TestDefaultDocumentTemplateVersionsDoesNotIncludeCKEditorTemplates(t *testing.T) {
 	for _, tmpl := range DefaultDocumentTemplateVersions() {
@@ -16,6 +20,31 @@ func TestDefaultDocumentTemplateVersionsDoesNotIncludeCKEditorTemplates(t *testi
 			)
 		}
 	}
+}
+
+func TestPOMDDMCanvasSeedSQLParity(t *testing.T) {
+	sqlBytes, err := os.ReadFile("../../../../migrations/0065_seed_po_mddm_canvas_template.sql")
+	if err != nil {
+		t.Fatalf("read migration file: %v", err)
+	}
+
+	sqlContent := string(sqlBytes)
+	assertMatch := func(name, pattern string) {
+		t.Helper()
+		re := regexp.MustCompile(pattern)
+		if !re.MatchString(sqlContent) {
+			t.Fatalf("migration SQL missing %s: pattern %q", name, pattern)
+		}
+	}
+
+	assertMatch(
+		"seed insert target",
+		`(?s)INSERT INTO\s+metaldocs\.document_template_versions\s*\(\s*template_key,\s*version,\s*profile_code,\s*schema_version,\s*name,\s*definition_json,\s*editor,\s*content_format,\s*body_html\s*\)`,
+	)
+	assertMatch(
+		"template row values",
+		`(?s)VALUES\s*\(\s*'po-mddm-canvas'\s*,\s*1\s*,\s*'po'\s*,\s*3\s*,\s*'PO MDDM Canvas v1'\s*,\s*'\{"type":\s*"page",\s*"id":\s*"po-mddm-root",\s*"children":\s*\[\]\}'::jsonb\s*,\s*'mddm-blocknote'\s*,\s*'mddm'\s*,\s*''\s*\)`,
+	)
 }
 
 func TestDefaultDocumentTemplateVersionsPODefaultIsLast(t *testing.T) {

@@ -1327,3 +1327,10 @@ Wrong:   A domain test read `migrations/0065_seed_po_mddm_canvas_template.sql` t
 Correct: Test `DefaultDocumentTemplateVersions()` directly and assert the forbidden template keys or editor/content-format values are absent
 Rule:    Domain tests should validate the canonical in-memory defaults, not replicate persistence-layer seed files.
 Layer:   domain
+
+## Lesson FG3 - SQL parity tests should anchor on the actual seed row shape
+Date: 2026-04-09 | Trigger: correction
+Wrong:   A parity guard only checked that a migration file existed or that loose template markers were present
+Correct: Assert the exact `po-mddm-canvas` insert target plus the canonical value tuple for key, version, profile, schema, editor, and content format
+Rule:    Parity tests should verify the concrete seed row shape so SQL drift is caught without broad false positives.
+Layer:   domain

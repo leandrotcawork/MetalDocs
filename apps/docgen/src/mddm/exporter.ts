@@ -1,4 +1,4 @@
-import { BorderStyle, Document, HeadingLevel, Packer, Paragraph, Table, TextRun } from "docx";
+import { BorderStyle, Document, ExternalHyperlink, HeadingLevel, Packer, Paragraph, Table, TextRun } from "docx";
 import { renderDataTable } from "./render-data-table.js";
 import { renderFieldGroup } from "./render-tables.js";
 import type { InlineRun, MDDMBlock, MDDMEnvelope, MDDMExportRequest } from "./types.js";
@@ -190,16 +190,27 @@ function runToTextRun(run: InlineRun): TextRun {
   });
 }
 
+function inlineRunToDocx(run: InlineRun): TextRun | ExternalHyperlink {
+  const textRun = runToTextRun(run);
+  if (run.link?.href) {
+    return new ExternalHyperlink({
+      children: [textRun],
+      link: run.link.href,
+    });
+  }
+  return textRun;
+}
+
 function renderParagraph(block: MDDMBlock): Paragraph {
   const children = (block.children as InlineRun[] | undefined) ?? [];
-  return new Paragraph({ children: children.map(runToTextRun) });
+  return new Paragraph({ children: children.map(inlineRunToDocx) });
 }
 
 function renderHeading(block: MDDMBlock): Paragraph {
   const level = (block.props.level as number) ?? 2;
   const headingLevel = level === 1 ? HeadingLevel.HEADING_1 : level === 2 ? HeadingLevel.HEADING_2 : HeadingLevel.HEADING_3;
   const children = (block.children as InlineRun[] | undefined) ?? [];
-  return new Paragraph({ heading: headingLevel, children: children.map(runToTextRun) });
+  return new Paragraph({ heading: headingLevel, children: children.map(inlineRunToDocx) });
 }
 
 function renderListItem(block: MDDMBlock, isNumbered: boolean): Paragraph {
@@ -207,7 +218,7 @@ function renderListItem(block: MDDMBlock, isNumbered: boolean): Paragraph {
   const level = (block.props.level as number) ?? 0;
 
   return new Paragraph({
-    children: children.map(runToTextRun),
+    children: children.map(inlineRunToDocx),
     bullet: isNumbered ? undefined : { level },
     numbering: isNumbered ? { reference: "default-numbering", level } : undefined,
   });
@@ -232,6 +243,37 @@ function renderDivider(): Paragraph {
       },
     },
     children: [],
+  });
+}
+
+function renderRichBlock(block: MDDMBlock, sectionPath: number[]): RenderedNode[] {
+  const label = (block.props.label as string) ?? "";
+  const out: RenderedNode[] = [
+    new Paragraph({ children: [new TextRun({ text: label, bold: true })] }),
+  ];
+  for (const child of (block.children as MDDMBlock[]) ?? []) {
+    out.push(...renderBlock(child, sectionPath));
+  }
+  return out;
+}
+
+function renderQuote(block: MDDMBlock): Paragraph[] {
+  const paragraphs = (block.children as MDDMBlock[]) ?? [];
+  return paragraphs.map((p) => {
+    const runs = (p.children as InlineRun[] | undefined) ?? [];
+    return new Paragraph({
+      indent: { left: 720 },
+      children: runs.map(inlineRunToDocx),
+    });
+  });
+}
+
+function renderImagePlaceholder(block: MDDMBlock): Paragraph {
+  const alt = (block.props.alt as string) ?? "";
+  const caption = (block.props.caption as string) ?? "";
+  const text = caption ? `[Image: ${alt}] ${caption}` : `[Image: ${alt}]`;
+  return new Paragraph({
+    children: [new TextRun({ text, italics: true })],
   });
 }
 
@@ -298,6 +340,12 @@ function renderBlock(block: MDDMBlock, sectionPath: number[] = []): RenderedNode
       return renderRepeatable(block, sectionPath);
     case "repeatableItem":
       return [];
+    case "richBlock":
+      return renderRichBlock(block, sectionPath);
+    case "quote":
+      return renderQuote(block);
+    case "image":
+      return [renderImagePlaceholder(block)];
     default:
       return [new Paragraph({ children: [new TextRun(`[Unsupported block: ${block.type}]`)] })];
   }

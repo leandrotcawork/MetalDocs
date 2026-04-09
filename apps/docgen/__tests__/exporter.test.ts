@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { exportMDDMToDocx } from "../src/mddm/exporter.js";
@@ -41,5 +43,25 @@ describe("MDDM exporter", () => {
     expect(bytes[0]).toBe(0x50);
     expect(bytes[1]).toBe(0x4b);
     expect(bytes.length).toBeGreaterThan(1000);
+  });
+
+  it("renders all in-scope block types without throwing", async () => {
+    const fixture = JSON.parse(
+      readFileSync(
+        join(__dirname, "../../../shared/schemas/test-fixtures/valid/full-block-types.json"),
+        "utf8"
+      )
+    );
+    const result = await exportMDDMToDocx({
+      envelope: fixture,
+      metadata: {
+        document_code: "PO-TEST",
+        title: "Test Document",
+        revision_label: "REV01",
+        mode: "debug",
+      },
+    });
+    expect(result).toBeInstanceOf(Uint8Array);
+    expect(result.length).toBeGreaterThan(0);
   });
 });

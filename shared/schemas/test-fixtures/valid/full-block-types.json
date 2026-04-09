@@ -72,6 +72,35 @@
           "id": "99999999-9999-9999-9999-999999999999",
           "type": "richBlock",
           "props": { "label": "Diagrama", "locked": true },
+          "children": [
+            {
+              "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+              "type": "paragraph",
+              "props": {},
+              "children": [{ "text": "Rich block child paragraph." }]
+            }
+          ]
+        },
+        {
+          "id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+          "type": "quote",
+          "props": {},
+          "children": [
+            {
+              "id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+              "type": "paragraph",
+              "props": {},
+              "children": [
+                { "text": "This is a quoted paragraph." },
+                { "text": " With a link", "link": { "href": "https://example.com" } }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "dddddddd-dddd-dddd-dddd-dddddddddddd",
+          "type": "image",
+          "props": { "alt": "Process diagram", "caption": "Figure 1: Process overview" },
           "children": []
         }
       ]

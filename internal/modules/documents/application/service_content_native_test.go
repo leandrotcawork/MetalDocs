@@ -110,12 +110,12 @@ func TestExportBrowserContentUsesBrowserDocgenRoute(t *testing.T) {
 	if err := repo.SaveVersion(ctx, domain.Version{
 		DocumentID:      doc.ID,
 		Number:          1,
-		Content:         `<section><p>Atualizado</p></section>`,
-		ContentHash:     contentHash(`<section><p>Atualizado</p></section>`),
+		Content:         testMDDMBodyUpdated,
+		ContentHash:     contentHash(testMDDMBodyUpdated),
 		ChangeSummary:   "Initial version",
 		ContentSource:   domain.ContentSourceBrowserEditor,
-		TextContent:     "Atualizado",
-		TemplateKey:     "po-default-canvas",
+		TextContent:     plainTextFromMDDM(testMDDMBodyUpdated),
+		TemplateKey:     "po-mddm-canvas",
 		TemplateVersion: 1,
 		CreatedAt:       now,
 	}); err != nil {
@@ -161,13 +161,15 @@ func TestExportBrowserContentUsesBrowserDocgenRoute(t *testing.T) {
 
 	select {
 	case raw := <-payloadCh:
-		// Header is prepended; assert the md-doc-header block and body section are both present.
+		// Header is prepended; assert the md-doc-header block and converted MDDM body are both present.
 		if !bytes.Contains(raw, []byte(`md-doc-header`)) {
 			t.Fatalf("payload missing md-doc-header: %s", raw)
 		}
-		if !bytes.Contains(raw, []byte(`\u003csection\u003e\u003cp\u003eAtualizado\u003c/p\u003e\u003c/section\u003e`)) &&
-			!bytes.Contains(raw, []byte(`<section><p>Atualizado</p></section>`)) {
-			t.Fatalf("payload missing body section: %s", raw)
+		if !bytes.Contains(raw, []byte(`<p>Atualizado</p>`)) {
+			t.Fatalf("payload missing converted MDDM paragraph: %s", raw)
+		}
+		if bytes.Contains(raw, []byte(`<section><p>Atualizado</p></section>`)) {
+			t.Fatalf("payload still contains legacy HTML body: %s", raw)
 		}
 	default:
 		t.Fatal("expected browser docgen payload")

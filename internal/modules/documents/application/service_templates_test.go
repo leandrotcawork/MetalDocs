@@ -234,13 +234,12 @@ func TestCreateDocumentSeedsBrowserTemplateBody(t *testing.T) {
 	if version.ContentSource != domain.ContentSourceBrowserEditor {
 		t.Fatalf("content source = %q, want %q", version.ContentSource, domain.ContentSourceBrowserEditor)
 	}
-	// The new browser template uses the React DocumentEditorHeader for the title;
-	// body content starts with the first editable section.
-	if !strings.HasPrefix(version.TextContent, "2. Identificação do Processo") {
-		t.Fatalf("text content = %q, want prefix '2. Identificação do Processo'", version.TextContent)
+	// The mddm browser canvas is blank at seed time; the editor header is rendered separately.
+	if version.TextContent != "" {
+		t.Fatalf("text content = %q, want empty seed for blank MDDM canvas", version.TextContent)
 	}
-	if version.TemplateKey != "po-default-browser" || version.TemplateVersion != 1 {
-		t.Fatalf("template snapshot = %q/%d, want po-default-browser/1", version.TemplateKey, version.TemplateVersion)
+	if version.TemplateKey != "po-mddm-canvas" || version.TemplateVersion != 1 {
+		t.Fatalf("template snapshot = %q/%d, want po-mddm-canvas/1", version.TemplateKey, version.TemplateVersion)
 	}
 }
 
@@ -280,28 +279,25 @@ func TestListDocumentTemplatesReturnsProfileCatalog(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListDocumentTemplates() error = %v", err)
 	}
-	if len(items) != 3 {
-		t.Fatalf("template count = %d, want 3", len(items))
+	if len(items) != 2 {
+		t.Fatalf("template count = %d, want 2", len(items))
 	}
-	// Verify all three PO templates are present
-	keys := make(map[string]bool)
+	keys := make(map[string]domain.DocumentTemplateVersion, len(items))
 	for _, item := range items {
-		keys[item.TemplateKey] = true
-		if !item.IsBrowserHTML() {
-			t.Fatalf("template metadata = %#v, want browser html", item)
-		}
+		keys[item.TemplateKey] = item
 		if item.ProfileCode != "po" {
 			t.Fatalf("template profile = %q, want po", item.ProfileCode)
 		}
 	}
-	if !keys["po-default-canvas"] {
-		t.Fatal("missing po-default-canvas in template list")
+	if got, ok := keys["po-mddm-canvas"]; !ok {
+		t.Fatal("missing po-mddm-canvas in template list")
+	} else if !got.IsMDDMEditor() {
+		t.Fatalf("template metadata = %#v, want mddm-blocknote/mddm", got)
 	}
-	if !keys["po-default-browser"] {
-		t.Fatal("missing po-default-browser in template list")
-	}
-	if !keys["po-governed-canvas"] {
+	if got, ok := keys["po-governed-canvas"]; !ok {
 		t.Fatal("missing po-governed-canvas in template list")
+	} else if !got.IsBrowserHTML() {
+		t.Fatalf("template metadata = %#v, want ckeditor5/html", got)
 	}
 }
 

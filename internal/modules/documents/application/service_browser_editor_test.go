@@ -2,11 +2,14 @@ package application
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
 	"metaldocs/internal/modules/documents/domain"
+	"metaldocs/internal/modules/documents/domain/mddm"
 	documentmemory "metaldocs/internal/modules/documents/infrastructure/memory"
 )
 
@@ -20,14 +23,12 @@ func TestGetBrowserEditorBundleReturnsDraftMDDM(t *testing.T) {
 	now := time.Date(2026, time.April, 4, 11, 0, 0, 0, time.UTC)
 	repo := documentmemory.NewRepository()
 	service := NewService(repo, nil, fixedClock{now: now})
-	doc := seedBrowserDocument(t, ctx, repo, now, testMDDMBody)
+	body := templateV2Body(t)
+	doc := seedBrowserDocument(t, ctx, repo, now, body)
 
 	bundle, err := service.GetBrowserEditorBundleAuthorized(ctx, doc.ID)
 	if err != nil {
 		t.Fatalf("GetBrowserEditorBundleAuthorized() error = %v", err)
-	}
-	if bundle.Body != testMDDMBody {
-		t.Fatalf("bundle body = %q, want MDDM body", bundle.Body)
 	}
 	if bundle.DraftToken == "" {
 		t.Fatal("expected draft token")
@@ -35,8 +36,17 @@ func TestGetBrowserEditorBundleReturnsDraftMDDM(t *testing.T) {
 	if bundle.TemplateSnapshot.TemplateKey != "po-mddm-canvas" {
 		t.Fatalf("template key = %q, want po-mddm-canvas", bundle.TemplateSnapshot.TemplateKey)
 	}
-	if bundle.TemplateSnapshot.Editor != "mddm-blocknote" || bundle.TemplateSnapshot.ContentFormat != "mddm" {
-		t.Fatalf("template snapshot = %#v, want mddm-blocknote/mddm", bundle.TemplateSnapshot)
+	if bundle.TemplateSnapshot.Editor != "mddm-blocknote" {
+		t.Fatalf("template editor = %q, want mddm-blocknote", bundle.TemplateSnapshot.Editor)
+	}
+	if bundle.TemplateSnapshot.ContentFormat != "mddm" {
+		t.Fatalf("template contentFormat = %q, want mddm", bundle.TemplateSnapshot.ContentFormat)
+	}
+	if !strings.Contains(bundle.Body, "\"Identificação\"") {
+		t.Fatalf("bundle body missing first v2 section marker: %s", bundle.Body)
+	}
+	if !strings.Contains(bundle.Body, "\"Histórico de Revisões\"") {
+		t.Fatalf("bundle body missing last v2 section marker: %s", bundle.Body)
 	}
 }
 
@@ -390,4 +400,14 @@ func TestNewPODocumentGetsBrowserTemplateInBundle(t *testing.T) {
 	if bundle.DraftToken == "" {
 		t.Fatal("expected draft token")
 	}
+}
+
+func templateV2Body(t *testing.T) string {
+	t.Helper()
+
+	body, err := json.Marshal(mddm.POTemplateMDDM())
+	if err != nil {
+		t.Fatalf("marshal template v2 body: %v", err)
+	}
+	return string(body)
 }

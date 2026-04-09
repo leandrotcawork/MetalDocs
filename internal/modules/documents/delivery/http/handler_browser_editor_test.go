@@ -214,7 +214,8 @@ func TestHandleDocumentBrowserEditorBundleCreatedAt(t *testing.T) {
 	now := time.Date(2026, time.April, 4, 11, 0, 0, 0, time.UTC)
 	repo := documentmemory.NewRepository()
 	service := application.NewService(repo, nil, applicationFixedClock{now: now})
-	doc := seedBrowserHandlerDocument(t, ctx, repo, now, testMDDMBody, testMDDMText)
+	body := templateV2Body(t)
+	doc := seedBrowserHandlerDocument(t, ctx, repo, now, body, testMDDMText)
 	handler := NewHandler(service)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/documents/"+doc.ID+"/browser-editor-bundle", nil)
@@ -254,8 +255,11 @@ func TestHandleDocumentBrowserEditorBundleCreatedAt(t *testing.T) {
 	if resp.TemplateSnapshot.ContentFormat != "mddm" {
 		t.Fatalf("templateSnapshot contentFormat = %q, want %q", resp.TemplateSnapshot.ContentFormat, "mddm")
 	}
-	if resp.Body != testMDDMBody {
-		t.Fatalf("body = %q, want %q", resp.Body, testMDDMBody)
+	if !strings.Contains(resp.Body, "\"Identificação\"") {
+		t.Fatalf("body missing first v2 section marker: %s", resp.Body)
+	}
+	if !strings.Contains(resp.Body, "\"Histórico de Revisões\"") {
+		t.Fatalf("body missing last v2 section marker: %s", resp.Body)
 	}
 	if resp.DraftToken == "" {
 		t.Fatalf("draftToken = empty")
@@ -324,4 +328,14 @@ func decodeJSONBody(t *testing.T, data []byte, target any) {
 	if err := json.Unmarshal(data, target); err != nil {
 		t.Fatalf("decode json: %v; body = %s", err, string(data))
 	}
+}
+
+func templateV2Body(t *testing.T) string {
+	t.Helper()
+
+	body, err := json.Marshal(mddm.POTemplateMDDM())
+	if err != nil {
+		t.Fatalf("marshal template v2 body: %v", err)
+	}
+	return string(body)
 }

@@ -51,12 +51,15 @@ func TestReleaseRepo_SingleTransactionRollback(t *testing.T) {
 		t.Fatalf("insert draft: %v", err)
 	}
 
-	prevVersionID, prevDocx, err := releaseRepo.ArchivePreviousReleased(ctx, docID)
+	prevVersionID, prevContentBlocks, prevDocx, err := releaseRepo.ArchivePreviousReleased(ctx, docID)
 	if err != nil {
 		t.Fatalf("archive previous released: %v", err)
 	}
 	if prevVersionID != releasedID {
 		t.Fatalf("archive returned wrong version id: got %s want %s", prevVersionID, releasedID)
+	}
+	if !jsonEqual(prevContentBlocks, releasedContent) {
+		t.Fatalf("archive returned wrong content blocks: got %s want %s", prevContentBlocks, releasedContent)
 	}
 	if !bytes.Equal(prevDocx, []byte("released-docx")) {
 		t.Fatalf("archive returned wrong docx bytes: %q", prevDocx)
@@ -95,12 +98,15 @@ func TestReleaseRepo_SingleTransactionRollback(t *testing.T) {
 		t.Fatalf("draft revision_diff should be null after rollback, got %s", draftState.revisionDiff)
 	}
 
-	prevVersionID, _, err = releaseRepo.ArchivePreviousReleased(ctx, docID)
+	prevVersionID, prevContentBlocks, _, err = releaseRepo.ArchivePreviousReleased(ctx, docID)
 	if err != nil {
 		t.Fatalf("archive previous released after rollback: %v", err)
 	}
 	if prevVersionID != releasedID {
 		t.Fatalf("archive after rollback returned wrong version id: got %s want %s", prevVersionID, releasedID)
+	}
+	if !jsonEqual(prevContentBlocks, releasedContent) {
+		t.Fatalf("archive after rollback returned wrong content blocks: got %s want %s", prevContentBlocks, releasedContent)
 	}
 
 	if err := releaseRepo.PromoteDraftToReleased(ctx, draftID, []byte("draft-docx"), "approver-1"); err != nil {
@@ -155,14 +161,14 @@ func TestReleaseRepo_ContextsKeepIndependentTransactions(t *testing.T) {
 	ctxA := context.WithValue(rootCtx, releaseRepoTestContextKey("tx"), "A")
 	ctxB := context.WithValue(rootCtx, releaseRepoTestContextKey("tx"), "B")
 
-	if _, _, err := releaseRepo.ArchivePreviousReleased(ctxA, docAID); err != nil {
+	if _, _, _, err := releaseRepo.ArchivePreviousReleased(ctxA, docAID); err != nil {
 		t.Fatalf("archive previous released A: %v", err)
 	}
 	if err := releaseRepo.PromoteDraftToReleased(ctxA, draftAID, []byte("draft-docx-A"), "approver-A"); err != nil {
 		t.Fatalf("promote draft A: %v", err)
 	}
 
-	if _, _, err := releaseRepo.ArchivePreviousReleased(ctxB, docBID); err != nil {
+	if _, _, _, err := releaseRepo.ArchivePreviousReleased(ctxB, docBID); err != nil {
 		t.Fatalf("archive previous released B: %v", err)
 	}
 	if err := releaseRepo.PromoteDraftToReleased(ctxB, draftBID, []byte("draft-docx-B"), "approver-B"); err != nil {

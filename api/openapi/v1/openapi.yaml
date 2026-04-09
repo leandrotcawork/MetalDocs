@@ -3081,10 +3081,10 @@ components:
           type: integer
         editor:
           type: string
-          enum: [ckeditor5]
+          enum: [mddm-blocknote]
         contentFormat:
           type: string
-          enum: [html]
+          enum: [mddm]
         body:
           type: string
     DocumentTemplateItem:

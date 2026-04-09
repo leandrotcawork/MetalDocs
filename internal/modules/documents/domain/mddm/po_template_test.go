@@ -2,6 +2,7 @@ package mddm
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -96,6 +97,14 @@ func TestPOTemplateMDDM_MatchesApprovedTemplateV2Layout(t *testing.T) {
 		if !containsString(overviewRichTypes, want) {
 			t.Fatalf("overview rich area missing %q child; got %v", want, overviewRichTypes)
 		}
+	}
+
+	body, err := json.Marshal(tpl)
+	if err != nil {
+		t.Fatalf("json.Marshal() error = %v", err)
+	}
+	if strings.Contains(string(body), "/api/images/") {
+		t.Fatalf("template must not contain pre-seeded image API refs: %s", string(body))
 	}
 }
 

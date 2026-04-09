@@ -76,6 +76,7 @@ const INLINE_BLOCK_TYPES = new Set<string>([
   "heading",
   "bulletListItem",
   "numberedListItem",
+  "field",
   "dataTableCell",
   "code",
 ]);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canonicalizeMDDM } from "../../../../../../../../shared/schemas/canonicalize.ts";
+import { canonicalizeMDDM } from "../../../../../../../../shared/schemas/canonicalize";
 import {
   blockNoteToMDDM,
   mddmToBlockNote,
@@ -110,27 +110,19 @@ describe("MDDM ↔ BlockNote adapter", () => {
                   },
                   children: [
                     {
-                      id: "10000000-0000-0000-0000-000000000004",
-                      type: "paragraph",
-                      props: {},
-                      children: [
-                        {
-                          text: "Joao",
-                          marks: [{ type: "bold" }],
-                        },
-                        {
-                          text: " Procedimento",
-                          link: {
-                            href: "https://example.com",
-                            title: "Exemplo",
-                          },
-                          document_ref: {
-                            target_document_id:
-                              "30000000-0000-0000-0000-000000000001",
-                            target_revision_label: "v2",
-                          },
-                        },
-                      ],
+                      text: "Joao",
+                      marks: [{ type: "bold" }],
+                    },
+                    {
+                      text: " Procedimento",
+                      link: {
+                        href: "https://example.com",
+                        title: "Exemplo",
+                      },
+                      document_ref: {
+                        target_document_id: "30000000-0000-0000-0000-000000000001",
+                        target_revision_label: "v2",
+                      },
                     },
                   ],
                 },

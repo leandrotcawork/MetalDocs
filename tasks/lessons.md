@@ -1369,3 +1369,10 @@ Wrong:   Browser handler tests matched response substrings like `"contentSource"
 Correct: Decode handler JSON into the response structs and assert specific fields such as `contentSource`, `contentFormat`, `body`, and `createdAt`
 Rule:    Delivery tests should verify the contract at the field level so formatting changes do not create false failures or hide real regressions.
 Layer:   delivery
+
+## Lesson FG9 - Remove transitional template compatibility gates after MDDM cutover
+Date: 2026-04-09 | Trigger: correction
+Wrong:   Kept `IsBrowserHTML` and a compatibility bypass in template validation after the branch had moved to MDDM-only browser templates.
+Correct: Restrict browser-editor compatibility checks to `mddm-blocknote/mddm` and validate all assigned templates against schema compatibility rules.
+Rule:    After a migration baseline is officially cut over, transitional compatibility paths must be deleted so legacy formats cannot silently re-enter runtime flows.
+Layer:   application

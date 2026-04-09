@@ -45,20 +45,12 @@ type DocumentTemplateSnapshot struct {
 	ExportConfig  *TemplateExportConfig
 }
 
-func (v DocumentTemplateVersion) IsBrowserHTML() bool {
-	return strings.EqualFold(v.Editor, "ckeditor5") && strings.EqualFold(v.ContentFormat, "html")
-}
-
 func (v DocumentTemplateVersion) IsMDDMEditor() bool {
 	return strings.EqualFold(v.Editor, "mddm-blocknote") && strings.EqualFold(v.ContentFormat, "mddm")
 }
 
 func (v DocumentTemplateVersion) IsBrowserEditor() bool {
-	return v.IsBrowserHTML() || v.IsMDDMEditor()
-}
-
-func (s DocumentTemplateSnapshot) IsBrowserHTML() bool {
-	return strings.EqualFold(s.Editor, "ckeditor5") && strings.EqualFold(s.ContentFormat, "html")
+	return v.IsMDDMEditor()
 }
 
 func DefaultDocumentTemplateVersions() []DocumentTemplateVersion {

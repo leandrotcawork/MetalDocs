@@ -172,10 +172,11 @@ func TestResolveDocumentTemplateReturnsBrowserTemplateMetadata(t *testing.T) {
 		Version:       1,
 		ProfileCode:   "po",
 		SchemaVersion: 3,
-		Name:          "PO Browser Template",
-		Editor:        "ckeditor5",
-		ContentFormat: "html",
-		Body:          `<section><span class="restricted-editing-exception">Objetivo</span></section>`,
+		Name:          "PO Browser Template (MDDM)",
+		Editor:        "mddm-blocknote",
+		ContentFormat: "mddm",
+		Body:          `{"mddm_version":1,"template_ref":{"template_key":"po-browser-template","version":1,"hash":"test-hash"},"blocks":[{"id":"p-1","type":"paragraph","text":"Objetivo","children":[]}]}`,
+		Definition:    testTemplateDefinitionWithSlots(),
 		CreatedAt:     time.Unix(1, 0).UTC(),
 	}); err != nil {
 		t.Fatalf("upsert template version: %v", err)
@@ -185,11 +186,11 @@ func TestResolveDocumentTemplateReturnsBrowserTemplateMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveDocumentTemplate() error = %v", err)
 	}
-	if got.Editor != "ckeditor5" || got.ContentFormat != "html" {
-		t.Fatalf("template metadata = %#v, want ckeditor5/html", got)
+	if !got.IsMDDMEditor() {
+		t.Fatalf("template metadata = %#v, want mddm-blocknote/mddm", got)
 	}
-	if !strings.Contains(got.Body, "restricted-editing-exception") {
-		t.Fatalf("body = %q, want restricted-editing markup", got.Body)
+	if !strings.Contains(got.Body, `"mddm_version":1`) {
+		t.Fatalf("body = %q, want mddm envelope body", got.Body)
 	}
 }
 
@@ -254,9 +255,10 @@ func TestListDocumentTemplatesReturnsProfileCatalog(t *testing.T) {
 		ProfileCode:   "po",
 		SchemaVersion: 3,
 		Name:          "PO Governed Canvas v2",
-		Editor:        "ckeditor5",
-		ContentFormat: "html",
-		Body:          `<section><p>v2</p></section>`,
+		Editor:        "mddm-blocknote",
+		ContentFormat: "mddm",
+		Body:          `{"mddm_version":1,"template_ref":{"template_key":"po-governed-canvas","version":2,"hash":"test-hash"},"blocks":[{"id":"p-2","type":"paragraph","text":"v2","children":[]}]}`,
+		Definition:    testTemplateDefinitionWithSlots(),
 		CreatedAt:     time.Unix(2, 0).UTC(),
 	}); err != nil {
 		t.Fatalf("upsert template version: %v", err)
@@ -267,9 +269,14 @@ func TestListDocumentTemplatesReturnsProfileCatalog(t *testing.T) {
 		ProfileCode:   "wi",
 		SchemaVersion: 1,
 		Name:          "WI Default Canvas v1",
-		Editor:        "ckeditor5",
-		ContentFormat: "html",
-		Body:          `<section><p>wi</p></section>`,
+		Editor:        "mddm-blocknote",
+		ContentFormat: "mddm",
+		Body:          `{"mddm_version":1,"template_ref":{"template_key":"wi-default-canvas","version":1,"hash":"test-hash"},"blocks":[{"id":"p-wi","type":"paragraph","text":"wi","children":[]}]}`,
+		Definition: map[string]any{
+			"type":     "page",
+			"id":       "wi-root",
+			"children": []any{},
+		},
 		CreatedAt:     time.Unix(3, 0).UTC(),
 	}); err != nil {
 		t.Fatalf("upsert template version: %v", err)
@@ -296,8 +303,8 @@ func TestListDocumentTemplatesReturnsProfileCatalog(t *testing.T) {
 	}
 	if got, ok := keys["po-governed-canvas"]; !ok {
 		t.Fatal("missing po-governed-canvas in template list")
-	} else if !got.IsBrowserHTML() {
-		t.Fatalf("template metadata = %#v, want ckeditor5/html", got)
+	} else if !got.IsMDDMEditor() {
+		t.Fatalf("template metadata = %#v, want mddm-blocknote/mddm", got)
 	}
 }
 
@@ -314,10 +321,11 @@ func TestAssignDocumentTemplateAuthorizedPersistsDocumentOverride(t *testing.T) 
 		Version:       2,
 		ProfileCode:   "po",
 		SchemaVersion: 3,
-		Name:          "PO Browser Override",
-		Editor:        "ckeditor5",
-		ContentFormat: "html",
-		Body:          `<section><p>Override</p></section>`,
+		Name:          "PO Browser Override (MDDM)",
+		Editor:        "mddm-blocknote",
+		ContentFormat: "mddm",
+		Body:          `{"mddm_version":1,"template_ref":{"template_key":"po-browser-override","version":2,"hash":"test-hash"},"blocks":[{"id":"p-3","type":"paragraph","text":"Override","children":[]}]}`,
+		Definition:    testTemplateDefinitionWithSlots(),
 		CreatedAt:     time.Unix(1, 0).UTC(),
 	}); err != nil {
 		t.Fatalf("upsert template version: %v", err)
@@ -355,5 +363,23 @@ func seedDocumentProfileSchema(t *testing.T, repo *documentmemory.Repository, it
 
 	if err := repo.UpsertDocumentProfileSchemaVersion(context.Background(), item); err != nil {
 		t.Fatalf("upsert schema version %d: %v", item.Version, err)
+	}
+}
+
+func testTemplateDefinitionWithSlots() map[string]any {
+	return map[string]any{
+		"type": "page",
+		"id":   "po-root",
+		"children": []any{
+			map[string]any{
+				"type":  "section-frame",
+				"id":    "section-identificacao",
+				"title": "Identificacao do Processo",
+				"children": []any{
+					map[string]any{"type": "textarea-slot", "id": "slot-objetivo", "path": "identificacaoProcesso.objetivo", "fieldKind": "textarea"},
+					map[string]any{"type": "rich-slot", "id": "slot-descricao", "path": "visaoGeral.descricaoProcesso", "fieldKind": "rich"},
+				},
+			},
+		},
 	}
 }

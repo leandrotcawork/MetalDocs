@@ -99,7 +99,4 @@ func TestPOMDDMCanvasTemplateInDefaults(t *testing.T) {
 	if !template.IsBrowserEditor() {
 		t.Fatal("IsBrowserEditor() must return true for po-mddm-canvas")
 	}
-	if template.IsBrowserHTML() {
-		t.Fatal("IsBrowserHTML() must return false for po-mddm-canvas")
-	}
 }

@@ -295,18 +295,30 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
                 key={`${document.documentId}:${editorInstance}`}
                 initialContent={blockNoteDocument as any}
                 onChange={(blocks) => {
-                  const envelope = blockNoteToMDDM(blocks as any[]);
-                  const nextData = JSON.stringify(envelope);
+                  try {
+                    const envelope = blockNoteToMDDM(blocks as any[]);
+                    const nextData = JSON.stringify(envelope);
 
-                  setEditorData(nextData);
-                  if (viewState !== "saving") {
-                    setViewState("ready");
+                    setEditorData(nextData);
+                    if (viewState !== "saving") {
+                      setViewState("ready");
+                    }
+                    if (errorCode !== null && errorCode !== "conflict") {
+                      setErrorCode(null);
+                      setErrorMessage("");
+                    }
+                    setSaveLabel(nextData === bundle.body ? "Salvo" : "Editando...");
+                  } catch {
+                    // Keep the editor responsive; surface an actionable error and avoid persisting invalid JSON.
+                    if (viewState !== "saving") {
+                      setViewState("ready");
+                    }
+                    setErrorCode("save");
+                    setErrorMessage(
+                      "Falha ao converter o conteudo do editor para o formato MDDM. Continue editando e tente salvar novamente. Se o erro persistir, recarregue o documento.",
+                    );
+                    setSaveLabel("Erro de conversao");
                   }
-                  if (errorCode !== null && errorCode !== "conflict") {
-                    setErrorCode(null);
-                    setErrorMessage("");
-                  }
-                  setSaveLabel(nextData === bundle.body ? "Salvo" : "Editando...");
                 }}
               />
             ) : (

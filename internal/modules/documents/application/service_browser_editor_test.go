@@ -130,6 +130,9 @@ func TestSaveBrowserContentAuthorizedUpdatesDraftInPlace(t *testing.T) {
 	if version.Content != testMDDMBodyUpdated {
 		t.Fatalf("content = %q, want updated MDDM body", version.Content)
 	}
+	if version.TextContent != "Atualizado" {
+		t.Fatalf("version text content = %q, want extracted MDDM text", version.TextContent)
+	}
 
 	savedVersion, err := repo.GetVersion(ctx, doc.ID, 1)
 	if err != nil {
@@ -137,6 +140,9 @@ func TestSaveBrowserContentAuthorizedUpdatesDraftInPlace(t *testing.T) {
 	}
 	if savedVersion.Content != testMDDMBodyUpdated {
 		t.Fatalf("saved content = %q, want updated MDDM body", savedVersion.Content)
+	}
+	if savedVersion.TextContent != "Atualizado" {
+		t.Fatalf("saved text content = %q, want extracted MDDM text", savedVersion.TextContent)
 	}
 }
 
@@ -379,7 +385,7 @@ func TestNewPODocumentGetsBrowserTemplateInBundle(t *testing.T) {
 		t.Fatalf("template snapshot = %#v, want mddm-blocknote/mddm", bundle.TemplateSnapshot)
 	}
 	if bundle.Body != "" {
-		t.Fatalf("bundle body = %q, want empty for new MDDM document", bundle.Body)
+		t.Fatalf("bundle body = %q, want empty string by design for new MDDM draft", bundle.Body)
 	}
 	if bundle.DraftToken == "" {
 		t.Fatal("expected draft token")

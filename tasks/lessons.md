@@ -1348,3 +1348,10 @@ Wrong:   Asserted `bundle.TemplateSnapshot.IsMDDMEditor()` even though `Document
 Correct: Check `bundle.TemplateSnapshot.Editor` and `bundle.TemplateSnapshot.ContentFormat` directly when the snapshot type only exposes fields
 Rule:    Tests should assert the actual API surface of the type they receive, not assume a helper exists on a sibling struct.
 Layer:   process
+
+## Lesson FG6 - Save-path tests should assert both returned and persisted derived text
+Date: 2026-04-09 | Trigger: correction
+Wrong:   Verified the saved MDDM body without checking the derived `TextContent` projection on both the returned version and repository row
+Correct: Assert `TextContent` on the returned save result and the persisted version so MDDM text extraction stays covered end-to-end
+Rule:    When a mutation updates a derived field, tests must verify the service return value and the stored row to catch projection drift.
+Layer:   application

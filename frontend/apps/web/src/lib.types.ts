@@ -257,8 +257,8 @@ export interface DocumentBrowserTemplateSnapshotItem {
   version: number;
   profileCode: string;
   schemaVersion: number;
-  editor: "ckeditor5";
-  contentFormat: "html";
+  editor: "mddm-blocknote";
+  contentFormat: "mddm";
   body: string;
 }
 

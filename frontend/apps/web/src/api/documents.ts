@@ -161,11 +161,11 @@ function normalizeDocumentTemplateSnapshot(value: DocumentTemplateSnapshotItem):
 }
 
 function normalizeDocumentBrowserTemplateSnapshot(value: DocumentBrowserTemplateSnapshotItem): DocumentBrowserTemplateSnapshotItem {
-  if (value?.editor !== "ckeditor5") {
+  if (value?.editor !== "mddm-blocknote") {
     throw new Error("Browser editor template snapshot has unsupported editor.");
   }
 
-  if (value?.contentFormat !== "html") {
+  if (value?.contentFormat !== "mddm") {
     throw new Error("Browser editor template snapshot has unsupported content format.");
   }
 

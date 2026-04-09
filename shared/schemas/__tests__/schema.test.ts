@@ -8,6 +8,24 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const fixturesDir = join(__dirname, "..", "test-fixtures");
 
 describe("MDDM Schema validation", () => {
+  it("accepts optional section prop in section props", () => {
+    const input = {
+      mddm_version: 1,
+      template_ref: null,
+      blocks: [
+        {
+          id: "11111111-1111-1111-1111-111111111111",
+          type: "section",
+          props: { title: "7 - Indicadores", color: "#6b1f2a", locked: true, optional: true },
+          children: [],
+        },
+      ],
+    };
+
+    const result = validateMDDM(input as any);
+    expect(result.valid, JSON.stringify(result.errors)).toBe(true);
+  });
+
   describe("valid fixtures", () => {
     const validDir = join(fixturesDir, "valid");
     for (const filename of readdirSync(validDir)) {

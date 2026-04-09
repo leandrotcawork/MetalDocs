@@ -1334,3 +1334,10 @@ Wrong:   A parity guard only checked that a migration file existed or that loose
 Correct: Assert the exact `po-mddm-canvas` insert target plus the canonical value tuple for key, version, profile, schema, editor, and content format
 Rule:    Parity tests should verify the concrete seed row shape so SQL drift is caught without broad false positives.
 Layer:   domain
+
+## Lesson FG4 - Delete package-scoped test shims after migration completes
+Date: 2026-04-09 | Trigger: correction
+Wrong:   Left `substitute_template_tokens_test.go` in place as a legacy compatibility shim after the package had already moved on.
+Correct: Remove the shim file once no remaining package callers require the legacy helper for compilation.
+Rule:    Temporary test-only compatibility should be removed promptly after migration so dead symbols do not linger.
+Layer:   process

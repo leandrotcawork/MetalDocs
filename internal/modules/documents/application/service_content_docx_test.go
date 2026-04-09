@@ -123,29 +123,6 @@ func TestBrowserRenderMarginsFromExportConfig(t *testing.T) {
 	})
 }
 
-func TestGenerateBrowserDocxBodySubstitutesTokens(t *testing.T) {
-	// Verify substituteTemplateTokens eliminates tokens from a body
-	// that would be passed to generateBrowserDocxBytes — guards against
-	// regression on the DOCX export path.
-	body := `{{versao}} {{data_criacao}} {{elaborador}}`
-	doc := domain.Document{
-		OwnerID:   "owner",
-		CreatedAt: time.Date(2026, 4, 6, 0, 0, 0, 0, time.UTC),
-	}
-	version := domain.Version{Number: 3, Content: body}
-
-	got := substituteTemplateTokens(version.Content, doc, version)
-
-	for _, token := range []string{"{{versao}}", "{{data_criacao}}", "{{elaborador}}"} {
-		if strings.Contains(got, token) {
-			t.Errorf("DOCX export body must not contain raw token %q", token)
-		}
-	}
-	if !strings.Contains(got, "03") {
-		t.Error("expected version 03 in DOCX body")
-	}
-}
-
 func TestMDDMBlocksToHTML(t *testing.T) {
 	cases := []struct {
 		name     string

@@ -46,15 +46,11 @@ func (s *Service) GetBrowserEditorBundleAuthorized(ctx context.Context, document
 		return BrowserEditorBundle{}, domain.ErrDocumentTemplateNotFound
 	}
 
-	body := current.Content
-	if templateVersion.IsBrowserHTML() {
-		body = substituteTemplateTokens(current.Content, doc, current)
-	}
 	bundle := BrowserEditorBundle{
 		Document:   doc,
 		Versions:   versions,
 		Governance: governance,
-		Body:       body,
+		Body:       current.Content,
 		DraftToken: draftTokenForVersion(current),
 	}
 	bundle.TemplateSnapshot = documentTemplateSnapshotFromVersion(templateVersion)
@@ -102,7 +98,7 @@ func (s *Service) SaveBrowserContentAuthorized(ctx context.Context, cmd domain.S
 	version.ContentHash = contentHash(cmd.Body)
 	version.ChangeSummary = fmt.Sprintf("Content version %d", current.Number)
 	version.ContentSource = domain.ContentSourceBrowserEditor
-	version.TextContent = plainTextFromHTML(cmd.Body)
+	version.TextContent = plainTextFromMDDM(cmd.Body)
 	version.TemplateKey = templateVersion.TemplateKey
 	version.TemplateVersion = templateVersion.Version
 
@@ -156,8 +152,7 @@ func validateBrowserTemplateVersion(item domain.DocumentTemplateVersion) error {
 
 // substituteTemplateTokens replaces well-known placeholder tokens in the body
 // with real document metadata. Called when serving the browser editor bundle so
-// the user sees pre-populated fields (e.g., Section 10 revision history) without
-// having to type them. Idempotent: if tokens are already replaced, ReplaceAll is a no-op.
+// the user sees pre-populated fields without having to type them.
 func substituteTemplateTokens(body string, doc domain.Document, version domain.Version) string {
 	versao := fmt.Sprintf("%02d", version.Number)
 	data := "—"

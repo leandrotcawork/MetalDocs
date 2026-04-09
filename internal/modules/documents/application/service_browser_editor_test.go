@@ -36,6 +36,54 @@ func TestGetBrowserEditorBundleReturnsDraftHTML(t *testing.T) {
 	}
 }
 
+func TestPlainTextFromMDDM(t *testing.T) {
+	cases := []struct {
+		name string
+		body string
+		want string
+	}{
+		{
+			name: "empty body",
+			body: "",
+			want: "",
+		},
+		{
+			name: "invalid json",
+			body: "not json",
+			want: "",
+		},
+		{
+			name: "empty blocks",
+			body: `{"mddm_version":1,"template_ref":null,"blocks":[]}`,
+			want: "",
+		},
+		{
+			name: "single paragraph",
+			body: `{"mddm_version":1,"template_ref":null,"blocks":[{"id":"b1","type":"paragraph","props":{},"children":[{"text":"Hello world"}]}]}`,
+			want: "Hello world",
+		},
+		{
+			name: "multiple paragraphs",
+			body: `{"mddm_version":1,"template_ref":null,"blocks":[{"id":"b1","type":"paragraph","props":{},"children":[{"text":"First"}]},{"id":"b2","type":"paragraph","props":{},"children":[{"text":"Second"}]}]}`,
+			want: "First Second",
+		},
+		{
+			name: "nested section field",
+			body: `{"mddm_version":1,"template_ref":null,"blocks":[{"id":"s1","type":"section","props":{"title":"Section"},"children":[{"id":"f1","type":"field","props":{"label":"Field","valueMode":"inline"},"children":[{"text":"Nested value"}]}]}]}`,
+			want: "Nested value",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := plainTextFromMDDM(tc.body)
+			if got != tc.want {
+				t.Fatalf("plainTextFromMDDM(%q) = %q, want %q", tc.body, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestGetBrowserEditorBundleRequiresTemplateSnapshot(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, time.April, 4, 11, 0, 0, 0, time.UTC)
@@ -221,7 +269,7 @@ func seedBrowserDocument(t *testing.T, ctx context.Context, repo *documentmemory
 		ContentHash:     contentHash(body),
 		ChangeSummary:   "Initial browser draft",
 		ContentSource:   domain.ContentSourceBrowserEditor,
-		TextContent:     plainTextFromHTML(body),
+		TextContent:     plainTextFromMDDM(body),
 		TemplateKey:     "po-default-canvas",
 		TemplateVersion: 1,
 		CreatedAt:       now,
@@ -281,7 +329,7 @@ func seedBrowserDocumentWithoutTemplate(t *testing.T, ctx context.Context, repo 
 		ContentHash:   contentHash(body),
 		ChangeSummary: "Initial browser draft",
 		ContentSource: domain.ContentSourceBrowserEditor,
-		TextContent:   plainTextFromHTML(body),
+		TextContent:   plainTextFromMDDM(body),
 		CreatedAt:     now,
 	}); err != nil {
 		t.Fatalf("save version: %v", err)

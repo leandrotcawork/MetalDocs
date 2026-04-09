@@ -1313,3 +1313,10 @@ Wrong:   Completed wiring and tests but left newly created adapter/test files un
 Correct: During final review, always validate `git status --short` and ensure all required new files are tracked before declaring compliance
 Rule:    A task is only complete when behavior, tests, and git tracking state all align.
 Layer:   process
+
+## Lesson FF2 - BlockNote custom block specs must be instantiated for schema registration
+Date: 2026-04-08 | Trigger: correction
+Wrong:   Planning schema registration with direct references (`section: Section`) when `createReactBlockSpec` in current BlockNote returns factory functions
+Correct: Instantiate custom specs when registering schema (`section: Section()`, etc.) and validate against installed package API before enforcing plan steps
+Rule:    Frontend integration plans must verify third-party API shape against the installed version before locking implementation steps.
+Layer:   process

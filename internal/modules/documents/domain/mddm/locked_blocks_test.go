@@ -1,6 +1,7 @@
 package mddm
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -82,21 +83,45 @@ func TestLockedBlocks_RejectsDeletedTemplatedBlock(t *testing.T) {
 }
 
 func TestLockedBlocks_AllowsDeletingOptionalSection(t *testing.T) {
-	template := map[string]any{
-		"id":                "tpl-aaa",
-		"template_block_id": "tpl-aaa",
-		"type":              "section",
-		"props": map[string]any{
-			"title":    "Indicadores",
-			"color":    "#6b1f2a",
-			"locked":   true,
-			"optional": true,
-		},
-		"children": []any{},
-	}
+	t.Run("rejects deleting non-optional section", func(t *testing.T) {
+		template := map[string]any{
+			"id":                "tpl-aaa",
+			"template_block_id": "tpl-aaa",
+			"type":              "section",
+			"props": map[string]any{
+				"title":  "Indicadores",
+				"color":  "#6b1f2a",
+				"locked": true,
+			},
+			"children": []any{},
+		}
 
-	err := EnforceLockedBlocks([]any{template}, []any{})
-	if err != nil {
-		t.Fatalf("EnforceLockedBlocks() error = %v, want nil for optional section deletion", err)
-	}
+		err := EnforceLockedBlocks([]any{template}, []any{})
+		if err == nil {
+			t.Fatal("expected LOCKED_BLOCK_DELETED error for non-optional section")
+		}
+		if !strings.Contains(err.Error(), "LOCKED_BLOCK_DELETED") {
+			t.Fatalf("EnforceLockedBlocks() error = %v, want LOCKED_BLOCK_DELETED", err)
+		}
+	})
+
+	t.Run("allows deleting optional section", func(t *testing.T) {
+		template := map[string]any{
+			"id":                "tpl-aaa",
+			"template_block_id": "tpl-aaa",
+			"type":              "section",
+			"props": map[string]any{
+				"title":    "Indicadores",
+				"color":    "#6b1f2a",
+				"locked":   true,
+				"optional": true,
+			},
+			"children": []any{},
+		}
+
+		err := EnforceLockedBlocks([]any{template}, []any{})
+		if err != nil {
+			t.Fatalf("EnforceLockedBlocks() error = %v, want nil for optional section deletion", err)
+		}
+	})
 }

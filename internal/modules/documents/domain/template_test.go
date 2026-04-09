@@ -1,10 +1,22 @@
-﻿package domain
+package domain
 
-import (
-	"os"
-	"strings"
-	"testing"
-)
+import "testing"
+
+func TestDefaultDocumentTemplateVersionsDoesNotIncludeCKEditorTemplates(t *testing.T) {
+	for _, tmpl := range DefaultDocumentTemplateVersions() {
+		if tmpl.TemplateKey == "po-default-canvas" || tmpl.TemplateKey == "po-default-browser" {
+			t.Fatalf("ckeditor template key must not be present in defaults: %s", tmpl.TemplateKey)
+		}
+		if tmpl.Editor == "ckeditor5" || tmpl.ContentFormat == "html" {
+			t.Fatalf(
+				"ckeditor editor/contentFormat must not be present in defaults: key=%s editor=%s contentFormat=%s",
+				tmpl.TemplateKey,
+				tmpl.Editor,
+				tmpl.ContentFormat,
+			)
+		}
+	}
+}
 
 func TestDefaultDocumentTemplateVersionsPODefaultIsLast(t *testing.T) {
 	var lastPO *DocumentTemplateVersion
@@ -18,7 +30,10 @@ func TestDefaultDocumentTemplateVersionsPODefaultIsLast(t *testing.T) {
 		t.Fatal("no PO template found in DefaultDocumentTemplateVersions()")
 	}
 	if lastPO.TemplateKey != "po-mddm-canvas" {
-		t.Fatalf("last PO template key = %q, want po-mddm-canvas (in-memory repo uses last entry as default)", lastPO.TemplateKey)
+		t.Fatalf(
+			"last PO template key = %q, want po-mddm-canvas (in-memory repo uses last entry as default)",
+			lastPO.TemplateKey,
+		)
 	}
 	if lastPO.Version != 1 {
 		t.Fatalf("last PO template version = %d, want 1", lastPO.Version)
@@ -59,26 +74,3 @@ func TestPOMDDMCanvasTemplateInDefaults(t *testing.T) {
 		t.Fatal("IsBrowserHTML() must return false for po-mddm-canvas")
 	}
 }
-
-func TestPOMDDMCanvasGoSQLParity(t *testing.T) {
-	migrationPath := "../../../../migrations/0065_seed_po_mddm_canvas_template.sql"
-	sqlBytes, err := os.ReadFile(migrationPath)
-	if err != nil {
-		t.Fatalf("read migration file: %v", err)
-	}
-	sqlContent := string(sqlBytes)
-
-	checks := map[string]string{
-		"template_key":   "'po-mddm-canvas'",
-		"profile_code":   "'po'",
-		"schema_version": "3",
-		"editor":         "'mddm-blocknote'",
-		"content_format": "'mddm'",
-	}
-	for field, expected := range checks {
-		if !strings.Contains(sqlContent, expected) {
-			t.Errorf("migration SQL missing %s = %s", field, expected)
-		}
-	}
-}
-

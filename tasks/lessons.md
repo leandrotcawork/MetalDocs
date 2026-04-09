@@ -1320,3 +1320,10 @@ Wrong:   Planning schema registration with direct references (`section: Section`
 Correct: Instantiate custom specs when registering schema (`section: Section()`, etc.) and validate against installed package API before enforcing plan steps
 Rule:    Frontend integration plans must verify third-party API shape against the installed version before locking implementation steps.
 Layer:   process
+
+## Lesson FG2 - Domain tests should assert defaults directly instead of reading migration SQL
+Date: 2026-04-09 | Trigger: correction
+Wrong:   A domain test read `migrations/0065_seed_po_mddm_canvas_template.sql` to assert template parity across layers
+Correct: Test `DefaultDocumentTemplateVersions()` directly and assert the forbidden template keys or editor/content-format values are absent
+Rule:    Domain tests should validate the canonical in-memory defaults, not replicate persistence-layer seed files.
+Layer:   domain

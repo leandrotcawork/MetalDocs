@@ -1,4 +1,4 @@
-﻿package domain
+package domain
 
 import (
 	"strings"
@@ -62,18 +62,18 @@ func (s DocumentTemplateSnapshot) IsBrowserHTML() bool {
 }
 
 func DefaultDocumentTemplateVersions() []DocumentTemplateVersion {
-    return []DocumentTemplateVersion{
-        {
-            TemplateKey:   "po-mddm-canvas",
-            Version:       1,
-            ProfileCode:   "po",
-            SchemaVersion: 3,
-            Name:          "PO MDDM Canvas v1",
-            Editor:        "mddm-blocknote",
-            ContentFormat: "mddm",
-            Body:          "",
-            Definition:    map[string]any{"type": "page", "id": "po-mddm-root", "children": []any{}},
-            CreatedAt:     time.Unix(0, 0).UTC(),
-        },
-    }
+	return []DocumentTemplateVersion{
+		{
+			TemplateKey:   "po-mddm-canvas",
+			Version:       1,
+			ProfileCode:   "po",
+			SchemaVersion: 3,
+			Name:          "PO MDDM Canvas v1",
+			Editor:        "mddm-blocknote",
+			ContentFormat: "mddm",
+			Body:          "",
+			Definition:    map[string]any{"type": "page", "id": "po-mddm-root", "children": []any{}},
+			CreatedAt:     time.Unix(0, 0).UTC(),
+		},
+	}
 }

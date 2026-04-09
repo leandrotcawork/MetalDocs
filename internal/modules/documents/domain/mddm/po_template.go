@@ -34,9 +34,8 @@ func POTemplateMDDM() map[string]any {
 			}),
 			sectionBlock("a0000030-0000-0000-0000-000000000030", "Visão Geral do Processo", true, false, []map[string]any{
 				richBlockBlock("a0000031-0000-0000-0000-000000000031", "Descrição do processo", true, []map[string]any{
-					paragraphBlock("a0000032-0000-0000-0000-000000000032", "Descreva o fluxo e inclua imagens do fluxograma quando fizer sentido."),
-					imageBlock("a0000033-0000-0000-0000-000000000033", "/api/images/00000000-0000-0000-0000-000000000033", "Fluxograma 1", "Fluxograma principal"),
-					imageBlock("a0000034-0000-0000-0000-000000000034", "/api/images/00000000-0000-0000-0000-000000000034", "Fluxograma 2", "Fluxograma alternativo"),
+					paragraphBlock("a0000032-0000-0000-0000-000000000032", "Descreva o fluxo e adicione imagens do fluxograma quando fizer sentido."),
+					bulletListItemBlock("a0000033-0000-0000-0000-000000000033", "Inclua os principais pontos de decisÃ£o do fluxo"),
 				}),
 			}),
 			sectionBlock("a0000040-0000-0000-0000-000000000040", "Detalhamento das Etapas", true, false, []map[string]any{
@@ -46,7 +45,6 @@ func POTemplateMDDM() map[string]any {
 							paragraphBlock("a0000044-0000-0000-0000-000000000044", "Detalhe a execução desta etapa com texto livre, listas, tabelas e imagens."),
 							bulletListItemBlock("a0000045-0000-0000-0000-000000000045", "Ponto de controle da etapa"),
 							numberedListItemBlock("a0000046-0000-0000-0000-000000000046", "Sequência operacional"),
-							imageBlock("a0000047-0000-0000-0000-000000000047", "/api/images/00000000-0000-0000-0000-000000000047", "Etapa 1", "Imagem de apoio da etapa"),
 							dataTableBlock("a0000048-0000-0000-0000-000000000048", "Checklist da etapa", []map[string]any{
 								{
 									"key":      "item",

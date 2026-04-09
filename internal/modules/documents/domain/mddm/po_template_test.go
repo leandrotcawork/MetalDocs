@@ -84,7 +84,7 @@ func TestPOTemplateMDDM_MatchesApprovedTemplateV2Layout(t *testing.T) {
 	stageItem := templateRepeatableItemByLabel(t, blocks, "Etapas")
 	stageRichBlock := templateChildByType(t, stageItem, "richBlock")
 	richTypes := childTypes(templateChildren(t, stageRichBlock))
-	for _, want := range []string{"paragraph", "bulletListItem", "numberedListItem", "image", "dataTable"} {
+	for _, want := range []string{"paragraph", "bulletListItem", "numberedListItem", "dataTable"} {
 		if !containsString(richTypes, want) {
 			t.Fatalf("etapa rich area missing %q child; got %v", want, richTypes)
 		}
@@ -92,8 +92,10 @@ func TestPOTemplateMDDM_MatchesApprovedTemplateV2Layout(t *testing.T) {
 
 	overviewRichBlock := templateChildByType(t, blocks[3], "richBlock")
 	overviewRichTypes := childTypes(templateChildren(t, overviewRichBlock))
-	if count := countType(overviewRichTypes, "image"); count < 2 {
-		t.Fatalf("section 4 rich area image count = %d, want at least 2", count)
+	for _, want := range []string{"paragraph", "bulletListItem"} {
+		if !containsString(overviewRichTypes, want) {
+			t.Fatalf("overview rich area missing %q child; got %v", want, overviewRichTypes)
+		}
 	}
 }
 

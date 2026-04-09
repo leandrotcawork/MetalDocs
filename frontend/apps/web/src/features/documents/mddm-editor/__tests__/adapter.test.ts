@@ -129,6 +129,44 @@ describe("MDDM ↔ BlockNote adapter", () => {
     );
   });
 
+  it("round-trips section optional and field hint props", () => {
+    const input: MDDMEnvelope = {
+      mddm_version: 1,
+      template_ref: null,
+      blocks: [
+        {
+          id: "11111111-1111-1111-1111-111111111111",
+          type: "section",
+          props: {
+            title: "7 - Indicadores",
+            color: "#6b1f2a",
+            locked: true,
+            optional: true,
+          },
+          children: [
+            {
+              id: "22222222-2222-2222-2222-222222222222",
+              type: "field",
+              props: {
+                label: "Indicador",
+                valueMode: "inline",
+                locked: true,
+                hint: "hint: d.kpis[i].indicador",
+              },
+              children: [{ text: "" }],
+            },
+          ],
+        },
+      ],
+    };
+
+    const output = blockNoteToMDDM(mddmToBlockNote(input));
+    expect(output.blocks[0].props.optional).toBe(true);
+    expect((output.blocks[0].children?.[0] as any).props.hint).toBe(
+      "hint: d.kpis[i].indicador",
+    );
+  });
+
   it("keeps envelope metadata and all 17 block types canonically equivalent in a round-trip", () => {
     const input: MDDMEnvelope = {
       mddm_version: 1,

@@ -336,11 +336,16 @@ function toMDDMProps(type: string, props: UnknownRecord): UnknownRecord {
       if (valueMode && valueMode !== "inline") {
         throw new Error(`unsupported field valueMode: ${valueMode}`);
       }
-      return {
+      const props: UnknownRecord = {
         label: asString(next.label),
         valueMode: "inline",
         locked: Boolean(next.locked),
       };
+      const hint = asOptionalString(next.hint);
+      if (hint) {
+        props.hint = hint;
+      }
+      return props;
     }
 
     case "fieldGroup": {
@@ -354,6 +359,7 @@ function toMDDMProps(type: string, props: UnknownRecord): UnknownRecord {
         title: asString(next.title),
         color: asString(next.color),
         locked: Boolean(next.locked),
+        ...(next.optional === true ? { optional: true } : {}),
       };
 
     case "repeatable":

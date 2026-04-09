@@ -51,6 +51,7 @@ func canonicalizeBlock(block map[string]any) map[string]any {
 		"bulletListItem":   true,
 		"numberedListItem": true,
 		"dataTableCell":    true,
+		"field":            true,
 	}
 
 	if children, ok := block["children"].([]any); ok {
@@ -106,7 +107,20 @@ func canonicalizeInlineContent(runs []any) []any {
 			sortedMarks := make([]any, len(marks))
 			copy(sortedMarks, marks)
 			sort.SliceStable(sortedMarks, func(i, j int) bool {
-				return markOrder[sortedMarks[i].(map[string]any)["type"].(string)] < markOrder[sortedMarks[j].(map[string]any)["type"].(string)]
+				aType := sortedMarks[i].(map[string]any)["type"].(string)
+				bType := sortedMarks[j].(map[string]any)["type"].(string)
+				aIdx, aKnown := markOrder[aType]
+				bIdx, bKnown := markOrder[bType]
+				if !aKnown && !bKnown {
+					return aType < bType
+				}
+				if !aKnown {
+					return false
+				}
+				if !bKnown {
+					return true
+				}
+				return aIdx < bIdx
 			})
 			newRun["marks"] = sortedMarks
 		}

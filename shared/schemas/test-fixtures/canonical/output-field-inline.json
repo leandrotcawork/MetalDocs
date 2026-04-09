@@ -1,0 +1,17 @@
+{
+  "blocks": [
+    {
+      "children": [
+        {
+          "marks": [{ "type": "bold" }],
+          "text": "Hello world"
+        }
+      ],
+      "id": "11111111-1111-1111-1111-111111111111",
+      "props": { "label": "Name", "locked": true, "valueMode": "inline" },
+      "type": "field"
+    }
+  ],
+  "mddm_version": 1,
+  "template_ref": null
+}

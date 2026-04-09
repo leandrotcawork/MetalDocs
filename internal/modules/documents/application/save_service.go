@@ -42,9 +42,10 @@ type ImageReconciler interface {
 }
 
 type draftRow struct {
-	ID            uuid.UUID
-	VersionNumber int
-	TemplateRef   json.RawMessage
+	ID              uuid.UUID
+	VersionNumber   int
+	TemplateRef     json.RawMessage
+	PreviousContent json.RawMessage
 }
 
 func NewSaveDraftService(repo DraftRepository, ts *TemplateService, recon ImageReconciler, rulesDeps mddm.RulesContext) *SaveDraftService {
@@ -67,11 +68,63 @@ func (s *SaveDraftService) SaveDraft(ctx context.Context, in SaveDraftInput) (*S
 		return nil, fmt.Errorf("canonicalize: %w", err)
 	}
 
-	// 3. Layer 2: business rules
+	// (moved up from step 5) Load existing draft row so TemplateRef and PreviousContent
+	// are available for governance checks before Layer 2 runs.
+	draft, err := s.repo.GetActiveDraft(ctx, in.DocumentID)
+	if err != nil {
+		return nil, err
+	}
+	if draft == nil {
+		return nil, fmt.Errorf("no active draft for document %s", in.DocumentID)
+	}
+
+	docBlocks, _ := canonical["blocks"].([]any)
+
+	// 2a. Template governance: snapshot verify + locked-block enforcement
+	var templateBlocks []any
+	if s.templateService != nil && len(draft.TemplateRef) > 0 {
+		var ref TemplateRef
+		if err := json.Unmarshal(draft.TemplateRef, &ref); err != nil {
+			return nil, fmt.Errorf("template_ref parse: %w", err)
+		}
+		templateContent, err := s.templateService.LoadAndVerify(ctx, ref)
+		if err != nil {
+			return nil, err
+		}
+		var tmplEnvelope map[string]any
+		if err := json.Unmarshal(templateContent, &tmplEnvelope); err != nil {
+			return nil, fmt.Errorf("template content parse: %w", err)
+		}
+		templateBlocks, _ = tmplEnvelope["blocks"].([]any)
+		if err := mddm.EnforceLockedBlocks(templateBlocks, docBlocks); err != nil {
+			return nil, err
+		}
+	}
+
+	// 2b. Block ID continuity: reject rewrites of templated block IDs across saves
+	if len(draft.PreviousContent) > 0 {
+		var prevEnvelope map[string]any
+		if err := json.Unmarshal(draft.PreviousContent, &prevEnvelope); err != nil {
+			return nil, fmt.Errorf("previous content parse: %w", err)
+		}
+		prevBlocks, _ := prevEnvelope["blocks"].([]any)
+		if err := mddm.CheckBlockIDContinuity(prevBlocks, docBlocks); err != nil {
+			return nil, err
+		}
+	}
+
+	// 3. Layer 2: business rules (with template/previous context populated)
 	rctx := s.rulesDeps
 	rctx.Ctx = ctx
 	rctx.DocumentID = in.DocumentID
 	rctx.UserID = in.UserID
+	rctx.TemplateBlocks = templateBlocks
+	if len(draft.PreviousContent) > 0 {
+		var prevEnvelope map[string]any
+		if err := json.Unmarshal(draft.PreviousContent, &prevEnvelope); err == nil {
+			rctx.PreviousBlocks, _ = prevEnvelope["blocks"].([]any)
+		}
+	}
 	if err := mddm.EnforceLayer2(rctx, canonical); err != nil {
 		return nil, err
 	}
@@ -83,21 +136,12 @@ func (s *SaveDraftService) SaveDraft(ctx context.Context, in SaveDraftInput) (*S
 	}
 	hash := computeContentHash(canonicalBytes)
 
-	// 5. Load existing draft row
-	draft, err := s.repo.GetActiveDraft(ctx, in.DocumentID)
-	if err != nil {
-		return nil, err
-	}
-	if draft == nil {
-		return nil, fmt.Errorf("no active draft for document %s", in.DocumentID)
-	}
-
-	// 6. Update draft content (in-place)
+	// 5. Update draft content (in-place)
 	if err := s.repo.UpdateDraftContent(ctx, draft.ID, canonicalBytes, hash); err != nil {
 		return nil, err
 	}
 
-	// 7. Reconcile image references
+	// 6. Reconcile image references
 	imageIDs := extractImageIDs(canonical)
 	if err := s.imageRecon.Reconcile(ctx, draft.ID, imageIDs); err != nil {
 		return nil, err

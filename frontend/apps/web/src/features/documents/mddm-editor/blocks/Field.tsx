@@ -9,12 +9,13 @@ export const Field = createReactBlockSpec(
       locked: { default: true },
       __template_block_id: { default: undefined, type: "string" },
     },
-    content: "none",
+    content: "inline",
   },
   {
     render: (props) => (
       <div data-mddm-block="field">
         <strong>{props.block.props.label || "Field"}</strong>
+        <div ref={props.contentRef} />
       </div>
     ),
   },

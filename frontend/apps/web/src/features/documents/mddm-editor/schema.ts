@@ -9,9 +9,27 @@ import { RepeatableItem } from "./blocks/RepeatableItem";
 import { RichBlock } from "./blocks/RichBlock";
 import { Section } from "./blocks/Section";
 
+const {
+  paragraph,
+  heading,
+  bulletListItem,
+  numberedListItem,
+  image,
+  quote,
+  divider,
+  codeBlock,
+} = defaultBlockSpecs;
+
 export const mddmSchema = BlockNoteSchema.create({
   blockSpecs: {
-    ...defaultBlockSpecs,
+    paragraph,
+    heading,
+    bulletListItem,
+    numberedListItem,
+    image,
+    quote,
+    divider,
+    codeBlock,
     section: Section(),
     fieldGroup: FieldGroup(),
     field: Field(),
@@ -23,4 +41,3 @@ export const mddmSchema = BlockNoteSchema.create({
     richBlock: RichBlock(),
   },
 });
-

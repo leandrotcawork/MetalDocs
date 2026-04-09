@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 
 	"github.com/google/uuid"
+
+	"metaldocs/internal/modules/documents/domain/mddm"
 )
 
 type ReleaseInput struct {
@@ -19,7 +21,7 @@ type DocxRenderer interface {
 
 type ReleaseRepo interface {
 	GetDraft(ctx context.Context, id uuid.UUID) (*DraftSnapshot, error)
-	ArchivePreviousReleased(ctx context.Context, documentID string) (versionID uuid.UUID, docxBytes []byte, err error)
+	ArchivePreviousReleased(ctx context.Context, documentID string) (versionID uuid.UUID, prevContentBlocks []byte, docxBytes []byte, err error)
 	PromoteDraftToReleased(ctx context.Context, draftID uuid.UUID, docxBytes []byte, approvedBy string) error
 	StoreRevisionDiff(ctx context.Context, versionID uuid.UUID, diff json.RawMessage) error
 	DeleteImageRefs(ctx context.Context, versionID uuid.UUID) error
@@ -55,7 +57,7 @@ func (s *ReleaseService) ReleaseDraft(ctx context.Context, in ReleaseInput) erro
 	}
 
 	// 2. Atomic sequence: archive prev → promote draft → store diff → delete refs → orphan cleanup
-	prevVersionID, _, err := s.repo.ArchivePreviousReleased(ctx, in.DocumentID)
+	prevVersionID, prevContentBlocks, _, err := s.repo.ArchivePreviousReleased(ctx, in.DocumentID)
 	if err != nil {
 		return err
 	}
@@ -64,9 +66,21 @@ func (s *ReleaseService) ReleaseDraft(ctx context.Context, in ReleaseInput) erro
 		return err
 	}
 
-	// Diff is computed from canonicalized blocks; here we use a placeholder.
-	// Real implementation reads previous canonical content and runs ComputeDiff.
-	diffJSON := json.RawMessage(`{"added":[],"removed":[],"modified":[]}`)
+	// Compute real diff from previous and current canonical content blocks.
+	var prevBlocks []any
+	if len(prevContentBlocks) > 0 {
+		var prevEnvelope map[string]any
+		if err := json.Unmarshal(prevContentBlocks, &prevEnvelope); err == nil {
+			prevBlocks, _ = prevEnvelope["blocks"].([]any)
+		}
+	}
+	var currBlocks []any
+	var currEnvelope map[string]any
+	if err := json.Unmarshal(draft.ContentBlocks, &currEnvelope); err == nil {
+		currBlocks, _ = currEnvelope["blocks"].([]any)
+	}
+	diff := mddm.ComputeDiff(prevBlocks, currBlocks)
+	diffJSON, _ := json.Marshal(diff)
 	if err := s.repo.StoreRevisionDiff(ctx, in.DraftID, diffJSON); err != nil {
 		return err
 	}

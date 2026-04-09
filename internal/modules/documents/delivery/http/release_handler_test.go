@@ -1,10 +1,15 @@
 package httpdelivery
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
+	"github.com/google/uuid"
+
+	"metaldocs/internal/modules/documents/application"
 	iamdomain "metaldocs/internal/modules/iam/domain"
 )
 
@@ -68,11 +73,23 @@ func TestReleaseHandler_DeniedApprover(t *testing.T) {
 	}
 }
 
+type stubReleaseService struct {
+	called bool
+}
+
+func (s *stubReleaseService) ReleaseDraft(_ context.Context, _ application.ReleaseInput) error {
+	s.called = true
+	return nil
+}
+
 func TestReleaseHandler_AllowedApprover(t *testing.T) {
 	checker := &recordingReleaseAuthChecker{allowed: true}
-	handler := NewReleaseHandler(checker)
+	svc := &stubReleaseService{}
+	handler := NewReleaseHandler(checker).WithReleaseService(svc)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/documents/PO-118/release", nil)
+	draftID := uuid.New().String()
+	body := `{"draft_id":"` + draftID + `"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/documents/PO-118/release", strings.NewReader(body))
 	req = req.WithContext(iamdomain.WithAuthContext(req.Context(), "user-123", nil))
 	rec := httptest.NewRecorder()
 
@@ -89,5 +106,8 @@ func TestReleaseHandler_AllowedApprover(t *testing.T) {
 	}
 	if checker.documentID != "PO-118" {
 		t.Fatalf("checker documentID = %q, want %q", checker.documentID, "PO-118")
+	}
+	if !svc.called {
+		t.Fatal("expected release service to be called")
 	}
 }

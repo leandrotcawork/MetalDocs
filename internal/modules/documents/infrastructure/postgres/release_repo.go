@@ -43,24 +43,25 @@ func (r *ReleaseRepo) GetDraft(ctx context.Context, id uuid.UUID) (*application.
 	return &snapshot, nil
 }
 
-func (r *ReleaseRepo) ArchivePreviousReleased(ctx context.Context, documentID string) (uuid.UUID, []byte, error) {
+func (r *ReleaseRepo) ArchivePreviousReleased(ctx context.Context, documentID string) (uuid.UUID, []byte, []byte, error) {
 	tx, err := r.beginOrReuseTx(ctx)
 	if err != nil {
-		return uuid.Nil, nil, err
+		return uuid.Nil, nil, nil, err
 	}
 
 	var prevID uuid.UUID
+	var prevContentBlocks []byte
 	var prevDocx []byte
 	err = tx.QueryRowContext(ctx, `
-		SELECT id, docx_bytes
+		SELECT id, content_blocks, docx_bytes
 		FROM metaldocs.document_versions_mddm
 		WHERE document_id = $1 AND status = 'released'
-	`, documentID).Scan(&prevID, &prevDocx)
+	`, documentID).Scan(&prevID, &prevContentBlocks, &prevDocx)
 	if errors.Is(err, sql.ErrNoRows) {
-		return uuid.Nil, nil, nil
+		return uuid.Nil, nil, nil, nil
 	}
 	if err != nil {
-		return uuid.Nil, nil, r.rollbackWithError(ctx, fmt.Errorf("archive previous released lookup for %s: %w", documentID, err))
+		return uuid.Nil, nil, nil, r.rollbackWithError(ctx, fmt.Errorf("archive previous released lookup for %s: %w", documentID, err))
 	}
 
 	if _, err := tx.ExecContext(ctx, `
@@ -68,10 +69,10 @@ func (r *ReleaseRepo) ArchivePreviousReleased(ctx context.Context, documentID st
 		SET status = 'archived', content_blocks = NULL
 		WHERE id = $1
 	`, prevID); err != nil {
-		return uuid.Nil, nil, r.rollbackWithError(ctx, fmt.Errorf("archive previous released %s: %w", prevID, err))
+		return uuid.Nil, nil, nil, r.rollbackWithError(ctx, fmt.Errorf("archive previous released %s: %w", prevID, err))
 	}
 
-	return prevID, prevDocx, nil
+	return prevID, prevContentBlocks, prevDocx, nil
 }
 
 func (r *ReleaseRepo) PromoteDraftToReleased(ctx context.Context, draftID uuid.UUID, docxBytes []byte, approvedBy string) error {

@@ -12,9 +12,9 @@ type fakeReleaseRepo struct {
 	steps []string
 }
 
-func (f *fakeReleaseRepo) ArchivePreviousReleased(ctx context.Context, documentID string) (uuid.UUID, []byte, error) {
+func (f *fakeReleaseRepo) ArchivePreviousReleased(ctx context.Context, documentID string) (uuid.UUID, []byte, []byte, error) {
 	f.steps = append(f.steps, "archive_previous")
-	return uuid.New(), []byte("rendered"), nil
+	return uuid.New(), []byte(`{"mddm_version":1,"blocks":[],"template_ref":null}`), []byte("rendered"), nil
 }
 
 func (f *fakeReleaseRepo) PromoteDraftToReleased(ctx context.Context, draftID uuid.UUID, docxBytes []byte, approvedBy string) error {

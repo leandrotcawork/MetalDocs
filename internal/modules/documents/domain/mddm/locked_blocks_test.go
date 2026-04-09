@@ -80,3 +80,23 @@ func TestLockedBlocks_RejectsDeletedTemplatedBlock(t *testing.T) {
 		t.Error("expected LOCKED_BLOCK_DELETED error")
 	}
 }
+
+func TestLockedBlocks_AllowsDeletingOptionalSection(t *testing.T) {
+	template := map[string]any{
+		"id":                "tpl-aaa",
+		"template_block_id": "tpl-aaa",
+		"type":              "section",
+		"props": map[string]any{
+			"title":    "Indicadores",
+			"color":    "#6b1f2a",
+			"locked":   true,
+			"optional": true,
+		},
+		"children": []any{},
+	}
+
+	err := EnforceLockedBlocks([]any{template}, []any{})
+	if err != nil {
+		t.Fatalf("EnforceLockedBlocks() error = %v, want nil for optional section deletion", err)
+	}
+}

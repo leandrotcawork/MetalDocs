@@ -216,3 +216,51 @@ func TestRules_RejectCrossDocRefMissing(t *testing.T) {
 		t.Errorf("expected CROSS_DOC_REF_NOT_FOUND error, got %v", err)
 	}
 }
+
+func TestRules_AllowsDataTableInEtapaRichArea(t *testing.T) {
+	env := parseEnvelope(t, `{
+		"mddm_version": 1,
+		"template_ref": null,
+		"blocks": [
+			{
+				"id": "11111111-1111-1111-1111-111111111111",
+				"type": "repeatable",
+				"props": {"label": "Etapas", "itemPrefix": "Etapa", "locked": true, "minItems": 1, "maxItems": 10},
+				"children": [
+					{
+						"id": "22222222-2222-2222-2222-222222222222",
+						"type": "repeatableItem",
+						"props": {"title": "Etapa 1"},
+						"children": [
+							{
+								"id": "33333333-3333-3333-3333-333333333333",
+								"type": "richBlock",
+								"props": {"label": "Conteudo livre", "locked": false},
+								"children": [
+									{
+										"id": "44444444-4444-4444-4444-444444444444",
+										"type": "dataTable",
+										"props": {
+											"label": "Checklist",
+											"columns": [
+												{"key": "item", "label": "Item", "type": "text", "required": false}
+											],
+											"locked": false,
+											"minRows": 0,
+											"maxRows": 10
+										},
+										"children": []
+									}
+								]
+							}
+						]
+					}
+				]
+			}
+		]
+	}`)
+
+	if err := EnforceLayer2(RulesContext{}, env); err != nil {
+		t.Fatalf("EnforceLayer2() error = %v, want nil", err)
+	}
+}

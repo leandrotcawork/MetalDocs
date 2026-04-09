@@ -1,7 +1,9 @@
 package httpdelivery
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -10,7 +12,13 @@ import (
 
 	"metaldocs/internal/modules/documents/application"
 	"metaldocs/internal/modules/documents/domain"
+	"metaldocs/internal/modules/documents/domain/mddm"
 	documentmemory "metaldocs/internal/modules/documents/infrastructure/memory"
+)
+
+const (
+	testMDDMBody        = `{"mddm_version":1,"template_ref":null,"blocks":[{"id":"b1","type":"paragraph","props":{},"children":[{"text":"Original"}]}]}`
+	testMDDMBodyUpdated = `{"mddm_version":1,"template_ref":null,"blocks":[{"id":"b1","type":"paragraph","props":{},"children":[{"text":"Atualizado"}]}]}`
 )
 
 func TestHandleDocumentBrowserContentPost(t *testing.T) {
@@ -18,10 +26,17 @@ func TestHandleDocumentBrowserContentPost(t *testing.T) {
 	now := time.Date(2026, time.April, 4, 11, 0, 0, 0, time.UTC)
 	repo := documentmemory.NewRepository()
 	service := application.NewService(repo, nil, applicationFixedClock{now: now})
-	doc := seedBrowserHandlerDocument(t, ctx, repo, now, `<section><p>Original</p></section>`)
+	doc := seedBrowserHandlerDocument(t, ctx, repo, now, testMDDMBody)
 	handler := NewHandler(service)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/documents/"+doc.ID+"/content/browser", strings.NewReader(`{"body":"<p>Atualizado</p>","draftToken":"v1:test"}`))
+	reqBody, err := json.Marshal(map[string]string{
+		"body":       testMDDMBodyUpdated,
+		"draftToken": "v1:test",
+	})
+	if err != nil {
+		t.Fatalf("marshal request body: %v", err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/documents/"+doc.ID+"/content/browser", bytes.NewReader(reqBody))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
@@ -40,16 +55,17 @@ func TestHandleDocumentTemplatesGetAndAssignmentPut(t *testing.T) {
 	now := time.Date(2026, time.April, 5, 12, 0, 0, 0, time.UTC)
 	repo := documentmemory.NewRepository()
 	service := application.NewService(repo, nil, applicationFixedClock{now: now})
-	doc := seedBrowserHandlerDocument(t, ctx, repo, now, `<section><p>Original</p></section>`)
+	doc := seedBrowserHandlerDocument(t, ctx, repo, now, testMDDMBody)
 	if err := repo.UpsertDocumentTemplateVersionForTest(ctx, domain.DocumentTemplateVersion{
-		TemplateKey:   "po-browser-override",
+		TemplateKey:   "po-mddm-override",
 		Version:       2,
 		ProfileCode:   "po",
 		SchemaVersion: 3,
-		Name:          "PO Browser Override",
-		Editor:        "ckeditor5",
-		ContentFormat: "html",
-		Body:          `<section><p>Override</p></section>`,
+		Name:          "PO MDDM Override",
+		Editor:        "mddm-blocknote",
+		ContentFormat: "mddm",
+		Body:          testMDDMBodyUpdated,
+		Definition:    mddm.POTemplateMDDM(),
 		CreatedAt:     time.Unix(1, 0).UTC(),
 	}); err != nil {
 		t.Fatalf("upsert template version: %v", err)
@@ -62,18 +78,18 @@ func TestHandleDocumentTemplatesGetAndAssignmentPut(t *testing.T) {
 	if listRec.Code != http.StatusOK {
 		t.Fatalf("list status = %d, want %d", listRec.Code, http.StatusOK)
 	}
-	if !strings.Contains(listRec.Body.String(), `"templateKey":"po-default-browser"`) {
+	if !strings.Contains(listRec.Body.String(), `"templateKey":"po-mddm-canvas"`) {
 		t.Fatalf("list body = %s", listRec.Body.String())
 	}
 
-	assignReq := httptest.NewRequest(http.MethodPut, "/api/v1/documents/"+doc.ID+"/template-assignment", strings.NewReader(`{"templateKey":"po-browser-override","templateVersion":2}`))
+	assignReq := httptest.NewRequest(http.MethodPut, "/api/v1/documents/"+doc.ID+"/template-assignment", strings.NewReader(`{"templateKey":"po-mddm-override","templateVersion":2}`))
 	assignReq.Header.Set("Content-Type", "application/json")
 	assignRec := httptest.NewRecorder()
 	handler.handleDocumentTemplateAssignmentPut(assignRec, assignReq, doc.ID)
 	if assignRec.Code != http.StatusOK {
 		t.Fatalf("assign status = %d, want %d", assignRec.Code, http.StatusOK)
 	}
-	if !strings.Contains(assignRec.Body.String(), `"templateKey":"po-browser-override"`) {
+	if !strings.Contains(assignRec.Body.String(), `"templateKey":"po-mddm-override"`) {
 		t.Fatalf("assign body = %s", assignRec.Body.String())
 	}
 	if !strings.Contains(assignRec.Body.String(), `"templateVersion":2`) {
@@ -119,7 +135,7 @@ func seedBrowserHandlerDocument(t *testing.T, ctx context.Context, repo *documen
 	}
 	if err := repo.UpsertDocumentTemplateAssignment(ctx, domain.DocumentTemplateAssignment{
 		DocumentID:      doc.ID,
-		TemplateKey:     "po-default-canvas",
+		TemplateKey:     "po-mddm-canvas",
 		TemplateVersion: 1,
 		AssignedAt:      now,
 	}); err != nil {
@@ -132,8 +148,8 @@ func seedBrowserHandlerDocument(t *testing.T, ctx context.Context, repo *documen
 		ContentHash:     "test",
 		ChangeSummary:   "Initial browser draft",
 		ContentSource:   domain.ContentSourceBrowserEditor,
-		TextContent:     "Original",
-		TemplateKey:     "po-default-canvas",
+		TextContent:     plainTextFromMDDM(body),
+		TemplateKey:     "po-mddm-canvas",
 		TemplateVersion: 1,
 		CreatedAt:       now,
 	}); err != nil {
@@ -172,12 +188,91 @@ func TestHandleDocumentBrowserEditorBundleCreatedAt(t *testing.T) {
 func seedCompatibleBrowserTemplateSchemaSet(t *testing.T, repo *documentmemory.Repository) {
 	t.Helper()
 
+	schema := map[string]any{
+		"sections": []any{
+			map[string]any{
+				"key":   "identificacaoProcesso",
+				"num":   "2",
+				"title": "Identificacao do Processo",
+				"fields": []any{
+					map[string]any{"key": "objetivo", "label": "Objetivo", "type": "textarea"},
+				},
+			},
+			map[string]any{
+				"key":   "visaoGeral",
+				"num":   "4",
+				"title": "Visao Geral do Processo",
+				"fields": []any{
+					map[string]any{"key": "descricaoProcesso", "label": "Descricao do processo", "type": "rich"},
+				},
+			},
+		},
+	}
+
+	if err := repo.UpsertDocumentProfileSchemaVersion(context.Background(), domain.DocumentProfileSchemaVersion{
+		ProfileCode:   "po",
+		Version:       1,
+		IsActive:      true,
+		ContentSchema: schema,
+	}); err != nil {
+		t.Fatalf("upsert browser schema version: %v", err)
+	}
 	if err := repo.UpsertDocumentProfileSchemaVersion(context.Background(), domain.DocumentProfileSchemaVersion{
 		ProfileCode:   "po",
 		Version:       3,
 		IsActive:      false,
-		ContentSchema: map[string]any{},
+		ContentSchema: schema,
 	}); err != nil {
 		t.Fatalf("upsert browser schema version: %v", err)
+	}
+	if err := repo.UpsertDocumentTemplateVersionForTest(context.Background(), domain.DocumentTemplateVersion{
+		TemplateKey:   "po-mddm-canvas",
+		Version:       1,
+		ProfileCode:   "po",
+		SchemaVersion: 3,
+		Name:          "PO MDDM Canvas v1",
+		Editor:        "mddm-blocknote",
+		ContentFormat: "mddm",
+		Body:          testMDDMBody,
+		Definition:    mddm.POTemplateMDDM(),
+		CreatedAt:     time.Unix(0, 0).UTC(),
+	}); err != nil {
+		t.Fatalf("upsert browser template version: %v", err)
+	}
+}
+
+func plainTextFromMDDM(body string) string {
+	body = strings.TrimSpace(body)
+	if body == "" {
+		return ""
+	}
+
+	var envelope struct {
+		Blocks []json.RawMessage `json:"blocks"`
+	}
+	if err := json.Unmarshal([]byte(body), &envelope); err != nil {
+		return ""
+	}
+
+	var parts []string
+	for _, block := range envelope.Blocks {
+		collectPlainTextFromMDDM(block, &parts)
+	}
+	return strings.Join(parts, " ")
+}
+
+func collectPlainTextFromMDDM(raw json.RawMessage, parts *[]string) {
+	var node struct {
+		Text     string            `json:"text"`
+		Children []json.RawMessage `json:"children"`
+	}
+	if err := json.Unmarshal(raw, &node); err != nil {
+		return
+	}
+	if text := strings.TrimSpace(node.Text); text != "" {
+		*parts = append(*parts, text)
+	}
+	for _, child := range node.Children {
+		collectPlainTextFromMDDM(child, parts)
 	}
 }

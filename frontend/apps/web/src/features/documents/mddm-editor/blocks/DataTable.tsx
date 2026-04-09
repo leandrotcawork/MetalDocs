@@ -18,7 +18,7 @@ export const DataTable = createReactBlockSpec(
       locked: { default: true },
       minRows: { default: 0 },
       maxRows: { default: 500 },
-      __template_block_id: { default: undefined, type: "string" },
+      __template_block_id: { default: "" },
     },
     content: "none",
   },

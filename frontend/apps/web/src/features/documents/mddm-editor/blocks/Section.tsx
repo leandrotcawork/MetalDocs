@@ -7,7 +7,7 @@ export const Section = createReactBlockSpec(
       title: { default: "" },
       color: { default: "#6b1f2a" },
       locked: { default: true },
-      __template_block_id: { default: undefined, type: "string" },
+      __template_block_id: { default: "" },
     },
     content: "none",
   },

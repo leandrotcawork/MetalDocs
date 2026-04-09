@@ -9,7 +9,7 @@ export const Repeatable = createReactBlockSpec(
       locked: { default: true },
       minItems: { default: 0 },
       maxItems: { default: 100 },
-      __template_block_id: { default: undefined, type: "string" },
+      __template_block_id: { default: "" },
     },
     content: "none",
   },

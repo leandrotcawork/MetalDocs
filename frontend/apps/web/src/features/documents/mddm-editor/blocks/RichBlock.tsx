@@ -6,7 +6,7 @@ export const RichBlock = createReactBlockSpec(
     propSchema: {
       label: { default: "" },
       locked: { default: true },
-      __template_block_id: { default: undefined, type: "string" },
+      __template_block_id: { default: "" },
     },
     content: "none",
   },

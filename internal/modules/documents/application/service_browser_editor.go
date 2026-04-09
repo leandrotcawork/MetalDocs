@@ -46,11 +46,15 @@ func (s *Service) GetBrowserEditorBundleAuthorized(ctx context.Context, document
 		return BrowserEditorBundle{}, domain.ErrDocumentTemplateNotFound
 	}
 
+	body := current.Content
+	if templateVersion.IsBrowserHTML() {
+		body = substituteTemplateTokens(current.Content, doc, current)
+	}
 	bundle := BrowserEditorBundle{
 		Document:   doc,
 		Versions:   versions,
 		Governance: governance,
-		Body:       substituteTemplateTokens(current.Content, doc, current),
+		Body:       body,
 		DraftToken: draftTokenForVersion(current),
 	}
 	bundle.TemplateSnapshot = documentTemplateSnapshotFromVersion(templateVersion)
@@ -144,7 +148,7 @@ func validateBrowserTemplateVersion(item domain.DocumentTemplateVersion) error {
 	if strings.TrimSpace(item.TemplateKey) == "" || item.Version <= 0 || strings.TrimSpace(item.ProfileCode) == "" {
 		return domain.ErrInvalidCommand
 	}
-	if !item.IsBrowserHTML() {
+	if !item.IsBrowserEditor() {
 		return domain.ErrInvalidCommand
 	}
 	return nil

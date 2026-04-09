@@ -6,7 +6,7 @@ export const FieldGroup = createReactBlockSpec(
     propSchema: {
       columns: { default: 1, values: [1, 2] as const },
       locked: { default: true },
-      __template_block_id: { default: undefined, type: "string" },
+      __template_block_id: { default: "" },
     },
     content: "none",
   },

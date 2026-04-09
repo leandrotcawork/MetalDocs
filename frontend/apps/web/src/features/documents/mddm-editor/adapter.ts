@@ -71,6 +71,26 @@ type BlockArrayWithMeta = BlockNoteBlock[] & {
 
 const ENVELOPE_META_KEY = "__mddm_envelope_meta__";
 
+const ALLOWED_MDDM_TYPES = new Set<string>([
+  "section",
+  "fieldGroup",
+  "field",
+  "repeatable",
+  "repeatableItem",
+  "dataTable",
+  "dataTableRow",
+  "dataTableCell",
+  "richBlock",
+  "paragraph",
+  "heading",
+  "bulletListItem",
+  "numberedListItem",
+  "image",
+  "quote",
+  "code",
+  "divider",
+]);
+
 const INLINE_BLOCK_TYPES = new Set<string>([
   "paragraph",
   "heading",
@@ -84,6 +104,33 @@ const INLINE_BLOCK_TYPES = new Set<string>([
 const LEAF_BLOCK_TYPES = new Set<string>(["image", "divider"]);
 
 const MARK_ORDER = ["bold", "code", "italic", "strike", "underline"];
+
+function newUUID(): string {
+  const cryptoValue = (globalThis as any)?.crypto;
+  if (cryptoValue && typeof cryptoValue.randomUUID === "function") {
+    return cryptoValue.randomUUID();
+  }
+
+  // Fallback: RFC4122-ish v4 UUID.
+  let out = "";
+  for (let i = 0; i < 36; i += 1) {
+    if (i === 8 || i === 13 || i === 18 || i === 23) {
+      out += "-";
+      continue;
+    }
+    if (i === 14) {
+      out += "4";
+      continue;
+    }
+    const r = Math.floor(Math.random() * 16);
+    if (i === 19) {
+      out += ((r & 0x3) | 0x8).toString(16);
+      continue;
+    }
+    out += r.toString(16);
+  }
+  return out;
+}
 
 export function mddmToBlockNote(envelope: MDDMEnvelope): BlockNoteBlock[] {
   const blocks = envelope.blocks.map(toBlockNoteBlock) as BlockArrayWithMeta;
@@ -192,10 +239,13 @@ function toBlockNoteType(mddmType: string): string {
 }
 
 function toMDDMType(blockNoteType: string): string {
-  if (blockNoteType === "codeBlock") {
-    return "code";
+  const mapped = blockNoteType === "codeBlock" ? "code" : blockNoteType;
+
+  if (!ALLOWED_MDDM_TYPES.has(mapped)) {
+    throw new Error(`unsupported block type: ${blockNoteType}`);
   }
-  return blockNoteType;
+
+  return mapped;
 }
 
 function toBlockNoteProps(type: string, props: UnknownRecord): UnknownRecord {
@@ -223,28 +273,94 @@ function toBlockNoteProps(type: string, props: UnknownRecord): UnknownRecord {
 }
 
 function toMDDMProps(type: string, props: UnknownRecord): UnknownRecord {
+  // BlockNote tends to carry default styling props; MDDM export must be whitelist-only
+  // so we don't leak editor defaults into persisted payloads.
   const next = cloneRecord(props);
 
-  if (type === "image") {
-    next.src = asString(next.url);
-    next.alt = asString(next.alt ?? next.name);
-    next.caption = asString(next.caption);
-    delete next.url;
-    delete next.name;
-    delete next.showPreview;
-    delete next.previewWidth;
+  switch (type) {
+    case "paragraph":
+    case "quote":
+    case "divider":
+    case "dataTableRow":
+      return {};
+
+    case "heading": {
+      const level = Number(next.level);
+      const normalized =
+        Number.isFinite(level) && level >= 1 && level <= 6 ? Math.trunc(level) : 1;
+      return { level: normalized };
+    }
+
+    case "bulletListItem":
+    case "numberedListItem": {
+      const level = Number(next.level);
+      const normalized = Number.isFinite(level) && level >= 0 ? Math.trunc(level) : 0;
+      return { level: normalized };
+    }
+
+    case "code":
+      return { language: asString(next.language) };
+
+    case "image":
+      return {
+        src: asString(next.url),
+        alt: asString(next.name),
+        caption: asString(next.caption),
+      };
+
+    case "dataTable":
+      return {
+        label: asString(next.label),
+        columns: parseColumns(next.columnsJson ?? next.columns),
+        locked: Boolean(next.locked),
+        minRows: Math.trunc(Number(next.minRows) || 0),
+        maxRows: Math.trunc(Number(next.maxRows) || 0),
+      };
+
+    case "dataTableCell":
+      return { columnKey: asString(next.columnKey) };
+
+    case "field":
+      return {
+        label: asString(next.label),
+        valueMode: "inline",
+        locked: Boolean(next.locked),
+      };
+
+    case "fieldGroup": {
+      const columns = Number(next.columns);
+      const normalized = columns === 2 ? 2 : 1;
+      return { columns: normalized, locked: Boolean(next.locked) };
+    }
+
+    case "section":
+      return {
+        title: asString(next.title),
+        color: asString(next.color),
+        locked: Boolean(next.locked),
+      };
+
+    case "repeatable":
+      return {
+        label: asString(next.label),
+        itemPrefix: asString(next.itemPrefix),
+        locked: Boolean(next.locked),
+        minItems: Math.trunc(Number(next.minItems) || 0),
+        maxItems: Math.trunc(Number(next.maxItems) || 0),
+      };
+
+    case "repeatableItem":
+      return { title: asString(next.title) };
+
+    case "richBlock":
+      return { label: asString(next.label), locked: Boolean(next.locked) };
+
+    default:
+      break;
   }
 
-  if (type === "dataTable") {
-    next.columns = parseColumns(next.columnsJson);
-    delete next.columnsJson;
-  }
-
-  if (type === "quote") {
-    delete next.__quote_children_json;
-  }
-
-  return next;
+  // Should be unreachable because `toMDDMType` fail-closes.
+  return {};
 }
 
 function toBlockNoteInline(runs: MDDMTextRun[]): BlockNoteInline[] {
@@ -371,14 +487,21 @@ function quoteFromBlockNote(
   content: unknown,
   rawProps: UnknownRecord,
 ): MDDMBlock[] {
+  // Source of truth is the live editor content. Metadata is only used to preserve
+  // the original paragraph ID when possible, never to preserve stale text.
   const fromMetadata = parseQuoteChildren(rawProps.__quote_children_json);
-  if (fromMetadata) {
-    return fromMetadata;
-  }
+  const metadataID =
+    Array.isArray(fromMetadata) &&
+    fromMetadata.length > 0 &&
+    isRecord(fromMetadata[0])
+      ? asOptionalString((fromMetadata[0] as any).id)
+      : undefined;
+  const paragraphID =
+    metadataID ?? newUUID();
 
   return [
     {
-      id: "",
+      id: paragraphID,
       type: "paragraph",
       props: {},
       children: fromBlockNoteInline(content),

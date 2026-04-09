@@ -32,11 +32,12 @@ var structuralBlockTypes = map[string]bool{
 func EnforceLockedBlocks(templateBlocks, docBlocks []any) error {
 	templateIndex := indexByTemplateBlockID(templateBlocks, nil)
 	docIndex := indexByTemplateBlockID(docBlocks, nil)
+	skippedMissingOptionalIDs := optionalSubtreeBlockIDs(templateBlocks, docIndex)
 
 	for tbID, tNode := range templateIndex {
 		dNode, ok := docIndex[tbID]
 		if !ok {
-			if isOptionalTemplateNode(tNode.block) {
+			if _, skip := skippedMissingOptionalIDs[tbID]; skip {
 				continue
 			}
 			return &LockViolationError{
@@ -67,6 +68,50 @@ func EnforceLockedBlocks(templateBlocks, docBlocks []any) error {
 	}
 
 	return nil
+}
+
+func optionalSubtreeBlockIDs(templateBlocks []any, docIndex map[string]indexedNode) map[string]struct{} {
+	out := map[string]struct{}{}
+	collectOptionalSubtreeBlockIDs(templateBlocks, docIndex, out)
+	return out
+}
+
+func collectOptionalSubtreeBlockIDs(blocks []any, docIndex map[string]indexedNode, out map[string]struct{}) {
+	for _, b := range blocks {
+		bm, ok := b.(map[string]any)
+		if !ok {
+			continue
+		}
+		if isOptionalTemplateNode(bm) {
+			tbID, hasTB := bm["template_block_id"].(string)
+			if hasTB {
+				if _, ok := docIndex[tbID]; !ok {
+					collectTemplateBlockIDs(bm, out)
+					continue
+				}
+			}
+		}
+		if children, ok := bm["children"].([]any); ok {
+			collectOptionalSubtreeBlockIDs(children, docIndex, out)
+		}
+	}
+}
+
+func collectTemplateBlockIDs(block map[string]any, out map[string]struct{}) {
+	if blockType, _ := block["type"].(string); structuralBlockTypes[blockType] {
+		if tbID, ok := block["template_block_id"].(string); ok {
+			out[tbID] = struct{}{}
+		}
+	}
+	if children, ok := block["children"].([]any); ok {
+		for _, child := range children {
+			bm, ok := child.(map[string]any)
+			if !ok {
+				continue
+			}
+			collectTemplateBlockIDs(bm, out)
+		}
+	}
 }
 
 type indexedNode struct {

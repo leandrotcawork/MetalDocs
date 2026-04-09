@@ -125,3 +125,43 @@ func TestLockedBlocks_AllowsDeletingOptionalSection(t *testing.T) {
 		}
 	})
 }
+
+func TestLockedBlocks_AllowsDeletingOptionalSectionWithNestedChildren(t *testing.T) {
+	template := map[string]any{
+		"id":                "tpl-root",
+		"template_block_id": "tpl-root",
+		"type":              "section",
+		"props": map[string]any{
+			"title":    "Optional cover",
+			"color":    "#6b1f2a",
+			"locked":   true,
+			"optional": true,
+		},
+		"children": []any{
+			map[string]any{
+				"id":                "tpl-group",
+				"template_block_id": "tpl-group",
+				"type":              "fieldGroup",
+				"props": map[string]any{
+					"locked": true,
+				},
+				"children": []any{
+					map[string]any{
+						"id":                "tpl-field",
+						"template_block_id": "tpl-field",
+						"type":              "field",
+						"props": map[string]any{
+							"locked": true,
+						},
+						"children": []any{},
+					},
+				},
+			},
+		},
+	}
+
+	err := EnforceLockedBlocks([]any{template}, []any{})
+	if err != nil {
+		t.Fatalf("EnforceLockedBlocks() error = %v, want nil for optional subtree deletion", err)
+	}
+}

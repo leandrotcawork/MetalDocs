@@ -1362,3 +1362,10 @@ Wrong:   `TestHandleDocumentBrowserEditorBundleCreatedAt` still seeded `<section
 Correct: Seed the browser editor bundle test with `testMDDMBody` so the handler exercises the same MDDM serialization path as the rest of the browser-content suite
 Rule:    Once a browser-content flow is standardized on one content format, its tests should share the canonical fixture instead of an ad hoc HTML seed.
 Layer:   delivery
+
+## Lesson FG8 - Handler tests should assert decoded response fields, not JSON fragments
+Date: 2026-04-09 | Trigger: correction
+Wrong:   Browser handler tests matched response substrings like `"contentSource":"browser_editor"` and `"createdAt":"..."` instead of validating the decoded payload shape
+Correct: Decode handler JSON into the response structs and assert specific fields such as `contentSource`, `contentFormat`, `body`, and `createdAt`
+Rule:    Delivery tests should verify the contract at the field level so formatting changes do not create false failures or hide real regressions.
+Layer:   delivery

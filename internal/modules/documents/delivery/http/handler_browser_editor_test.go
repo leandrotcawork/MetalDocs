@@ -19,6 +19,8 @@ import (
 const (
 	testMDDMBody        = `{"mddm_version":1,"template_ref":null,"blocks":[{"id":"b1","type":"paragraph","props":{},"children":[{"text":"Original"}]}]}`
 	testMDDMBodyUpdated = `{"mddm_version":1,"template_ref":null,"blocks":[{"id":"b1","type":"paragraph","props":{},"children":[{"text":"Atualizado"}]}]}`
+	testMDDMText        = "Original"
+	testMDDMTextUpdated = "Atualizado"
 )
 
 func TestHandleDocumentBrowserContentPost(t *testing.T) {
@@ -26,7 +28,7 @@ func TestHandleDocumentBrowserContentPost(t *testing.T) {
 	now := time.Date(2026, time.April, 4, 11, 0, 0, 0, time.UTC)
 	repo := documentmemory.NewRepository()
 	service := application.NewService(repo, nil, applicationFixedClock{now: now})
-	doc := seedBrowserHandlerDocument(t, ctx, repo, now, testMDDMBody)
+	doc := seedBrowserHandlerDocument(t, ctx, repo, now, testMDDMBody, testMDDMText)
 	handler := NewHandler(service)
 
 	reqBody, err := json.Marshal(map[string]string{
@@ -45,8 +47,37 @@ func TestHandleDocumentBrowserContentPost(t *testing.T) {
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusCreated)
 	}
-	if !strings.Contains(rec.Body.String(), `"contentSource":"browser_editor"`) {
-		t.Fatalf("body = %s", rec.Body.String())
+
+	var resp DocumentContentBrowserResponse
+	decodeJSONBody(t, rec.Body.Bytes(), &resp)
+	if resp.DocumentID != doc.ID {
+		t.Fatalf("documentID = %q, want %q", resp.DocumentID, doc.ID)
+	}
+	if resp.Version <= 0 {
+		t.Fatalf("version = %d, want positive", resp.Version)
+	}
+	if resp.ContentSource != domain.ContentSourceBrowserEditor {
+		t.Fatalf("contentSource = %q, want %q", resp.ContentSource, domain.ContentSourceBrowserEditor)
+	}
+	if resp.DraftToken == "" {
+		t.Fatalf("draftToken = empty")
+	}
+
+	persisted, err := repo.GetVersion(ctx, doc.ID, resp.Version)
+	if err != nil {
+		t.Fatalf("get version: %v", err)
+	}
+	if persisted.Number != resp.Version {
+		t.Fatalf("persisted version = %d, want %d", persisted.Number, resp.Version)
+	}
+	if persisted.Content != testMDDMBodyUpdated {
+		t.Fatalf("persisted content = %q, want %q", persisted.Content, testMDDMBodyUpdated)
+	}
+	if persisted.TextContent != testMDDMTextUpdated {
+		t.Fatalf("persisted textContent = %q, want %q", persisted.TextContent, testMDDMTextUpdated)
+	}
+	if persisted.ContentSource != domain.ContentSourceBrowserEditor {
+		t.Fatalf("persisted contentSource = %q, want %q", persisted.ContentSource, domain.ContentSourceBrowserEditor)
 	}
 }
 
@@ -55,7 +86,7 @@ func TestHandleDocumentTemplatesGetAndAssignmentPut(t *testing.T) {
 	now := time.Date(2026, time.April, 5, 12, 0, 0, 0, time.UTC)
 	repo := documentmemory.NewRepository()
 	service := application.NewService(repo, nil, applicationFixedClock{now: now})
-	doc := seedBrowserHandlerDocument(t, ctx, repo, now, testMDDMBody)
+	doc := seedBrowserHandlerDocument(t, ctx, repo, now, testMDDMBody, testMDDMText)
 	if err := repo.UpsertDocumentTemplateVersionForTest(ctx, domain.DocumentTemplateVersion{
 		TemplateKey:   "po-mddm-override",
 		Version:       2,
@@ -78,8 +109,19 @@ func TestHandleDocumentTemplatesGetAndAssignmentPut(t *testing.T) {
 	if listRec.Code != http.StatusOK {
 		t.Fatalf("list status = %d, want %d", listRec.Code, http.StatusOK)
 	}
-	if !strings.Contains(listRec.Body.String(), `"templateKey":"po-mddm-canvas"`) {
-		t.Fatalf("list body = %s", listRec.Body.String())
+	var listResp ListDocumentTemplatesResponse
+	decodeJSONBody(t, listRec.Body.Bytes(), &listResp)
+	if len(listResp.Items) == 0 {
+		t.Fatalf("list items = empty")
+	}
+	if listResp.Items[0].TemplateKey != "po-mddm-canvas" {
+		t.Fatalf("list templateKey = %q, want %q", listResp.Items[0].TemplateKey, "po-mddm-canvas")
+	}
+	if listResp.Items[0].Editor != "mddm-blocknote" {
+		t.Fatalf("list editor = %q, want %q", listResp.Items[0].Editor, "mddm-blocknote")
+	}
+	if listResp.Items[0].ContentFormat != "mddm" {
+		t.Fatalf("list contentFormat = %q, want %q", listResp.Items[0].ContentFormat, "mddm")
 	}
 
 	assignReq := httptest.NewRequest(http.MethodPut, "/api/v1/documents/"+doc.ID+"/template-assignment", strings.NewReader(`{"templateKey":"po-mddm-override","templateVersion":2}`))
@@ -89,11 +131,19 @@ func TestHandleDocumentTemplatesGetAndAssignmentPut(t *testing.T) {
 	if assignRec.Code != http.StatusOK {
 		t.Fatalf("assign status = %d, want %d", assignRec.Code, http.StatusOK)
 	}
-	if !strings.Contains(assignRec.Body.String(), `"templateKey":"po-mddm-override"`) {
-		t.Fatalf("assign body = %s", assignRec.Body.String())
+	var assignResp DocumentTemplateAssignmentResponse
+	decodeJSONBody(t, assignRec.Body.Bytes(), &assignResp)
+	if assignResp.DocumentID != doc.ID {
+		t.Fatalf("assign documentID = %q, want %q", assignResp.DocumentID, doc.ID)
 	}
-	if !strings.Contains(assignRec.Body.String(), `"templateVersion":2`) {
-		t.Fatalf("assign body = %s", assignRec.Body.String())
+	if assignResp.TemplateKey != "po-mddm-override" {
+		t.Fatalf("assign templateKey = %q, want %q", assignResp.TemplateKey, "po-mddm-override")
+	}
+	if assignResp.TemplateVersion != 2 {
+		t.Fatalf("assign templateVersion = %d, want %d", assignResp.TemplateVersion, 2)
+	}
+	if assignResp.AssignedAt != now.UTC().Format(time.RFC3339) {
+		t.Fatalf("assign assignedAt = %q, want %q", assignResp.AssignedAt, now.UTC().Format(time.RFC3339))
 	}
 }
 
@@ -105,7 +155,7 @@ func (c applicationFixedClock) Now() time.Time {
 	return c.now
 }
 
-func seedBrowserHandlerDocument(t *testing.T, ctx context.Context, repo *documentmemory.Repository, now time.Time, body string) domain.Document {
+func seedBrowserHandlerDocument(t *testing.T, ctx context.Context, repo *documentmemory.Repository, now time.Time, body, textContent string) domain.Document {
 	t.Helper()
 
 	seedCompatibleBrowserTemplateSchemaSet(t, repo)
@@ -148,7 +198,7 @@ func seedBrowserHandlerDocument(t *testing.T, ctx context.Context, repo *documen
 		ContentHash:     "test",
 		ChangeSummary:   "Initial browser draft",
 		ContentSource:   domain.ContentSourceBrowserEditor,
-		TextContent:     plainTextFromMDDM(body),
+		TextContent:     textContent,
 		TemplateKey:     "po-mddm-canvas",
 		TemplateVersion: 1,
 		CreatedAt:       now,
@@ -164,7 +214,7 @@ func TestHandleDocumentBrowserEditorBundleCreatedAt(t *testing.T) {
 	now := time.Date(2026, time.April, 4, 11, 0, 0, 0, time.UTC)
 	repo := documentmemory.NewRepository()
 	service := application.NewService(repo, nil, applicationFixedClock{now: now})
-	doc := seedBrowserHandlerDocument(t, ctx, repo, now, testMDDMBody)
+	doc := seedBrowserHandlerDocument(t, ctx, repo, now, testMDDMBody, testMDDMText)
 	handler := NewHandler(service)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/documents/"+doc.ID+"/browser-editor-bundle", nil)
@@ -175,13 +225,40 @@ func TestHandleDocumentBrowserEditorBundleCreatedAt(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d; body = %s", rec.Code, http.StatusOK, rec.Body.String())
 	}
-	body := rec.Body.String()
-	if !strings.Contains(body, `"createdAt":"`) {
-		t.Fatalf("expected createdAt in response, got: %s", body)
+	var resp DocumentBrowserEditorBundleResponse
+	decodeJSONBody(t, rec.Body.Bytes(), &resp)
+	if resp.Document.DocumentID != doc.ID {
+		t.Fatalf("documentID = %q, want %q", resp.Document.DocumentID, doc.ID)
 	}
-	wantCreatedAt := now.UTC().Format(time.RFC3339)
-	if !strings.Contains(body, `"createdAt":"`+wantCreatedAt+`"`) {
-		t.Fatalf("expected createdAt %q in response, got: %s", wantCreatedAt, body)
+	if resp.Document.CreatedAt != now.UTC().Format(time.RFC3339) {
+		t.Fatalf("createdAt = %q, want %q", resp.Document.CreatedAt, now.UTC().Format(time.RFC3339))
+	}
+	if len(resp.Versions) != 1 {
+		t.Fatalf("versions len = %d, want %d", len(resp.Versions), 1)
+	}
+	if resp.Versions[0].Version != 1 {
+		t.Fatalf("version = %d, want %d", resp.Versions[0].Version, 1)
+	}
+	if resp.Versions[0].CreatedAt != now.UTC().Format(time.RFC3339) {
+		t.Fatalf("version createdAt = %q, want %q", resp.Versions[0].CreatedAt, now.UTC().Format(time.RFC3339))
+	}
+	if resp.TemplateSnapshot == nil {
+		t.Fatalf("templateSnapshot = nil")
+	}
+	if resp.TemplateSnapshot.TemplateKey != "po-mddm-canvas" {
+		t.Fatalf("templateSnapshot templateKey = %q, want %q", resp.TemplateSnapshot.TemplateKey, "po-mddm-canvas")
+	}
+	if resp.TemplateSnapshot.Editor != "mddm-blocknote" {
+		t.Fatalf("templateSnapshot editor = %q, want %q", resp.TemplateSnapshot.Editor, "mddm-blocknote")
+	}
+	if resp.TemplateSnapshot.ContentFormat != "mddm" {
+		t.Fatalf("templateSnapshot contentFormat = %q, want %q", resp.TemplateSnapshot.ContentFormat, "mddm")
+	}
+	if resp.Body != testMDDMBody {
+		t.Fatalf("body = %q, want %q", resp.Body, testMDDMBody)
+	}
+	if resp.DraftToken == "" {
+		t.Fatalf("draftToken = empty")
 	}
 }
 
@@ -241,38 +318,10 @@ func seedCompatibleBrowserTemplateSchemaSet(t *testing.T, repo *documentmemory.R
 	}
 }
 
-func plainTextFromMDDM(body string) string {
-	body = strings.TrimSpace(body)
-	if body == "" {
-		return ""
-	}
+func decodeJSONBody(t *testing.T, data []byte, target any) {
+	t.Helper()
 
-	var envelope struct {
-		Blocks []json.RawMessage `json:"blocks"`
-	}
-	if err := json.Unmarshal([]byte(body), &envelope); err != nil {
-		return ""
-	}
-
-	var parts []string
-	for _, block := range envelope.Blocks {
-		collectPlainTextFromMDDM(block, &parts)
-	}
-	return strings.Join(parts, " ")
-}
-
-func collectPlainTextFromMDDM(raw json.RawMessage, parts *[]string) {
-	var node struct {
-		Text     string            `json:"text"`
-		Children []json.RawMessage `json:"children"`
-	}
-	if err := json.Unmarshal(raw, &node); err != nil {
-		return
-	}
-	if text := strings.TrimSpace(node.Text); text != "" {
-		*parts = append(*parts, text)
-	}
-	for _, child := range node.Children {
-		collectPlainTextFromMDDM(child, parts)
+	if err := json.Unmarshal(data, target); err != nil {
+		t.Fatalf("decode json: %v; body = %s", err, string(data))
 	}
 }

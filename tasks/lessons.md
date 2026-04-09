@@ -1341,3 +1341,10 @@ Wrong:   Left `substitute_template_tokens_test.go` in place as a legacy compatib
 Correct: Remove the shim file once no remaining package callers require the legacy helper for compilation.
 Rule:    Temporary test-only compatibility should be removed promptly after migration so dead symbols do not linger.
 Layer:   process
+
+## Lesson FG5 - Snapshot assertions should use explicit fields when helpers do not exist
+Date: 2026-04-09 | Trigger: build failure
+Wrong:   Asserted `bundle.TemplateSnapshot.IsMDDMEditor()` even though `DocumentTemplateSnapshot` does not define that helper
+Correct: Check `bundle.TemplateSnapshot.Editor` and `bundle.TemplateSnapshot.ContentFormat` directly when the snapshot type only exposes fields
+Rule:    Tests should assert the actual API surface of the type they receive, not assume a helper exists on a sibling struct.
+Layer:   process

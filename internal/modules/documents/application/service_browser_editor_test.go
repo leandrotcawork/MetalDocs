@@ -3,7 +3,6 @@ package application
 import (
 	"context"
 	"errors"
-	"strings"
 	"testing"
 	"time"
 
@@ -11,28 +10,33 @@ import (
 	documentmemory "metaldocs/internal/modules/documents/infrastructure/memory"
 )
 
-func TestGetBrowserEditorBundleReturnsDraftHTML(t *testing.T) {
+const (
+	testMDDMBody        = `{"mddm_version":1,"template_ref":null,"blocks":[{"id":"b1","type":"paragraph","props":{},"children":[{"text":"Original"}]}]}`
+	testMDDMBodyUpdated = `{"mddm_version":1,"template_ref":null,"blocks":[{"id":"b1","type":"paragraph","props":{},"children":[{"text":"Atualizado"}]}]}`
+)
+
+func TestGetBrowserEditorBundleReturnsDraftMDDM(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, time.April, 4, 11, 0, 0, 0, time.UTC)
 	repo := documentmemory.NewRepository()
 	service := NewService(repo, nil, fixedClock{now: now})
-	doc := seedBrowserDocument(t, ctx, repo, now, `<section><p>Original</p></section>`)
+	doc := seedBrowserDocument(t, ctx, repo, now, testMDDMBody)
 
 	bundle, err := service.GetBrowserEditorBundleAuthorized(ctx, doc.ID)
 	if err != nil {
 		t.Fatalf("GetBrowserEditorBundleAuthorized() error = %v", err)
 	}
-	if bundle.Body != `<section><p>Original</p></section>` {
-		t.Fatalf("bundle body = %q, want original HTML", bundle.Body)
+	if bundle.Body != testMDDMBody {
+		t.Fatalf("bundle body = %q, want MDDM body", bundle.Body)
 	}
 	if bundle.DraftToken == "" {
 		t.Fatal("expected draft token")
 	}
-	if bundle.TemplateSnapshot.TemplateKey != "po-default-canvas" {
-		t.Fatalf("template key = %q, want po-default-canvas", bundle.TemplateSnapshot.TemplateKey)
+	if bundle.TemplateSnapshot.TemplateKey != "po-mddm-canvas" {
+		t.Fatalf("template key = %q, want po-mddm-canvas", bundle.TemplateSnapshot.TemplateKey)
 	}
-	if !bundle.TemplateSnapshot.IsBrowserHTML() {
-		t.Fatalf("template snapshot = %#v, want browser html", bundle.TemplateSnapshot)
+	if bundle.TemplateSnapshot.Editor != "mddm-blocknote" || bundle.TemplateSnapshot.ContentFormat != "mddm" {
+		t.Fatalf("template snapshot = %#v, want mddm-blocknote/mddm", bundle.TemplateSnapshot)
 	}
 }
 
@@ -89,7 +93,7 @@ func TestGetBrowserEditorBundleRequiresTemplateSnapshot(t *testing.T) {
 	now := time.Date(2026, time.April, 4, 11, 0, 0, 0, time.UTC)
 	repo := documentmemory.NewRepository()
 	service := NewService(repo, nil, fixedClock{now: now})
-	doc := seedBrowserDocumentWithoutTemplate(t, ctx, repo, now, `<section><p>Original</p></section>`)
+	doc := seedBrowserDocumentWithoutTemplate(t, ctx, repo, now, testMDDMBody)
 
 	_, err := service.GetBrowserEditorBundleAuthorized(ctx, doc.ID)
 	if !errors.Is(err, domain.ErrDocumentTemplateNotFound) {
@@ -102,7 +106,7 @@ func TestSaveBrowserContentAuthorizedUpdatesDraftInPlace(t *testing.T) {
 	now := time.Date(2026, time.April, 4, 11, 0, 0, 0, time.UTC)
 	repo := documentmemory.NewRepository()
 	service := NewService(repo, nil, fixedClock{now: now})
-	doc := seedBrowserDocument(t, ctx, repo, now, `<section><p>Original</p></section>`)
+	doc := seedBrowserDocument(t, ctx, repo, now, testMDDMBody)
 	current, err := repo.GetVersion(ctx, doc.ID, 1)
 	if err != nil {
 		t.Fatalf("GetVersion() error = %v", err)
@@ -111,7 +115,7 @@ func TestSaveBrowserContentAuthorizedUpdatesDraftInPlace(t *testing.T) {
 	version, err := service.SaveBrowserContentAuthorized(ctx, domain.SaveBrowserContentCommand{
 		DocumentID: doc.ID,
 		DraftToken: draftTokenForVersion(current),
-		Body:       `<section><p>Atualizado</p></section>`,
+		Body:       testMDDMBodyUpdated,
 		TraceID:    "trace-test",
 	})
 	if err != nil {
@@ -123,16 +127,16 @@ func TestSaveBrowserContentAuthorizedUpdatesDraftInPlace(t *testing.T) {
 	if version.ContentSource != domain.ContentSourceBrowserEditor {
 		t.Fatalf("content source = %q, want %q", version.ContentSource, domain.ContentSourceBrowserEditor)
 	}
-	if version.Content != `<section><p>Atualizado</p></section>` {
-		t.Fatalf("content = %q, want updated HTML", version.Content)
+	if version.Content != testMDDMBodyUpdated {
+		t.Fatalf("content = %q, want updated MDDM body", version.Content)
 	}
 
 	savedVersion, err := repo.GetVersion(ctx, doc.ID, 1)
 	if err != nil {
 		t.Fatalf("GetVersion() after save error = %v", err)
 	}
-	if savedVersion.Content != `<section><p>Atualizado</p></section>` {
-		t.Fatalf("saved content = %q, want updated HTML", savedVersion.Content)
+	if savedVersion.Content != testMDDMBodyUpdated {
+		t.Fatalf("saved content = %q, want updated MDDM body", savedVersion.Content)
 	}
 }
 
@@ -141,7 +145,7 @@ func TestSaveBrowserContentAuthorizedRequiresTemplateSnapshot(t *testing.T) {
 	now := time.Date(2026, time.April, 4, 11, 0, 0, 0, time.UTC)
 	repo := documentmemory.NewRepository()
 	service := NewService(repo, nil, fixedClock{now: now})
-	doc := seedBrowserDocumentWithoutTemplate(t, ctx, repo, now, `<section><p>Original</p></section>`)
+	doc := seedBrowserDocumentWithoutTemplate(t, ctx, repo, now, testMDDMBody)
 	current, err := repo.GetVersion(ctx, doc.ID, 1)
 	if err != nil {
 		t.Fatalf("GetVersion() error = %v", err)
@@ -150,7 +154,7 @@ func TestSaveBrowserContentAuthorizedRequiresTemplateSnapshot(t *testing.T) {
 	_, err = service.SaveBrowserContentAuthorized(ctx, domain.SaveBrowserContentCommand{
 		DocumentID: doc.ID,
 		DraftToken: draftTokenForVersion(current),
-		Body:       `<section><p>Atualizado</p></section>`,
+		Body:       testMDDMBodyUpdated,
 		TraceID:    "trace-test",
 	})
 	if !errors.Is(err, domain.ErrDocumentTemplateNotFound) {
@@ -163,7 +167,7 @@ func TestSaveBrowserContentAuthorizedRejectsNonBrowserTemplate(t *testing.T) {
 	now := time.Date(2026, time.April, 4, 11, 0, 0, 0, time.UTC)
 	repo := documentmemory.NewRepository()
 	service := NewService(repo, nil, fixedClock{now: now})
-	doc := seedBrowserDocument(t, ctx, repo, now, `<section><p>Original</p></section>`)
+	doc := seedBrowserDocument(t, ctx, repo, now, testMDDMBody)
 
 	if err := repo.UpsertDocumentTemplateVersionForTest(ctx, domain.DocumentTemplateVersion{
 		TemplateKey:   "po-governed-docx",
@@ -205,7 +209,7 @@ func TestSaveBrowserContentAuthorizedRejectsNonBrowserTemplate(t *testing.T) {
 	_, err = service.SaveBrowserContentAuthorized(ctx, domain.SaveBrowserContentCommand{
 		DocumentID: doc.ID,
 		DraftToken: draftTokenForVersion(current),
-		Body:       `<section><p>Atualizado</p></section>`,
+		Body:       testMDDMBodyUpdated,
 		TraceID:    "trace-test",
 	})
 	if !errors.Is(err, domain.ErrInvalidCommand) {
@@ -218,7 +222,7 @@ func TestGetBrowserEditorBundleRejectsIncompatibleStoredTemplateSnapshot(t *test
 	now := time.Date(2026, time.April, 4, 11, 0, 0, 0, time.UTC)
 	repo := documentmemory.NewRepository()
 	service := NewService(repo, nil, fixedClock{now: now})
-	doc := seedBrowserDocument(t, ctx, repo, now, `<section><p>Original</p></section>`)
+	doc := seedBrowserDocument(t, ctx, repo, now, testMDDMBody)
 
 	setStoredBrowserTemplateSnapshotForTest(t, ctx, repo, now, doc.ID, "po-browser-invalid-schema", 99)
 
@@ -233,14 +237,14 @@ func TestSaveBrowserContentAuthorizedRejectsIncompatibleStoredTemplateSnapshot(t
 	now := time.Date(2026, time.April, 4, 11, 0, 0, 0, time.UTC)
 	repo := documentmemory.NewRepository()
 	service := NewService(repo, nil, fixedClock{now: now})
-	doc := seedBrowserDocument(t, ctx, repo, now, `<section><p>Original</p></section>`)
+	doc := seedBrowserDocument(t, ctx, repo, now, testMDDMBody)
 
 	current := setStoredBrowserTemplateSnapshotForTest(t, ctx, repo, now, doc.ID, "po-browser-invalid-schema", 99)
 
 	_, err := service.SaveBrowserContentAuthorized(ctx, domain.SaveBrowserContentCommand{
 		DocumentID: doc.ID,
 		DraftToken: draftTokenForVersion(current),
-		Body:       `<section><p>Atualizado</p></section>`,
+		Body:       testMDDMBodyUpdated,
 		TraceID:    "trace-test",
 	})
 	if !errors.Is(err, domain.ErrInvalidCommand) {
@@ -256,7 +260,7 @@ func seedBrowserDocument(t *testing.T, ctx context.Context, repo *documentmemory
 	doc := seedDraftDocument(t, ctx, repo, now)
 	if err := repo.UpsertDocumentTemplateAssignment(ctx, domain.DocumentTemplateAssignment{
 		DocumentID:      doc.ID,
-		TemplateKey:     "po-default-canvas",
+		TemplateKey:     "po-mddm-canvas",
 		TemplateVersion: 1,
 		AssignedAt:      now,
 	}); err != nil {
@@ -270,7 +274,7 @@ func seedBrowserDocument(t *testing.T, ctx context.Context, repo *documentmemory
 		ChangeSummary:   "Initial browser draft",
 		ContentSource:   domain.ContentSourceBrowserEditor,
 		TextContent:     plainTextFromMDDM(body),
-		TemplateKey:     "po-default-canvas",
+		TemplateKey:     "po-mddm-canvas",
 		TemplateVersion: 1,
 		CreatedAt:       now,
 	}); err != nil {
@@ -288,9 +292,9 @@ func setStoredBrowserTemplateSnapshotForTest(t *testing.T, ctx context.Context, 
 		ProfileCode:   "po",
 		SchemaVersion: schemaVersion,
 		Name:          "PO Browser Invalid Snapshot",
-		Editor:        "ckeditor5",
-		ContentFormat: "html",
-		Body:          `<section><p>Stored invalid browser snapshot</p></section>`,
+		Editor:        "mddm-blocknote",
+		ContentFormat: "mddm",
+		Body:          testMDDMBody,
 		CreatedAt:     now,
 	}); err != nil {
 		t.Fatalf("UpsertDocumentTemplateVersionForTest() error = %v", err)
@@ -353,7 +357,7 @@ func TestNewPODocumentGetsBrowserTemplateInBundle(t *testing.T) {
 		OwnerID:         "owner-1",
 		BusinessUnit:    "operations",
 		Department:      "sgq",
-		InitialContent:  `{"legacy":"content"}`,
+		InitialContent:  "",
 		TraceID:         "trace-browser-smoke",
 	})
 	if err != nil {
@@ -365,69 +369,19 @@ func TestNewPODocumentGetsBrowserTemplateInBundle(t *testing.T) {
 		t.Fatalf("GetBrowserEditorBundleAuthorized() error = %v", err)
 	}
 
-	if bundle.TemplateSnapshot.TemplateKey != "po-default-browser" {
-		t.Fatalf("template key = %q, want po-default-browser", bundle.TemplateSnapshot.TemplateKey)
+	if bundle.TemplateSnapshot.TemplateKey != "po-mddm-canvas" {
+		t.Fatalf("template key = %q, want po-mddm-canvas", bundle.TemplateSnapshot.TemplateKey)
 	}
 	if bundle.TemplateSnapshot.Version != 1 {
 		t.Fatalf("template version = %d, want 1", bundle.TemplateSnapshot.Version)
 	}
-	if !bundle.TemplateSnapshot.IsBrowserHTML() {
-		t.Fatalf("template snapshot = %#v, want browser html", bundle.TemplateSnapshot)
+	if bundle.TemplateSnapshot.Editor != "mddm-blocknote" || bundle.TemplateSnapshot.ContentFormat != "mddm" {
+		t.Fatalf("template snapshot = %#v, want mddm-blocknote/mddm", bundle.TemplateSnapshot)
 	}
-	if bundle.Body == "" {
-		t.Fatal("bundle body is empty")
-	}
-	// Title is rendered by DocumentEditorHeader React component; body starts with the first section.
-	if !strings.Contains(bundle.Body, "Identificação do Processo") {
-		t.Fatal("bundle body does not contain template content")
+	if bundle.Body != "" {
+		t.Fatalf("bundle body = %q, want empty for new MDDM document", bundle.Body)
 	}
 	if bundle.DraftToken == "" {
 		t.Fatal("expected draft token")
-	}
-}
-
-// TestGetBrowserEditorBundleSubstitutesTokens exercises GetBrowserEditorBundleAuthorized
-// end-to-end and asserts no raw tokens remain in bundle.Body.
-// Note: After Task 6 rewrites the PO browser template body to include
-// {{versao}}, {{data_criacao}}, {{elaborador}} tokens, this test will also
-// validate that the substitution pipeline runs on those tokens. Currently it
-// guards against accidental raw-token leakage in the bundle path.
-func TestGetBrowserEditorBundleSubstitutesTokens(t *testing.T) {
-	ctx := context.Background()
-	now := time.Date(2026, time.April, 6, 10, 0, 0, 0, time.UTC)
-	repo := documentmemory.NewRepository()
-	service := NewService(repo, nil, fixedClock{now: now})
-
-	seedCompatiblePOProfileSchemaSet(t, repo)
-
-	doc, err := service.CreateDocument(ctx, domain.CreateDocumentCommand{
-		DocumentID:      "doc-token-substitution",
-		Title:           "Token Substitution Test",
-		DocumentType:    "po",
-		DocumentProfile: "po",
-		OwnerID:         "leandro_theodoro",
-		BusinessUnit:    "operations",
-		Department:      "sgq",
-		InitialContent:  `{"legacy":"content"}`,
-		TraceID:         "trace-token-test",
-	})
-	if err != nil {
-		t.Fatalf("CreateDocument() error = %v", err)
-	}
-
-	bundle, err := service.GetBrowserEditorBundleAuthorized(ctx, doc.ID)
-	if err != nil {
-		t.Fatalf("GetBrowserEditorBundleAuthorized() error = %v", err)
-	}
-
-	// Assert: no raw tokens remain in bundle.Body (tokens present after Task 6 rewrite)
-	for _, token := range []string{"{{versao}}", "{{data_criacao}}", "{{elaborador}}"} {
-		if strings.Contains(bundle.Body, token) {
-			t.Errorf("bundle.Body must not contain raw token %q after substitution", token)
-		}
-	}
-	// Assert: bundle has content (template body is present)
-	if bundle.Body == "" {
-		t.Fatal("bundle body is empty")
 	}
 }

@@ -107,7 +107,8 @@ func writeStructuredError(w http.ResponseWriter, err error) {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 	case strings.Contains(err.Error(), "BLOCK_ID_REWRITE_FORBIDDEN"),
 		strings.Contains(err.Error(), "LOCKED_BLOCK_DELETED"),
-		strings.Contains(err.Error(), "LOCKED_BLOCK_PROP_MUTATED"):
+		strings.Contains(err.Error(), "LOCKED_BLOCK_PROP_MUTATED"),
+		strings.Contains(err.Error(), "LOCKED_BLOCK_REPARENTED"):
 		w.WriteHeader(http.StatusUnprocessableEntity)
 	default:
 		w.WriteHeader(http.StatusInternalServerError)

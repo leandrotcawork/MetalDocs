@@ -77,7 +77,7 @@ describe("MDDM ↔ BlockNote adapter", () => {
     );
   });
 
-  it("keeps envelope metadata and all 17 block types stable in a round-trip", () => {
+  it("keeps envelope metadata and all 17 block types canonically equivalent in a round-trip", () => {
     const input: MDDMEnvelope = {
       mddm_version: 1,
       template_ref: {

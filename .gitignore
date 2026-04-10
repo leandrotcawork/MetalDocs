@@ -1,4 +1,7 @@
 .gocache/
+.gocache-build/
+node_modules/
+metaldocs-api.exe
 .env
 backups/
 non_git/

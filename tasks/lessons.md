@@ -5,6 +5,13 @@ Correct: `toMDDMProps` explicitly persists those props with safe defaults for ea
 Rule:    Adapter save mappings must preserve all renderer-relevant block props to avoid silent style regressions.
 Layer:   application
 
+## Lesson 5 - Ignore local build/runtime artifacts at repo root
+Date: 2026-04-10 | Trigger: correction
+Wrong:   Root-local artifacts (`.gocache-build/`, `node_modules/`, `metaldocs-api.exe`) remained unignored and polluted `git status`.
+Correct: Add explicit root ignore rules for local cache/dependency/build artifacts and keep them out of versioned scope.
+Rule:    Repository root must ignore machine-local generated artifacts so `main` stays reviewable and operationally clean.
+Layer:   process
+
 ## Lesson 4 - Keep tests aligned with active integration contracts
 Date: 2026-04-10 | Trigger: correction
 Wrong:   Tests still asserted browser export through `/generate-browser` and stale-row overwrite semantics after runtime moved to `/render/mddm-docx` and idempotent no-conflict seed insert.

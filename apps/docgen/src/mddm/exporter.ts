@@ -1,13 +1,22 @@
-import { BorderStyle, Document, ExternalHyperlink, HeadingLevel, Packer, Paragraph, Table, TextRun } from "docx";
+import { BorderStyle, Document, ExternalHyperlink, HeadingLevel, Packer, Paragraph, ShadingType, Table, TextRun } from "docx";
 import { renderDataTable } from "./render-data-table.js";
 import { renderFieldGroup } from "./render-tables.js";
-import type { InlineRun, MDDMBlock, MDDMEnvelope, MDDMExportRequest } from "./types.js";
+import type { InlineRun, MDDMBlock, MDDMEnvelope, MDDMExportRequest, MDDMTemplateTheme } from "./types.js";
 
 function invalid(code: string): never {
   throw new Error(code);
 }
 
 type RenderedNode = Paragraph | Table;
+
+type ExportTheme = Required<MDDMTemplateTheme>;
+
+const DEFAULT_THEME: ExportTheme = {
+  accent: "#6b1f2a",
+  accentLight: "#f9f3f3",
+  accentDark: "#3e1018",
+  accentBorder: "#dfc8c8",
+};
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -64,6 +73,23 @@ function isBlockArray(value: unknown): value is MDDMBlock[] {
 
 function isInlineRunArray(value: unknown): value is InlineRun[] {
   return Array.isArray(value) && value.every((child) => isInlineRun(child));
+}
+
+function normalizeHex(value: string): string {
+  return value.replace(/^#/, "").toUpperCase();
+}
+
+function hexToDocx(value: string): string {
+  return normalizeHex(value);
+}
+
+function resolveTheme(theme?: MDDMTemplateTheme): ExportTheme {
+  return {
+    accent: typeof theme?.accent === "string" ? theme.accent : DEFAULT_THEME.accent,
+    accentLight: typeof theme?.accentLight === "string" ? theme.accentLight : DEFAULT_THEME.accentLight,
+    accentDark: typeof theme?.accentDark === "string" ? theme.accentDark : DEFAULT_THEME.accentDark,
+    accentBorder: typeof theme?.accentBorder === "string" ? theme.accentBorder : DEFAULT_THEME.accentBorder,
+  };
 }
 
 function validateMDDMBlockChildren(block: MDDMBlock): void {
@@ -147,6 +173,20 @@ function validateMDDMEnvelope(envelope: unknown): asserts envelope is MDDMEnvelo
   envelope.blocks.forEach((block) => validateMDDMBlock(block));
 }
 
+function validateTemplateTheme(theme: unknown): asserts theme is MDDMTemplateTheme {
+  if (!isObject(theme)) {
+    invalid("DOCGEN_INVALID_REQUEST");
+  }
+
+  const keys: (keyof MDDMTemplateTheme)[] = ["accent", "accentLight", "accentDark", "accentBorder"];
+  for (const key of keys) {
+    const value = theme[key];
+    if (value !== undefined && typeof value !== "string") {
+      invalid("DOCGEN_INVALID_REQUEST");
+    }
+  }
+}
+
 function normalizeMDDMExportRequest(input: unknown): MDDMExportRequest {
   if (!isObject(input) || !isObject(input.metadata)) {
     invalid("DOCGEN_INVALID_REQUEST");
@@ -164,7 +204,11 @@ function normalizeMDDMExportRequest(input: unknown): MDDMExportRequest {
 
   validateMDDMEnvelope(input.envelope);
 
-  return {
+  if (input.templateTheme !== undefined) {
+    validateTemplateTheme(input.templateTheme);
+  }
+
+  const request: MDDMExportRequest = {
     envelope: input.envelope,
     metadata: {
       document_code: metadata.document_code,
@@ -172,7 +216,10 @@ function normalizeMDDMExportRequest(input: unknown): MDDMExportRequest {
       revision_label: metadata.revision_label,
       mode: metadata.mode,
     },
+    templateTheme: input.templateTheme,
   };
+
+  return request;
 }
 
 function runToTextRun(run: InlineRun): TextRun {
@@ -246,13 +293,13 @@ function renderDivider(): Paragraph {
   });
 }
 
-function renderRichBlock(block: MDDMBlock, sectionPath: number[]): RenderedNode[] {
+function renderRichBlock(block: MDDMBlock, theme: ExportTheme, sectionPath: number[]): RenderedNode[] {
   const label = (block.props.label as string) ?? "";
   const out: RenderedNode[] = [
     new Paragraph({ children: [new TextRun({ text: label, bold: true })] }),
   ];
   for (const child of (block.children as MDDMBlock[]) ?? []) {
-    out.push(...renderBlock(child, sectionPath));
+    out.push(...renderBlock(child, theme, sectionPath));
   }
   return out;
 }
@@ -277,7 +324,7 @@ function renderImagePlaceholder(block: MDDMBlock): Paragraph {
   });
 }
 
-function renderRepeatable(block: MDDMBlock, sectionPath: number[]): Paragraph[] {
+function renderRepeatable(block: MDDMBlock, theme: ExportTheme, sectionPath: number[]): Paragraph[] {
   const items = (block.children as MDDMBlock[]) ?? [];
   const sectionNum = sectionPath[sectionPath.length - 1] ?? 0;
   const out: Paragraph[] = [];
@@ -292,38 +339,61 @@ function renderRepeatable(block: MDDMBlock, sectionPath: number[]): Paragraph[] 
     );
     const body = (item.children as MDDMBlock[]) ?? [];
     for (const b of body) {
-      out.push(...(renderBlock(b, [...sectionPath, idx + 1]) as Paragraph[]));
+      out.push(...(renderBlock(b, theme, [...sectionPath, idx + 1]) as Paragraph[]));
     }
   });
   return out;
 }
 
-function renderSection(block: MDDMBlock, num: number, sectionPath: number[] = [num]): RenderedNode[] {
+function renderSection(block: MDDMBlock, num: number, theme: ExportTheme, sectionPath: number[] = [num]): RenderedNode[] {
   const title = (block.props.title as string) ?? "";
-  const children: RenderedNode[] = [new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun({ text: `${num}. ${title}`, bold: true })] })];
+  const children: RenderedNode[] = [
+    new Paragraph({
+      heading: HeadingLevel.HEADING_1,
+      shading: {
+        type: ShadingType.CLEAR,
+        fill: hexToDocx(theme.accent),
+      },
+      border: {
+        bottom: {
+          color: hexToDocx(theme.accentBorder),
+          space: 1,
+          style: BorderStyle.SINGLE,
+          size: 4,
+        },
+      },
+      children: [
+        new TextRun({
+          text: `${num}. ${title}`,
+          bold: true,
+          color: hexToDocx(theme.accentLight),
+        }),
+      ],
+    }),
+  ];
 
   let sectionNumber = 1;
   for (const child of (block.children as MDDMBlock[] | undefined) ?? []) {
     if (child.type === "section") {
-      children.push(...renderSection(child, sectionNumber, [...sectionPath, sectionNumber]));
+      children.push(...renderSection(child, sectionNumber, theme, [...sectionPath, sectionNumber]));
       sectionNumber++;
       continue;
     }
 
-    children.push(...renderBlock(child, sectionPath));
+    children.push(...renderBlock(child, theme, sectionPath));
   }
 
   return children;
 }
 
-function renderBlock(block: MDDMBlock, sectionPath: number[] = []): RenderedNode[] {
+function renderBlock(block: MDDMBlock, theme: ExportTheme, sectionPath: number[] = []): RenderedNode[] {
   switch (block.type) {
     case "section":
-      return renderSection(block, 1, sectionPath.length > 0 ? [...sectionPath, 1] : [1]);
+      return renderSection(block, 1, theme, sectionPath.length > 0 ? [...sectionPath, 1] : [1]);
     case "fieldGroup":
-      return [renderFieldGroup(block)];
+      return [renderFieldGroup(block, theme)];
     case "dataTable":
-      return [renderDataTable(block)];
+      return [renderDataTable(block, theme)];
     case "paragraph":
       return [renderParagraph(block)];
     case "heading":
@@ -337,11 +407,11 @@ function renderBlock(block: MDDMBlock, sectionPath: number[] = []): RenderedNode
     case "divider":
       return [renderDivider()];
     case "repeatable":
-      return renderRepeatable(block, sectionPath);
+      return renderRepeatable(block, theme, sectionPath);
     case "repeatableItem":
       return [];
     case "richBlock":
-      return renderRichBlock(block, sectionPath);
+      return renderRichBlock(block, theme, sectionPath);
     case "quote":
       return renderQuote(block);
     case "image":
@@ -351,23 +421,24 @@ function renderBlock(block: MDDMBlock, sectionPath: number[] = []): RenderedNode
   }
 }
 
-function renderEnvelope(envelope: MDDMEnvelope): RenderedNode[] {
+function renderEnvelope(envelope: MDDMEnvelope, theme: ExportTheme): RenderedNode[] {
   const children: RenderedNode[] = [];
   let sectionNumber = 1;
   for (const block of envelope.blocks) {
     if (block.type === "section") {
-      children.push(...renderSection(block, sectionNumber, [sectionNumber]));
+      children.push(...renderSection(block, sectionNumber, theme, [sectionNumber]));
       sectionNumber++;
       continue;
     }
 
-    children.push(...renderBlock(block, []));
+    children.push(...renderBlock(block, theme, []));
   }
   return children;
 }
 
 export async function exportMDDMToDocx(req: MDDMExportRequest): Promise<Uint8Array> {
   const runtime = normalizeMDDMExportRequest(req);
+  const theme = resolveTheme(runtime.templateTheme);
   const doc = new Document({
     sections: [
       {
@@ -379,9 +450,9 @@ export async function exportMDDMToDocx(req: MDDMExportRequest): Promise<Uint8Arr
               bottom: 900,
               left: 900,
             },
+            },
           },
-        },
-        children: renderEnvelope(runtime.envelope),
+        children: renderEnvelope(runtime.envelope, theme),
       },
     ],
   });

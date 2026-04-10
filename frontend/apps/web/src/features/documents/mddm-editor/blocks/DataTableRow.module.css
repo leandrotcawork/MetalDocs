@@ -1,0 +1,8 @@
+.row {
+  border-bottom: 1px solid var(--mddm-table-border);
+  background: var(--mddm-raw-white);
+}
+
+.row:hover {
+  background: var(--mddm-raw-gray-50);
+}

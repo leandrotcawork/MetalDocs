@@ -129,3 +129,48 @@ func (c *Client) GenerateBrowser(ctx context.Context, payload BrowserRenderPaylo
 	}
 	return rendered, nil
 }
+
+func (c *Client) GenerateMDDM(ctx context.Context, payload MDDMExportPayload, traceID string) ([]byte, error) {
+	if c == nil {
+		return nil, fmt.Errorf("docgen client not configured")
+	}
+	if traceID == "" {
+		traceID = "trace-local"
+	}
+
+	var body bytes.Buffer
+	encoder := json.NewEncoder(&body)
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(payload); err != nil {
+		return nil, fmt.Errorf("marshal mddm docgen payload: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/render/mddm-docx", bytes.NewReader(body.Bytes()))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Trace-Id", traceID)
+
+	log.Printf("docgen render-mddm-docx trace_id=%s document_code=%s", traceID, payload.Metadata.DocumentCode)
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("%w: docgen request: %v", ErrUnavailable, err)
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		raw, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode >= http.StatusInternalServerError {
+			return nil, fmt.Errorf("%w: docgen render-mddm-docx failed status=%d body=%s", ErrUnavailable, resp.StatusCode, strings.TrimSpace(string(raw)))
+		}
+		return nil, fmt.Errorf("docgen render-mddm-docx failed status=%d body=%s", resp.StatusCode, strings.TrimSpace(string(raw)))
+	}
+
+	rendered, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read docgen mddm response: %w", err)
+	}
+	return rendered, nil
+}

@@ -1,8 +1,20 @@
 .editorRoot {
+  max-width: var(--mddm-content-max-width);
+  margin: 0 auto;
+  background: var(--mddm-raw-white);
+  padding: var(--mddm-spacing-lg) 2rem;
   min-height: 600px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 1rem;
+  font-family: var(--mddm-font-family);
+  font-size: var(--mddm-font-size-base);
+  color: var(--mddm-raw-gray-700);
+  line-height: 1.6;
+  counter-reset: mddm-section;
 }
 
+@media print {
+  .editorRoot {
+    max-width: none;
+    padding: 0;
+    box-shadow: none;
+  }
+}

@@ -19,6 +19,13 @@ export type MDDMEnvelope = {
   template_ref: any;
 };
 
+export type MDDMTemplateTheme = {
+  accent?: string;
+  accentLight?: string;
+  accentDark?: string;
+  accentBorder?: string;
+};
+
 export type MDDMExportRequest = {
   envelope: MDDMEnvelope;
   metadata: {
@@ -27,4 +34,5 @@ export type MDDMExportRequest = {
     revision_label: string;
     mode: "production" | "debug";
   };
+  templateTheme?: MDDMTemplateTheme;
 };

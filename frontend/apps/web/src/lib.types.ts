@@ -244,6 +244,13 @@ export interface DocumentEditLockItem {
   expiresAt: string;
 }
 
+export interface MDDMTemplateTheme {
+  accent?: string;
+  accentLight?: string;
+  accentDark?: string;
+  accentBorder?: string;
+}
+
 export interface DocumentTemplateSnapshotItem {
   templateKey: string;
   version: number;
@@ -260,7 +267,12 @@ export interface DocumentBrowserTemplateSnapshotItem {
   editor: "mddm-blocknote";
   contentFormat: "mddm";
   body: string;
-  definition?: Record<string, unknown>;
+  definition?: {
+    type?: string;
+    id?: string;
+    children?: unknown[];
+    theme?: MDDMTemplateTheme;
+  } & Record<string, unknown>;
 }
 
 export interface DocumentEditorBundleResponse {

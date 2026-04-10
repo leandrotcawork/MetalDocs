@@ -1,0 +1,28 @@
+.repeatable {
+  margin: var(--mddm-spacing-md) 0;
+  border: 1px solid var(--mddm-accent-border);
+  border-radius: calc(var(--mddm-radius) * 2);
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--mddm-raw-white), var(--mddm-accent-light));
+}
+
+.repeatableHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mddm-spacing-sm);
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--mddm-accent-border);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.repeatableTitle {
+  color: var(--mddm-accent-dark);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.repeatableMeta {
+  color: var(--mddm-raw-gray-400);
+  font-size: 0.78rem;
+}

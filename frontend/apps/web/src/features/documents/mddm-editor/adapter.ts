@@ -326,6 +326,7 @@ function toMDDMProps(type: string, props: UnknownRecord): UnknownRecord {
         locked: Boolean(next.locked),
         minRows: normalizeInt(next.minRows, 0),
         maxRows: normalizeInt(next.maxRows, 500),
+        density: asString(next.density) || "normal",
       };
 
     case "dataTableCell":
@@ -345,6 +346,7 @@ function toMDDMProps(type: string, props: UnknownRecord): UnknownRecord {
       if (hint) {
         props.hint = hint;
       }
+      props.layout = asString(next.layout) || "grid";
       return props;
     }
 
@@ -360,6 +362,7 @@ function toMDDMProps(type: string, props: UnknownRecord): UnknownRecord {
         color: asString(next.color),
         locked: Boolean(next.locked),
         ...(next.optional === true ? { optional: true } : {}),
+        variant: asString(next.variant) || "bar",
       };
 
     case "repeatable":
@@ -372,10 +375,17 @@ function toMDDMProps(type: string, props: UnknownRecord): UnknownRecord {
       };
 
     case "repeatableItem":
-      return { title: asString(next.title) };
+      return {
+        title: asString(next.title),
+        style: asString(next.style) || "bordered",
+      };
 
     case "richBlock":
-      return { label: asString(next.label), locked: Boolean(next.locked) };
+      return {
+        label: asString(next.label),
+        locked: Boolean(next.locked),
+        chrome: asString(next.chrome) || "labeled",
+      };
 
     default:
       break;

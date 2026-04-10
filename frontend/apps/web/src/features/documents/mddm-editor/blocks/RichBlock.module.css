@@ -1,0 +1,19 @@
+.richBlock {
+  margin: var(--mddm-spacing-md) 0;
+  border: 1px dashed var(--mddm-accent-border);
+  border-radius: var(--mddm-radius);
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--mddm-raw-white), var(--mddm-accent-light));
+}
+
+.richBlock[data-chrome="labeled"] {
+  border-style: solid;
+}
+
+.richBlockHeader {
+  padding: 0.75rem 1rem;
+  color: var(--mddm-accent-dark);
+  background: rgba(255, 255, 255, 0.76);
+  border-bottom: 1px solid var(--mddm-accent-border);
+  font-weight: 700;
+}

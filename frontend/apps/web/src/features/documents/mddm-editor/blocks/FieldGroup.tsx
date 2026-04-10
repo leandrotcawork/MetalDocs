@@ -1,4 +1,5 @@
 import { createReactBlockSpec } from "@blocknote/react";
+import styles from "./FieldGroup.module.css";
 
 export const FieldGroup = createReactBlockSpec(
   {
@@ -12,9 +13,12 @@ export const FieldGroup = createReactBlockSpec(
   },
   {
     render: (props) => (
-      <div data-mddm-block="fieldGroup">
-        <strong>Field Group</strong> ({props.block.props.columns} coluna(s))
-      </div>
+      <div
+        className={styles.fieldGroup}
+        data-mddm-block="fieldGroup"
+        data-columns={props.block.props.columns}
+        data-locked={props.block.props.locked}
+      />
     ),
   },
 );

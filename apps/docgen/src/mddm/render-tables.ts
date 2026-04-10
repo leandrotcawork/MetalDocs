@@ -1,8 +1,7 @@
 import { BorderStyle, Paragraph, Table, TableCell, TableRow, TextRun, UnderlineType } from "docx";
-import { C, CONTENT_WIDTH, fieldParagraph, makeCell, makeTable, paragraph, tableBorder } from "../runtime/docx.js";
-import type { InlineRun, MDDMBlock } from "./types.js";
+import { CONTENT_WIDTH, cellBorder, fieldParagraph, makeCell, makeTable, paragraph, tableBorder } from "../runtime/docx.js";
+import type { InlineRun, MDDMBlock, MDDMTemplateTheme } from "./types.js";
 
-const FIELD_GROUP_LABEL_FILL = "F9F3F3";
 const ONE_COLUMN_WIDTHS = [30, 70] as const;
 const TWO_COLUMN_WIDTHS = [22, 28, 22, 28] as const;
 
@@ -88,74 +87,101 @@ function renderFieldValue(block: MDDMBlock): Paragraph[] {
   return [paragraph([])];
 }
 
-function fieldToCells(field: MDDMBlock, labelWidth: number, valueWidth: number): [TableCell, TableCell] {
+function fieldToCells(
+  field: MDDMBlock,
+  labelWidth: number,
+  valueWidth: number,
+  theme: Required<MDDMTemplateTheme>,
+): [TableCell, TableCell] {
   const label = typeof field.props.label === "string" ? field.props.label : "";
 
   return [
     makeCell({
       width: labelWidth,
-      fill: FIELD_GROUP_LABEL_FILL,
+      fill: theme.accentLight,
+      borders: cellBorder(BorderStyle.SINGLE, normalizeHex(theme.accentBorder)),
       verticalAlign: "top",
-      children: [fieldParagraph(label, { bold: true, color: C.gray, size: 18 })],
+      children: [fieldParagraph(label, { bold: true, color: theme.accentDark, size: 18 })],
     }),
     makeCell({
       width: valueWidth,
+      borders: cellBorder(BorderStyle.SINGLE, normalizeHex(theme.accentBorder)),
       verticalAlign: "top",
       children: renderFieldValue(field),
     }),
   ];
 }
 
-function blankFieldCells(labelWidth: number, valueWidth: number): [TableCell, TableCell] {
+function blankFieldCells(
+  labelWidth: number,
+  valueWidth: number,
+  theme: Required<MDDMTemplateTheme>,
+): [TableCell, TableCell] {
   return [
     makeCell({
       width: labelWidth,
-      fill: FIELD_GROUP_LABEL_FILL,
+      fill: theme.accentLight,
+      borders: cellBorder(BorderStyle.SINGLE, normalizeHex(theme.accentBorder)),
       verticalAlign: "top",
-      children: [fieldParagraph("", { bold: true, color: C.gray, size: 18 })],
+      children: [fieldParagraph("", { bold: true, color: theme.accentDark, size: 18 })],
     }),
     makeCell({
       width: valueWidth,
+      borders: cellBorder(BorderStyle.SINGLE, normalizeHex(theme.accentBorder)),
       verticalAlign: "top",
       children: [paragraph([])],
     }),
   ];
 }
 
-function renderFieldRow(field: MDDMBlock): TableRow {
+function renderFieldRow(field: MDDMBlock, theme: Required<MDDMTemplateTheme>): TableRow {
   const [labelWidth, valueWidth] = normalizeWidthParts(ONE_COLUMN_WIDTHS) as [number, number];
-  const [labelCell, valueCell] = fieldToCells(field, labelWidth, valueWidth);
+  const [labelCell, valueCell] = fieldToCells(field, labelWidth, valueWidth, theme);
   return new TableRow({ children: [labelCell, valueCell] });
 }
 
-function renderFieldPairRow(left: MDDMBlock, right?: MDDMBlock): TableRow {
+function renderFieldPairRow(left: MDDMBlock, theme: Required<MDDMTemplateTheme>, right?: MDDMBlock): TableRow {
   const [labelWidth, valueWidth] = normalizeWidthParts([22, 28], CONTENT_WIDTH / 2) as [number, number];
-  const leftCells = fieldToCells(left, labelWidth, valueWidth);
-  const rightCells = right ? fieldToCells(right, labelWidth, valueWidth) : blankFieldCells(labelWidth, valueWidth);
+  const leftCells = fieldToCells(left, labelWidth, valueWidth, theme);
+  const rightCells = right ? fieldToCells(right, labelWidth, valueWidth, theme) : blankFieldCells(labelWidth, valueWidth, theme);
 
   return new TableRow({
     children: [leftCells[0], leftCells[1], rightCells[0], rightCells[1]],
   });
 }
 
-export function renderFieldGroup(block: MDDMBlock): Table {
+function resolveTheme(theme?: MDDMTemplateTheme): Required<MDDMTemplateTheme> {
+  return {
+    accent: theme?.accent ?? "6B1F2A",
+    accentLight: theme?.accentLight ?? "F9F3F3",
+    accentDark: theme?.accentDark ?? "3E1018",
+    accentBorder: theme?.accentBorder ?? "DFC8C8",
+  };
+}
+
+function normalizeHex(value: string): string {
+  return value.replace(/^#/, "").toUpperCase();
+}
+
+export function renderFieldGroup(block: MDDMBlock, theme?: MDDMTemplateTheme): Table {
+  const resolvedTheme = resolveTheme(theme);
   const columns = typeof block.props.columns === "number" && block.props.columns === 2 ? 2 : 1;
   const fields = Array.isArray(block.children) && block.children.every(isMDDMBlock) ? block.children : [];
   const rows: TableRow[] = [];
 
   if (columns === 2) {
     for (let index = 0; index < fields.length; index += 2) {
-      rows.push(renderFieldPairRow(fields[index], fields[index + 1]));
+      rows.push(renderFieldPairRow(fields[index], resolvedTheme, fields[index + 1]));
     }
     if (fields.length === 0) {
-      rows.push(renderFieldPairRow({ id: "", type: "field", props: {}, children: [] }, undefined));
+      rows.push(renderFieldPairRow({ id: "", type: "field", props: {}, children: [] }, resolvedTheme, undefined));
     }
   } else {
     for (const field of fields) {
-      rows.push(renderFieldRow(field));
+      rows.push(renderFieldRow(field, resolvedTheme));
     }
     if (fields.length === 0) {
-      rows.push(renderFieldRow({ id: "", type: "field", props: {}, children: [] }));
+      rows.push(renderFieldRow({ id: "", type: "field", props: {}, children: [] }, resolvedTheme));
     }
   }
 
@@ -166,6 +192,6 @@ export function renderFieldGroup(block: MDDMBlock): Table {
 
   return makeTable(rows, columnWidths, {
     width: CONTENT_WIDTH,
-    borders: tableBorder(BorderStyle.NONE),
+    borders: tableBorder(BorderStyle.NONE, normalizeHex(resolvedTheme.accentBorder)),
   });
 }

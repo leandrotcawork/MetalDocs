@@ -165,22 +165,39 @@ func (s *Service) convertDocxToPDF(ctx context.Context, content []byte, traceID 
 }
 
 func (s *Service) generateBrowserDocxBytes(ctx context.Context, doc domain.Document, version domain.Version, exportConfig *domain.TemplateExportConfig, traceID string) ([]byte, error) {
+	var template *domain.DocumentTemplateVersion
+	if strings.TrimSpace(version.TemplateKey) != "" && version.TemplateVersion > 0 {
+		tmpl, err := s.repo.GetDocumentTemplateVersion(ctx, version.TemplateKey, version.TemplateVersion)
+		if err != nil {
+			return nil, err
+		}
+		template = &tmpl
+	}
+	return s.generateBrowserDocxBytesWithTemplate(ctx, doc, version, exportConfig, template, traceID)
+}
+
+func (s *Service) generateBrowserDocxBytesWithTemplate(ctx context.Context, doc domain.Document, version domain.Version, exportConfig *domain.TemplateExportConfig, template *domain.DocumentTemplateVersion, traceID string) ([]byte, error) {
 	if s.docgenClient == nil {
 		return nil, domain.ErrRenderUnavailable
 	}
 	if strings.TrimSpace(version.Content) == "" {
 		return nil, domain.ErrInvalidCommand
 	}
-	headerHTML := buildBrowserDocumentHeaderHTML(doc, version)
-	contentHTML := mddmBlocksToHTML(version.Content)
-	payload := docgen.BrowserRenderPayload{
-		DocumentCode: doc.DocumentCode,
-		Title:        doc.Title,
-		Version:      fmt.Sprintf("%d", version.Number),
-		HTML:         headerHTML + contentHTML,
-		Margins:      browserRenderMarginsFromExportConfig(exportConfig),
+
+	payload := docgen.MDDMExportPayload{
+		Envelope: json.RawMessage([]byte(version.Content)),
+		Metadata: docgen.MDDMExportMetadata{
+			DocumentCode:  doc.DocumentCode,
+			Title:         doc.Title,
+			RevisionLabel: fmt.Sprintf("REV%02d", version.Number),
+			Mode:          "production",
+		},
 	}
-	rendered, err := s.docgenClient.GenerateBrowser(ctx, payload, traceID)
+	if theme := mddmTemplateThemeFromDefinition(template); theme != nil {
+		payload.TemplateTheme = theme
+	}
+
+	rendered, err := s.docgenClient.GenerateMDDM(ctx, payload, traceID)
 	if err != nil {
 		if errors.Is(err, docgen.ErrUnavailable) {
 			return nil, domain.ErrRenderUnavailable
@@ -188,6 +205,37 @@ func (s *Service) generateBrowserDocxBytes(ctx context.Context, doc domain.Docum
 		return nil, err
 	}
 	return rendered, nil
+}
+
+func mddmTemplateThemeFromDefinition(template *domain.DocumentTemplateVersion) *docgen.MDDMTemplateTheme {
+	if template == nil || len(template.Definition) == 0 {
+		return nil
+	}
+
+	rawTheme, ok := template.Definition["theme"].(map[string]any)
+	if !ok || len(rawTheme) == 0 {
+		return nil
+	}
+
+	theme := docgen.MDDMTemplateTheme{}
+	if value, ok := toRuntimeString(rawTheme["accent"]); ok {
+		theme.Accent = value
+	}
+	if value, ok := toRuntimeString(rawTheme["accentLight"]); ok {
+		theme.AccentLight = value
+	}
+	if value, ok := toRuntimeString(rawTheme["accentDark"]); ok {
+		theme.AccentDark = value
+	}
+	if value, ok := toRuntimeString(rawTheme["accentBorder"]); ok {
+		theme.AccentBorder = value
+	}
+
+	if theme == (docgen.MDDMTemplateTheme{}) {
+		return nil
+	}
+
+	return &theme
 }
 
 func browserRenderMarginsFromExportConfig(cfg *domain.TemplateExportConfig) *docgen.BrowserRenderMargins {

@@ -1,4 +1,5 @@
 import { createReactBlockSpec } from "@blocknote/react";
+import styles from "./DataTableCell.module.css";
 
 export const DataTableCell = createReactBlockSpec(
   {
@@ -11,11 +12,12 @@ export const DataTableCell = createReactBlockSpec(
   {
     render: (props) => (
       <div
+        className={styles.cell}
         data-mddm-block="dataTableCell"
         data-column-key={props.block.props.columnKey}
         role="cell"
       >
-        <div ref={props.contentRef} />
+        <div ref={props.contentRef} className={styles.cellContent} />
       </div>
     ),
   },

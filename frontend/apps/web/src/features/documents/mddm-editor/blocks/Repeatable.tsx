@@ -1,4 +1,5 @@
 import { createReactBlockSpec } from "@blocknote/react";
+import styles from "./Repeatable.module.css";
 
 export const Repeatable = createReactBlockSpec(
   {
@@ -15,8 +16,15 @@ export const Repeatable = createReactBlockSpec(
   },
   {
     render: (props) => (
-      <div data-mddm-block="repeatable">
-        <strong>{props.block.props.label || "Repeatable"}</strong>
+      <div className={styles.repeatable} data-mddm-block="repeatable">
+        <div className={styles.repeatableHeader}>
+          <strong className={styles.repeatableTitle}>
+            {props.block.props.label || "Repeatable"}
+          </strong>
+          <span className={styles.repeatableMeta}>
+            {props.block.props.itemPrefix || "Item"}
+          </span>
+        </div>
       </div>
     ),
   },

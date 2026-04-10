@@ -142,6 +142,20 @@ Create `frontend/apps/web/src/features/documents/mddm-editor/mddm-editor-global.
 }
 
 /* Section counter reset — applied by MDDMEditor.module.css on editorRoot */
+
+/* ── FieldGroup grid bridge (C4 fix) ── */
+/* Child Field blocks render inside .bn-block-group, not inside the FieldGroup
+   component div. Grid must be applied to bn-block-group via :has() on the
+   parent data-content-type element. The FieldGroup component div carries
+   data-columns which :has() reads. */
+.bn-container [data-content-type="fieldGroup"] > .bn-block-group {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+.bn-container [data-content-type="fieldGroup"]:has([data-columns="2"]) > .bn-block-group {
+  grid-template-columns: 1fr 1fr;
+}
 ```
 
 - [ ] **Step 2: Commit**
@@ -191,7 +205,7 @@ Replace the entire content of `frontend/apps/web/src/features/documents/mddm-edi
 Replace the entire content of `frontend/apps/web/src/features/documents/mddm-editor/MDDMEditor.tsx`:
 
 ```tsx
-import { useMemo } from "react";
+import { useMemo, type CSSProperties } from "react";
 import { type PartialBlock } from "@blocknote/core";
 import { BlockNoteView } from "@blocknote/mantine";
 import { useCreateBlockNote } from "@blocknote/react";
@@ -233,7 +247,7 @@ export function MDDMEditor({
     if (theme.accentLight) vars["--mddm-accent-light"] = theme.accentLight;
     if (theme.accentDark) vars["--mddm-accent-dark"] = theme.accentDark;
     if (theme.accentBorder) vars["--mddm-accent-border"] = theme.accentBorder;
-    return Object.keys(vars).length > 0 ? vars as React.CSSProperties : undefined;
+    return Object.keys(vars).length > 0 ? vars as CSSProperties : undefined;
   }, [theme]);
 
   return (
@@ -301,7 +315,50 @@ Then pass it to `<MDDMEditor>`:
 
 Update the import to include `MDDMTheme` if needed for type safety.
 
-- [ ] **Step 2: Verify TypeScript compiles**
+- [ ] **Step 2: Add theme type to `lib.types.ts`** (G1 gap fix)
+
+In `frontend/apps/web/src/lib.types.ts`, the `DocumentBrowserTemplateSnapshotItem.definition` field currently types as `Record<string, unknown>`. Add a stricter type for the theme sub-field:
+
+```ts
+export interface MDDMTemplateTheme {
+  accent?: string;
+  accentLight?: string;
+  accentDark?: string;
+  accentBorder?: string;
+}
+```
+
+Then in `DocumentBrowserTemplateSnapshotItem`, tighten the definition type:
+
+```ts
+definition?: {
+  type?: string;
+  id?: string;
+  children?: unknown[];
+  theme?: MDDMTemplateTheme;
+} & Record<string, unknown>;
+```
+
+Export `MDDMTemplateTheme` so `BrowserDocumentEditorView.tsx` and `MDDMEditor.tsx` can import it instead of using `Record<string, string>`.
+
+Update `BrowserDocumentEditorView.tsx` `editorTheme` useMemo to use the typed field:
+
+```tsx
+import type { MDDMTheme } from "../mddm-editor/MDDMEditor";
+
+const editorTheme = useMemo((): MDDMTheme | undefined => {
+  const t = bundle?.templateSnapshot?.definition?.theme;
+  if (!t) return undefined;
+  return {
+    accent: t.accent,
+    accentLight: t.accentLight,
+    accentDark: t.accentDark,
+    accentBorder: t.accentBorder,
+  };
+}, [bundle?.templateSnapshot?.definition?.theme]);
+```
+
+- [ ] **Step 3: Verify TypeScript compiles**
 
 ```bash
 cd frontend/apps/web && npx tsc --noEmit
@@ -309,10 +366,10 @@ cd frontend/apps/web && npx tsc --noEmit
 
 Expected: zero errors.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
-git add frontend/apps/web/src/features/documents/browser-editor/BrowserDocumentEditorView.tsx
+git add frontend/apps/web/src/lib.types.ts frontend/apps/web/src/features/documents/browser-editor/BrowserDocumentEditorView.tsx
 git commit -m "feat(mddm): wire template theme to editor via BrowserDocumentEditorView"
 ```
 
@@ -436,17 +493,16 @@ git commit -m "feat(mddm): style Section block with dark header bar and CSS coun
 
 ```css
 .fieldGroup {
-  display: grid;
-  grid-template-columns: 1fr;
   border: 1px solid var(--mddm-field-border);
   border-radius: var(--mddm-radius);
   overflow: hidden;
   margin-bottom: var(--mddm-spacing-sm);
 }
-
-.fieldGroup[data-columns="2"] {
-  grid-template-columns: 1fr 1fr;
-}
+/* Grid layout is driven by bridge CSS in mddm-editor-global.css via :has([data-columns]).
+   The FieldGroup component div carries data-columns; BlockNote renders child Field blocks
+   inside .bn-block-group (sibling to this div, not inside it). The :has() selector in
+   bridge CSS targets [data-content-type="fieldGroup"]:has([data-columns="2"]) > .bn-block-group
+   to apply the correct grid-template-columns there. */
 ```
 
 - [ ] **Step 2: Update FieldGroup.tsx render**
@@ -1015,17 +1071,57 @@ git commit -m "feat(mddm): style DataTableRow and DataTableCell blocks"
 **Files:**
 - Modify: `frontend/apps/web/src/features/documents/mddm-editor/adapter.ts`
 
-- [ ] **Step 1: Ensure variant props are mapped in mddmToBlockNote**
+- [ ] **Step 1: Audit `toBlockNoteProps` and `toMDDMProps` in adapter.ts** (C3 fix)
 
-In `adapter.ts`, find the function that maps MDDM block props to BlockNote block props. Ensure these props are passed through for each block type:
+**Context:** The adapter has two prop-mapping functions. Variant props must survive both directions:
+- MDDM JSON → BlockNote (editor load): `toBlockNoteProps`
+- BlockNote → MDDM JSON (save): `toMDDMProps`
+
+**Step 1a: Read `toBlockNoteProps`**
+
+Open `adapter.ts` and find `toBlockNoteProps(type, props)`. If it whitelists specific props per block type (e.g. a switch/case that only copies known fields), add the new variant props explicitly:
+
+```ts
+case "section":
+  return {
+    ...pick(props, ["title", "color", "locked", "optional", "__template_block_id"]),
+    variant: (props.variant as string) ?? "bar",   // ← ADD
+  };
+case "field":
+  return {
+    ...pick(props, ["label", "valueMode", "locked", "hint", "__template_block_id"]),
+    layout: (props.layout as string) ?? "grid",    // ← ADD
+  };
+case "repeatableItem":
+  return {
+    ...pick(props, ["title"]),
+    style: (props.style as string) ?? "bordered",  // ← ADD
+  };
+case "richBlock":
+  return {
+    ...pick(props, ["label", "locked", "__template_block_id"]),
+    chrome: (props.chrome as string) ?? "labeled", // ← ADD
+  };
+case "dataTable":
+  return {
+    ...pick(props, ["label", "columnsJson", "locked", "minRows", "maxRows", "__template_block_id"]),
+    density: (props.density as string) ?? "normal",// ← ADD
+  };
+```
+
+If `toBlockNoteProps` already uses `cloneRecord(props)` (copies everything), no change needed — just verify.
+
+**Step 1b: Check `toMDDMProps`**
+
+Find `toMDDMProps`. If it uses `cloneRecord(block.props)` (copies all props), variant props will already be preserved on save — no change needed. If it whitelists, add `variant`, `layout`, `style`, `chrome`, `density` to the respective cases.
+
+Ensure these props are passed through for each block type:
 
 - `section`: `variant` (default `"bar"`)
 - `field`: `layout` (default `"grid"`)
 - `repeatableItem`: `style` (default `"bordered"`)
 - `richBlock`: `chrome` (default `"labeled"`)
 - `dataTable`: `density` (default `"normal"`)
-
-The adapter should copy any prop from the MDDM block that exists in the BlockNote propSchema. If the prop isn't present in the MDDM data, the BlockNote default applies.
 
 - [ ] **Step 2: Verify TypeScript compiles**
 
@@ -1171,26 +1267,151 @@ git commit -m "feat(mddm): apply theme colors to field and data table DOCX rende
 
 ---
 
-## Task 15: Wire template theme from Go service to docgen request
+## Task 15: Wire MDDM export through Go docgen client (C1/C2 fix)
+
+**Context:** The docgen server already has `/render/mddm-docx` → `exportMDDMToDocx`. The Go client
+(`internal/platform/render/docgen/client.go`) only has `Generate` and `GenerateBrowser` — no MDDM method.
+`generateBrowserDocxBytes` currently converts MDDM blocks to raw HTML and calls `GenerateBrowser` (Chromium).
+This task replaces that with the proper MDDM-native DOCX pipeline.
 
 **Files:**
+- Modify: `internal/platform/render/docgen/types.go`
+- Modify: `internal/platform/render/docgen/client.go`
 - Modify: `internal/modules/documents/application/service_content_docx.go`
 
-- [ ] **Step 1: Read theme from template definition and include in docgen payload**
+- [ ] **Step 1: Add `MDDMExportPayload` type to `docgen/types.go`**
 
-When building the `MDDMExportRequest` payload for the docgen service, extract the `theme` object from the template definition and include it as `templateTheme`.
+Append to `internal/platform/render/docgen/types.go`:
 
-- [ ] **Step 2: Verify Go builds**
+```go
+type MDDMExportTheme struct {
+	Accent      string `json:"accent,omitempty"`
+	AccentLight string `json:"accentLight,omitempty"`
+	AccentDark  string `json:"accentDark,omitempty"`
+	AccentBorder string `json:"accentBorder,omitempty"`
+}
+
+type MDDMExportPayload struct {
+	DocumentCode string           `json:"documentCode"`
+	Title        string           `json:"title"`
+	Version      string           `json:"version,omitempty"`
+	Body         string           `json:"body"`            // raw MDDM JSON string
+	Theme        *MDDMExportTheme `json:"templateTheme,omitempty"`
+}
+```
+
+- [ ] **Step 2: Add `GenerateMDDM` method to `docgen/client.go`**
+
+Add after `GenerateBrowser`:
+
+```go
+func (c *Client) GenerateMDDM(ctx context.Context, payload MDDMExportPayload, traceID string) ([]byte, error) {
+	if c == nil {
+		return nil, fmt.Errorf("docgen client not configured")
+	}
+	if traceID == "" {
+		traceID = "trace-local"
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("marshal mddm docgen payload: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/render/mddm-docx", bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Trace-Id", traceID)
+
+	log.Printf("docgen generate-mddm trace_id=%s document_code=%s", traceID, payload.DocumentCode)
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("%w: docgen request: %v", ErrUnavailable, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		raw, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode >= http.StatusInternalServerError {
+			return nil, fmt.Errorf("%w: docgen mddm failed status=%d body=%s", ErrUnavailable, resp.StatusCode, strings.TrimSpace(string(raw)))
+		}
+		return nil, fmt.Errorf("docgen mddm failed status=%d body=%s", resp.StatusCode, strings.TrimSpace(string(raw)))
+	}
+
+	rendered, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read docgen mddm response: %w", err)
+	}
+	return rendered, nil
+}
+```
+
+- [ ] **Step 3: Update `generateBrowserDocxBytes` in `service_content_docx.go`**
+
+Replace the existing `generateBrowserDocxBytes` implementation. Instead of converting to HTML and calling `GenerateBrowser`, extract the theme from the export config (or template definition) and call `GenerateMDDM`:
+
+```go
+func (s *Service) generateBrowserDocxBytes(ctx context.Context, doc domain.Document, version domain.Version, exportConfig *domain.TemplateExportConfig, traceID string) ([]byte, error) {
+	if s.docgenClient == nil {
+		return nil, domain.ErrRenderUnavailable
+	}
+	if strings.TrimSpace(version.Content) == "" {
+		return nil, domain.ErrInvalidCommand
+	}
+
+	payload := docgen.MDDMExportPayload{
+		DocumentCode: doc.DocumentCode,
+		Title:        doc.Title,
+		Version:      fmt.Sprintf("%d", version.Number),
+		Body:         version.Content,
+	}
+
+	// Extract theme from template definition if available
+	if exportConfig != nil && exportConfig.DefinitionJSON != nil {
+		if t, ok := exportConfig.DefinitionJSON["theme"].(map[string]interface{}); ok {
+			payload.Theme = &docgen.MDDMExportTheme{
+				Accent:       stringFromMap(t, "accent"),
+				AccentLight:  stringFromMap(t, "accentLight"),
+				AccentDark:   stringFromMap(t, "accentDark"),
+				AccentBorder: stringFromMap(t, "accentBorder"),
+			}
+		}
+	}
+
+	rendered, err := s.docgenClient.GenerateMDDM(ctx, payload, traceID)
+	if err != nil {
+		if errors.Is(err, docgen.ErrUnavailable) {
+			return nil, domain.ErrRenderUnavailable
+		}
+		return nil, err
+	}
+	return rendered, nil
+}
+
+func stringFromMap(m map[string]interface{}, key string) string {
+	if v, ok := m[key].(string); ok {
+		return v
+	}
+	return ""
+}
+```
+
+> **Note:** Check how `exportConfig` carries `DefinitionJSON`. Read the `domain.TemplateExportConfig` struct and the handler that populates it. If `DefinitionJSON` is not already there, read the definition from the template snapshot passed into the service method and add it as a field. Adapt accordingly — the intent is to pass the theme through.
+
+- [ ] **Step 4: Verify Go builds**
 
 ```bash
 go build ./...
 ```
 
-- [ ] **Step 3: Commit**
+Expected: zero errors.
+
+- [ ] **Step 5: Commit**
 
 ```bash
-git add internal/modules/documents/application/service_content_docx.go
-git commit -m "feat(mddm): pass template theme from Go service to docgen export request"
+git add internal/platform/render/docgen/types.go internal/platform/render/docgen/client.go internal/modules/documents/application/service_content_docx.go
+git commit -m "feat(mddm): wire MDDM export through dedicated docgen route with theme support"
 ```
 
 ---

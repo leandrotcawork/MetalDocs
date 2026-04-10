@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -122,16 +121,16 @@ func TestExportBrowserContentUsesBrowserDocgenRoute(t *testing.T) {
 		t.Fatalf("save version: %v", err)
 	}
 
-	payloadCh := make(chan []byte, 1)
+	payloadCh := make(chan docgen.MDDMExportPayload, 1)
 	docgenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/generate-browser" {
-			t.Fatalf("docgen path = %q, want /generate-browser", r.URL.Path)
+		if r.URL.Path != "/render/mddm-docx" {
+			t.Fatalf("docgen path = %q, want /render/mddm-docx", r.URL.Path)
 		}
-		raw, err := io.ReadAll(r.Body)
-		if err != nil {
-			t.Fatalf("read docgen payload: %v", err)
+		var payload docgen.MDDMExportPayload
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			t.Fatalf("decode docgen payload: %v", err)
 		}
-		payloadCh <- raw
+		payloadCh <- payload
 		w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
 		_, _ = w.Write([]byte("docx-binary"))
 	}))
@@ -160,16 +159,24 @@ func TestExportBrowserContentUsesBrowserDocgenRoute(t *testing.T) {
 	}
 
 	select {
-	case raw := <-payloadCh:
-		// Header is prepended; assert the md-doc-header block and converted MDDM body are both present.
-		if !bytes.Contains(raw, []byte(`md-doc-header`)) {
-			t.Fatalf("payload missing md-doc-header: %s", raw)
+	case payload := <-payloadCh:
+		if payload.Metadata.DocumentCode != doc.DocumentCode {
+			t.Fatalf("metadata document code = %q, want %q", payload.Metadata.DocumentCode, doc.DocumentCode)
 		}
-		if !bytes.Contains(raw, []byte(`<p>Atualizado</p>`)) {
-			t.Fatalf("payload missing converted MDDM paragraph: %s", raw)
+		if payload.Metadata.Title != doc.Title {
+			t.Fatalf("metadata title = %q, want %q", payload.Metadata.Title, doc.Title)
 		}
-		if bytes.Contains(raw, []byte(`<section><p>Atualizado</p></section>`)) {
-			t.Fatalf("payload still contains legacy HTML body: %s", raw)
+		if payload.Metadata.RevisionLabel != "REV01" {
+			t.Fatalf("metadata revision label = %q, want %q", payload.Metadata.RevisionLabel, "REV01")
+		}
+		if payload.Metadata.Mode != "production" {
+			t.Fatalf("metadata mode = %q, want %q", payload.Metadata.Mode, "production")
+		}
+		if !bytes.Contains(payload.Envelope, []byte(`Atualizado`)) {
+			t.Fatalf("envelope missing expected content marker: %s", payload.Envelope)
+		}
+		if bytes.Contains(payload.Envelope, []byte(`<section><p>Atualizado</p></section>`)) {
+			t.Fatalf("envelope still contains legacy HTML body: %s", payload.Envelope)
 		}
 	default:
 		t.Fatal("expected browser docgen payload")

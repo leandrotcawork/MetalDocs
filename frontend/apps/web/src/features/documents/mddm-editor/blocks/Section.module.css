@@ -1,0 +1,50 @@
+.section {
+  margin: var(--mddm-spacing-lg) 0 var(--mddm-spacing-md);
+  border: 1px solid var(--mddm-accent-border);
+  border-radius: calc(var(--mddm-radius) * 2);
+  overflow: hidden;
+  background: var(--mddm-raw-white);
+  counter-increment: mddm-section;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mddm-spacing-sm);
+  padding: 0.85rem 1rem;
+  background: linear-gradient(135deg, var(--mddm-section-header-bg), var(--mddm-accent-dark));
+  color: var(--mddm-section-header-text);
+}
+
+.section[data-variant="inline"] .sectionHeader {
+  background: transparent;
+  color: var(--mddm-accent-dark);
+  padding: 0 0 0.65rem;
+  border-bottom: 1px solid var(--mddm-field-border);
+}
+
+.sectionTitle {
+  font-size: var(--mddm-font-size-section);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.section[data-variant="inline"] .sectionTitle {
+  font-size: 1rem;
+  letter-spacing: 0.03em;
+  text-transform: none;
+}
+
+.sectionTitle::before {
+  content: counter(mddm-section) ". ";
+}
+
+.optionalBadge {
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  opacity: 0.78;
+  white-space: nowrap;
+}

@@ -6,7 +6,7 @@ import { formatDocumentDisplayName } from "../../shared/documentDisplay";
 import { normalizeDocumentProfileCode } from "../../shared/documentProfile";
 import styles from "./BrowserDocumentEditorView.module.css";
 import { DocumentEditorHeader } from "./DocumentEditorHeader";
-import { MDDMEditor } from "../mddm-editor/MDDMEditor";
+import { MDDMEditor, type MDDMTheme } from "../mddm-editor/MDDMEditor";
 import { blockNoteToMDDM, mddmToBlockNote, type MDDMEnvelope } from "../mddm-editor/adapter";
 
 type BrowserDocumentEditorViewProps = {
@@ -127,6 +127,19 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
     [document],
   );
   const documentProfileCode = normalizeDocumentProfileCode(document.documentProfile);
+  const editorTheme = useMemo((): MDDMTheme | undefined => {
+    const theme = bundle?.templateSnapshot?.definition?.theme;
+    if (!theme) {
+      return undefined;
+    }
+
+    return {
+      accent: theme.accent,
+      accentLight: theme.accentLight,
+      accentDark: theme.accentDark,
+      accentBorder: theme.accentBorder,
+    };
+  }, [bundle?.templateSnapshot?.definition?.theme]);
 
   const isDirty = bundle !== null && editorData !== bundle.body;
   const isSaving = viewState === "saving";
@@ -329,6 +342,7 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
                     setSaveLabel("Erro de conversao");
                   }
                 }}
+                theme={editorTheme}
               />
             ) : (
               <div className={styles.stateCard} role="alert">

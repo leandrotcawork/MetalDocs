@@ -531,3 +531,23 @@ commit: `chore(runtime): record schema runtime migration completion`
 - [x] Fix 2: Add PO schema version 2 as an additive migration and set `active_version = 2`.
 - [x] Fix 3: Record the migration lesson and task tracking update.
 
+---
+
+## Feature: MDDM audit remediation (2026-04-10)
+Area: `frontend/apps/web/src/features/documents/mddm-editor/` + `docs/superpowers/reports/`  |  Risk: low  |  Goal: close implementation-audit findings and record verification evidence
+
+## Tasks
+- [x] T1: Close verification evidence report with concrete automated results and explicit pending manual/DOCX status
+- [x] T2: Update task tracking with factual remediation status
+- [x] T3: Preserve evidence trail for audit closure
+
+## Acceptance tests
+- [x] `frontend/apps/web/node_modules/.bin/tsc.cmd --noEmit -p frontend/apps/web/tsconfig.json`
+- [x] `cd apps/docgen && npm.cmd run typecheck`
+- [x] `go build ./...`
+- [x] Report saved in `docs/superpowers/reports/2026-04-10-mddm-verification-evidence.md`
+- [ ] Manual browser checks for MDDM editor flow
+  - Pending: not executed in this session
+- [ ] DOCX export checks for shading parity
+  - Pending: not executed in this session
+

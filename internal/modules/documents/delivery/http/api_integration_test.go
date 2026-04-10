@@ -44,7 +44,7 @@ func TestAPI_DocumentMatrix_CreateSaveConflictReleaseExport(t *testing.T) {
 			return
 		}
 
-		if r.URL.Path != "/generate" && r.URL.Path != "/generate-browser" {
+		if r.URL.Path != "/generate" && r.URL.Path != "/render/mddm-docx" {
 			http.Error(w, "docgen route not found", http.StatusNotFound)
 			return
 		}
@@ -189,8 +189,8 @@ func TestAPI_DocumentMatrix_CreateSaveConflictReleaseExport(t *testing.T) {
 		if recorded[0].Method != http.MethodPost {
 			t.Fatalf("docgen method = %q, want %q", recorded[0].Method, http.MethodPost)
 		}
-		if recorded[0].Path != "/generate-browser" {
-			t.Fatalf("docgen path = %q, want %q", recorded[0].Path, "/generate-browser")
+		if recorded[0].Path != "/render/mddm-docx" {
+			t.Fatalf("docgen path = %q, want %q", recorded[0].Path, "/render/mddm-docx")
 		}
 	})
 }

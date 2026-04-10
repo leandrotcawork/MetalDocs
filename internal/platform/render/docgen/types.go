@@ -1,5 +1,7 @@
 package docgen
 
+import "encoding/json"
+
 type RenderPayload struct {
 	DocumentType string           `json:"documentType"`
 	DocumentCode string           `json:"documentCode"`
@@ -45,6 +47,26 @@ type RenderField struct {
 	Options    []string      `json:"options,omitempty"`
 	Columns    []RenderField `json:"columns,omitempty"`
 	ItemFields []RenderField `json:"itemFields,omitempty"`
+}
+
+type MDDMTemplateTheme struct {
+	Accent       string `json:"accent,omitempty"`
+	AccentLight  string `json:"accentLight,omitempty"`
+	AccentDark   string `json:"accentDark,omitempty"`
+	AccentBorder string `json:"accentBorder,omitempty"`
+}
+
+type MDDMExportMetadata struct {
+	DocumentCode  string `json:"document_code"`
+	Title         string `json:"title"`
+	RevisionLabel string `json:"revision_label"`
+	Mode          string `json:"mode"`
+}
+
+type MDDMExportPayload struct {
+	Envelope      json.RawMessage    `json:"envelope"`
+	Metadata      MDDMExportMetadata `json:"metadata"`
+	TemplateTheme *MDDMTemplateTheme `json:"templateTheme,omitempty"`
 }
 
 type BrowserRenderMargins struct {

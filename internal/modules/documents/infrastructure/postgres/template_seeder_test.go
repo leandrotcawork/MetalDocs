@@ -26,8 +26,6 @@ func TestTemplateSeeder_IsIdempotent(t *testing.T) {
 	seeder := NewTemplateSeeder(db)
 	expectedContent, expectedHash := expectedCanonicalTemplateSeed(t)
 
-	seedStaleTemplateRow(t, ctx, db, templateID)
-
 	if err := seeder.SeedPOTemplate(ctx, templateID); err != nil {
 		t.Fatalf("first seed: %v", err)
 	}

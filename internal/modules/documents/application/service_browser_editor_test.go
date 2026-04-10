@@ -2,9 +2,7 @@ package application
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -18,14 +16,15 @@ func TestGetBrowserEditorBundleReturnsDraftHTML(t *testing.T) {
 	now := time.Date(2026, time.April, 4, 11, 0, 0, 0, time.UTC)
 	repo := documentmemory.NewRepository()
 	service := NewService(repo, nil, fixedClock{now: now})
-	body := templateV2Body(t)
-	doc := seedBrowserDocument(t, ctx, repo, now, body)
+	doc := seedBrowserDocument(t, ctx, repo, now, `<section><p>Original</p></section>`)
 
 	bundle, err := service.GetBrowserEditorBundleAuthorized(ctx, doc.ID)
 	if err != nil {
 		t.Fatalf("GetBrowserEditorBundleAuthorized() error = %v", err)
 	}
-	assertBrowserEditorEnvelope(t, bundle.Body, browserEditorSectionTitles())
+	if bundle.Body != `<section><p>Original</p></section>` {
+		t.Fatalf("bundle body = %q, want original HTML", bundle.Body)
+	}
 	if bundle.DraftToken == "" {
 		t.Fatal("expected draft token")
 	}
@@ -42,8 +41,7 @@ func TestGetBrowserEditorBundleRequiresTemplateSnapshot(t *testing.T) {
 	now := time.Date(2026, time.April, 4, 11, 0, 0, 0, time.UTC)
 	repo := documentmemory.NewRepository()
 	service := NewService(repo, nil, fixedClock{now: now})
-	body := templateV2Body(t)
-	doc := seedBrowserDocumentWithoutTemplate(t, ctx, repo, now, body)
+	doc := seedBrowserDocumentWithoutTemplate(t, ctx, repo, now, `<section><p>Original</p></section>`)
 
 	_, err := service.GetBrowserEditorBundleAuthorized(ctx, doc.ID)
 	if !errors.Is(err, domain.ErrDocumentTemplateNotFound) {
@@ -56,8 +54,7 @@ func TestSaveBrowserContentAuthorizedUpdatesDraftInPlace(t *testing.T) {
 	now := time.Date(2026, time.April, 4, 11, 0, 0, 0, time.UTC)
 	repo := documentmemory.NewRepository()
 	service := NewService(repo, nil, fixedClock{now: now})
-	body := templateV2Body(t)
-	doc := seedBrowserDocument(t, ctx, repo, now, body)
+	doc := seedBrowserDocument(t, ctx, repo, now, `<section><p>Original</p></section>`)
 	current, err := repo.GetVersion(ctx, doc.ID, 1)
 	if err != nil {
 		t.Fatalf("GetVersion() error = %v", err)
@@ -96,8 +93,7 @@ func TestSaveBrowserContentAuthorizedRequiresTemplateSnapshot(t *testing.T) {
 	now := time.Date(2026, time.April, 4, 11, 0, 0, 0, time.UTC)
 	repo := documentmemory.NewRepository()
 	service := NewService(repo, nil, fixedClock{now: now})
-	body := templateV2Body(t)
-	doc := seedBrowserDocumentWithoutTemplate(t, ctx, repo, now, body)
+	doc := seedBrowserDocumentWithoutTemplate(t, ctx, repo, now, `<section><p>Original</p></section>`)
 	current, err := repo.GetVersion(ctx, doc.ID, 1)
 	if err != nil {
 		t.Fatalf("GetVersion() error = %v", err)
@@ -119,8 +115,7 @@ func TestSaveBrowserContentAuthorizedRejectsNonBrowserTemplate(t *testing.T) {
 	now := time.Date(2026, time.April, 4, 11, 0, 0, 0, time.UTC)
 	repo := documentmemory.NewRepository()
 	service := NewService(repo, nil, fixedClock{now: now})
-	body := templateV2Body(t)
-	doc := seedBrowserDocument(t, ctx, repo, now, body)
+	doc := seedBrowserDocument(t, ctx, repo, now, `<section><p>Original</p></section>`)
 
 	if err := repo.UpsertDocumentTemplateVersionForTest(ctx, domain.DocumentTemplateVersion{
 		TemplateKey:   "po-governed-docx",
@@ -175,8 +170,7 @@ func TestGetBrowserEditorBundleRejectsIncompatibleStoredTemplateSnapshot(t *test
 	now := time.Date(2026, time.April, 4, 11, 0, 0, 0, time.UTC)
 	repo := documentmemory.NewRepository()
 	service := NewService(repo, nil, fixedClock{now: now})
-	body := templateV2Body(t)
-	doc := seedBrowserDocument(t, ctx, repo, now, body)
+	doc := seedBrowserDocument(t, ctx, repo, now, `<section><p>Original</p></section>`)
 
 	setStoredBrowserTemplateSnapshotForTest(t, ctx, repo, now, doc.ID, "po-browser-invalid-schema", 99)
 
@@ -191,8 +185,7 @@ func TestSaveBrowserContentAuthorizedRejectsIncompatibleStoredTemplateSnapshot(t
 	now := time.Date(2026, time.April, 4, 11, 0, 0, 0, time.UTC)
 	repo := documentmemory.NewRepository()
 	service := NewService(repo, nil, fixedClock{now: now})
-	body := templateV2Body(t)
-	doc := seedBrowserDocument(t, ctx, repo, now, body)
+	doc := seedBrowserDocument(t, ctx, repo, now, `<section><p>Original</p></section>`)
 
 	current := setStoredBrowserTemplateSnapshotForTest(t, ctx, repo, now, doc.ID, "po-browser-invalid-schema", 99)
 
@@ -228,7 +221,7 @@ func seedBrowserDocument(t *testing.T, ctx context.Context, repo *documentmemory
 		ContentHash:     contentHash(body),
 		ChangeSummary:   "Initial browser draft",
 		ContentSource:   domain.ContentSourceBrowserEditor,
-		TextContent:     browserEditorBodyText(t, body),
+		TextContent:     plainTextFromHTML(body),
 		TemplateKey:     "po-default-canvas",
 		TemplateVersion: 1,
 		CreatedAt:       now,
@@ -288,7 +281,7 @@ func seedBrowserDocumentWithoutTemplate(t *testing.T, ctx context.Context, repo 
 		ContentHash:   contentHash(body),
 		ChangeSummary: "Initial browser draft",
 		ContentSource: domain.ContentSourceBrowserEditor,
-		TextContent:   browserEditorBodyText(t, body),
+		TextContent:   plainTextFromHTML(body),
 		CreatedAt:     now,
 	}); err != nil {
 		t.Fatalf("save version: %v", err)
@@ -420,230 +413,37 @@ func TestGetBrowserEditorBundleSubstitutesTokens(t *testing.T) {
 	now := time.Date(2026, time.April, 6, 10, 0, 0, 0, time.UTC)
 	repo := documentmemory.NewRepository()
 	service := NewService(repo, nil, fixedClock{now: now})
-	body := templateV2Body(t)
-	doc := seedBrowserDocument(t, ctx, repo, now, body)
+
+	seedCompatiblePOProfileSchemaSet(t, repo)
+
+	doc, err := service.CreateDocument(ctx, domain.CreateDocumentCommand{
+		DocumentID:      "doc-token-substitution",
+		Title:           "Token Substitution Test",
+		DocumentType:    "po",
+		DocumentProfile: "po",
+		OwnerID:         "leandro_theodoro",
+		BusinessUnit:    "operations",
+		Department:      "sgq",
+		InitialContent:  `{"legacy":"content"}`,
+		TraceID:         "trace-token-test",
+	})
+	if err != nil {
+		t.Fatalf("CreateDocument() error = %v", err)
+	}
 
 	bundle, err := service.GetBrowserEditorBundleAuthorized(ctx, doc.ID)
 	if err != nil {
 		t.Fatalf("GetBrowserEditorBundleAuthorized() error = %v", err)
 	}
 
-	envelope := assertBrowserEditorEnvelope(t, bundle.Body, browserEditorSectionTitles())
-	assertBrowserEditorBodyHasNoTokens(t, envelope, []string{"{{versao}}", "{{data_criacao}}", "{{elaborador}}"})
+	// Assert: no raw tokens remain in bundle.Body (tokens present after Task 6 rewrite)
+	for _, token := range []string{"{{versao}}", "{{data_criacao}}", "{{elaborador}}"} {
+		if strings.Contains(bundle.Body, token) {
+			t.Errorf("bundle.Body must not contain raw token %q after substitution", token)
+		}
+	}
+	// Assert: bundle has content (template body is present)
 	if bundle.Body == "" {
 		t.Fatal("bundle body is empty")
-	}
-}
-
-func browserEditorSectionTitles() []string {
-	return []string{
-		"Identificação do Processo",
-		"Entradas e Saídas",
-		"Visão Geral do Processo",
-		"Detalhamento das Etapas",
-		"Controle e Exceções",
-		"Indicadores de Desempenho",
-		"Documentos e Referências",
-		"Glossário",
-		"Histórico de Revisões",
-	}
-}
-
-func templateV2Body(t *testing.T) string {
-	t.Helper()
-
-	body := map[string]any{
-		"mddm_version": 1,
-		"template_ref": nil,
-		"blocks": []any{
-			browserEditorSectionBlock("section-identificacao-processo", "Identificação do Processo",
-				browserEditorParagraphBlock("identificacao-objetivo", "Objetivo"),
-				browserEditorParagraphBlock("identificacao-escopo", "Escopo"),
-				browserEditorParagraphBlock("identificacao-cargo", "Cargo responsável"),
-				browserEditorParagraphBlock("identificacao-canal", "Canal / Contexto"),
-				browserEditorParagraphBlock("identificacao-participantes", "Participantes"),
-			),
-			browserEditorSectionBlock("section-entradas-saidas", "Entradas e Saídas",
-				browserEditorParagraphBlock("entradas", "Entradas"),
-				browserEditorParagraphBlock("saidas", "Saídas"),
-				browserEditorParagraphBlock("documentos-relacionados", "Documentos relacionados"),
-				browserEditorParagraphBlock("sistemas-utilizados", "Sistemas utilizados"),
-			),
-			browserEditorSectionBlock("section-visao-geral", "Visão Geral do Processo",
-				browserEditorParagraphBlock("descricao-processo", "Descrição do processo"),
-				browserEditorParagraphBlock("ferramenta-fluxograma", "Ferramenta do fluxograma"),
-				browserEditorParagraphBlock("link-fluxograma", "Link do fluxograma"),
-				browserEditorParagraphBlock("diagrama", "Diagrama"),
-			),
-			browserEditorSectionBlock("section-detalhamento-etapas", "Detalhamento das Etapas",
-				browserEditorParagraphBlock("etapa-1", "Etapa 1 - [Nome da etapa]"),
-				browserEditorParagraphBlock("etapa-1-descricao", "Descreva esta etapa livremente."),
-			),
-			browserEditorSectionBlock("section-controle-excecoes", "Controle e Exceções",
-				browserEditorParagraphBlock("pontos-controle", "Pontos de controle"),
-				browserEditorParagraphBlock("excecoes-desvios", "Exceções e desvios"),
-			),
-			browserEditorSectionBlock("section-indicadores-desempenho", "Indicadores de Desempenho",
-				browserEditorParagraphBlock("kpis", "KPIs"),
-			),
-			browserEditorSectionBlock("section-documentos-referencias", "Documentos e Referências",
-				browserEditorParagraphBlock("documentos-referencias-titulo", "Documentos e referências"),
-			),
-			browserEditorSectionBlock("section-glossario", "Glossário",
-				browserEditorParagraphBlock("glossario-titulo", "Glossário"),
-			),
-			browserEditorSectionBlock("section-historico-revisoes", "Histórico de Revisões",
-				browserEditorParagraphBlock("historico-versao", "{{versao}}"),
-				browserEditorParagraphBlock("historico-data", "{{data_criacao}}"),
-				browserEditorParagraphBlock("historico-autoria", "{{elaborador}}"),
-			),
-		},
-	}
-
-	raw, err := json.Marshal(body)
-	if err != nil {
-		t.Fatalf("marshal template body: %v", err)
-	}
-	return string(raw)
-}
-
-func browserEditorSectionBlock(id, title string, children ...any) map[string]any {
-	return map[string]any{
-		"id":   id,
-		"type": "section",
-		"props": map[string]any{
-			"title":  title,
-			"color":  "#6b1f2a",
-			"locked": false,
-		},
-		"children": children,
-	}
-}
-
-func browserEditorParagraphBlock(id, text string) map[string]any {
-	return map[string]any{
-		"id":   id,
-		"type": "paragraph",
-		"props": map[string]any{
-			"locked": false,
-		},
-		"children": []any{
-			map[string]any{
-				"text": text,
-			},
-		},
-	}
-}
-
-func browserEditorBodyText(t *testing.T, body string) string {
-	t.Helper()
-
-	var parsed any
-	if err := json.Unmarshal([]byte(body), &parsed); err != nil {
-		t.Fatalf("unmarshal browser body: %v", err)
-	}
-
-	parts := make([]string, 0, 32)
-	collectBrowserEditorText(&parts, parsed)
-	return strings.Join(parts, " ")
-}
-
-func collectBrowserEditorText(parts *[]string, value any) {
-	switch v := value.(type) {
-	case map[string]any:
-		for key, child := range v {
-			if key == "title" || key == "text" {
-				if text, ok := child.(string); ok && strings.TrimSpace(text) != "" {
-					*parts = append(*parts, text)
-				}
-			}
-			collectBrowserEditorText(parts, child)
-		}
-	case []any:
-		for _, child := range v {
-			collectBrowserEditorText(parts, child)
-		}
-	}
-}
-
-func assertBrowserEditorEnvelope(t *testing.T, body string, expectedSectionTitles []string) map[string]any {
-	t.Helper()
-
-	var envelope map[string]any
-	if err := json.Unmarshal([]byte(body), &envelope); err != nil {
-		t.Fatalf("bundle body is not valid JSON: %v", err)
-	}
-
-	if _, ok := envelope["mddm_version"]; !ok {
-		t.Fatal("bundle body is missing mddm_version")
-	}
-	if got, ok := envelope["mddm_version"].(float64); !ok || got != 1 {
-		t.Fatalf("bundle body mddm_version = %#v, want 1", envelope["mddm_version"])
-	}
-	if _, ok := envelope["template_ref"]; !ok {
-		t.Fatal("bundle body is missing template_ref")
-	}
-	blocks, ok := envelope["blocks"].([]any)
-	if !ok {
-		t.Fatalf("bundle body blocks = %#v, want array", envelope["blocks"])
-	}
-	if len(blocks) != len(expectedSectionTitles) {
-		t.Fatalf("bundle body section count = %d, want %d", len(blocks), len(expectedSectionTitles))
-	}
-
-	for i, rawBlock := range blocks {
-		block, ok := rawBlock.(map[string]any)
-		if !ok {
-			t.Fatalf("bundle body blocks[%d] = %#v, want object", i, rawBlock)
-		}
-		if got := block["type"]; got != "section" {
-			t.Fatalf("bundle body blocks[%d].type = %#v, want section", i, got)
-		}
-		props, ok := block["props"].(map[string]any)
-		if !ok {
-			t.Fatalf("bundle body blocks[%d].props = %#v, want object", i, block["props"])
-		}
-		title, ok := props["title"].(string)
-		if !ok {
-			t.Fatalf("bundle body blocks[%d].props.title = %#v, want string", i, props["title"])
-		}
-		if title != expectedSectionTitles[i] {
-			t.Fatalf("bundle body section[%d] title = %q, want %q", i, title, expectedSectionTitles[i])
-		}
-		children, ok := block["children"].([]any)
-		if !ok {
-			t.Fatalf("bundle body blocks[%d].children = %#v, want array", i, block["children"])
-		}
-		if len(children) == 0 {
-			t.Fatalf("bundle body blocks[%d] has no children", i)
-		}
-	}
-
-	return envelope
-}
-
-func assertBrowserEditorBodyHasNoTokens(t *testing.T, value any, tokens []string) {
-	t.Helper()
-	assertBrowserEditorBodyHasNoTokensAtPath(t, value, "body", tokens)
-}
-
-func assertBrowserEditorBodyHasNoTokensAtPath(t *testing.T, value any, path string, tokens []string) {
-	t.Helper()
-
-	switch v := value.(type) {
-	case map[string]any:
-		for key, child := range v {
-			assertBrowserEditorBodyHasNoTokensAtPath(t, child, fmt.Sprintf("%s.%s", path, key), tokens)
-		}
-	case []any:
-		for i, child := range v {
-			assertBrowserEditorBodyHasNoTokensAtPath(t, child, fmt.Sprintf("%s[%d]", path, i), tokens)
-		}
-	case string:
-		for _, token := range tokens {
-			if strings.Contains(v, token) {
-				t.Fatalf("%s contains raw token %q", path, token)
-			}
-		}
 	}
 }

@@ -215,7 +215,7 @@ func TestHandleDocumentBrowserEditorBundleCreatedAt(t *testing.T) {
 	repo := documentmemory.NewRepository()
 	service := application.NewService(repo, nil, applicationFixedClock{now: now})
 	body := templateV2Body(t)
-	doc := seedBrowserHandlerDocument(t, ctx, repo, now, body, testMDDMText)
+	doc := seedBrowserHandlerDocument(t, ctx, repo, now, body, plainTextFromMDDMForTest(body))
 	handler := NewHandler(service)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/documents/"+doc.ID+"/browser-editor-bundle", nil)
@@ -255,12 +255,7 @@ func TestHandleDocumentBrowserEditorBundleCreatedAt(t *testing.T) {
 	if resp.TemplateSnapshot.ContentFormat != "mddm" {
 		t.Fatalf("templateSnapshot contentFormat = %q, want %q", resp.TemplateSnapshot.ContentFormat, "mddm")
 	}
-	if !strings.Contains(resp.Body, "\"Identificação\"") {
-		t.Fatalf("body missing first v2 section marker: %s", resp.Body)
-	}
-	if !strings.Contains(resp.Body, "\"Histórico de Revisões\"") {
-		t.Fatalf("body missing last v2 section marker: %s", resp.Body)
-	}
+	assertBrowserEditorEnvelope(t, resp.Body, browserEditorSectionIDs())
 	if resp.DraftToken == "" {
 		t.Fatalf("draftToken = empty")
 	}
@@ -338,4 +333,110 @@ func templateV2Body(t *testing.T) string {
 		t.Fatalf("marshal template v2 body: %v", err)
 	}
 	return string(body)
+}
+
+func browserEditorSectionIDs() []string {
+	return []string{
+		"a0000001-0000-0000-0000-000000000001",
+		"a0000010-0000-0000-0000-000000000010",
+		"a0000020-0000-0000-0000-000000000020",
+		"a0000030-0000-0000-0000-000000000030",
+		"a0000040-0000-0000-0000-000000000040",
+		"a0000055-0000-0000-0000-000000000055",
+		"a0000060-0000-0000-0000-000000000060",
+		"a0000070-0000-0000-0000-000000000070",
+		"a0000080-0000-0000-0000-000000000080",
+		"a0000090-0000-0000-0000-000000000090",
+	}
+}
+
+func assertBrowserEditorEnvelope(t *testing.T, body string, expectedSectionIDs []string) map[string]any {
+	t.Helper()
+
+	var envelope map[string]any
+	if err := json.Unmarshal([]byte(body), &envelope); err != nil {
+		t.Fatalf("bundle body is not valid JSON: %v", err)
+	}
+
+	if got, ok := envelope["mddm_version"].(float64); !ok || got != 1 {
+		t.Fatalf("bundle body mddm_version = %#v, want 1", envelope["mddm_version"])
+	}
+	if _, ok := envelope["template_ref"]; !ok {
+		t.Fatal("bundle body is missing template_ref")
+	}
+
+	blocks, ok := envelope["blocks"].([]any)
+	if !ok {
+		t.Fatalf("bundle body blocks = %#v, want array", envelope["blocks"])
+	}
+	if len(blocks) != len(expectedSectionIDs) {
+		t.Fatalf("bundle body section count = %d, want %d", len(blocks), len(expectedSectionIDs))
+	}
+
+	for i, rawBlock := range blocks {
+		block, ok := rawBlock.(map[string]any)
+		if !ok {
+			t.Fatalf("bundle body blocks[%d] = %#v, want object", i, rawBlock)
+		}
+		if got := block["type"]; got != "section" {
+			t.Fatalf("bundle body blocks[%d].type = %#v, want section", i, got)
+		}
+		if got := block["id"]; got != expectedSectionIDs[i] {
+			t.Fatalf("bundle body section[%d].id = %#v, want %q", i, got, expectedSectionIDs[i])
+		}
+		props, ok := block["props"].(map[string]any)
+		if !ok {
+			t.Fatalf("bundle body blocks[%d].props = %#v, want object", i, block["props"])
+		}
+		title, ok := props["title"].(string)
+		if !ok || title == "" {
+			t.Fatalf("bundle body blocks[%d].props.title = %#v, want non-empty string", i, props["title"])
+		}
+		children, ok := block["children"].([]any)
+		if !ok {
+			t.Fatalf("bundle body blocks[%d].children = %#v, want array", i, block["children"])
+		}
+		if len(children) == 0 {
+			t.Fatalf("bundle body blocks[%d] has no children", i)
+		}
+	}
+
+	return envelope
+}
+
+func plainTextFromMDDMForTest(body string) string {
+	body = strings.TrimSpace(body)
+	if body == "" {
+		return ""
+	}
+
+	var envelope struct {
+		Blocks []json.RawMessage `json:"blocks"`
+	}
+	if err := json.Unmarshal([]byte(body), &envelope); err != nil {
+		return ""
+	}
+
+	parts := make([]string, 0)
+	for _, block := range envelope.Blocks {
+		collectMDDMTextForTest(block, &parts)
+	}
+	return strings.Join(parts, " ")
+}
+
+func collectMDDMTextForTest(raw json.RawMessage, parts *[]string) {
+	var node struct {
+		Text     string            `json:"text"`
+		Children []json.RawMessage `json:"children"`
+	}
+	if err := json.Unmarshal(raw, &node); err != nil {
+		return
+	}
+
+	if text := strings.TrimSpace(node.Text); text != "" {
+		*parts = append(*parts, text)
+	}
+	for _, child := range node.Children {
+		collectMDDMTextForTest(child, parts)
+	}
 }

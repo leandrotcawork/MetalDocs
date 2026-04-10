@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"strings"
 	"testing"
 	"time"
 
@@ -42,12 +41,7 @@ func TestGetBrowserEditorBundleReturnsDraftMDDM(t *testing.T) {
 	if bundle.TemplateSnapshot.ContentFormat != "mddm" {
 		t.Fatalf("template contentFormat = %q, want mddm", bundle.TemplateSnapshot.ContentFormat)
 	}
-	if !strings.Contains(bundle.Body, "\"Identificação\"") {
-		t.Fatalf("bundle body missing first v2 section marker: %s", bundle.Body)
-	}
-	if !strings.Contains(bundle.Body, "\"Histórico de Revisões\"") {
-		t.Fatalf("bundle body missing last v2 section marker: %s", bundle.Body)
-	}
+	assertBrowserEditorEnvelope(t, bundle.Body, browserEditorSectionIDs())
 }
 
 func TestPlainTextFromMDDM(t *testing.T) {
@@ -410,4 +404,73 @@ func templateV2Body(t *testing.T) string {
 		t.Fatalf("marshal template v2 body: %v", err)
 	}
 	return string(body)
+}
+
+func browserEditorSectionIDs() []string {
+	return []string{
+		"a0000001-0000-0000-0000-000000000001",
+		"a0000010-0000-0000-0000-000000000010",
+		"a0000020-0000-0000-0000-000000000020",
+		"a0000030-0000-0000-0000-000000000030",
+		"a0000040-0000-0000-0000-000000000040",
+		"a0000055-0000-0000-0000-000000000055",
+		"a0000060-0000-0000-0000-000000000060",
+		"a0000070-0000-0000-0000-000000000070",
+		"a0000080-0000-0000-0000-000000000080",
+		"a0000090-0000-0000-0000-000000000090",
+	}
+}
+
+func assertBrowserEditorEnvelope(t *testing.T, body string, expectedSectionIDs []string) map[string]any {
+	t.Helper()
+
+	var envelope map[string]any
+	if err := json.Unmarshal([]byte(body), &envelope); err != nil {
+		t.Fatalf("bundle body is not valid JSON: %v", err)
+	}
+
+	if got, ok := envelope["mddm_version"].(float64); !ok || got != 1 {
+		t.Fatalf("bundle body mddm_version = %#v, want 1", envelope["mddm_version"])
+	}
+	if _, ok := envelope["template_ref"]; !ok {
+		t.Fatal("bundle body is missing template_ref")
+	}
+
+	blocks, ok := envelope["blocks"].([]any)
+	if !ok {
+		t.Fatalf("bundle body blocks = %#v, want array", envelope["blocks"])
+	}
+	if len(blocks) != len(expectedSectionIDs) {
+		t.Fatalf("bundle body section count = %d, want %d", len(blocks), len(expectedSectionIDs))
+	}
+
+	for i, rawBlock := range blocks {
+		block, ok := rawBlock.(map[string]any)
+		if !ok {
+			t.Fatalf("bundle body blocks[%d] = %#v, want object", i, rawBlock)
+		}
+		if got := block["type"]; got != "section" {
+			t.Fatalf("bundle body blocks[%d].type = %#v, want section", i, got)
+		}
+		if got := block["id"]; got != expectedSectionIDs[i] {
+			t.Fatalf("bundle body section[%d].id = %#v, want %q", i, got, expectedSectionIDs[i])
+		}
+		props, ok := block["props"].(map[string]any)
+		if !ok {
+			t.Fatalf("bundle body blocks[%d].props = %#v, want object", i, block["props"])
+		}
+		title, ok := props["title"].(string)
+		if !ok || title == "" {
+			t.Fatalf("bundle body blocks[%d].props.title = %#v, want non-empty string", i, props["title"])
+		}
+		children, ok := block["children"].([]any)
+		if !ok {
+			t.Fatalf("bundle body blocks[%d].children = %#v, want array", i, block["children"])
+		}
+		if len(children) == 0 {
+			t.Fatalf("bundle body blocks[%d] has no children", i)
+		}
+	}
+
+	return envelope
 }

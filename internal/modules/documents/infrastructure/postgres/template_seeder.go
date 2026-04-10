@@ -60,11 +60,7 @@ func (s *TemplateSeeder) seedTemplateVersion(ctx context.Context, templateID uui
 		INSERT INTO metaldocs.document_template_versions_mddm
 		  (template_id, version, mddm_version, content_blocks, content_hash, is_published)
 		VALUES ($1, $2, $3, $4::jsonb, $5, true)
-		ON CONFLICT (template_id, version) DO UPDATE
-		SET mddm_version = EXCLUDED.mddm_version,
-		    content_blocks = EXCLUDED.content_blocks,
-		    content_hash = EXCLUDED.content_hash,
-		    is_published = EXCLUDED.is_published
+		ON CONFLICT (template_id, version) DO NOTHING
 	`, templateID, 1, mddmVersion, canonicalBytes, contentHash); err != nil {
 		return fmt.Errorf("insert canonical po template seed: %w", err)
 	}

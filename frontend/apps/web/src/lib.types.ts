@@ -260,6 +260,7 @@ export interface DocumentBrowserTemplateSnapshotItem {
   editor: "mddm-blocknote";
   contentFormat: "mddm";
   body: string;
+  definition?: Record<string, unknown>;
 }
 
 export interface DocumentEditorBundleResponse {

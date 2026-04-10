@@ -177,6 +177,7 @@ function normalizeDocumentBrowserTemplateSnapshot(value: DocumentBrowserTemplate
     editor: value.editor,
     contentFormat: value.contentFormat,
     body: typeof value?.body === "string" ? value.body : "",
+    definition: value?.definition ?? undefined,
   };
 }
 

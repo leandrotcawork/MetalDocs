@@ -65,9 +65,19 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
         if (body && !body.startsWith("{")) {
           throw new Error("Unsupported legacy body format.");
         }
-        const envelope: MDDMEnvelope = body
-          ? (JSON.parse(body) as MDDMEnvelope)
-          : { mddm_version: 1, template_ref: null, blocks: [] };
+        let envelope: MDDMEnvelope;
+        if (body) {
+          envelope = JSON.parse(body) as MDDMEnvelope;
+        } else if (
+          nextBundle.templateSnapshot?.definition &&
+          Array.isArray((nextBundle.templateSnapshot.definition as Record<string, unknown>).children) &&
+          ((nextBundle.templateSnapshot.definition as Record<string, unknown>).children as unknown[]).length > 0
+        ) {
+          const def = nextBundle.templateSnapshot.definition as Record<string, unknown>;
+          envelope = { mddm_version: 1, template_ref: null, blocks: def.children as MDDMEnvelope["blocks"] };
+        } else {
+          envelope = { mddm_version: 1, template_ref: null, blocks: [] };
+        }
         setBlockNoteDocument(mddmToBlockNote(envelope) as unknown[]);
         setEditorInstance((current) => current + 1);
 

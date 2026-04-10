@@ -3548,7 +3548,7 @@ git commit -m "feat(api-openapi): add POST /documents/{id}/render/pdf endpoint s
 
 - [ ] **Step 1: Write the failing Go test**
 
-Write to `internal/platform/render/gotenberg/client_test.go` (create if missing; if it exists, append a new test function):
+Write the FULL contents of `internal/platform/render/gotenberg/client_test.go`. If the file already exists, merge the imports below into the existing import block (Go forbids multiple `import` declarations interleaved with other top-level declarations) and append the test function and its helpers next to existing tests.
 
 ```go
 package gotenberg
@@ -3557,6 +3557,7 @@ import (
     "bytes"
     "context"
     "io"
+    "mime"
     "mime/multipart"
     "net/http"
     "net/http/httptest"
@@ -3582,7 +3583,11 @@ func TestConvertHTMLToPDF_SendsMultipartToChromiumRoute(t *testing.T) {
 
     client := NewClient(server.URL)
 
-    pdf, err := client.ConvertHTMLToPDF(context.Background(), []byte("<html><body>Hi</body></html>"), []byte("body { color: black; }"))
+    pdf, err := client.ConvertHTMLToPDF(
+        context.Background(),
+        []byte("<html><body>Hi</body></html>"),
+        []byte("body { color: black; }"),
+    )
     if err != nil {
         t.Fatalf("unexpected error: %v", err)
     }
@@ -3603,8 +3608,8 @@ func TestConvertHTMLToPDF_SendsMultipartToChromiumRoute(t *testing.T) {
         t.Fatalf("expected body to include style.css part")
     }
 
-    // Defensive sanity: ensure multipart body parses.
-    _, params, err := mimeParseMediaType(capturedContentType)
+    // Defensive sanity: ensure the multipart body actually parses end to end.
+    _, params, err := mime.ParseMediaType(capturedContentType)
     if err != nil {
         t.Fatalf("parse media type: %v", err)
     }
@@ -3624,27 +3629,9 @@ func TestConvertHTMLToPDF_SendsMultipartToChromiumRoute(t *testing.T) {
         t.Fatalf("missing parts; saw %v", seen)
     }
 }
-
-// small wrapper so the test doesn't drag in mime.ParseMediaType at the top;
-// keeps the diff easy to read.
-func mimeParseMediaType(v string) (string, map[string]string, error) {
-    return mimeParseMediaTypeShim(v)
-}
 ```
 
-Also append at the bottom of the test file:
-
-```go
-import "mime"
-
-func init() {
-    mimeParseMediaTypeShim = func(v string) (string, map[string]string, error) {
-        return mime.ParseMediaType(v)
-    }
-}
-
-var mimeParseMediaTypeShim func(string) (string, map[string]string, error)
-```
+**Note for the implementer:** if `client_test.go` already exists with its own import block, do NOT introduce a second `import (...)` declaration. Instead, add `"mime"`, `"mime/multipart"`, `"net/http/httptest"`, `"strings"`, `"io"`, `"bytes"`, `"context"` to the existing import block (deduplicating any already present), then append only the `TestConvertHTMLToPDF_SendsMultipartToChromiumRoute` function. Go does not allow `import` declarations to appear interleaved with other top-level declarations.
 
 - [ ] **Step 2: Run the test — expect failure**
 

@@ -344,9 +344,11 @@ A dedicated CSS file injected into the HTML sent to Gotenberg:
 }
 
 body {
-  /* Carlito: open-source, metric-compatible with Calibri, available on
-     Linux/Gotenberg/Chromium. Fallback to Liberation Sans / system sans. */
-  font-family: "Carlito", "Liberation Sans", sans-serif;
+  /* Carlito: open-source, metric-compatible with Calibri, pre-installed
+     in the Gotenberg container. Fallbacks stay metric-compatible across
+     Linux/Mac/Windows. Matches the cross-renderer stack defined in
+     Section "Font Strategy". */
+  font-family: "Carlito", "Liberation Sans", "Arial", sans-serif;
   font-size: 11pt;
   line-height: 15pt;
   -webkit-print-color-adjust: exact;
@@ -1301,7 +1303,7 @@ if (version.contentSource === "browser_editor" && featureFlags.MDDM_NATIVE_EXPOR
 |------|-----------|
 | Golden tests miss a real-world edge case | Shadow testing in Phase 1 catches production-only edge cases |
 | Client-side docx.js slow on large documents | Web Worker, progress indicator, 30s timeout |
-| Chromium PDF differs from expected on specific font | System fonts only (Calibri) — universal |
+| Chromium PDF differs from expected on specific font | Carlito as primary (metric-compatible with Calibri, pre-installed in Gotenberg container via `fonts-crosextra-carlito`); Liberation Sans and Arial as metric-compatible fallbacks. Gotenberg container Carlito presence is a Phase 0 gating check. |
 | Gotenberg outage | Already in production; no new operational risk |
 | User hits export during feature flag flip | Flag read once per page load; changes apply on refresh |
 

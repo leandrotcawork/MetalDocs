@@ -1376,3 +1376,45 @@ Wrong:   Kept `IsBrowserHTML` and a compatibility bypass in template validation 
 Correct: Restrict browser-editor compatibility checks to `mddm-blocknote/mddm` and validate all assigned templates against schema compatibility rules.
 Rule:    After a migration baseline is officially cut over, transitional compatibility paths must be deleted so legacy formats cannot silently re-enter runtime flows.
 Layer:   application
+
+## Lesson FG - Etapa tables must be nested in richBlock, not direct repeatableItem children
+Date: 2026-04-09 | Trigger: correction
+Wrong:   Allowing `dataTable` directly under `repeatableItem` while Task 1 tests and etapa contract required table insertion only through the rich content area
+Correct: Keep `repeatableItem` limited to content blocks plus `richBlock`, and allow `dataTable` inside `richBlock` for etapa free-form table authoring
+Rule:    When plan text conflicts with approved grammar tests, preserve the tested contract and document the plan fix inline.
+Layer:   process
+
+## Lesson FH - Optional templated deletions must skip the whole optional subtree
+Date: 2026-04-09 | Trigger: review
+Wrong:   Skipping lock violations only for the missing optional section root while still enforcing missing-child violations for descendants in that deleted optional subtree
+Correct: Precompute IDs in missing optional section subtrees and skip missing-node lock violations for every descendant in those optional subtrees
+Rule:    When optional template sections are deletable, lock enforcement must treat the deleted optional subtree as absent by contract, not node-by-node violations.
+Layer:   domain
+
+## Lesson FI - Seed templates must not ship hardcoded image refs
+Date: 2026-04-09 | Trigger: review
+Wrong:   Seeding default template content with fixed `image.props.src` API IDs that may not exist or be authorized for a new draft
+Correct: Keep image insertion capability in rich areas but avoid pre-seeded concrete image refs in canonical template scaffolds
+Rule:    Canonical seed documents must be valid without external asset prerequisites.
+Layer:   domain
+
+## Lesson FJ - Template tests should guard against seeded external image refs
+Date: 2026-04-09 | Trigger: correction
+Wrong:   Relying only on structural assertions allowed hardcoded `/api/images/...` refs to be reintroduced in canonical template seeds
+Correct: Add regression assertion that canonical template JSON contains no pre-seeded image API refs
+Rule:    Canonical template tests must include guardrails for external runtime dependencies, not just block shape.
+Layer:   domain
+
+## Lesson FK - Adapter exports must omit default props to preserve round-trip stability
+Date: 2026-04-09 | Trigger: correction
+Wrong:   `toMDDMProps` always emitted `optional: false` and `hint: ""`, which changed canonical JSON for existing documents
+Correct: Only serialize `section.props.optional` when true and `field.props.hint` when non-empty
+Rule:    Default editor props should stay implicit on export so legacy content round-trips without drift.
+Layer:   frontend
+
+## Lesson FK - Validate target branch/worktree before committing subagent output
+Date: 2026-04-09 | Trigger: correction
+Wrong:   Accepting a subagent commit created in `main` when the active implementation branch was `feature/mddm-foundational`
+Correct: Confirm commit location immediately (`git log` in both roots) and relocate with cherry-pick/revert before continuing plan execution
+Rule:    Multi-worktree flows must verify branch/worktree target for every subagent commit.
+Layer:   process

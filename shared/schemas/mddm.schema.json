@@ -1,0 +1,489 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://metaldocs.local/schemas/mddm.schema.json",
+  "title": "MetalDocs Document Model",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["mddm_version", "blocks", "template_ref"],
+  "properties": {
+    "mddm_version": { "const": 1 },
+    "blocks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Block" }
+    },
+    "template_ref": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/TemplateRef" }
+      ]
+    }
+  },
+  "$defs": {
+    "TemplateRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["template_id", "template_version", "template_mddm_version", "template_content_hash"],
+      "properties": {
+        "template_id": { "type": "string", "format": "uuid" },
+        "template_version": { "type": "integer", "minimum": 1 },
+        "template_mddm_version": { "type": "integer", "minimum": 1 },
+        "template_content_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "Block": {
+      "oneOf": [
+        { "$ref": "#/$defs/Section" },
+        { "$ref": "#/$defs/FieldGroup" },
+        { "$ref": "#/$defs/Field" },
+        { "$ref": "#/$defs/Repeatable" },
+        { "$ref": "#/$defs/RepeatableItem" },
+        { "$ref": "#/$defs/DataTable" },
+        { "$ref": "#/$defs/DataTableRow" },
+        { "$ref": "#/$defs/DataTableCell" },
+        { "$ref": "#/$defs/RichBlock" },
+        { "$ref": "#/$defs/Paragraph" },
+        { "$ref": "#/$defs/Heading" },
+        { "$ref": "#/$defs/BulletListItem" },
+        { "$ref": "#/$defs/NumberedListItem" },
+        { "$ref": "#/$defs/Image" },
+        { "$ref": "#/$defs/Quote" },
+        { "$ref": "#/$defs/Code" },
+        { "$ref": "#/$defs/Divider" }
+      ]
+    },
+    "BaseBlockProps": {
+      "type": "object",
+      "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "template_block_id": { "type": "string", "format": "uuid" }
+      }
+    },
+    "InlineContent": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/TextRun" }
+    },
+    "TextRun": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text"],
+      "properties": {
+        "text": { "type": "string", "maxLength": 10000 },
+        "marks": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Mark" }
+        },
+        "link": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["href"],
+          "properties": {
+            "href": { "type": "string" },
+            "title": { "type": "string" }
+          }
+        },
+        "document_ref": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["target_document_id"],
+          "properties": {
+            "target_document_id": { "type": "string", "format": "uuid" },
+            "target_revision_label": { "type": "string" }
+          }
+        }
+      }
+    },
+    "Mark": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["bold", "italic", "underline", "strike", "code"] }
+      }
+    },
+    "Paragraph": {
+      "allOf": [
+        { "$ref": "#/$defs/BaseBlockProps" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id": true,
+            "template_block_id": true,
+            "type": { "const": "paragraph" },
+            "props": { "type": "object", "additionalProperties": false },
+            "children": { "$ref": "#/$defs/InlineContent" }
+          },
+          "required": ["children"]
+        }
+      ]
+    },
+    "Section": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "props", "children"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "template_block_id": { "type": "string", "format": "uuid" },
+        "type": { "const": "section" },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["title", "color", "locked"],
+          "properties": {
+            "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+            "color": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+            "locked": { "type": "boolean" },
+            "optional": { "type": "boolean" }
+          }
+        },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Block" }
+        }
+      }
+    },
+    "FieldGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "props", "children"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "template_block_id": { "type": "string", "format": "uuid" },
+        "type": { "const": "fieldGroup" },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["columns", "locked"],
+          "properties": {
+            "columns": { "enum": [1, 2] },
+            "locked": { "type": "boolean" }
+          }
+        },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Field" }
+        }
+      }
+    },
+    "Field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "props", "children"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "template_block_id": { "type": "string", "format": "uuid" },
+        "type": { "const": "field" },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["label", "valueMode", "locked"],
+          "properties": {
+            "label": { "type": "string", "minLength": 1, "maxLength": 100 },
+            "valueMode": { "enum": ["inline", "multiParagraph"] },
+            "locked": { "type": "boolean" }
+          }
+        },
+        "children": true
+      },
+      "if": {
+        "properties": { "props": { "properties": { "valueMode": { "const": "inline" } } } }
+      },
+      "then": {
+        "properties": { "children": { "$ref": "#/$defs/InlineContent" } }
+      },
+      "else": {
+        "properties": {
+          "children": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                { "$ref": "#/$defs/Paragraph" },
+                { "$ref": "#/$defs/BulletListItem" },
+                { "$ref": "#/$defs/NumberedListItem" },
+                { "$ref": "#/$defs/Quote" },
+                { "$ref": "#/$defs/Divider" }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "Repeatable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "props", "children"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "template_block_id": { "type": "string", "format": "uuid" },
+        "type": { "const": "repeatable" },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["label", "itemPrefix", "locked", "minItems", "maxItems"],
+          "properties": {
+            "label": { "type": "string", "minLength": 1, "maxLength": 100 },
+            "itemPrefix": { "type": "string", "minLength": 1, "maxLength": 30 },
+            "locked": { "type": "boolean" },
+            "minItems": { "type": "integer", "minimum": 0 },
+            "maxItems": { "type": "integer", "minimum": 1, "maximum": 100 }
+          }
+        },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/RepeatableItem" }
+        }
+      }
+    },
+    "RepeatableItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "props", "children"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "type": { "const": "repeatableItem" },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["title"],
+          "properties": {
+            "title": { "type": "string", "maxLength": 200 }
+          }
+        },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Block" }
+        }
+      }
+    },
+    "DataTable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "props", "children"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "template_block_id": { "type": "string", "format": "uuid" },
+        "type": { "const": "dataTable" },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["label", "columns", "locked", "minRows", "maxRows"],
+          "properties": {
+            "label": { "type": "string", "minLength": 1, "maxLength": 100 },
+            "columns": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 20,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["key", "label", "type", "required"],
+                "properties": {
+                  "key": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+                  "label": { "type": "string", "minLength": 1, "maxLength": 50 },
+                  "type": { "enum": ["text", "number", "date"] },
+                  "required": { "type": "boolean" }
+                }
+              }
+            },
+            "locked": { "type": "boolean" },
+            "minRows": { "type": "integer", "minimum": 0 },
+            "maxRows": { "type": "integer", "minimum": 1, "maximum": 500 }
+          }
+        },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/DataTableRow" }
+        }
+      }
+    },
+    "DataTableRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "props", "children"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "type": { "const": "dataTableRow" },
+        "props": { "type": "object", "additionalProperties": false },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/DataTableCell" }
+        }
+      }
+    },
+    "DataTableCell": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "props", "children"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "type": { "const": "dataTableCell" },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["columnKey"],
+          "properties": {
+            "columnKey": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" }
+          }
+        },
+        "children": { "$ref": "#/$defs/InlineContent" }
+      }
+    },
+    "RichBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "props", "children"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "template_block_id": { "type": "string", "format": "uuid" },
+        "type": { "const": "richBlock" },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["label", "locked"],
+          "properties": {
+            "label": { "type": "string", "minLength": 1, "maxLength": 100 },
+            "locked": { "type": "boolean" }
+          }
+        },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Block" }
+        }
+      }
+    },
+    "Heading": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "props", "children"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "template_block_id": { "type": "string", "format": "uuid" },
+        "type": { "const": "heading" },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["level"],
+          "properties": {
+            "level": { "enum": [1, 2, 3] }
+          }
+        },
+        "children": { "$ref": "#/$defs/InlineContent" }
+      }
+    },
+    "BulletListItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "props", "children"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "template_block_id": { "type": "string", "format": "uuid" },
+        "type": { "const": "bulletListItem" },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["level"],
+          "properties": {
+            "level": { "type": "integer", "minimum": 0, "maximum": 6 }
+          }
+        },
+        "children": { "$ref": "#/$defs/InlineContent" }
+      }
+    },
+    "NumberedListItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "props", "children"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "template_block_id": { "type": "string", "format": "uuid" },
+        "type": { "const": "numberedListItem" },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["level"],
+          "properties": {
+            "level": { "type": "integer", "minimum": 0, "maximum": 6 }
+          }
+        },
+        "children": { "$ref": "#/$defs/InlineContent" }
+      }
+    },
+    "Image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "template_block_id": { "type": "string", "format": "uuid" },
+        "type": { "const": "image" },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["src", "alt", "caption"],
+          "properties": {
+            "src": { "type": "string", "pattern": "^/api/images/[a-f0-9-]{36}$" },
+            "alt": { "type": "string", "maxLength": 500 },
+            "caption": { "type": "string", "maxLength": 500 }
+          }
+        }
+      }
+    },
+    "Quote": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "props", "children"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "template_block_id": { "type": "string", "format": "uuid" },
+        "type": { "const": "quote" },
+        "props": { "type": "object", "additionalProperties": false },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Paragraph" }
+        }
+      }
+    },
+    "Code": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "props", "children"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "template_block_id": { "type": "string", "format": "uuid" },
+        "type": { "const": "code" },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["language"],
+          "properties": {
+            "language": { "type": "string", "maxLength": 30 }
+          }
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "text"],
+            "properties": {
+              "type": { "const": "text" },
+              "text": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "Divider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "props"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "template_block_id": { "type": "string", "format": "uuid" },
+        "type": { "const": "divider" },
+        "props": { "type": "object", "additionalProperties": false }
+      }
+    }
+  }
+}

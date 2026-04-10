@@ -71,9 +71,17 @@ func main() {
 		WithDocgenClient(deps.DocgenClient).
 		WithGotenberg(deps.GotenbergClient).
 		WithApprovalReader(docapp.NewWorkflowApprovalAdapter(deps.WorkflowApprovals))
+
+	var loadService *docapp.LoadService
+	var submitForApprovalService *docapp.SubmitForApprovalService
+	if deps.MDDMRepo != nil {
+		loadService = docapp.NewLoadService(&mddmLoadRepoAdapter{repo: deps.MDDMRepo})
+		submitForApprovalService = docapp.NewSubmitForApprovalService(deps.MDDMRepo)
+	}
 	auditHandler := auditdelivery.NewHandler(auditService)
 	docHandler := docdelivery.NewHandler(docService).
-		WithAttachmentDownloads(security.NewAttachmentSigner(attachmentsCfg.DownloadSecret), time.Duration(attachmentsCfg.DownloadTTLSeconds)*time.Second)
+		WithAttachmentDownloads(security.NewAttachmentSigner(attachmentsCfg.DownloadSecret), time.Duration(attachmentsCfg.DownloadTTLSeconds)*time.Second).
+		WithMDDMHandlers(loadService, submitForApprovalService)
 	searchService := searchapp.NewService(searchdocs.NewReader(deps.DocumentsRepo))
 	searchHandler := searchdelivery.NewHandler(searchService)
 	notificationService := notificationapp.NewService(deps.NotificationsRepo, deps.DocumentsRepo, nil)

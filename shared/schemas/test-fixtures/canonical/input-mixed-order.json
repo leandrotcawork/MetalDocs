@@ -1,0 +1,15 @@
+{
+  "template_ref": null,
+  "blocks": [
+    {
+      "type": "paragraph",
+      "id": "11111111-1111-1111-1111-111111111111",
+      "props": {},
+      "children": [
+        { "text": "Hello ", "marks": [{ "type": "italic" }, { "type": "bold" }] },
+        { "marks": [{ "type": "bold" }, { "type": "italic" }], "text": "world" }
+      ]
+    }
+  ],
+  "mddm_version": 1
+}

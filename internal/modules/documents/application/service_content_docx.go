@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -171,11 +172,12 @@ func (s *Service) generateBrowserDocxBytes(ctx context.Context, doc domain.Docum
 		return nil, domain.ErrInvalidCommand
 	}
 	headerHTML := buildBrowserDocumentHeaderHTML(doc, version)
+	contentHTML := mddmBlocksToHTML(version.Content)
 	payload := docgen.BrowserRenderPayload{
 		DocumentCode: doc.DocumentCode,
 		Title:        doc.Title,
 		Version:      fmt.Sprintf("%d", version.Number),
-		HTML:         headerHTML + substituteTemplateTokens(version.Content, doc, version),
+		HTML:         headerHTML + contentHTML,
 		Margins:      browserRenderMarginsFromExportConfig(exportConfig),
 	}
 	rendered, err := s.docgenClient.GenerateBrowser(ctx, payload, traceID)
@@ -197,6 +199,115 @@ func browserRenderMarginsFromExportConfig(cfg *domain.TemplateExportConfig) *doc
 		Right:  cfg.MarginRight,
 		Bottom: cfg.MarginBottom,
 		Left:   cfg.MarginLeft,
+	}
+}
+
+func mddmBlocksToHTML(body string) string {
+	body = strings.TrimSpace(body)
+	if body == "" {
+		return ""
+	}
+
+	var envelope struct {
+		Blocks []json.RawMessage `json:"blocks"`
+	}
+	if err := json.Unmarshal([]byte(body), &envelope); err != nil {
+		return ""
+	}
+
+	var sb strings.Builder
+	for _, block := range envelope.Blocks {
+		sb.WriteString(mddmBlockHTML(block))
+	}
+	return sb.String()
+}
+
+func mddmBlockHTML(raw json.RawMessage) string {
+	var node struct {
+		Type     string            `json:"type"`
+		Props    map[string]any    `json:"props"`
+		Children []json.RawMessage `json:"children"`
+	}
+	if err := json.Unmarshal(raw, &node); err != nil {
+		return ""
+	}
+
+	leafText := func() string {
+		var parts []string
+		for _, child := range node.Children {
+			var leaf struct {
+				Text string `json:"text"`
+			}
+			if err := json.Unmarshal(child, &leaf); err == nil && strings.TrimSpace(leaf.Text) != "" {
+				parts = append(parts, html.EscapeString(strings.TrimSpace(leaf.Text)))
+			}
+		}
+		return strings.Join(parts, "")
+	}
+
+	childrenHTML := func() string {
+		var sb strings.Builder
+		for _, child := range node.Children {
+			sb.WriteString(mddmBlockHTML(child))
+		}
+		return sb.String()
+	}
+
+	switch node.Type {
+	case "paragraph":
+		text := leafText()
+		if text == "" {
+			return "<p>&nbsp;</p>"
+		}
+		return "<p>" + text + "</p>"
+	case "heading":
+		level := 2
+		if rawLevel, ok := node.Props["level"].(float64); ok && rawLevel >= 1 && rawLevel <= 6 {
+			level = int(rawLevel)
+		}
+		text := leafText()
+		if text == "" {
+			text = "&nbsp;"
+		}
+		return fmt.Sprintf("<h%d>%s</h%d>", level, text, level)
+	case "section":
+		title := ""
+		if rawTitle, ok := node.Props["title"].(string); ok {
+			title = html.EscapeString(strings.TrimSpace(rawTitle))
+		}
+		var sb strings.Builder
+		if title != "" {
+			sb.WriteString(fmt.Sprintf(
+				`<table style="width:100%%;border-collapse:collapse;margin-bottom:0.75rem;">`+
+					`<tr><td style="background-color:#6b1f2a;color:#fff;padding:8px 14px;font-size:13px;font-weight:700;">%s</td></tr></table>`,
+				title,
+			))
+		}
+		sb.WriteString(childrenHTML())
+		return sb.String()
+	case "field":
+		label := ""
+		if rawLabel, ok := node.Props["label"].(string); ok {
+			label = html.EscapeString(strings.TrimSpace(rawLabel))
+		}
+		content := childrenHTML()
+		if content == "" {
+			content = "<p>&nbsp;</p>"
+		}
+		return fmt.Sprintf(
+			`<table style="width:100%%;border-collapse:collapse;margin-bottom:0.5rem;">`+
+				`<tr><td style="width:30%%;background:#f9f3f3;border:1px solid #dfc8c8;padding:0.5rem;font-weight:600;">%s</td>`+
+				`<td style="border:1px solid #dfc8c8;padding:0.5rem;">%s</td></tr></table>`,
+			label, content,
+		)
+	case "bulletListItem", "numberedListItem":
+		text := leafText()
+		if text == "" {
+			text = "&nbsp;"
+		}
+		return "<p>" + text + "</p>"
+	default:
+		return childrenHTML()
 	}
 }
 

@@ -1,16 +1,13 @@
-import { CKEditor } from "@ckeditor/ckeditor5-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { DecoupledEditor } from "ckeditor5";
-import "ckeditor5/ckeditor5.css";
 
 import { exportDocumentDocx, getDocumentBrowserEditorBundle, saveDocumentBrowserContent } from "../../../api/documents";
 import type { DocumentBrowserEditorBundleResponse, DocumentListItem } from "../../../lib.types";
 import { formatDocumentDisplayName } from "../../shared/documentDisplay";
 import { normalizeDocumentProfileCode } from "../../shared/documentProfile";
-import { browserDocumentEditorClass, browserDocumentEditorConfig } from "./ckeditorConfig";
 import styles from "./BrowserDocumentEditorView.module.css";
-import "../../../styles/document-content.css";
 import { DocumentEditorHeader } from "./DocumentEditorHeader";
+import { MDDMEditor } from "../mddm-editor/MDDMEditor";
+import { blockNoteToMDDM, mddmToBlockNote, type MDDMEnvelope } from "../mddm-editor/adapter";
 
 type BrowserDocumentEditorViewProps = {
   document: DocumentListItem;
@@ -22,12 +19,13 @@ type ViewState = "loading" | "ready" | "saving" | "error";
 export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentEditorViewProps) {
   const [bundle, setBundle] = useState<DocumentBrowserEditorBundleResponse | null>(null);
   const [editorData, setEditorData] = useState("");
+  const [blockNoteDocument, setBlockNoteDocument] = useState<unknown[] | null>(null);
+  const [editorInstance, setEditorInstance] = useState(0);
   const [viewState, setViewState] = useState<ViewState>("loading");
   const [errorMessage, setErrorMessage] = useState("");
   const [errorCode, setErrorCode] = useState<"load" | "save" | "conflict" | null>(null);
   const [saveLabel, setSaveLabel] = useState("Nao salvo");
   const [isExporting, setIsExporting] = useState(false);
-  const toolbarHostRef = useRef<HTMLDivElement | null>(null);
   const bundleRef = useRef<DocumentBrowserEditorBundleResponse | null>(null);
   const errorCodeRef = useRef<"load" | "save" | "conflict" | null>(null);
 
@@ -58,12 +56,32 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
       if (activeRef?.cancelled) {
         return;
       }
+
       setBundle(nextBundle);
       setEditorData(nextBundle.body);
-      setViewState("ready");
-      setErrorCode(null);
-      setErrorMessage("");
-      setSaveLabel("Salvo");
+
+      try {
+        const body = (nextBundle.body ?? "").trim();
+        if (body && !body.startsWith("{")) {
+          throw new Error("Unsupported legacy body format.");
+        }
+        const envelope: MDDMEnvelope = body
+          ? (JSON.parse(body) as MDDMEnvelope)
+          : { mddm_version: 1, template_ref: null, blocks: [] };
+        setBlockNoteDocument(mddmToBlockNote(envelope) as unknown[]);
+        setEditorInstance((current) => current + 1);
+
+        setViewState("ready");
+        setErrorCode(null);
+        setErrorMessage("");
+        setSaveLabel("Salvo");
+      } catch {
+        setBlockNoteDocument(null);
+        setViewState("error");
+        setErrorCode("load");
+        setErrorMessage("Conteudo do documento em formato legado (nao MDDM). Este editor nao suporta abrir este formato.");
+        setSaveLabel("Erro");
+      }
     } catch {
       if (activeRef?.cancelled) {
         return;
@@ -79,6 +97,7 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
       }
       setBundle(null);
       setEditorData("");
+      setBlockNoteDocument(null);
       setErrorCode("load");
       setErrorMessage("Nao foi possivel carregar o bundle do editor do documento.");
       setSaveLabel("Erro");
@@ -269,39 +288,46 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
             </div>
           ) : null}
           <DocumentEditorHeader bundle={bundle} />
-          <div className={styles.toolbarShell} ref={toolbarHostRef} />
           <div className={styles.editorShell}>
-            <CKEditor
-              key={document.documentId}
-              editor={browserDocumentEditorClass}
-              config={browserDocumentEditorConfig}
-              data={bundle.body}
-              onReady={(editor: DecoupledEditor) => {
-                const toolbarElement = editor.ui.view.toolbar.element;
-                const toolbarHost = toolbarHostRef.current;
+            {blockNoteDocument ? (
+              <MDDMEditor
+                key={`${document.documentId}:${editorInstance}`}
+                initialContent={blockNoteDocument as any}
+                onChange={(blocks) => {
+                  try {
+                    const envelope = blockNoteToMDDM(blocks as any[]);
+                    const nextData = JSON.stringify(envelope);
 
-                if (!toolbarHost || !toolbarElement) {
-                  return;
-                }
-
-                toolbarHost.replaceChildren(toolbarElement);
-              }}
-              onAfterDestroy={() => {
-                toolbarHostRef.current?.replaceChildren();
-              }}
-              onChange={(_, editor) => {
-                const nextData = editor.getData();
-                setEditorData(nextData);
-                if (viewState !== "saving") {
-                  setViewState("ready");
-                }
-                if (errorCode !== null && errorCode !== "conflict") {
-                  setErrorCode(null);
-                  setErrorMessage("");
-                }
-                setSaveLabel(nextData === bundle.body ? "Salvo" : "Editando...");
-              }}
-            />
+                    setEditorData(nextData);
+                    if (viewState !== "saving") {
+                      setViewState("ready");
+                    }
+                    if (errorCode !== null && errorCode !== "conflict") {
+                      setErrorCode(null);
+                      setErrorMessage("");
+                    }
+                    setSaveLabel(nextData === bundle.body ? "Salvo" : "Editando...");
+                  } catch {
+                    // Keep the editor responsive; surface an actionable error and avoid persisting invalid JSON.
+                    if (viewState !== "saving") {
+                      setViewState("ready");
+                    }
+                    setErrorCode("save");
+                    setErrorMessage(
+                      "Falha ao converter o conteudo do editor para o formato MDDM. Continue editando e tente salvar novamente. Se o erro persistir, recarregue o documento.",
+                    );
+                    setSaveLabel("Erro de conversao");
+                  }
+                }}
+              />
+            ) : (
+              <div className={styles.stateCard} role="alert">
+                <strong>Conteudo indisponivel</strong>
+                <p className={styles.errorText}>
+                  {errorMessage || "Este documento nao possui conteudo MDDM valido para edicao."}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       ) : (

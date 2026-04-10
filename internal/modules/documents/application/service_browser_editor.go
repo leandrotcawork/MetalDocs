@@ -3,7 +3,6 @@ package application
 import (
 	"context"
 	"fmt"
-	"html"
 	"strings"
 
 	"metaldocs/internal/modules/documents/domain"
@@ -50,7 +49,7 @@ func (s *Service) GetBrowserEditorBundleAuthorized(ctx context.Context, document
 		Document:   doc,
 		Versions:   versions,
 		Governance: governance,
-		Body:       substituteTemplateTokens(current.Content, doc, current),
+		Body:       current.Content,
 		DraftToken: draftTokenForVersion(current),
 	}
 	bundle.TemplateSnapshot = documentTemplateSnapshotFromVersion(templateVersion)
@@ -98,7 +97,7 @@ func (s *Service) SaveBrowserContentAuthorized(ctx context.Context, cmd domain.S
 	version.ContentHash = contentHash(cmd.Body)
 	version.ChangeSummary = fmt.Sprintf("Content version %d", current.Number)
 	version.ContentSource = domain.ContentSourceBrowserEditor
-	version.TextContent = plainTextFromHTML(cmd.Body)
+	version.TextContent = plainTextFromMDDM(cmd.Body)
 	version.TemplateKey = templateVersion.TemplateKey
 	version.TemplateVersion = templateVersion.Version
 
@@ -144,30 +143,10 @@ func validateBrowserTemplateVersion(item domain.DocumentTemplateVersion) error {
 	if strings.TrimSpace(item.TemplateKey) == "" || item.Version <= 0 || strings.TrimSpace(item.ProfileCode) == "" {
 		return domain.ErrInvalidCommand
 	}
-	if !item.IsBrowserHTML() {
+	if !item.IsBrowserEditor() {
 		return domain.ErrInvalidCommand
 	}
 	return nil
-}
-
-// substituteTemplateTokens replaces well-known placeholder tokens in the body
-// with real document metadata. Called when serving the browser editor bundle so
-// the user sees pre-populated fields (e.g., Section 10 revision history) without
-// having to type them. Idempotent: if tokens are already replaced, ReplaceAll is a no-op.
-func substituteTemplateTokens(body string, doc domain.Document, version domain.Version) string {
-	versao := fmt.Sprintf("%02d", version.Number)
-	data := "—"
-	if !doc.CreatedAt.IsZero() {
-		data = doc.CreatedAt.Format("02/01/2006")
-	}
-	por := html.EscapeString(doc.OwnerID)
-	if por == "" {
-		por = "—"
-	}
-	body = strings.ReplaceAll(body, "{{versao}}", versao)
-	body = strings.ReplaceAll(body, "{{data_criacao}}", data)
-	body = strings.ReplaceAll(body, "{{elaborador}}", por)
-	return body
 }
 
 func documentTemplateSnapshotFromVersion(item domain.DocumentTemplateVersion) domain.DocumentTemplateSnapshot {

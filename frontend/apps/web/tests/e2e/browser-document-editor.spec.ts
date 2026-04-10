@@ -31,15 +31,35 @@ test("browser document editor opens as a single document surface", async ({ page
 
   const templatesResponse = await apiContext.get("/api/v1/document-templates?profileCode=po", { headers: sameSiteHeaders });
   expect(templatesResponse.ok()).toBeTruthy();
-  const templatesBody = (await templatesResponse.json()) as { items?: Array<{ templateKey?: string; version?: number }> };
+  const templatesBody = (await templatesResponse.json()) as {
+    items?: Array<{
+      templateKey?: string;
+      version?: number;
+      profileCode?: string;
+      editor?: string;
+      contentFormat?: string;
+    }>;
+  };
   expect(Array.isArray(templatesBody.items)).toBeTruthy();
-  expect(templatesBody.items?.some((item) => item.templateKey === "po-default-browser" && item.version === 1)).toBeTruthy();
+  const browserTemplate = templatesBody.items?.find(
+    (item) =>
+      item.templateKey === "po-mddm-canvas"
+      && item.editor === "mddm-blocknote"
+      && item.contentFormat === "mddm",
+  );
+  const available = templatesBody.items?.map((item) => `${item.templateKey}@${item.version}`).join(", ");
+  expect(browserTemplate).toBeDefined();
+  if (!browserTemplate) {
+    throw new Error(`Expected a browser-compatible PO template in the template catalog; available: ${available || "none"}.`);
+  }
+  expect(browserTemplate.templateKey).toBeTruthy();
+  expect(browserTemplate.version).toBeGreaterThan(0);
 
   const assignmentResponse = await apiContext.put(`/api/v1/documents/${encodeURIComponent(createdDocument.documentId)}/template-assignment`, {
     headers: sameSiteHeaders,
     data: {
-      templateKey: "po-default-browser",
-      templateVersion: 1,
+      templateKey: browserTemplate.templateKey,
+      templateVersion: browserTemplate.version,
     },
   });
   expect(assignmentResponse.ok()).toBeTruthy();
@@ -47,12 +67,14 @@ test("browser document editor opens as a single document surface", async ({ page
   await page.goto(`/#/documents/doc/${encodeURIComponent(createdDocument.documentId)}`);
   await page.getByRole("button", { name: "Abrir documento" }).click();
 
-  await expect(page.getByTestId("browser-document-editor")).toBeVisible({ timeout: 20_000 });
+  const editorRoot = page.getByTestId("browser-document-editor");
+  const editable = editorRoot.locator('[contenteditable="true"]').first();
+
+  await expect(editorRoot).toBeVisible({ timeout: 20_000 });
   await expect(page.getByTestId("document-editor-header")).toBeVisible({ timeout: 5_000 });
 
-  const editable = page.locator(".ck-editor__editable").first();
   await expect(editable).toBeVisible();
-  await page.locator(".ck-editor__editable .restricted-editing-exception").first().click();
+  await editable.click();
   await page.keyboard.type(` Objetivo do teste ${Date.now()}`);
 
   const saveButton = page.getByRole("button", { name: "Salvar rascunho" });
@@ -112,8 +134,11 @@ test("native create flow opens the browser editor with a persisted document id",
   );
   expect(bundleResponse.ok()).toBeTruthy();
 
-  await expect(page.getByTestId("browser-document-editor")).toBeVisible({ timeout: 20_000 });
-  await expect(page.locator(".ck-editor__editable")).toBeVisible();
+  const editorRoot = page.getByTestId("browser-document-editor");
+  const editable = editorRoot.locator('[contenteditable="true"]').first();
+
+  await expect(editorRoot).toBeVisible({ timeout: 20_000 });
+  await expect(editable).toBeVisible();
   await expect(page.getByTestId("document-editor-header")).toBeVisible({ timeout: 5_000 });
 });
 

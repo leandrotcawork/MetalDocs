@@ -12,8 +12,6 @@ import (
 	"metaldocs/internal/platform/messaging"
 	"metaldocs/internal/platform/render/docgen"
 	"metaldocs/internal/platform/render/gotenberg"
-
-	"golang.org/x/net/html"
 )
 
 type Clock interface {
@@ -171,10 +169,10 @@ func (s *Service) CreateDocument(ctx context.Context, cmd domain.CreateDocumentC
 	if hasTemplate {
 		templateKey = resolvedTemplate.TemplateKey
 		templateVersion = resolvedTemplate.Version
-		if resolvedTemplate.IsBrowserHTML() {
-			initialContent = resolvedTemplate.Body
+		if resolvedTemplate.IsMDDMEditor() {
+			initialContent = ""
 			contentSource = domain.ContentSourceBrowserEditor
-			textContent = plainTextFromHTML(initialContent)
+			textContent = ""
 		}
 	}
 
@@ -418,18 +416,39 @@ func (s *Service) ListDocumentsAuthorized(ctx context.Context) ([]domain.Documen
 	return filtered, nil
 }
 
-func plainTextFromHTML(raw string) string {
-	tokenizer := html.NewTokenizer(strings.NewReader(raw))
+func plainTextFromMDDM(body string) string {
+	body = strings.TrimSpace(body)
+	if body == "" {
+		return ""
+	}
+
+	var envelope struct {
+		Blocks []json.RawMessage `json:"blocks"`
+	}
+	if err := json.Unmarshal([]byte(body), &envelope); err != nil {
+		return ""
+	}
+
 	parts := make([]string, 0)
-	for {
-		switch tokenizer.Next() {
-		case html.ErrorToken:
-			return strings.Join(parts, " ")
-		case html.TextToken:
-			text := strings.TrimSpace(html.UnescapeString(string(tokenizer.Text())))
-			if text != "" {
-				parts = append(parts, text)
-			}
-		}
+	for _, block := range envelope.Blocks {
+		collectMDDMText(block, &parts)
+	}
+	return strings.Join(parts, " ")
+}
+
+func collectMDDMText(raw json.RawMessage, parts *[]string) {
+	var node struct {
+		Text     string            `json:"text"`
+		Children []json.RawMessage `json:"children"`
+	}
+	if err := json.Unmarshal(raw, &node); err != nil {
+		return
+	}
+
+	if text := strings.TrimSpace(node.Text); text != "" {
+		*parts = append(*parts, text)
+	}
+	for _, child := range node.Children {
+		collectMDDMText(child, parts)
 	}
 }

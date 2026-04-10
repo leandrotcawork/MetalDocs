@@ -1,0 +1,19 @@
+{
+  "mddm_version": 1,
+  "template_ref": null,
+  "blocks": [
+    {
+      "id": "11111111-1111-1111-1111-111111111111",
+      "type": "field",
+      "props": { "label": "Name", "valueMode": "inline", "locked": true },
+      "children": [
+        {
+          "id": "22222222-2222-2222-2222-222222222222",
+          "type": "paragraph",
+          "props": {},
+          "children": [{ "text": "not allowed inside inline field" }]
+        }
+      ]
+    }
+  ]
+}

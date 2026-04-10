@@ -38,6 +38,9 @@ func newPermissionResolver() iamdelivery.PermissionResolver {
 		if method == http.MethodGet && strings.HasPrefix(path, "/api/v1/documents/") && !strings.HasSuffix(path, "/versions") {
 			return iamdomain.PermDocumentRead, true
 		}
+		if method == http.MethodPost && strings.HasPrefix(path, "/api/v1/documents/") && strings.HasSuffix(path, "/submit-for-approval") {
+			return iamdomain.PermWorkflowTransition, true
+		}
 		if method == http.MethodPut && strings.HasPrefix(path, "/api/v1/documents/") && strings.HasSuffix(path, "/content") {
 			return iamdomain.PermDocumentEdit, true
 		}

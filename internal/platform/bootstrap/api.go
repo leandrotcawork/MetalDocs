@@ -39,6 +39,7 @@ import (
 
 type APIDependencies struct {
 	DocumentsRepo     docdomain.Repository
+	MDDMRepo          *pgrepo.MDDMRepository
 	WorkflowApprovals workflowdomain.ApprovalRepository
 	AttachmentStore   docdomain.AttachmentStore
 	RoleProvider      iamdomain.RoleProvider
@@ -76,6 +77,10 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 		if err != nil {
 			return APIDependencies{}, fmt.Errorf("open postgres: %w", err)
 		}
+		if err := pgrepo.NewTemplateSeeder(db).SeedPOTemplate(ctx, pgrepo.DefaultPOTemplateID); err != nil {
+			_ = closeDB(db)
+			return APIDependencies{}, fmt.Errorf("seed canonical po template: %w", err)
+		}
 
 		store, err := buildAttachmentStore(ctx, attachmentsCfg)
 		if err != nil {
@@ -86,6 +91,7 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 		authRepo := authpg.NewRepository(db)
 		return APIDependencies{
 			DocumentsRepo:     pgrepo.NewRepository(db),
+			MDDMRepo:          pgrepo.NewMDDMRepository(db),
 			WorkflowApprovals: workflowpg.NewApprovalRepository(db),
 			AttachmentStore:   store,
 			RoleProvider:      iampg.NewRoleProvider(db),
@@ -120,6 +126,7 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 		auditStore := auditmemory.NewWriter()
 		return APIDependencies{
 			DocumentsRepo:     memoryrepo.NewRepository(),
+			MDDMRepo:          nil,
 			WorkflowApprovals: workflowmemory.NewApprovalRepository(),
 			AttachmentStore:   store,
 			RoleProvider:      authRepo,

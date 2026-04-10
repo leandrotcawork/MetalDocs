@@ -123,25 +123,46 @@ func TestBrowserRenderMarginsFromExportConfig(t *testing.T) {
 	})
 }
 
-func TestGenerateBrowserDocxBodySubstitutesTokens(t *testing.T) {
-	// Verify substituteTemplateTokens eliminates tokens from a body
-	// that would be passed to generateBrowserDocxBytes — guards against
-	// regression on the DOCX export path.
-	body := `{{versao}} {{data_criacao}} {{elaborador}}`
-	doc := domain.Document{
-		OwnerID:   "owner",
-		CreatedAt: time.Date(2026, 4, 6, 0, 0, 0, 0, time.UTC),
+func TestMDDMBlocksToHTML(t *testing.T) {
+	cases := []struct {
+		name     string
+		body     string
+		want     string
+		wantSubs []string
+	}{
+		{
+			name: "empty body",
+			body: "",
+			want: "",
+		},
+		{
+			name:     "single paragraph",
+			body:     `{"mddm_version":1,"template_ref":null,"blocks":[{"id":"b1","type":"paragraph","props":{},"children":[{"text":"Hello"}]}]}`,
+			wantSubs: []string{"<p>Hello</p>"},
+		},
+		{
+			name:     "section with nested field",
+			body:     `{"mddm_version":1,"template_ref":null,"blocks":[{"id":"s1","type":"section","props":{"title":"My Section"},"children":[{"id":"f1","type":"field","props":{"label":"Field"},"children":[{"id":"p1","type":"paragraph","props":{},"children":[{"text":"Value"}]}]}]}]}`,
+			wantSubs: []string{"My Section", "Field", "<p>Value</p>"},
+		},
+		{
+			name:     "heading level two",
+			body:     `{"mddm_version":1,"template_ref":null,"blocks":[{"id":"h1","type":"heading","props":{"level":2},"children":[{"text":"Title"}]}]}`,
+			wantSubs: []string{"<h2>Title</h2>"},
+		},
 	}
-	version := domain.Version{Number: 3, Content: body}
 
-	got := substituteTemplateTokens(version.Content, doc, version)
-
-	for _, token := range []string{"{{versao}}", "{{data_criacao}}", "{{elaborador}}"} {
-		if strings.Contains(got, token) {
-			t.Errorf("DOCX export body must not contain raw token %q", token)
-		}
-	}
-	if !strings.Contains(got, "03") {
-		t.Error("expected version 03 in DOCX body")
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := mddmBlocksToHTML(tc.body)
+			if tc.want != "" && got != tc.want {
+				t.Fatalf("mddmBlocksToHTML(%q) = %q, want %q", tc.body, got, tc.want)
+			}
+			for _, sub := range tc.wantSubs {
+				if !strings.Contains(got, sub) {
+					t.Fatalf("mddmBlocksToHTML(%q) missing substring %q; got %q", tc.body, sub, got)
+				}
+			}
+		})
 	}
 }

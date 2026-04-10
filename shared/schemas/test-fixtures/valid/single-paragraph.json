@@ -1,0 +1,14 @@
+{
+  "mddm_version": 1,
+  "blocks": [
+    {
+      "id": "11111111-1111-1111-1111-111111111111",
+      "type": "paragraph",
+      "props": {},
+      "children": [
+        { "text": "Hello world" }
+      ]
+    }
+  ],
+  "template_ref": null
+}

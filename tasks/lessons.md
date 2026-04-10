@@ -1097,7 +1097,14 @@ Correct: Keep default profile `ActiveSchemaVersion` and seeded profile schema ve
 Rule:    Any versioned template shipped by default must have a matching seeded schema snapshot, or create/search/runtime flows will fail closed with `ErrInvalidCommand`.
 Layer:   process
 
-## Lesson EW - Scaffold parity changes must remove non-scaffold exporter behavior
+## Lesson EW - MDDM code block runs must keep explicit text node type
+Date: 2026-04-08 | Trigger: correction
+Wrong:   Adapter round-trip removed `type: "text"` from `code` block children.
+Correct: Preserve `type: "text"` on every code-run when converting BlockNote content back to MDDM.
+Rule:    Any adapter crossing between editor JSON models must preserve discriminator fields required by the canonical schema.
+Layer:   frontend
+
+## Lesson EX - Scaffold parity changes must remove non-scaffold exporter behavior
 Date: 2026-04-08 | Trigger: correction
 Wrong:   Keeping extra docx imports, exported helpers, alternate underline typing, and non-scaffold section recursion in `apps/docgen/src/mddm/exporter.ts`
 Correct: Match the scaffold literally: only export `exportMDDMToDocx`, keep helper functions internal, use the requested docx imports, and preserve the exact section/mark behavior
@@ -1159,3 +1166,255 @@ Wrong:   `field.children` could pass validation without being checked against `v
 Correct: Validate `field.children` as inline runs for `valueMode=inline` and as recursive block arrays for `valueMode=multiParagraph`
 Rule:    Shape validation must enforce the declared content mode, not just the presence of a children array.
 Layer:   infrastructure
+
+## Lesson FF - E2E assertions should target stable error surfaces
+Date: 2026-04-08 | Trigger: correction
+Wrong:   Validation-rejection E2E asserted the optional "Tentar salvar novamente" action, which may not render even when the inline error banner is correctly shown.
+Correct: Assert deterministic signals only: backend error envelope (`code/message/details/trace_id`) and the inline error banner copy.
+Rule:    E2E checks must avoid optional UI affordances and prioritize stable contract-level and user-visible error outputs.
+Layer:   process
+
+## Lesson FF - Diff indexing must ignore inline runs and return sorted buckets
+Date: 2026-04-08 | Trigger: correction
+Wrong:   `flatIndex` indexed inline text maps as blocks and diff slices inherited map iteration order
+Correct: Only index nodes with both non-empty `id` and `type`, then sort Added/Removed/Modified entries by ID before returning
+Rule:    Tree diffing must exclude non-block inline runs from identity indexing and must normalize output order for deterministic tests and reviews.
+Layer:   infrastructure
+
+## Lesson FG - Create handlers must bound bodies and return structured validation errors
+Date: 2026-04-08 | Trigger: correction
+Wrong:   `CreateDocument` read `io.ReadAll(r.Body)` and returned plain `http.Error` text for invalid JSON and missing fields
+Correct: Use `http.MaxBytesReader` plus `json.Decoder` with `DisallowUnknownFields`, then emit `writeAPIError(..., "VALIDATION_ERROR", ...)` with `requestTraceID(r)`
+Rule:    Mutation handlers should cap request size and normalize all validation failures into the API error envelope.
+Layer:   delivery
+
+## Lesson FH - Export flows must treat released bytes as canonical and draft bytes as disposable
+Date: 2026-04-08 | Trigger: correction
+Wrong:   A new DOCX export path would have rendered draft-like content even when the stored version was already released or archived
+Correct: Return cached `DocxBytes` for released/archived versions, require a valid export mode for draft/pending approval, and render fresh only for mutable statuses
+Rule:    Cached export artifacts are authoritative for immutable statuses; only mutable statuses should pay the renderer cost.
+Layer:   application
+
+## Lesson FI - Export service errors should be sentinel-typed for upstream mapping
+Date: 2026-04-08 | Trigger: correction
+Wrong:   Export branches returned ad-hoc formatted errors for nil versions, invalid modes, missing cached bytes, and unknown statuses
+Correct: Return domain sentinels (`ErrVersionNotFound`, `ErrInvalidCommand`, `ErrRenderUnavailable`) so callers can classify failures predictably with `errors.Is`
+Rule:    Application services should expose stable sentinel errors for known failure classes instead of string-formatted diagnostics.
+Layer:   application
+
+## Lesson FJ - E2E seed must upsert PO template defaults after template cleanup
+Date: 2026-04-08 | Trigger: correction
+Wrong:   E2E seed only created admin auth data and left `document_profile_template_defaults` empty after migration cleanup, so new PO drafts were created without template snapshot.
+Correct: E2E seed must idempotently upsert `profile_code=po` to `template_key=po-default-canvas` and `template_version=1` before browser-editor scenarios run.
+Rule:    Any E2E bootstrap that relies on template-bound editor bundles must seed profile default template bindings explicitly.
+Layer:   process
+
+## Lesson FK - Seeders must not overwrite existing runtime defaults
+Date: 2026-04-08 | Trigger: correction
+Wrong:   E2E seed used `ON CONFLICT DO UPDATE` for `document_profile_template_defaults`, mutating existing PO default bindings on every run.
+Correct: E2E seed should insert PO default binding only when missing (`ON CONFLICT DO NOTHING`) after verifying the canonical template version exists.
+Rule:    Environment seeders should establish required prerequisites without overriding already configured defaults.
+Layer:   process
+
+## Lesson FL - Reload assertions must force a real navigation transition
+Date: 2026-04-08 | Trigger: correction
+Wrong:   An e2e roundtrip test waited for `browser-editor-bundle` after `page.goto(documentUrl)` while already on the same route, so no reload request was emitted.
+Correct: Navigate away first, return to the document route, then trigger editor open and wait for the bundle request during that explicit reopen flow.
+Rule:    Network-based reload assertions in UI tests must include a guaranteed state transition that causes the request.
+Layer:   frontend
+
+## Lesson FM - Reopen assertions must gate on detail readiness before reload
+Date: 2026-04-08 | Trigger: correction
+Wrong:   Reopen logic conditionally skipped the "Abrir documento" click when editor state lagged route state, leaving `waitForResponse` hanging on `browser-editor-bundle`.
+Correct: In roundtrip e2e flows, first assert detail-route open-button visibility, then reload, reopen, and only then assert the bundle GET and editor image state.
+Rule:    UI reload tests must synchronize on deterministic route-specific UI checkpoints before waiting on network side effects.
+Layer:   frontend
+
+## Lesson FN - E2E clicks on route-changing actions need detachment-tolerant retries
+Date: 2026-04-08 | Trigger: correction
+Wrong:   A single click attempt on "Abrir documento" failed when the button detached during route/state rerender, causing a full test timeout.
+Correct: Wrap route-changing click actions in bounded retries, re-querying visibility each attempt and short-circuiting if target editor state becomes visible.
+Rule:    UI actions that trigger rerenders should be retried defensively in e2e when DOM detachment is expected.
+Layer:   frontend
+
+## Lesson FO - CKEditor DOM rendering is not a stable persistence oracle in roundtrip e2e
+Date: 2026-04-08 | Trigger: correction
+Wrong:   Roundtrip validation required `img[alt=...]` visibility inside `.ck-editor__editable`, creating flakiness even when the reloaded bundle body already contained the injected image payload.
+Correct: Assert persistence on the reloaded `browser-editor-bundle` body (the canonical save/load payload) and treat editor-surface readiness as a separate UI availability check.
+Rule:    In editor e2e tests, persistence should be validated from canonical API payloads when DOM rendering can diverge from serialized content.
+Layer:   frontend
+
+## Lesson FS - Image roundtrip E2E must use attachment APIs, not synthetic data URLs
+Date: 2026-04-08 | Trigger: correction
+Wrong:   Injecting `data:image/png;base64,...` directly into saved editor HTML bypassed the real upload/download attachment path.
+Correct: Upload fixture bytes through `/documents/{id}/attachments`, resolve `/download-url`, and assert that URL persists through browser save + reload bundle.
+Rule:    E2E tests for media persistence should exercise the production storage reference flow end-to-end.
+Layer:   frontend
+
+## Lesson FT - Reload CTA clicks in editor readiness checks must tolerate DOM replacement
+Date: 2026-04-08 | Trigger: correction
+Wrong:   `ensureBrowserEditorReady` clicked a stale `Recarregar documento` locator and failed when the button detached during error-banner rerender.
+Correct: Re-query the reload button each attempt, click with guarded retry, and short-circuit when editor surface becomes visible.
+Rule:    E2E recovery actions on transient error UI must handle locator detachment caused by rerenders.
+Layer:   frontend
+
+## Lesson FU - Browser editor save tests must verify dirty-state before waiting on save network calls
+Date: 2026-04-08 | Trigger: correction
+Wrong:   Save assertions waited for `/content/browser` while "Salvar rascunho" remained disabled because typed text had not been committed reliably.
+Correct: Type a unique marker until it is present in editor text, then poll save-button enabled state before clicking.
+Rule:    E2E save flows should prove local edit mutation before asserting outbound save requests.
+Layer:   frontend
+
+## Lesson FV - Browser roundtrip persistence tests should save via API with current draft token
+Date: 2026-04-08 | Trigger: correction
+Wrong:   UI-driven save button flows made roundtrip tests flaky even after content preparation was correct.
+Correct: Fetch the live browser editor bundle, save through `/documents/{id}/content/browser` with its `draftToken` and augmented body, then validate persistence on subsequent bundle reload.
+Rule:    For persistence-oriented E2E coverage, use deterministic API save paths when UI control state is not the behavior under test.
+Layer:   frontend
+
+## Lesson FW - Integration matrix wiring must satisfy service prerequisites
+Date: 2026-04-08 | Trigger: correction
+Wrong:   The documents API integration save-conflict scenario wired Service without AttachmentStore, returning ATTACHMENT_STORE_UNAVAILABLE before draft token validation.
+Correct: Wire a memory AttachmentStore in the integration harness so SaveNativeContentAuthorized reaches the DRAFT_CONFLICT path.
+Rule:    Integration tests must satisfy required service dependencies before asserting behavior in deeper branches.
+Layer:   process
+
+## Lesson FX - Test server handlers must fail via HTTP contracts, not goroutine fatals
+Date: 2026-04-08 | Trigger: correction
+Wrong:   The integration test docgen httptest server called t.Fatalf inside the request handler on method/path mismatches.
+Correct: The handler now returns deterministic HTTP status/body for invalid method/path, and assertions verify recorded method/path at test call sites.
+Rule:    Request handlers in tests should expose failures through deterministic responses and explicit assertions, not fatal calls from handler goroutines.
+Layer:   process
+
+## Lesson FF - Subagents must execute inside the active worktree
+Date: 2026-04-08 | Trigger: correction
+Wrong:   A subagent generated Task 59 files under the parent repository path (`...\MetalDocs\...`) while implementation was supposed to happen in `.worktrees\mddm-foundational`
+Correct: Always set subagent execution context explicitly to the active worktree and verify file paths before accepting implementation output
+Rule:    In worktree-based development, every delegated edit and review must target the active worktree path to avoid branch contamination.
+Layer:   process
+
+## Lesson FG - When plan contract and generic policy conflict, task contract wins for that slice
+Date: 2026-04-08 | Trigger: correction
+Wrong:   Changed Task 60 handler generic error mapping from 422 to 500 to satisfy general API policy, diverging from the locked task contract
+Correct: Keep Task 60 generic service error mapping at 422 because the locked plan defines that behavior for this endpoint slice
+Rule:    For locked sprint tasks, implementer and reviewer quality improvements cannot override explicit contract behavior unless the plan itself is amended.
+Layer:   process
+
+## Lesson FH - Endpoint-specific method guards prevent permission bypass via alternate verbs
+Date: 2026-04-08 | Trigger: correction
+Wrong:   `LoadHandler.Load` did not enforce `GET`, allowing alternate HTTP verbs to hit the handler path when wired
+Correct: Add an explicit `r.Method == http.MethodGet` guard and return 405 otherwise
+Rule:    Every dedicated handler must enforce its allowed method set explicitly, even when route dispatch is expected to constrain verbs.
+Layer:   delivery
+
+## Lesson FI - Final slice review must verify tracked state, not just passing local tests
+Date: 2026-04-08 | Trigger: correction
+Wrong:   Completed wiring and tests but left newly created adapter/test files untracked, making the change incomplete in a clean checkout
+Correct: During final review, always validate `git status --short` and ensure all required new files are tracked before declaring compliance
+Rule:    A task is only complete when behavior, tests, and git tracking state all align.
+Layer:   process
+
+## Lesson FF2 - BlockNote custom block specs must be instantiated for schema registration
+Date: 2026-04-08 | Trigger: correction
+Wrong:   Planning schema registration with direct references (`section: Section`) when `createReactBlockSpec` in current BlockNote returns factory functions
+Correct: Instantiate custom specs when registering schema (`section: Section()`, etc.) and validate against installed package API before enforcing plan steps
+Rule:    Frontend integration plans must verify third-party API shape against the installed version before locking implementation steps.
+Layer:   process
+
+## Lesson FG2 - Domain tests should assert defaults directly instead of reading migration SQL
+Date: 2026-04-09 | Trigger: correction
+Wrong:   A domain test read `migrations/0065_seed_po_mddm_canvas_template.sql` to assert template parity across layers
+Correct: Test `DefaultDocumentTemplateVersions()` directly and assert the forbidden template keys or editor/content-format values are absent
+Rule:    Domain tests should validate the canonical in-memory defaults, not replicate persistence-layer seed files.
+Layer:   domain
+
+## Lesson FG3 - SQL parity tests should anchor on the actual seed row shape
+Date: 2026-04-09 | Trigger: correction
+Wrong:   A parity guard only checked that a migration file existed or that loose template markers were present
+Correct: Assert the exact `po-mddm-canvas` insert target plus the canonical value tuple for key, version, profile, schema, editor, and content format
+Rule:    Parity tests should verify the concrete seed row shape so SQL drift is caught without broad false positives.
+Layer:   domain
+
+## Lesson FG4 - Delete package-scoped test shims after migration completes
+Date: 2026-04-09 | Trigger: correction
+Wrong:   Left `substitute_template_tokens_test.go` in place as a legacy compatibility shim after the package had already moved on.
+Correct: Remove the shim file once no remaining package callers require the legacy helper for compilation.
+Rule:    Temporary test-only compatibility should be removed promptly after migration so dead symbols do not linger.
+Layer:   process
+
+## Lesson FG5 - Snapshot assertions should use explicit fields when helpers do not exist
+Date: 2026-04-09 | Trigger: build failure
+Wrong:   Asserted `bundle.TemplateSnapshot.IsMDDMEditor()` even though `DocumentTemplateSnapshot` does not define that helper
+Correct: Check `bundle.TemplateSnapshot.Editor` and `bundle.TemplateSnapshot.ContentFormat` directly when the snapshot type only exposes fields
+Rule:    Tests should assert the actual API surface of the type they receive, not assume a helper exists on a sibling struct.
+Layer:   process
+
+## Lesson FG6 - Save-path tests should assert both returned and persisted derived text
+Date: 2026-04-09 | Trigger: correction
+Wrong:   Verified the saved MDDM body without checking the derived `TextContent` projection on both the returned version and repository row
+Correct: Assert `TextContent` on the returned save result and the persisted version so MDDM text extraction stays covered end-to-end
+Rule:    When a mutation updates a derived field, tests must verify the service return value and the stored row to catch projection drift.
+Layer:   application
+
+## Lesson FG7 - Browser editor bundle tests should reuse the canonical MDDM seed body
+Date: 2026-04-09 | Trigger: correction
+Wrong:   `TestHandleDocumentBrowserEditorBundleCreatedAt` still seeded `<section><p>Original</p></section>` after the browser-handler path had standardized on MDDM fixtures
+Correct: Seed the browser editor bundle test with `testMDDMBody` so the handler exercises the same MDDM serialization path as the rest of the browser-content suite
+Rule:    Once a browser-content flow is standardized on one content format, its tests should share the canonical fixture instead of an ad hoc HTML seed.
+Layer:   delivery
+
+## Lesson FG8 - Handler tests should assert decoded response fields, not JSON fragments
+Date: 2026-04-09 | Trigger: correction
+Wrong:   Browser handler tests matched response substrings like `"contentSource":"browser_editor"` and `"createdAt":"..."` instead of validating the decoded payload shape
+Correct: Decode handler JSON into the response structs and assert specific fields such as `contentSource`, `contentFormat`, `body`, and `createdAt`
+Rule:    Delivery tests should verify the contract at the field level so formatting changes do not create false failures or hide real regressions.
+Layer:   delivery
+
+## Lesson FG9 - Remove transitional template compatibility gates after MDDM cutover
+Date: 2026-04-09 | Trigger: correction
+Wrong:   Kept `IsBrowserHTML` and a compatibility bypass in template validation after the branch had moved to MDDM-only browser templates.
+Correct: Restrict browser-editor compatibility checks to `mddm-blocknote/mddm` and validate all assigned templates against schema compatibility rules.
+Rule:    After a migration baseline is officially cut over, transitional compatibility paths must be deleted so legacy formats cannot silently re-enter runtime flows.
+Layer:   application
+
+## Lesson FG - Etapa tables must be nested in richBlock, not direct repeatableItem children
+Date: 2026-04-09 | Trigger: correction
+Wrong:   Allowing `dataTable` directly under `repeatableItem` while Task 1 tests and etapa contract required table insertion only through the rich content area
+Correct: Keep `repeatableItem` limited to content blocks plus `richBlock`, and allow `dataTable` inside `richBlock` for etapa free-form table authoring
+Rule:    When plan text conflicts with approved grammar tests, preserve the tested contract and document the plan fix inline.
+Layer:   process
+
+## Lesson FH - Optional templated deletions must skip the whole optional subtree
+Date: 2026-04-09 | Trigger: review
+Wrong:   Skipping lock violations only for the missing optional section root while still enforcing missing-child violations for descendants in that deleted optional subtree
+Correct: Precompute IDs in missing optional section subtrees and skip missing-node lock violations for every descendant in those optional subtrees
+Rule:    When optional template sections are deletable, lock enforcement must treat the deleted optional subtree as absent by contract, not node-by-node violations.
+Layer:   domain
+
+## Lesson FI - Seed templates must not ship hardcoded image refs
+Date: 2026-04-09 | Trigger: review
+Wrong:   Seeding default template content with fixed `image.props.src` API IDs that may not exist or be authorized for a new draft
+Correct: Keep image insertion capability in rich areas but avoid pre-seeded concrete image refs in canonical template scaffolds
+Rule:    Canonical seed documents must be valid without external asset prerequisites.
+Layer:   domain
+
+## Lesson FJ - Template tests should guard against seeded external image refs
+Date: 2026-04-09 | Trigger: correction
+Wrong:   Relying only on structural assertions allowed hardcoded `/api/images/...` refs to be reintroduced in canonical template seeds
+Correct: Add regression assertion that canonical template JSON contains no pre-seeded image API refs
+Rule:    Canonical template tests must include guardrails for external runtime dependencies, not just block shape.
+Layer:   domain
+
+## Lesson FK - Adapter exports must omit default props to preserve round-trip stability
+Date: 2026-04-09 | Trigger: correction
+Wrong:   `toMDDMProps` always emitted `optional: false` and `hint: ""`, which changed canonical JSON for existing documents
+Correct: Only serialize `section.props.optional` when true and `field.props.hint` when non-empty
+Rule:    Default editor props should stay implicit on export so legacy content round-trips without drift.
+Layer:   frontend
+
+## Lesson FK - Validate target branch/worktree before committing subagent output
+Date: 2026-04-09 | Trigger: correction
+Wrong:   Accepting a subagent commit created in `main` when the active implementation branch was `feature/mddm-foundational`
+Correct: Confirm commit location immediately (`git log` in both roots) and relocate with cherry-pick/revert before continuing plan execution
+Rule:    Multi-worktree flows must verify branch/worktree target for every subagent commit.
+Layer:   process

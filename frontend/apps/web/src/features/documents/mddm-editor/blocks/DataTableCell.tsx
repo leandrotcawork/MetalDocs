@@ -1,5 +1,7 @@
 import { createReactBlockSpec } from "@blocknote/react";
 import styles from "./DataTableCell.module.css";
+import { DataTableCellExternalHTML } from "../engine/external-html";
+import { defaultLayoutTokens } from "../engine/layout-ir";
 
 export const DataTableCell = createReactBlockSpec(
   {
@@ -19,6 +21,11 @@ export const DataTableCell = createReactBlockSpec(
       >
         <div ref={props.contentRef} className={styles.cellContent} />
       </div>
+    ),
+    toExternalHTML: ({ contentRef }) => (
+      <DataTableCellExternalHTML tokens={defaultLayoutTokens}>
+        <span ref={(el: HTMLSpanElement | null) => contentRef(el)} />
+      </DataTableCellExternalHTML>
     ),
   },
 );

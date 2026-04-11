@@ -1,5 +1,7 @@
 import { createReactBlockSpec } from "@blocknote/react";
 import styles from "./Field.module.css";
+import { FieldExternalHTML } from "../engine/external-html";
+import { defaultLayoutTokens } from "../engine/layout-ir";
 
 export const Field = createReactBlockSpec(
   {
@@ -32,6 +34,14 @@ export const Field = createReactBlockSpec(
           <div ref={props.contentRef} className={styles.fieldContent} />
         </div>
       </div>
+    ),
+    toExternalHTML: ({ block, contentRef }) => (
+      <FieldExternalHTML
+        label={(block.props as { label?: string }).label ?? ""}
+        tokens={defaultLayoutTokens}
+      >
+        <span ref={(el: HTMLSpanElement | null) => contentRef(el)} />
+      </FieldExternalHTML>
     ),
   },
 );

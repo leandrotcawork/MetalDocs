@@ -273,21 +273,21 @@ COMMENT ON COLUMN metaldocs.document_versions.renderer_pin IS
 
 - [ ] **Step 2: Apply the migration to the local dev DB**
 
-Run: `go run ./cmd/migrate up 2>&1 | tail -20`
-(Or whatever migration command the repo uses — inspect `cmd/` for a migrate entry point.)
-Expected: Migration 0069 applied without error.
+The repo applies migrations by streaming `migrations/*.sql` through the Postgres docker container via `scripts/dev-migrate.ps1`. The script reads `.env`, verifies `POSTGRES_USER` / `POSTGRES_DB`, and runs each file through `docker compose exec postgres psql`:
 
-If there is no dedicated migration binary, verify the migration file syntax by running it against a throwaway psql connection:
-
-```bash
-psql "$DATABASE_URL" -f migrations/0069_add_renderer_pin_to_document_versions.sql
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/dev-migrate.ps1
 ```
-Expected: `ALTER TABLE` success message.
 
-- [ ] **Step 3: Verify column exists**
+Expected: Output includes a line `[dev-migrate] -> 0069_add_renderer_pin_to_document_versions.sql` followed by `[dev-migrate] Done.`
 
-Run: `psql "$DATABASE_URL" -c "\d metaldocs.document_versions" 2>&1 | grep renderer_pin`
-Expected: Row showing `renderer_pin | jsonb | |`.
+- [ ] **Step 3: Verify the column exists in the running container**
+
+```powershell
+docker compose -f deploy/compose/docker-compose.yml --env-file .env exec -T postgres psql -U $env:POSTGRES_USER -d $env:POSTGRES_DB -c "\d metaldocs.document_versions"
+```
+
+Expected: The output includes a row `renderer_pin | jsonb |`. If the column is missing, rerun Step 2 and check the migration log for errors.
 
 - [ ] **Step 4: Commit**
 
@@ -296,43 +296,60 @@ git add migrations/0069_add_renderer_pin_to_document_versions.sql
 git commit -m "feat(db): add renderer_pin JSONB column to document_versions"
 ```
 
-### Task 4: Postgres repository reads and writes renderer_pin
+### Task 4: Add SetVersionRendererPin to the docdomain.Repository interface
 
 **Files:**
+- Modify: `internal/modules/documents/domain/port.go`
 - Modify: `internal/modules/documents/infrastructure/postgres/repository.go`
-- Modify: `internal/modules/documents/infrastructure/postgres/repository_test.go` (or create a new focused test file)
+- Modify: `internal/modules/documents/infrastructure/memory/repository.go`
 
-- [ ] **Step 1: Find every SQL statement that reads or writes document_versions**
+**Repository interface note:** `docdomain.Repository` is an interface declared in `internal/modules/documents/domain/port.go` with existing `UpdateVersionDocx`, `UpdateVersionPDF`, `UpdateVersionBodyBlocks`, `UpdateVersionValues` methods. Pin writes follow that exact shape. Both the postgres and memory implementations must get the new method so every consumer — bootstrap, tests, capturer — compiles against the interface.
 
-Run: `grep -n 'document_versions' internal/modules/documents/infrastructure/postgres/repository.go | head -30`
-Expected: Lists every INSERT, UPDATE, and SELECT that touches `document_versions`.
+**Column-name note (verified):** The schema uses `version_number`, NOT `number`. Every existing UPDATE in `repository.go` uses `WHERE document_id = $1 AND version_number = $2`; the new pin method must match.
+
+- [ ] **Step 1: Add the method to the interface**
+
+Open `internal/modules/documents/domain/port.go` and add a line alongside the existing `UpdateVersionX` methods:
+
+```go
+SetVersionRendererPin(ctx context.Context, documentID string, versionNumber int, pin *RendererPin) error
+```
 
 - [ ] **Step 2: Write a failing integration-style test for round-trip**
 
-Append to `internal/modules/documents/infrastructure/postgres/repository_test.go` (the existing test suite — use the same setup helpers it already has):
+Create `internal/modules/documents/infrastructure/postgres/renderer_pin_test.go`:
 
 ```go
-func TestRepository_RendererPin_Roundtrip(t *testing.T) {
-    repo, cleanup := newTestRepo(t) // reuse whatever helper the existing tests use
-    defer cleanup()
+package postgres
+
+import (
+    "context"
+    "testing"
+    "time"
+
+    "metaldocs/internal/modules/documents/domain"
+)
+
+func TestRepository_SetVersionRendererPin_Roundtrip(t *testing.T) {
+    db := newTestDB(t)
+    repo := NewRepository(db)
 
     ctx := context.Background()
-    doc := seedTestDocument(t, repo) // reuse existing seeding helper
+    docID := seedIntegrationDocumentWithVersion(t, ctx, db) // reuse whichever seed helper the existing tests expose in testhelpers_test.go / mddm_repository_test.go
 
-    now := time.Now().UTC().Truncate(time.Second)
     pin := &domain.RendererPin{
         RendererVersion: "1.0.0",
         LayoutIRHash:    "abcdef0123456789",
         TemplateKey:     "po-mddm-canvas",
         TemplateVersion: 1,
-        PinnedAt:        now,
+        PinnedAt:        time.Now().UTC().Truncate(time.Second),
     }
 
-    if err := repo.SetVersionRendererPin(ctx, doc.ID, 1, pin); err != nil {
+    if err := repo.SetVersionRendererPin(ctx, docID, 1, pin); err != nil {
         t.Fatalf("SetVersionRendererPin: %v", err)
     }
 
-    got, err := repo.GetVersion(ctx, doc.ID, 1)
+    got, err := repo.GetVersion(ctx, docID, 1)
     if err != nil {
         t.Fatalf("GetVersion: %v", err)
     }
@@ -342,45 +359,99 @@ func TestRepository_RendererPin_Roundtrip(t *testing.T) {
     if got.RendererPin.RendererVersion != "1.0.0" || got.RendererPin.LayoutIRHash != "abcdef0123456789" {
         t.Fatalf("roundtrip mismatch: %+v", got.RendererPin)
     }
+
+    // Clearing the pin must set the column back to NULL.
+    if err := repo.SetVersionRendererPin(ctx, docID, 1, nil); err != nil {
+        t.Fatalf("SetVersionRendererPin nil: %v", err)
+    }
+    got, err = repo.GetVersion(ctx, docID, 1)
+    if err != nil {
+        t.Fatalf("GetVersion after clear: %v", err)
+    }
+    if got.RendererPin != nil {
+        t.Fatalf("expected RendererPin to be cleared, got %+v", got.RendererPin)
+    }
+}
+
+func TestRepository_SetVersionRendererPin_FailsWhenVersionMissing(t *testing.T) {
+    db := newTestDB(t)
+    repo := NewRepository(db)
+
+    err := repo.SetVersionRendererPin(context.Background(), "nonexistent-doc", 1, &domain.RendererPin{
+        RendererVersion: "1.0.0",
+        LayoutIRHash:    "h",
+        TemplateKey:     "k",
+        TemplateVersion: 1,
+    })
+    if err == nil {
+        t.Fatalf("expected error when version row does not exist")
+    }
 }
 ```
 
+**Note on the seed helper:** Inspect the existing postgres integration tests (`grep -rn 'func.*Seed\|insertDocumentRow\|newTest' internal/modules/documents/infrastructure/postgres/*_test.go`) and reuse whichever helper already creates a document + draft version. If none exists that precisely matches, add a new helper in `testhelpers_test.go` that calls the repo's `CreateDocument` + `AddVersion` methods with minimal fixture data.
+
 - [ ] **Step 3: Run the test — expect failure**
 
-Run: `go test ./internal/modules/documents/infrastructure/postgres/... -run TestRepository_RendererPin_Roundtrip -v 2>&1 | tail -20`
-Expected: FAIL — method `SetVersionRendererPin` does not exist OR SELECT queries do not populate `RendererPin`.
+```bash
+go test ./internal/modules/documents/infrastructure/postgres/... -run TestRepository_SetVersionRendererPin -v 2>&1 | tail -30
+```
+Expected: FAIL — `*Repository` has no method `SetVersionRendererPin`, AND the interface assertion at the top of the package (`var _ docdomain.Repository = (*Repository)(nil)`) fails because of the missing method.
 
-- [ ] **Step 4: Implement repository changes**
+- [ ] **Step 4: Implement the postgres method**
 
-In `internal/modules/documents/infrastructure/postgres/repository.go`:
-
-**4a.** Add a new method:
+In `internal/modules/documents/infrastructure/postgres/repository.go`, add:
 
 ```go
 func (r *Repository) SetVersionRendererPin(ctx context.Context, documentID string, versionNumber int, pin *domain.RendererPin) error {
     if pin == nil {
-        _, err := r.db.ExecContext(ctx,
-            `UPDATE metaldocs.document_versions SET renderer_pin = NULL WHERE document_id = $1 AND number = $2`,
+        result, err := r.db.ExecContext(ctx,
+            `UPDATE metaldocs.document_versions
+             SET renderer_pin = NULL
+             WHERE document_id = $1 AND version_number = $2`,
             documentID, versionNumber)
-        return err
+        if err != nil {
+            return fmt.Errorf("clear renderer pin: %w", err)
+        }
+        affected, _ := result.RowsAffected()
+        if affected == 0 {
+            return fmt.Errorf("clear renderer pin: version %d of document %s not found", versionNumber, documentID)
+        }
+        return nil
     }
+
     if err := pin.Validate(); err != nil {
         return fmt.Errorf("invalid renderer pin: %w", err)
     }
+
     payload, err := json.Marshal(pin)
     if err != nil {
         return fmt.Errorf("marshal renderer pin: %w", err)
     }
-    _, err = r.db.ExecContext(ctx,
-        `UPDATE metaldocs.document_versions SET renderer_pin = $3::jsonb WHERE document_id = $1 AND number = $2`,
+
+    result, err := r.db.ExecContext(ctx,
+        `UPDATE metaldocs.document_versions
+         SET renderer_pin = $3::jsonb
+         WHERE document_id = $1 AND version_number = $2`,
         documentID, versionNumber, string(payload))
-    return err
+    if err != nil {
+        return fmt.Errorf("set renderer pin: %w", err)
+    }
+    affected, _ := result.RowsAffected()
+    if affected == 0 {
+        return fmt.Errorf("set renderer pin: version %d of document %s not found", versionNumber, documentID)
+    }
+    return nil
 }
 ```
 
-**4b.** Update every `SELECT` query that reads version rows to include the `renderer_pin` column. For each identified SELECT from Step 1, add `, renderer_pin` to the column list and add a `sql.NullString` scan target that is parsed into `*domain.RendererPin` when not null.
+Note the explicit `RowsAffected()` check — the test `TestRepository_SetVersionRendererPin_FailsWhenVersionMissing` depends on this. Without it, `UPDATE ... WHERE` against a non-existent row returns success with 0 rows affected, silently masking a bug.
 
-Add a helper:
+- [ ] **Step 5: Update every SELECT query that reads version rows**
+
+Run: `grep -n 'SELECT.*FROM metaldocs.document_versions\|SELECT document_id, version_number' internal/modules/documents/infrastructure/postgres/repository.go | head -20`
+
+For each query identified, add `, renderer_pin` to the column list and add a scan target. Introduce this helper near the top of the file (or in `testhelpers_test.go` if it's only used by tests, but production code needs it in `repository.go`):
 
 ```go
 func scanRendererPin(raw sql.NullString) (*domain.RendererPin, error) {
@@ -395,25 +466,62 @@ func scanRendererPin(raw sql.NullString) (*domain.RendererPin, error) {
 }
 ```
 
-And wire it into every version-reading query:
+Wire it into each Scan:
 
 ```go
 var pinRaw sql.NullString
-// ... Scan(&v.DocumentID, ..., &v.CreatedAt, &pinRaw) ...
+if err := row.Scan( /* ... existing fields ..., */ &v.CreatedAt, &pinRaw); err != nil {
+    return nil, err
+}
 v.RendererPin, err = scanRendererPin(pinRaw)
-if err != nil { return nil, err }
+if err != nil {
+    return nil, err
+}
 ```
 
-- [ ] **Step 5: Run the test — expect pass**
+- [ ] **Step 6: Implement the method on the memory repository**
 
-Run: `go test ./internal/modules/documents/infrastructure/postgres/... -run TestRepository_RendererPin_Roundtrip -v 2>&1 | tail -20`
-Expected: PASS.
+Open `internal/modules/documents/infrastructure/memory/repository.go` and add a matching method. Memory repos typically store versions in a map — locate it via `grep -n 'versions\|Version' internal/modules/documents/infrastructure/memory/repository.go | head -20` and add:
 
-- [ ] **Step 6: Commit**
+```go
+func (r *Repository) SetVersionRendererPin(ctx context.Context, documentID string, versionNumber int, pin *domain.RendererPin) error {
+    r.mu.Lock()
+    defer r.mu.Unlock()
+    versions, ok := r.versions[documentID]
+    if !ok {
+        return fmt.Errorf("document %s not found", documentID)
+    }
+    for i, v := range versions {
+        if v.Number == versionNumber {
+            if pin != nil {
+                if err := pin.Validate(); err != nil {
+                    return fmt.Errorf("invalid renderer pin: %w", err)
+                }
+            }
+            versions[i].RendererPin = pin
+            r.versions[documentID] = versions
+            return nil
+        }
+    }
+    return fmt.Errorf("version %d of document %s not found", versionNumber, documentID)
+}
+```
+
+(Adjust to the actual field names used in the memory repo — the `grep` above tells you the exact map shape.)
+
+- [ ] **Step 7: Run the test — expect pass**
 
 ```bash
-git add internal/modules/documents/infrastructure/postgres/repository.go internal/modules/documents/infrastructure/postgres/repository_test.go
-git commit -m "feat(documents-repo): read/write renderer_pin column on document_versions"
+go test ./internal/modules/documents/infrastructure/postgres/... -run TestRepository_SetVersionRendererPin -v 2>&1 | tail -30
+go test ./internal/modules/documents/infrastructure/memory/... 2>&1 | tail -20
+```
+Expected: All pass. The memory repo's existing tests still pass (no functional change) and the new pin round-trip test passes on postgres.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add internal/modules/documents/domain/port.go internal/modules/documents/infrastructure/postgres/repository.go internal/modules/documents/infrastructure/postgres/renderer_pin_test.go internal/modules/documents/infrastructure/memory/repository.go
+git commit -m "feat(documents-repo): add SetVersionRendererPin to Repository interface + impls"
 ```
 
 ---
@@ -627,19 +735,28 @@ git add internal/modules/documents/application/capture_renderer_pin.go internal/
 git commit -m "feat(documents-app): add RendererPinCapturer for release transitions"
 ```
 
-### Task 6: Wire the capturer into the release transition
+### Task 6: Wire the capturer into the release transition (fail-loud)
 
 **Files:**
-- Modify: the file that handles DRAFT→RELEASED transitions
+- Modify: `internal/modules/documents/application/service.go`
+- Modify: the file(s) implementing DRAFT→RELEASED transitions
+- Modify: `apps/api/cmd/metaldocs-api/main.go`
+- Modify: `internal/platform/config/` (new or existing documents config file)
+
+**Atomicity decision:** The capturer is called BEFORE the release transition commits, and the transition must abort on capture error. This is not a fully atomic DB transaction — the release and the pin write are two UPDATE statements — but it guarantees that either both succeed or the user sees a clear failure and can retry. An observed `RELEASED` status in the database implies a valid pin (for browser_editor content). Silent best-effort logging is explicitly forbidden because Section 10 of the spec requires released documents to be frozen forever, and a missing pin breaks that guarantee.
+
+A future refactor can wrap both updates in a single DB transaction once the release-service repo methods accept a transaction handle; Plan 3 does not ship that refactor.
 
 - [ ] **Step 1: Find the release transition site**
 
-Run: `grep -rn 'DRAFT.*RELEASED\|StatusReleased\|Release(\|transitionTo' internal/modules/documents/application/ 2>&1 | head -20`
-Expected: Locates the function that performs the release transition (likely `release_service.go` or `service_document_runtime.go` — path may vary).
+```bash
+grep -rn 'StatusReleased\|status.*Released\|ReleaseVersion\|transitionTo.*Released' internal/modules/documents/application/ 2>&1 | head -20
+```
+Expected: Locates the function that performs the release transition (search for the specific method used by the release handler — it is the one that writes the `released` status on a version and should be in `service_document_runtime.go` or a dedicated `release_service.go`).
 
-- [ ] **Step 2: Inject the capturer into the Service**
+- [ ] **Step 2: Add the field and builder method to Service**
 
-In `internal/modules/documents/application/service.go`, add a field and a builder method:
+In `internal/modules/documents/application/service.go`:
 
 ```go
 type Service struct {
@@ -653,49 +770,102 @@ func (s *Service) WithRendererPinCapturer(c *RendererPinCapturer) *Service {
 }
 ```
 
-- [ ] **Step 3: Call the capturer on transition**
+- [ ] **Step 3: Capture the pin BEFORE committing the release**
 
-At the release transition site identified in Step 1, after the version's status is persisted as RELEASED (and after any other commit-level work), add:
+At the release transition site identified in Step 1, the order must be:
+
+1. Validate the caller's authorization and release preconditions
+2. Compute the new version state (released)
+3. **Capture the renderer pin via `s.rendererPinCapturer.OnRelease(ctx, version)`. If it returns an error AND `version.ContentSource == domain.ContentSourceBrowserEditor`, ABORT the release and return the error.**
+4. Persist the released state
 
 ```go
 if s.rendererPinCapturer != nil {
-    if err := s.rendererPinCapturer.OnRelease(ctx, *releasedVersion); err != nil {
-        // Log but do not fail the release: a missing pin can be repaired
-        // by re-releasing. Failing the release would block approval workflows.
-        log.Printf("renderer pin capture failed for %s/%d: %v", releasedVersion.DocumentID, releasedVersion.Number, err)
+    if err := s.rendererPinCapturer.OnRelease(ctx, version); err != nil {
+        return fmt.Errorf("capture renderer pin before release: %w", err)
     }
 }
+// ... then persist the release status change ...
 ```
 
-(Use whichever variable holds the freshly-released version. If the transition returns an error before persisting, do NOT call OnRelease.)
+If the service returns an error here, the HTTP handler translates it into a 500 and the release is not persisted. The user retries — no half-released state.
 
-- [ ] **Step 4: Wire the capturer at bootstrap**
+For non-browser-editor content sources, `OnRelease` already returns nil (see Task 5), so existing native/docx_upload release flows are unaffected.
 
-Find the Service construction site (`grep -rn 'NewService\|service := application.NewService' cmd/ internal/ | head -5`) and add the capturer injection. The `CurrentRendererVersion` and `CurrentLayoutIRHash` come from a new build-time constant or config entry:
+- [ ] **Step 4: Add config fields and env vars**
 
-```go
-rendererPinCfg := application.RendererPinCapturerConfig{
-    CurrentRendererVersion: config.Documents.RendererVersion, // e.g., "1.0.0"
-    CurrentLayoutIRHash:    config.Documents.LayoutIRHash,    // populated by build script
-    Repo:                   pgRepo,
-    Clock:                  time.Now,
-}
-capturer := application.NewRendererPinCapturer(rendererPinCfg)
-service := application.NewService(/* ... */).WithRendererPinCapturer(capturer)
-```
-
-Add the two new config keys to `internal/platform/config/documents.go` (or wherever documents config lives — search for `Documents` struct). Defaults: `RendererVersion = "1.0.0"`, `LayoutIRHash = ""`. Loading from env vars `METALDOCS_RENDERER_VERSION` and `METALDOCS_LAYOUT_IR_HASH`.
-
-- [ ] **Step 5: Build and run existing tests**
-
-Run: `go build ./... && go test ./internal/modules/documents/... 2>&1 | tail -30`
-Expected: Clean build, all existing tests pass.
-
-- [ ] **Step 6: Commit**
+Search for the documents config struct:
 
 ```bash
-git add internal/modules/documents/application/service.go internal/modules/documents/application/release_service.go internal/platform/config/documents.go cmd/
-git commit -m "wire(documents-app): inject RendererPinCapturer into release transition"
+grep -rn "type DocumentsConfig\|type Documents struct" internal/platform/config/ 2>&1 | head
+```
+
+In the matching file (e.g., `internal/platform/config/documents.go`), add:
+
+```go
+type DocumentsConfig struct {
+    // ... existing fields ...
+    RendererVersion string `env:"METALDOCS_RENDERER_VERSION"`
+    LayoutIRHash    string `env:"METALDOCS_LAYOUT_IR_HASH"`
+}
+```
+
+Defaults in the config loader: `RendererVersion = "1.0.0"`, `LayoutIRHash = ""`. Both can be overridden via env vars injected at deploy time (in practice: the CI build script that produces the frontend bundle also publishes the current IR hash to an env var consumed by the backend binary).
+
+- [ ] **Step 5: Wire the capturer at bootstrap**
+
+Open `apps/api/cmd/metaldocs-api/main.go`. Locate the existing `docapp.NewService` chain (around line 68 — verified via `grep -n 'docapp.NewService' apps/api/cmd/metaldocs-api/main.go`):
+
+```go
+docService := docapp.NewService(deps.DocumentsRepo, deps.Publisher, nil).
+    WithAttachmentStore(deps.AttachmentStore).
+    WithAuditWriter(deps.AuditWriter).
+    WithDocgenClient(deps.DocgenClient).
+    WithGotenberg(deps.GotenbergClient).
+    WithApprovalReader(docapp.NewWorkflowApprovalAdapter(deps.WorkflowApprovals)).
+    WithRendererPinCapturer(docapp.NewRendererPinCapturer(docapp.RendererPinCapturerConfig{
+        CurrentRendererVersion: deps.Config.Documents.RendererVersion,
+        CurrentLayoutIRHash:    deps.Config.Documents.LayoutIRHash,
+        Repo:                   deps.DocumentsRepo, // satisfies RendererPinRepo via the interface added in Task 4
+        Clock:                  time.Now,
+    }))
+```
+
+This reuses the existing `deps.DocumentsRepo` (the `docdomain.Repository` interface) — no new repo surface to plumb through bootstrap.
+
+- [ ] **Step 6: Build and run existing tests**
+
+```bash
+go build ./...
+go test ./internal/modules/documents/... 2>&1 | tail -30
+```
+Expected: Clean build, all existing tests pass. No existing release tests should need changes because `OnRelease` is a no-op for native content.
+
+- [ ] **Step 7: Add an integration test for the fail-loud path**
+
+Append to the test file that covers the release transition (whichever `*_test.go` tests the method found in Step 1):
+
+```go
+func TestReleaseVersion_FailsWhenPinCaptureFails(t *testing.T) {
+    // Test harness: use a Service built with a fake RendererPinCapturer whose
+    // Repo returns an error, release a browser_editor version, and assert
+    // the release returns an error (not a silent best-effort warning).
+    // ... full test body following existing release-test patterns in this file ...
+}
+```
+
+Run the test:
+
+```bash
+go test ./internal/modules/documents/application/... -run TestReleaseVersion_FailsWhenPinCaptureFails -v 2>&1 | tail -20
+```
+Expected: PASS.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add internal/modules/documents/application/service.go internal/modules/documents/application/ internal/platform/config/documents.go apps/api/cmd/metaldocs-api/main.go
+git commit -m "wire(documents-app): fail-loud renderer pin capture on release transition"
 ```
 
 ---
@@ -705,56 +875,67 @@ git commit -m "wire(documents-app): inject RendererPinCapturer into release tran
 ### Task 7: Include renderer_pin in version responses
 
 **Files:**
-- Modify: `internal/modules/documents/delivery/http/handler_runtime.go` (or wherever version responses are serialized)
-- Modify: `internal/modules/documents/delivery/http/handler_browser_editor.go`
+- Modify: `internal/modules/documents/delivery/http/handler.go` (the browser editor bundle handler at `handleDocumentBrowserEditorBundle` around line 1690, plus any other version DTO serializers in the same file)
+- Modify: `internal/modules/documents/delivery/http/handler_browser_editor_test.go`
 
-- [ ] **Step 1: Find the version response serializer(s)**
+**File layout note:** The route for the browser editor bundle is dispatched from `handler.go` (`handleDocumentBrowserEditorBundle` — verified via `grep -n 'handleDocumentBrowserEditorBundle' internal/modules/documents/delivery/http/handler.go`). There is no separate `handler_browser_editor.go` file — only the test file `handler_browser_editor_test.go`. All DTO construction for version payloads lives in `handler.go`.
 
-Run: `grep -rn 'document_versions\|versionDTO\|VersionResponse\|version := map\|toVersionDTO' internal/modules/documents/delivery/http/ | head -20`
-Expected: Locates the DTO construction functions for version responses.
+- [ ] **Step 1: Find every version DTO serializer**
 
-- [ ] **Step 2: Add renderer_pin to the response shape**
+```bash
+grep -n 'version := map\|versionsPayload\|versionItem\|"renderer_pin"\|"version":\s*map\|buildVersionDTO\|versionToDTO' internal/modules/documents/delivery/http/handler.go | head -20
+```
+Expected: Lists every place `handler.go` constructs a version JSON payload — typically inside `handleDocumentBrowserEditorBundle`, `handleDocumentVersions`, or equivalent. Note that the serialization is inline `map[string]any` construction, not a separate DTO type.
 
-In each DTO construction identified above, add:
+- [ ] **Step 2: Add `renderer_pin` to every version map identified**
+
+For each site, add one field alongside the existing `"version": v.Number`, `"created_at": ...` lines:
 
 ```go
-response := map[string]any{
-    // ... existing fields ...
-    "renderer_pin": version.RendererPin, // nil for drafts → marshals to null
-}
+"renderer_pin": v.RendererPin, // nil → marshals to null
 ```
 
-Use the existing JSON encoding pattern in the file. The `RendererPin` struct already has JSON tags, so it marshals cleanly.
+The `*domain.RendererPin` type already has JSON struct tags from Task 1, so this marshals correctly without a custom wrapper.
 
 - [ ] **Step 3: Build to verify no compile errors**
 
-Run: `go build ./internal/modules/documents/delivery/http/...`
+```bash
+go build ./internal/modules/documents/delivery/http/...
+```
 Expected: Clean build.
 
-- [ ] **Step 4: Add a handler test asserting the field is present**
+- [ ] **Step 4: Add a handler test for the new field**
 
-Append to an existing handler test file (e.g., `handler_browser_editor_test.go`):
+Append to `internal/modules/documents/delivery/http/handler_browser_editor_test.go`:
 
 ```go
 func TestBrowserEditorBundle_IncludesRendererPinField(t *testing.T) {
     // Reuse whatever setup the existing tests use. Seed a document with
     // a released version carrying a pin, request the browser editor
     // bundle, and assert the response contains renderer_pin.
-    // ... full test body following existing test patterns in this file ...
+    //
+    // Pattern mirror: look at an existing test in this file (e.g.,
+    // TestHandleBrowserEditorBundle_*) to see the exact harness for
+    // seeding a document + version, then add one extra seed step that
+    // calls repo.SetVersionRendererPin(ctx, docID, 1, &domain.RendererPin{...}).
+    //
+    // Assertion: JSON-decode the response body and walk to
+    // bundle.versions[0].renderer_pin — expect non-nil.
+    // ... full body in the style of neighboring tests ...
 }
 ```
 
-(Mirror the existing test setup; the assertion is `bytes.Contains(respBody, []byte(`"renderer_pin"`))` or a JSON decode that checks the field exists.)
-
 - [ ] **Step 5: Run the handler tests**
 
-Run: `go test ./internal/modules/documents/delivery/http/... 2>&1 | tail -20`
+```bash
+go test ./internal/modules/documents/delivery/http/... 2>&1 | tail -20
+```
 Expected: All tests pass including the new one.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add internal/modules/documents/delivery/http/
+git add internal/modules/documents/delivery/http/handler.go internal/modules/documents/delivery/http/handler_browser_editor_test.go
 git commit -m "feat(documents-http): include renderer_pin in version DTO responses"
 ```
 
@@ -862,6 +1043,117 @@ Expected: No errors.
 ```bash
 git add frontend/apps/web/src/lib.types.ts
 git commit -m "feat(web-types): add RendererPin type to document version shapes"
+```
+
+### Task 9b: Preserve renderer_pin through normalizeVersionItem
+
+**Files:**
+- Modify: `frontend/apps/web/src/api/documents.ts`
+- Modify: `frontend/apps/web/src/features/documents/__tests__/` (or wherever API client tests live)
+
+**Why this task exists:** `frontend/apps/web/src/api/documents.ts` contains a `normalizeVersionItem` function (around line 111) that rebuilds each version item with a fixed set of fields: `documentId`, `version`, `contentHash`, `changeSummary`, `createdAt`. Any field not explicitly copied is DROPPED. Without this task, Task 7 would put `renderer_pin` in the HTTP response but the frontend would never see it and every document would look like a draft. This is a structural issue Codex caught in round 1.
+
+- [ ] **Step 1: Find normalizeVersionItem**
+
+```bash
+grep -n "normalizeVersionItem\|rendererPin" frontend/apps/web/src/api/documents.ts | head -10
+```
+Expected: Line 111 shows the current implementation dropping unknown fields.
+
+- [ ] **Step 2: Write a failing test**
+
+Create `frontend/apps/web/src/api/__tests__/documents.normalize.test.ts`:
+
+```ts
+import { describe, expect, it } from "vitest";
+// normalizeVersionItem is not exported, so expose it in Step 4 via a barrel
+// export or named export OR import via the module internals. Prefer adding
+// `export { normalizeVersionItem }` near the function declaration.
+import { normalizeVersionItem } from "../documents";
+import type { VersionListItem, RendererPin } from "../../lib.types";
+
+describe("normalizeVersionItem", () => {
+  it("preserves renderer_pin when present", () => {
+    const pin: RendererPin = {
+      renderer_version: "1.0.0",
+      layout_ir_hash: "h",
+      template_key: "k",
+      template_version: 1,
+      pinned_at: "2026-04-10T12:00:00Z",
+    };
+    const input = {
+      documentId: "doc-1",
+      version: 1,
+      contentHash: "ch",
+      changeSummary: "cs",
+      createdAt: "2026-04-10T00:00:00Z",
+      renderer_pin: pin,
+    } as unknown as VersionListItem;
+
+    const out = normalizeVersionItem(input);
+    expect(out.renderer_pin).toEqual(pin);
+  });
+
+  it("sets renderer_pin to null when missing from input", () => {
+    const input = {
+      documentId: "doc-2",
+      version: 1,
+      contentHash: "ch",
+      changeSummary: "",
+      createdAt: "2026-04-10T00:00:00Z",
+    } as unknown as VersionListItem;
+
+    const out = normalizeVersionItem(input);
+    expect(out.renderer_pin).toBeNull();
+  });
+});
+```
+
+- [ ] **Step 3: Run the test — expect failure**
+
+```bash
+cd frontend/apps/web && npx vitest run src/api/__tests__/documents.normalize.test.ts
+```
+Expected: FAIL — either `normalizeVersionItem` is not exported, or `out.renderer_pin` is `undefined`.
+
+- [ ] **Step 4: Export normalizeVersionItem and preserve renderer_pin**
+
+Edit `frontend/apps/web/src/api/documents.ts`:
+
+1. Add `export` to the function declaration so the test can import it:
+   ```ts
+   export function normalizeVersionItem(value: VersionListItem): VersionListItem {
+   ```
+
+2. Inside the function, add one more line to the returned object:
+   ```ts
+   return {
+     documentId: value?.documentId ?? "",
+     version: Number(value?.version ?? 0),
+     contentHash: value?.contentHash ?? "",
+     changeSummary: value?.changeSummary ?? "",
+     createdAt: value?.createdAt ?? "",
+     renderer_pin: (value as unknown as { renderer_pin?: RendererPin | null })?.renderer_pin ?? null,
+   };
+   ```
+
+3. Add the import at the top of the file:
+   ```ts
+   import type { RendererPin } from "../lib.types";
+   ```
+
+- [ ] **Step 5: Run the test — expect pass**
+
+```bash
+cd frontend/apps/web && npx vitest run src/api/__tests__/documents.normalize.test.ts
+```
+Expected: PASS — 2 tests.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add frontend/apps/web/src/api/documents.ts frontend/apps/web/src/api/__tests__/documents.normalize.test.ts
+git commit -m "fix(web-api): preserve renderer_pin through normalizeVersionItem"
 ```
 
 ---
@@ -1718,7 +2010,7 @@ git commit -m "test(mddm-engine): integration test for pinned vs current rendere
 
 - [ ] **Step 1: Run all vitest tests**
 
-Run: `cd frontend/apps/web && npm test 2>&1 | tail -30`
+Run: `cd frontend/apps/web && npx vitest run 2>&1 | tail -30`
 Expected: All tests pass. After Plan 3 the total count is approximately Plan 1 (~95) + Plan 2 (~50 net after removals) + Plan 3 (~30) ≈ 170-180 tests.
 
 - [ ] **Step 2: Run Go tests for the documents module**
@@ -1757,7 +2049,7 @@ If Steps 1-5 required any cleanup commits, commit them now with descriptive mess
 | `RendererPin` tuple (rendererVersion + layoutIRHash + templateRef) | Tasks 1, 2, 3, 4 |
 | Pin captured on DRAFT→RELEASED transition | Tasks 5, 6 |
 | Draft versions have no pin; exports use current | Tasks 13, 14, 18 |
-| Pin exposed in version API responses | Tasks 7, 8, 9 |
+| Pin exposed in version API responses | Tasks 7, 8, 9, 9b |
 | Frontend renderer bundle registry | Tasks 12, 13 |
 | Renderer bundle dynamic loading by version string | Task 13 |
 | Unknown version produces a clear error | Task 13 |
@@ -1776,6 +2068,18 @@ If Steps 1-5 required any cleanup commits, commit them now with descriptive mess
 - Creating a second renderer bundle (v1.1.0+) — future work; v1.0.0 proves the mechanism and Task 12 documents the procedure
 - Renderer bundle retention cap (10 most recent) — not needed until there is more than one bundle; add in the first version-bump commit
 - Per-pin `supportedMDDMVersion` field — v1.0.0 is the only version; `canonicalizeAndMigrate(envelope)` defaults to `CURRENT_MDDM_VERSION` which matches v1.0.0's version. Add an explicit `supportedMDDMVersion` field on the bundle when the first new version lands
+
+### Codex revision history
+
+Codex round-1 on Plan 3 caught 7 issues. All addressed in this revision:
+
+1. **Migration command** (local) — replaced `go run ./cmd/migrate up` with `powershell -ExecutionPolicy Bypass -File scripts/dev-migrate.ps1`, which is the real dev migration tooling (streams `migrations/*.sql` through the Postgres docker container).
+2. **Column name** (local) — all SQL now uses `version_number`, not `number`, matching the actual `document_versions` schema (verified via `grep` in the repository.go file).
+3. **Atomic pin capture** (structural) — rewrote Task 6 so `OnRelease` is called BEFORE the release status is persisted and an error from the capturer aborts the release (not best-effort logging). For browser-editor content, the release now fails loudly if the pin cannot be written, preserving Section 10's guarantee that RELEASED implies a valid pin.
+4. **Bootstrap wiring** (structural) — Task 4 now adds `SetVersionRendererPin` to the `docdomain.Repository` interface and implements it on both postgres and memory repos, matching the existing `UpdateVersionDocx` / `UpdateVersionPDF` pattern. Task 6 wires the capturer via `deps.DocumentsRepo` (the existing bootstrap dependency at `apps/api/cmd/metaldocs-api/main.go` line 68), not a concrete `pgRepo`.
+5. **Handler file paths** (local) — `handler_browser_editor.go` does NOT exist. Task 7 retargets to `handler.go` (the real home of `handleDocumentBrowserEditorBundle` at line 1690, verified via `grep`).
+6. **normalizeVersionItem drops unknown fields** (structural) — added new **Task 9b** to update `frontend/apps/web/src/api/documents.ts`'s `normalizeVersionItem` to preserve `renderer_pin`. Without this, the backend would include the field but the frontend normalizer would strip it before it reaches `BrowserDocumentEditorView`, breaking the entire pinning mechanism.
+7. **Test commands** (local) — replaced every `npm test` with `npx vitest run` because the web app has no `test` script in `package.json`. Postgres test helper is `newTestDB` (not `newTestRepo`) — updated Task 4 accordingly, with a note on reusing existing seed helpers from `mddm_repository_test.go`.
 
 ### Placeholder scan
 

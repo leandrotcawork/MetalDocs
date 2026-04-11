@@ -1,4 +1,4 @@
-export { mddmToDocx, MissingEmitterError } from "./emitter";
+export { mddmToDocx, MissingEmitterError, REGISTERED_EMITTER_TYPES } from "./emitter";
 export { mddmTextRunsToDocxRuns } from "./inline-content";
 export { emitParagraph, extractTextRuns } from "./emitters/paragraph";
 export { emitHeading } from "./emitters/heading";

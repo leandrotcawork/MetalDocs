@@ -16,6 +16,7 @@ describe("Golden fixture: 01-simple-po", () => {
     const blob = await mddmToDocx(envelope, defaultLayoutTokens);
     const xml = await unzipDocxDocumentXml(blob);
     const actual = normalizeDocxXml(xml);
+    expect(actual.length, "normalizeDocxXml returned empty string — emitter may have failed silently").toBeGreaterThan(0);
 
     if (!existsSync(EXPECTED_DOCX_XML)) {
       throw new Error(

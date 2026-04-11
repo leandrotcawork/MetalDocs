@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BLOCK_REGISTRY, getFullySupportedBlockTypes } from "../block-registry";
-import { mddmToDocx, MissingEmitterError } from "../../docx-emitter";
+import { mddmToDocx, MissingEmitterError, REGISTERED_EMITTER_TYPES } from "../../docx-emitter";
 import { defaultLayoutTokens } from "../../layout-ir";
 import type { MDDMEnvelope } from "../../../adapter";
 
@@ -49,6 +49,23 @@ describe("Renderer completeness gate", () => {
         blocks: [{ id: "x", type, props: {}, children: [] } as any],
       };
       await expect(mddmToDocx(envelope, defaultLayoutTokens)).rejects.toBeInstanceOf(MissingEmitterError);
+    }
+  });
+
+  it("block-registry hasDocxEmitter flags exactly match the actual emitter registration", () => {
+    const registeredInEmitter = new Set(REGISTERED_EMITTER_TYPES);
+    const registeredInRegistry = new Set(
+      BLOCK_REGISTRY.filter((b) => b.hasDocxEmitter).map((b) => b.type),
+    );
+
+    // Every type in the emitter should be marked hasDocxEmitter: true in registry
+    for (const type of registeredInEmitter) {
+      expect(registeredInRegistry.has(type), `${type} is in emitter but not in registry with hasDocxEmitter:true`).toBe(true);
+    }
+
+    // Every type marked hasDocxEmitter: true in registry should be in the emitter
+    for (const type of registeredInRegistry) {
+      expect(registeredInEmitter.has(type), `${type} is in registry with hasDocxEmitter:true but not in emitter`).toBe(true);
     }
   });
 });

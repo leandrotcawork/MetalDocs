@@ -28,6 +28,8 @@ const emitters: Record<string, Emitter> = {
   fieldGroup: emitFieldGroup,
 };
 
+export const REGISTERED_EMITTER_TYPES: readonly string[] = Object.keys(emitters);
+
 export async function mddmToDocx(
   envelope: MDDMEnvelope,
   tokens: LayoutTokens,

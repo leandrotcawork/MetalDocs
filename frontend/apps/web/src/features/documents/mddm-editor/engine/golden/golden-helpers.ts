@@ -16,7 +16,7 @@ function stripRSIDs(xml: string): string {
 }
 
 function collapseWhitespace(xml: string): string {
-  return xml.replace(/>\s+</g, "><").replace(/\s+/g, " ").trim();
+  return xml.replace(/>\s+</g, "><").trim();
 }
 
 export function normalizeDocxXml(xml: string): string {
@@ -27,7 +27,7 @@ export function normalizeHtml(html: string): string {
   return collapseWhitespace(
     html
       .replace(/<!--[\s\S]*?-->/g, "")
-      .replace(/\s(data-reactroot|data-bn-key)="[^"]*"/g, ""),
+      .replace(/\s(data-reactroot|data-bn-key)(?:="[^"]*"|='[^']*'|(?=[\s>]))/g, ""),
   );
 }
 

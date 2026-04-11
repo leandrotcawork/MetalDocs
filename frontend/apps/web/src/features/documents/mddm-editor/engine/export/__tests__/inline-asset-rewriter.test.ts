@@ -17,7 +17,8 @@ describe("rewriteImgSrcToDataUri", () => {
       ["/api/images/aaa", makeAsset(0x01)],
     ]);
     const out = rewriteImgSrcToDataUri(html, map);
-    expect(out).toContain("data:image/png;base64,");
+    // 0x01 0x01 0x01 0x01 encodes to "AQEBAQ==" in base64
+    expect(out).toContain("data:image/png;base64,AQEBAQ==");
     expect(out).not.toContain("/api/images/aaa");
     expect(out).toContain('alt="A"');
   });

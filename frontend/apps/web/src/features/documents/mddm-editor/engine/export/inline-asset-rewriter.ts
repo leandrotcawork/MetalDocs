@@ -1,11 +1,13 @@
 import type { ResolvedAsset } from "../asset-resolver";
 
 function bytesToBase64(bytes: Uint8Array): string {
-  let binary = "";
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]!);
-  }
+  // Chunked to avoid stack overflow on large arrays and quadratic string allocs.
   // btoa is available in browsers and modern Node test environments via jsdom.
+  let binary = "";
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.byteLength; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
   return globalThis.btoa(binary);
 }
 
@@ -25,7 +27,7 @@ export function rewriteImgSrcToDataUri(
 ): string {
   // Match <img ... src="URL" ... /> with both single and double quoted src.
   return html.replace(
-    /(<img\b[^>]*\bsrc\s*=\s*)(["'])([^"']+)\2/gi,
+    /(<img\b[^>]*\bsrc\s*=\s*)(["'])([^"'>]+)\2/gi,
     (match, prefix: string, quote: string, url: string) => {
       const asset = assetMap.get(url);
       if (!asset) return match;

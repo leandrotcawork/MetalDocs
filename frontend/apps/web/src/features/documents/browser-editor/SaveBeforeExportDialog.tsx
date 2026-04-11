@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 
 export type SaveBeforeExportDialogProps = {
   open: boolean;
@@ -55,6 +55,41 @@ export function SaveBeforeExportDialog({
   onExportSaved,
   onCancel,
 }: SaveBeforeExportDialogProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const el = dialogRef.current;
+    if (!el) return;
+
+    const focusable = el.querySelectorAll<HTMLElement>("button");
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onCancel();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+
+    el.addEventListener("keydown", handleKeyDown);
+    return () => el.removeEventListener("keydown", handleKeyDown);
+  }, [open, onCancel]);
+
   if (!open) {
     return null;
   }
@@ -65,7 +100,7 @@ export function SaveBeforeExportDialog({
   const secondaryAction = isReleased ? onSaveAndExport : onExportSaved;
 
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby="mddm-save-before-export-title" style={overlayStyle}>
+    <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="mddm-save-before-export-title" style={overlayStyle}>
       <div style={dialogStyle}>
         <h3 id="mddm-save-before-export-title" style={{ margin: 0, fontSize: "1.15rem" }}>
           Você tem alterações não salvas

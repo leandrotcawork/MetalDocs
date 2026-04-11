@@ -27,13 +27,13 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
   const [editorInstance, setEditorInstance] = useState(0);
   const [viewState, setViewState] = useState<ViewState>("loading");
   const [errorMessage, setErrorMessage] = useState("");
-  const [errorCode, setErrorCode] = useState<"load" | "save" | "conflict" | null>(null);
+  const [errorCode, setErrorCode] = useState<"load" | "save" | "export" | "conflict" | null>(null);
   const [saveLabel, setSaveLabel] = useState("Nao salvo");
   const [isExporting, setIsExporting] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [pendingExportKind, setPendingExportKind] = useState<"docx" | null>(null);
   const bundleRef = useRef<DocumentBrowserEditorBundleResponse | null>(null);
-  const errorCodeRef = useRef<"load" | "save" | "conflict" | null>(null);
+  const errorCodeRef = useRef<"load" | "save" | "export" | "conflict" | null>(null);
 
   useEffect(() => {
     bundleRef.current = bundle;
@@ -153,9 +153,9 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
   const latestVersion = bundle && bundle.versions.length > 0 ? bundle.versions[bundle.versions.length - 1] : null;
   const hasConflict = errorCode === "conflict";
 
-  async function handleSave() {
+  async function handleSave(): Promise<boolean> {
     if (!bundle || isSaving || viewState !== "ready" || !document.documentId.trim()) {
-      return;
+      return false;
     }
 
     setViewState("saving");
@@ -196,17 +196,19 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
       window.setTimeout(() => {
         setSaveLabel((current) => (current === "Salvo agora" ? "Salvo ha pouco" : current));
       }, 3000);
+      return true;
     } catch (error) {
       setViewState("error");
       if (statusOf(error) === 409) {
         setErrorCode("conflict");
         setErrorMessage("O rascunho ficou desatualizado. Recarregue o documento para sincronizar a ultima revisao antes de salvar novamente.");
         setSaveLabel("Conflito de rascunho");
-        return;
+        return false;
       }
       setErrorCode("save");
       setErrorMessage("Nao foi possivel salvar o rascunho no editor do navegador.");
       setSaveLabel("Erro ao salvar");
+      return false;
     }
   }
 
@@ -218,16 +220,20 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
     window.document.body.appendChild(link);
     link.click();
     link.remove();
-    window.URL.revokeObjectURL(url);
+    window.setTimeout(() => window.URL.revokeObjectURL(url), 100);
   }
 
-  async function runDocxExport() {
+  async function runDocxExport(source: "live" | "saved" = "live") {
     const safeCode = (document.documentCode || "documento").trim().replace(/[^\w.-]+/g, "-");
 
     setIsExporting(true);
     try {
       if (featureFlags.MDDM_NATIVE_EXPORT) {
-        const body = (editorData ?? "").trim();
+        const rawBody = source === "saved" ? (bundle?.body ?? "") : (editorData ?? "");
+        const body = rawBody.trim();
+        if (body && !body.startsWith("{")) {
+          throw new Error("Document body is not in MDDM JSON format");
+        }
         const envelope: MDDMEnvelope = body
           ? (JSON.parse(body) as MDDMEnvelope)
           : { mddm_version: 1, template_ref: null, blocks: [] };
@@ -240,7 +246,7 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
       setErrorCode(null);
       setErrorMessage("");
     } catch (error) {
-      setErrorCode("save");
+      setErrorCode("export");
       setErrorMessage("Nao foi possivel exportar o DOCX deste documento.");
       const status = statusOf(error);
       if (status === 503) {
@@ -427,16 +433,16 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
         }}
         onSaveAndExport={async () => {
           setExportDialogOpen(false);
-          await handleSave();
-          if (pendingExportKind === "docx") {
-            await runDocxExport();
+          const saved = await handleSave();
+          if (saved && pendingExportKind === "docx") {
+            await runDocxExport("saved");
           }
           setPendingExportKind(null);
         }}
         onExportSaved={async () => {
           setExportDialogOpen(false);
           if (pendingExportKind === "docx") {
-            await runDocxExport();
+            await runDocxExport("saved");
           }
           setPendingExportKind(null);
         }}

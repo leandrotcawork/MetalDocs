@@ -20,6 +20,18 @@ const {
   codeBlock,
 } = defaultBlockSpecs;
 
+export const mddmSchemaBlockSpecs = {
+  section: Section(),
+  fieldGroup: FieldGroup(),
+  field: Field(),
+  repeatable: Repeatable(),
+  repeatableItem: RepeatableItem(),
+  dataTable: DataTable(),
+  dataTableRow: DataTableRow(),
+  dataTableCell: DataTableCell(),
+  richBlock: RichBlock(),
+};
+
 export const mddmSchema = BlockNoteSchema.create({
   blockSpecs: {
     paragraph,
@@ -30,14 +42,6 @@ export const mddmSchema = BlockNoteSchema.create({
     quote,
     divider,
     codeBlock,
-    section: Section(),
-    fieldGroup: FieldGroup(),
-    field: Field(),
-    repeatable: Repeatable(),
-    repeatableItem: RepeatableItem(),
-    dataTable: DataTable(),
-    dataTableRow: DataTableRow(),
-    dataTableCell: DataTableCell(),
-    richBlock: RichBlock(),
+    ...mddmSchemaBlockSpecs,
   },
 });

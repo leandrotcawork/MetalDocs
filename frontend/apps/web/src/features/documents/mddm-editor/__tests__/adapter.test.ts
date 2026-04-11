@@ -73,7 +73,7 @@ describe("MDDM ↔ BlockNote adapter", () => {
         {
           id: "10000000-0000-0000-0000-000000000001",
           type: "field",
-          props: { label: "X", valueMode: "multiParagraph", locked: true },
+          props: { label: "X", valueMode: "dropdown", locked: true },
           content: [{ type: "text", text: "value" }],
         } as any,
       ]),

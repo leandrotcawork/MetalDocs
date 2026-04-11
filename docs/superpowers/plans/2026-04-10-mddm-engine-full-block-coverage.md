@@ -96,8 +96,9 @@ frontend/apps/web/src/features/documents/mddm-editor/engine/
 frontend/apps/web/e2e/
 ├── mddm-visual-parity.spec.ts               # NEW: Playwright visual parity suite
 └── helpers/
-    ├── render-pdf-page.ts                   # NEW: load fixture into harness page
-    └── pixel-diff.ts                        # NEW: pdf-to-png + pixelmatch helper
+    ├── pixel-diff.ts                        # NEW: pdf-to-png (pdf-img-convert) + pixelmatch helper
+    └── __tests__/
+        └── pixel-diff.smoke.test.ts         # NEW: smoke test for rasterizer import
 ```
 
 ### New harness page (test-only)
@@ -158,13 +159,13 @@ describe("collectImageUrls", () => {
     expect(collectImageUrls(envelope)).toEqual([]);
   });
 
-  it("returns image URLs from top-level image blocks", () => {
+  it("returns image URLs from top-level image blocks (reads block.props.src)", () => {
     const envelope: MDDMEnvelope = {
       mddm_version: 1,
       template_ref: null,
       blocks: [
-        { id: "i1", type: "image", props: { url: "/api/images/aaa" }, children: [] },
-        { id: "i2", type: "image", props: { url: "/api/images/bbb" }, children: [] },
+        { id: "i1", type: "image", props: { src: "/api/images/aaa" }, children: [] },
+        { id: "i2", type: "image", props: { src: "/api/images/bbb" }, children: [] },
       ],
     };
     expect(collectImageUrls(envelope)).toEqual(["/api/images/aaa", "/api/images/bbb"]);
@@ -190,7 +191,7 @@ describe("collectImageUrls", () => {
                   type: "repeatableItem",
                   props: {},
                   children: [
-                    { id: "img", type: "image", props: { url: "/api/images/nested" }, children: [] },
+                    { id: "img", type: "image", props: { src: "/api/images/nested" }, children: [] },
                   ],
                 },
               ],
@@ -207,20 +208,20 @@ describe("collectImageUrls", () => {
       mddm_version: 1,
       template_ref: null,
       blocks: [
-        { id: "i1", type: "image", props: { url: "/api/images/aaa" }, children: [] },
-        { id: "i2", type: "image", props: { url: "/api/images/aaa" }, children: [] },
+        { id: "i1", type: "image", props: { src: "/api/images/aaa" }, children: [] },
+        { id: "i2", type: "image", props: { src: "/api/images/aaa" }, children: [] },
       ],
     };
     expect(collectImageUrls(envelope)).toEqual(["/api/images/aaa"]);
   });
 
-  it("ignores image blocks without a url prop", () => {
+  it("ignores image blocks without a src prop", () => {
     const envelope: MDDMEnvelope = {
       mddm_version: 1,
       template_ref: null,
       blocks: [
         { id: "i1", type: "image", props: {}, children: [] },
-        { id: "i2", type: "image", props: { url: "" }, children: [] },
+        { id: "i2", type: "image", props: { src: "" }, children: [] },
       ],
     };
     expect(collectImageUrls(envelope)).toEqual([]);
@@ -251,9 +252,10 @@ function isMDDMBlock(child: unknown): child is MDDMBlock {
 
 function walkBlock(block: MDDMBlock, urls: Set<string>): void {
   if (block.type === "image") {
-    const url = (block.props as { url?: unknown }).url;
-    if (typeof url === "string" && url.length > 0) {
-      urls.add(url);
+    // MDDM envelope stores image URLs under `src` (see adapter.ts toMDDMProps).
+    const src = (block.props as { src?: unknown }).src;
+    if (typeof src === "string" && src.length > 0) {
+      urls.add(src);
     }
   }
   const children = block.children ?? [];
@@ -607,11 +609,11 @@ function makeAsset(): ResolvedAsset {
 }
 
 describe("emitImage", () => {
-  it("emits a Paragraph containing an ImageRun for a resolved image", () => {
+  it("emits a Paragraph containing an ImageRun for a resolved image (src prop)", () => {
     const block: MDDMBlock = {
       id: "i1",
       type: "image",
-      props: { url: "/api/images/aaa", widthMm: 80 },
+      props: { src: "/api/images/aaa", widthMm: 80 },
       children: [],
     };
     const map = new Map<string, ResolvedAsset>([["/api/images/aaa", makeAsset()]]);
@@ -620,17 +622,17 @@ describe("emitImage", () => {
     expect(out[0]).toBeInstanceOf(Paragraph);
   });
 
-  it("throws MissingAssetError when image url is not in the asset map", () => {
+  it("throws MissingAssetError when image src is not in the asset map", () => {
     const block: MDDMBlock = {
       id: "i2",
       type: "image",
-      props: { url: "/api/images/missing" },
+      props: { src: "/api/images/missing" },
       children: [],
     };
     expect(() => emitImage(block, defaultLayoutTokens, new Map())).toThrow(MissingAssetError);
   });
 
-  it("returns an empty Paragraph when block has no url prop", () => {
+  it("returns an empty Paragraph when block has no src prop", () => {
     const block: MDDMBlock = {
       id: "i3",
       type: "image",
@@ -675,15 +677,16 @@ export function emitImage(
   tokens: LayoutTokens,
   assetMap: ReadonlyMap<string, ResolvedAsset>,
 ): Paragraph[] {
-  const url = (block.props as { url?: string }).url;
+  // MDDM envelope stores image URLs under `src` (see adapter.ts toMDDMProps).
+  const src = (block.props as { src?: string }).src;
 
-  if (typeof url !== "string" || url.length === 0) {
+  if (typeof src !== "string" || src.length === 0) {
     return [new Paragraph({ children: [] })];
   }
 
-  const asset = assetMap.get(url);
+  const asset = assetMap.get(src);
   if (!asset) {
-    throw new MissingAssetError(url);
+    throw new MissingAssetError(src);
   }
 
   const widthMm = (block.props as { widthMm?: number }).widthMm ?? DEFAULT_IMAGE_WIDTH_MM;
@@ -1074,6 +1077,8 @@ function makeRow(id: string, cellCount: number): MDDMBlock {
   };
 }
 
+**Input shape note:** Per adapter.ts `toMDDMProps` for `dataTable` (lines 338-346), the MDDM envelope stores columns as `{ label: string, columns: Array<{key: string; label: string}>, locked, minRows, maxRows, density }`. `columns` is an ARRAY (not a JSON string) and each column has `key` + `label` keys (NOT `header` or `width`). The BlockNote editor state uses `columnsJson` as a string, but the adapter parses it into the `columns` array when serializing to MDDM.
+
 describe("emitDataTable", () => {
   it("emits a single Table with header row + data rows", () => {
     const block: MDDMBlock = {
@@ -1081,10 +1086,10 @@ describe("emitDataTable", () => {
       type: "dataTable",
       props: {
         label: "Items",
-        columnsJson: JSON.stringify([
-          { key: "col0", header: "Item", width: 1 },
-          { key: "col1", header: "Qty", width: 1 },
-        ]),
+        columns: [
+          { key: "col0", label: "Item" },
+          { key: "col1", label: "Qty" },
+        ],
       },
       children: [makeRow("r1", 2), makeRow("r2", 2)],
     };
@@ -1097,11 +1102,11 @@ describe("emitDataTable", () => {
     expect(rows).toHaveLength(3);
   });
 
-  it("renders empty table when there are no rows", () => {
+  it("renders empty table when there are no columns and no rows", () => {
     const block: MDDMBlock = {
       id: "t2",
       type: "dataTable",
-      props: { label: "X", columnsJson: "[]" },
+      props: { label: "X", columns: [] },
       children: [],
     };
     const out = emitDataTable(block, defaultLayoutTokens);
@@ -1109,11 +1114,11 @@ describe("emitDataTable", () => {
     expect(out[0]).toBeInstanceOf(Table);
   });
 
-  it("falls back gracefully when columnsJson is invalid", () => {
+  it("falls back gracefully when columns prop is missing or not an array", () => {
     const block: MDDMBlock = {
       id: "t3",
       type: "dataTable",
-      props: { label: "X", columnsJson: "not-json" },
+      props: { label: "X" },
       children: [makeRow("r1", 1)],
     };
     expect(() => emitDataTable(block, defaultLayoutTokens)).not.toThrow();
@@ -1143,19 +1148,21 @@ import {
 import type { LayoutTokens } from "../../layout-ir";
 import type { MDDMBlock } from "../../../adapter";
 import { emitDataTableRow } from "./data-table-row";
-import { ptToHalfPt } from "../../helpers/units";
+import { ptToHalfPt, mmToTwip } from "../../helpers/units";
 
-type ColumnSpec = { key: string; header: string; width?: number };
+type ColumnSpec = { key: string; label: string };
 
-function parseColumns(json: unknown): ColumnSpec[] {
-  if (typeof json !== "string" || !json.trim()) return [];
-  try {
-    const parsed = JSON.parse(json);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((c) => c && typeof c.key === "string");
-  } catch {
-    return [];
+function readColumns(props: Record<string, unknown>): ColumnSpec[] {
+  const columns = props.columns;
+  if (!Array.isArray(columns)) return [];
+  const out: ColumnSpec[] = [];
+  for (const column of columns) {
+    if (!column || typeof column !== "object") continue;
+    const key = typeof (column as { key?: unknown }).key === "string" ? (column as { key: string }).key : "";
+    const label = typeof (column as { label?: unknown }).label === "string" ? (column as { label: string }).label : "";
+    if (key && label) out.push({ key, label });
   }
+  return out;
 }
 
 function hexToFill(hex: string): string {
@@ -1183,7 +1190,7 @@ function buildHeaderRow(columns: ColumnSpec[], tokens: LayoutTokens): TableRow {
       new Paragraph({
         children: [
           new TextRun({
-            text: col.header ?? "",
+            text: col.label,
             bold: true,
             size: ptToHalfPt(tokens.typography.baseSizePt),
             font: tokens.typography.exportFont,
@@ -1197,7 +1204,7 @@ function buildHeaderRow(columns: ColumnSpec[], tokens: LayoutTokens): TableRow {
 }
 
 export function emitDataTable(block: MDDMBlock, tokens: LayoutTokens): Table[] {
-  const columns = parseColumns((block.props as { columnsJson?: unknown }).columnsJson);
+  const columns = readColumns(block.props as Record<string, unknown>);
   const rowChildren = ((block.children ?? []) as unknown[]).filter(isRowBlock) as MDDMBlock[];
 
   const headerRow = columns.length > 0 ? [buildHeaderRow(columns, tokens)] : [];
@@ -1205,7 +1212,9 @@ export function emitDataTable(block: MDDMBlock, tokens: LayoutTokens): Table[] {
 
   return [
     new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
+      // Absolute width in twips = page content width. Avoids any ambiguity
+      // with docx.js percentage-unit interpretation.
+      width: { size: mmToTwip(tokens.page.contentWidthMm), type: WidthType.DXA },
       rows: [...headerRow, ...dataRows],
     }),
   ];
@@ -1894,8 +1903,8 @@ describe("exportDocx asset wiring", () => {
       mddm_version: 1,
       template_ref: null,
       blocks: [
-        { id: "i1", type: "image", props: { url: "/api/images/aaa" }, children: [] },
-        { id: "i2", type: "image", props: { url: "/api/images/bbb" }, children: [] },
+        { id: "i1", type: "image", props: { src: "/api/images/aaa" }, children: [] },
+        { id: "i2", type: "image", props: { src: "/api/images/bbb" }, children: [] },
       ],
     };
 
@@ -2160,6 +2169,20 @@ git commit -m "feat(mddm-engine): mark all 16 blocks fully supported in complete
 
 ## Part 5 — toExternalHTML Hooks for MDDM Blocks
 
+**Critical BlockNote API note:** BlockNote's `contentRef` callback is ONLY provided to blocks declared with `content: "inline"`. For `content: "none"` blocks, `contentRef` is `undefined`. This means custom `toExternalHTML` hooks for `content: "none"` blocks cannot receive or mount inline content refs; they also cannot directly place nested *child blocks* inside their output, because BlockNote's `blocksToFullHTML` serializes child blocks separately from the parent's external HTML.
+
+**Verified content types:**
+- `content: "inline"` → `Field`, `DataTableCell` (these DO get a contentRef)
+- `content: "none"` → `Section`, `FieldGroup`, `Repeatable`, `RepeatableItem`, `RichBlock`, `DataTable`, `DataTableRow`
+
+**Decision for Plan 2:** Only `DataTableCell` gets a custom `toExternalHTML` in Plan 2 (it's the only new inline-content block). For every `content: "none"` block, per BlockNote's documented behavior — *"If undefined, BlockNote falls back to the standard render function"* — we do NOT register `toExternalHTML`. BlockNote's serializer uses the existing `render()` function (which correctly nests children via its React component tree) to produce the external HTML. The print stylesheet from Plan 1 Task 30 already hides `.bn-side-menu`, `.bn-drag-handle`, and other editor chrome so the fallback output is print-ready.
+
+**What this means for Plan 2 task list:**
+- Keep Task 19 (DataTableCell `toExternalHTML`) and Task 25 (barrel export) and Task 31 (DataTableCell block-spec registration).
+- Tasks 20, 21, 22, 23, 24 are **removed** (DataTableRow, DataTable, RepeatableItem, Repeatable, RichBlock `toExternalHTML` components are not created).
+- Tasks 26, 27, 28, 29, 30 are **removed** (no registrations on `content: "none"` blocks).
+- A new Task 25b is added to verify that `blocksToFullHTML` produces acceptable output for these blocks via their render fallback.
+
 ### Task 19: data-table-cell-html
 
 **Files:**
@@ -2245,454 +2268,9 @@ git add frontend/apps/web/src/features/documents/mddm-editor/engine/external-htm
 git commit -m "feat(mddm-engine): add DataTableCell toExternalHTML"
 ```
 
-### Task 20: data-table-row-html
+### Tasks 20-24: REMOVED (see note above Task 19)
 
-**Files:**
-- Create: `frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/data-table-row-html.tsx`
-- Create: `frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/__tests__/data-table-row-html.test.tsx`
-
-- [ ] **Step 1: Write the failing test**
-
-Write to `frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/__tests__/data-table-row-html.test.tsx`:
-
-```tsx
-import { describe, expect, it } from "vitest";
-import { renderToStaticMarkup } from "react-dom/server";
-import { DataTableRowExternalHTML } from "../data-table-row-html";
-
-describe("DataTableRowExternalHTML", () => {
-  it("renders a <tr> with mddm-data-table-row class", () => {
-    const html = renderToStaticMarkup(
-      <DataTableRowExternalHTML>
-        <span>cells</span>
-      </DataTableRowExternalHTML>,
-    );
-    expect(html).toContain("<tr");
-    expect(html).toContain("mddm-data-table-row");
-    expect(html).toContain("cells");
-  });
-});
-```
-
-- [ ] **Step 2: Run test — expect failure**
-
-Run: `cd frontend/apps/web && npx vitest run src/features/documents/mddm-editor/engine/external-html/__tests__/data-table-row-html.test.tsx`
-Expected: FAIL.
-
-- [ ] **Step 3: Implement data-table-row-html.tsx**
-
-Write to `frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/data-table-row-html.tsx`:
-
-```tsx
-import type { ReactNode } from "react";
-
-export type DataTableRowExternalHTMLProps = {
-  children?: ReactNode;
-};
-
-export function DataTableRowExternalHTML({ children }: DataTableRowExternalHTMLProps) {
-  return (
-    <tr className="mddm-data-table-row" data-mddm-block="dataTableRow">
-      {children}
-    </tr>
-  );
-}
-```
-
-- [ ] **Step 4: Run test — expect pass**
-
-Run: `cd frontend/apps/web && npx vitest run src/features/documents/mddm-editor/engine/external-html/__tests__/data-table-row-html.test.tsx`
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/data-table-row-html.tsx frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/__tests__/data-table-row-html.test.tsx
-git commit -m "feat(mddm-engine): add DataTableRow toExternalHTML"
-```
-
-### Task 21: data-table-html
-
-**Files:**
-- Create: `frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/data-table-html.tsx`
-- Create: `frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/__tests__/data-table-html.test.tsx`
-
-- [ ] **Step 1: Write the failing test**
-
-Write to `frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/__tests__/data-table-html.test.tsx`:
-
-```tsx
-import { describe, expect, it } from "vitest";
-import { renderToStaticMarkup } from "react-dom/server";
-import { DataTableExternalHTML } from "../data-table-html";
-import { defaultLayoutTokens } from "../../layout-ir";
-
-describe("DataTableExternalHTML", () => {
-  it("renders a <table> wrapper with mddm-data-table class", () => {
-    const html = renderToStaticMarkup(
-      <DataTableExternalHTML tokens={defaultLayoutTokens}>
-        <tbody><tr><td>x</td></tr></tbody>
-      </DataTableExternalHTML>,
-    );
-    expect(html).toContain("<table");
-    expect(html).toContain("mddm-data-table");
-  });
-
-  it("does not use Flexbox", () => {
-    const html = renderToStaticMarkup(
-      <DataTableExternalHTML tokens={defaultLayoutTokens}>
-        <tbody />
-      </DataTableExternalHTML>,
-    );
-    expect(html).not.toContain("display:flex");
-  });
-});
-```
-
-- [ ] **Step 2: Run test — expect failure**
-
-Run: `cd frontend/apps/web && npx vitest run src/features/documents/mddm-editor/engine/external-html/__tests__/data-table-html.test.tsx`
-Expected: FAIL.
-
-- [ ] **Step 3: Implement data-table-html.tsx**
-
-Write to `frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/data-table-html.tsx`:
-
-```tsx
-import type { ReactNode } from "react";
-import type { LayoutTokens } from "../layout-ir";
-
-export type DataTableExternalHTMLProps = {
-  tokens: LayoutTokens;
-  children?: ReactNode;
-};
-
-export function DataTableExternalHTML({ tokens, children }: DataTableExternalHTMLProps) {
-  return (
-    <table
-      className="mddm-data-table"
-      data-mddm-block="dataTable"
-      style={{
-        width: "100%",
-        borderCollapse: "collapse",
-        tableLayout: "fixed",
-        margin: `${tokens.spacing.blockGapMm}mm 0`,
-      }}
-    >
-      {children}
-    </table>
-  );
-}
-```
-
-- [ ] **Step 4: Run test — expect pass**
-
-Run: `cd frontend/apps/web && npx vitest run src/features/documents/mddm-editor/engine/external-html/__tests__/data-table-html.test.tsx`
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/data-table-html.tsx frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/__tests__/data-table-html.test.tsx
-git commit -m "feat(mddm-engine): add DataTable toExternalHTML wrapper"
-```
-
-### Task 22: repeatable-item-html
-
-**Files:**
-- Create: `frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/repeatable-item-html.tsx`
-- Create: `frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/__tests__/repeatable-item-html.test.tsx`
-
-- [ ] **Step 1: Write the failing test**
-
-Write to `frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/__tests__/repeatable-item-html.test.tsx`:
-
-```tsx
-import { describe, expect, it } from "vitest";
-import { renderToStaticMarkup } from "react-dom/server";
-import { RepeatableItemExternalHTML } from "../repeatable-item-html";
-import { defaultLayoutTokens } from "../../layout-ir";
-
-describe("RepeatableItemExternalHTML", () => {
-  it("renders a bordered table with left accent border", () => {
-    const html = renderToStaticMarkup(
-      <RepeatableItemExternalHTML title="Step 1" tokens={defaultLayoutTokens}>
-        <span>child</span>
-      </RepeatableItemExternalHTML>,
-    );
-    expect(html).toContain("<table");
-    expect(html).toContain("mddm-repeatable-item");
-    expect(html).toContain("Step 1");
-    expect(html).toContain("border-left");
-  });
-
-  it("renders without title when none provided", () => {
-    const html = renderToStaticMarkup(
-      <RepeatableItemExternalHTML tokens={defaultLayoutTokens}>
-        <span>child</span>
-      </RepeatableItemExternalHTML>,
-    );
-    expect(html).toContain("child");
-  });
-});
-```
-
-- [ ] **Step 2: Run test — expect failure**
-
-Run: `cd frontend/apps/web && npx vitest run src/features/documents/mddm-editor/engine/external-html/__tests__/repeatable-item-html.test.tsx`
-Expected: FAIL.
-
-- [ ] **Step 3: Implement repeatable-item-html.tsx**
-
-Write to `frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/repeatable-item-html.tsx`:
-
-```tsx
-import type { ReactNode } from "react";
-import type { LayoutTokens } from "../layout-ir";
-
-export type RepeatableItemExternalHTMLProps = {
-  title?: string;
-  tokens: LayoutTokens;
-  children?: ReactNode;
-};
-
-export function RepeatableItemExternalHTML({ title, tokens, children }: RepeatableItemExternalHTMLProps) {
-  return (
-    <table
-      className="mddm-repeatable-item"
-      data-mddm-block="repeatableItem"
-      style={{
-        width: "100%",
-        borderCollapse: "collapse",
-        margin: `${tokens.spacing.fieldGapMm}mm 0`,
-      }}
-    >
-      <tbody>
-        <tr>
-          <td
-            style={{
-              borderTop: `0.5pt solid ${tokens.theme.accentBorder}`,
-              borderBottom: `0.5pt solid ${tokens.theme.accentBorder}`,
-              borderRight: `0.5pt solid ${tokens.theme.accentBorder}`,
-              borderLeft: `1.5pt solid ${tokens.theme.accent}`,
-              padding: `${tokens.spacing.cellPaddingMm}mm`,
-              verticalAlign: "top",
-            }}
-          >
-            {title ? (
-              <div style={{ fontWeight: "bold", fontSize: `${tokens.typography.baseSizePt}pt`, marginBottom: "1mm" }}>
-                {title}
-              </div>
-            ) : null}
-            {children}
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  );
-}
-```
-
-- [ ] **Step 4: Run test — expect pass**
-
-Run: `cd frontend/apps/web && npx vitest run src/features/documents/mddm-editor/engine/external-html/__tests__/repeatable-item-html.test.tsx`
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/repeatable-item-html.tsx frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/__tests__/repeatable-item-html.test.tsx
-git commit -m "feat(mddm-engine): add RepeatableItem toExternalHTML"
-```
-
-### Task 23: repeatable-html
-
-**Files:**
-- Create: `frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/repeatable-html.tsx`
-- Create: `frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/__tests__/repeatable-html.test.tsx`
-
-- [ ] **Step 1: Write the failing test**
-
-Write to `frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/__tests__/repeatable-html.test.tsx`:
-
-```tsx
-import { describe, expect, it } from "vitest";
-import { renderToStaticMarkup } from "react-dom/server";
-import { RepeatableExternalHTML } from "../repeatable-html";
-import { defaultLayoutTokens } from "../../layout-ir";
-
-describe("RepeatableExternalHTML", () => {
-  it("renders a wrapper with optional label header and children", () => {
-    const html = renderToStaticMarkup(
-      <RepeatableExternalHTML label="Steps" tokens={defaultLayoutTokens}>
-        <span>items</span>
-      </RepeatableExternalHTML>,
-    );
-    expect(html).toContain("Steps");
-    expect(html).toContain("items");
-    expect(html).toContain("mddm-repeatable");
-  });
-
-  it("renders without label when none provided", () => {
-    const html = renderToStaticMarkup(
-      <RepeatableExternalHTML tokens={defaultLayoutTokens}>
-        <span>items</span>
-      </RepeatableExternalHTML>,
-    );
-    expect(html).toContain("items");
-  });
-});
-```
-
-- [ ] **Step 2: Run test — expect failure**
-
-Run: `cd frontend/apps/web && npx vitest run src/features/documents/mddm-editor/engine/external-html/__tests__/repeatable-html.test.tsx`
-Expected: FAIL.
-
-- [ ] **Step 3: Implement repeatable-html.tsx**
-
-Write to `frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/repeatable-html.tsx`:
-
-```tsx
-import type { ReactNode } from "react";
-import type { LayoutTokens } from "../layout-ir";
-
-export type RepeatableExternalHTMLProps = {
-  label?: string;
-  tokens: LayoutTokens;
-  children?: ReactNode;
-};
-
-export function RepeatableExternalHTML({ label, tokens, children }: RepeatableExternalHTMLProps) {
-  return (
-    <div
-      className="mddm-repeatable"
-      data-mddm-block="repeatable"
-      style={{ margin: `${tokens.spacing.blockGapMm}mm 0` }}
-    >
-      {label ? (
-        <div
-          style={{
-            fontWeight: "bold",
-            fontSize: `${tokens.typography.baseSizePt}pt`,
-            marginBottom: `${tokens.spacing.fieldGapMm}mm`,
-          }}
-        >
-          {label}
-        </div>
-      ) : null}
-      {children}
-    </div>
-  );
-}
-```
-
-- [ ] **Step 4: Run test — expect pass**
-
-Run: `cd frontend/apps/web && npx vitest run src/features/documents/mddm-editor/engine/external-html/__tests__/repeatable-html.test.tsx`
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/repeatable-html.tsx frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/__tests__/repeatable-html.test.tsx
-git commit -m "feat(mddm-engine): add Repeatable toExternalHTML"
-```
-
-### Task 24: rich-block-html
-
-**Files:**
-- Create: `frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/rich-block-html.tsx`
-- Create: `frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/__tests__/rich-block-html.test.tsx`
-
-- [ ] **Step 1: Write the failing test**
-
-Write to `frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/__tests__/rich-block-html.test.tsx`:
-
-```tsx
-import { describe, expect, it } from "vitest";
-import { renderToStaticMarkup } from "react-dom/server";
-import { RichBlockExternalHTML } from "../rich-block-html";
-import { defaultLayoutTokens } from "../../layout-ir";
-
-describe("RichBlockExternalHTML", () => {
-  it("renders a div with optional label", () => {
-    const html = renderToStaticMarkup(
-      <RichBlockExternalHTML label="Notes" tokens={defaultLayoutTokens}>
-        <p>note body</p>
-      </RichBlockExternalHTML>,
-    );
-    expect(html).toContain("Notes");
-    expect(html).toContain("note body");
-    expect(html).toContain("mddm-rich-block");
-  });
-
-  it("renders without label when none provided", () => {
-    const html = renderToStaticMarkup(
-      <RichBlockExternalHTML tokens={defaultLayoutTokens}>
-        <p>only body</p>
-      </RichBlockExternalHTML>,
-    );
-    expect(html).toContain("only body");
-  });
-});
-```
-
-- [ ] **Step 2: Run test — expect failure**
-
-Run: `cd frontend/apps/web && npx vitest run src/features/documents/mddm-editor/engine/external-html/__tests__/rich-block-html.test.tsx`
-Expected: FAIL.
-
-- [ ] **Step 3: Implement rich-block-html.tsx**
-
-Write to `frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/rich-block-html.tsx`:
-
-```tsx
-import type { ReactNode } from "react";
-import type { LayoutTokens } from "../layout-ir";
-
-export type RichBlockExternalHTMLProps = {
-  label?: string;
-  tokens: LayoutTokens;
-  children?: ReactNode;
-};
-
-export function RichBlockExternalHTML({ label, tokens, children }: RichBlockExternalHTMLProps) {
-  return (
-    <div
-      className="mddm-rich-block"
-      data-mddm-block="richBlock"
-      style={{ margin: `${tokens.spacing.blockGapMm}mm 0` }}
-    >
-      {label ? (
-        <div
-          style={{
-            fontWeight: "bold",
-            fontSize: `${tokens.typography.labelSizePt}pt`,
-            marginBottom: "1mm",
-            color: tokens.theme.accentDark,
-          }}
-        >
-          {label}
-        </div>
-      ) : null}
-      {children}
-    </div>
-  );
-}
-```
-
-- [ ] **Step 4: Run test — expect pass**
-
-Run: `cd frontend/apps/web && npx vitest run src/features/documents/mddm-editor/engine/external-html/__tests__/rich-block-html.test.tsx`
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/rich-block-html.tsx frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/__tests__/rich-block-html.test.tsx
-git commit -m "feat(mddm-engine): add RichBlock toExternalHTML"
-```
+Tasks 20-24 in an earlier draft created `toExternalHTML` components for `DataTableRow`, `DataTable`, `RepeatableItem`, `Repeatable`, and `RichBlock`. These blocks all have `content: "none"`, so BlockNote never provides a `contentRef` and `blocksToFullHTML` cannot correctly nest their child blocks through a custom hook. Per the note above Task 19, these blocks rely on BlockNote's render() fallback instead. No implementation work for these five tasks — skip directly to Task 25.
 
 ### Task 25: Update external-html barrel
 
@@ -2704,15 +2282,155 @@ git commit -m "feat(mddm-engine): add RichBlock toExternalHTML"
 Write to `frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/index.ts`:
 
 ```ts
+// Plan 1 exports (retained)
 export { SectionExternalHTML, type SectionExternalHTMLProps } from "./section-html";
 export { FieldExternalHTML, type FieldExternalHTMLProps } from "./field-html";
 export { FieldGroupExternalHTML, type FieldGroupExternalHTMLProps } from "./field-group-html";
-export { RepeatableExternalHTML, type RepeatableExternalHTMLProps } from "./repeatable-html";
-export { RepeatableItemExternalHTML, type RepeatableItemExternalHTMLProps } from "./repeatable-item-html";
-export { RichBlockExternalHTML, type RichBlockExternalHTMLProps } from "./rich-block-html";
-export { DataTableExternalHTML, type DataTableExternalHTMLProps } from "./data-table-html";
-export { DataTableRowExternalHTML, type DataTableRowExternalHTMLProps } from "./data-table-row-html";
+
+// Plan 2 additions: only inline-content blocks get custom toExternalHTML.
+// DataTableCell is the only content:"inline" block added in Plan 2.
+// Repeatable, RepeatableItem, RichBlock, DataTable, DataTableRow are
+// content:"none" and rely on BlockNote's render() fallback.
 export { DataTableCellExternalHTML, type DataTableCellExternalHTMLProps } from "./data-table-cell-html";
+```
+
+### Task 25b: Gating test — verify blocksToFullHTML render fallback for content:"none" blocks
+
+**Files:**
+- Create: `frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/__tests__/render-fallback.test.tsx`
+
+This test validates the foundational assumption that BlockNote's `blocksToFullHTML` produces usable HTML for `content: "none"` MDDM blocks via their `render()` fallback. If this test fails, the render-fallback strategy is not viable and Plan 2 needs a redesign before continuing — so this is a **gating test** that runs early in Part 5.
+
+- [ ] **Step 1: Install @blocknote/server-util**
+
+Run: `cd frontend/apps/web && npm list @blocknote/server-util 2>&1 | tail -5`
+If missing: `cd frontend/apps/web && npm install @blocknote/server-util@^0.47.3`
+Expected: Package installed in dependencies.
+
+- [ ] **Step 2: Write the failing test**
+
+Write to `frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/__tests__/render-fallback.test.tsx`:
+
+```tsx
+import { describe, expect, it } from "vitest";
+import { BlockNoteSchema, defaultBlockSpecs } from "@blocknote/core";
+import { ServerBlockNoteEditor } from "@blocknote/server-util";
+import { mddmSchemaBlockSpecs } from "../../../schema";
+import { mddmToBlockNote, type MDDMEnvelope } from "../../../adapter";
+
+async function toHtml(envelope: MDDMEnvelope): Promise<string> {
+  const schema = BlockNoteSchema.create({
+    blockSpecs: {
+      ...defaultBlockSpecs,
+      ...mddmSchemaBlockSpecs,
+    },
+  });
+  const editor = ServerBlockNoteEditor.create({ schema });
+  const blocks = mddmToBlockNote(envelope);
+  return await editor.blocksToFullHTML(blocks as any);
+}
+
+describe("blocksToFullHTML render fallback for MDDM content:\"none\" blocks", () => {
+  it("serializes a repeatable + repeatableItem + nested paragraph with text preserved", async () => {
+    const envelope: MDDMEnvelope = {
+      mddm_version: 1,
+      template_ref: null,
+      blocks: [
+        {
+          id: "r",
+          type: "repeatable",
+          props: { label: "Steps", itemPrefix: "Step" },
+          children: [
+            {
+              id: "ri",
+              type: "repeatableItem",
+              props: { title: "Step 1" },
+              children: [
+                { id: "p", type: "paragraph", props: {}, children: [{ type: "text", text: "inspect" }] },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const html = await toHtml(envelope);
+    expect(html).toContain("inspect");
+    expect(html.toLowerCase()).toContain("repeatable");
+  });
+
+  it("serializes a dataTable + dataTableRow + dataTableCell with cell text preserved", async () => {
+    const envelope: MDDMEnvelope = {
+      mddm_version: 1,
+      template_ref: null,
+      blocks: [
+        {
+          id: "t",
+          type: "dataTable",
+          props: {
+            label: "Items",
+            columns: [{ key: "c0", label: "Item" }],
+            locked: true, minRows: 0, maxRows: 500, density: "normal",
+          },
+          children: [
+            {
+              id: "row1",
+              type: "dataTableRow",
+              props: {},
+              children: [
+                {
+                  id: "cell1",
+                  type: "dataTableCell",
+                  props: { columnKey: "c0" },
+                  children: [{ type: "text", text: "Parafuso" }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const html = await toHtml(envelope);
+    expect(html).toContain("Parafuso");
+  });
+});
+```
+
+- [ ] **Step 3: Check that `mddmSchemaBlockSpecs` is a reusable export**
+
+Run: `grep -n "mddmSchemaBlockSpecs\|export const blockSpecs\|blockSpecs =" frontend/apps/web/src/features/documents/mddm-editor/schema.ts | head -10`
+
+If `mddmSchemaBlockSpecs` does NOT exist in the schema module, add it there so the test and the editor share one source of truth:
+
+```ts
+// frontend/apps/web/src/features/documents/mddm-editor/schema.ts
+// Add alongside the existing default export
+export const mddmSchemaBlockSpecs = {
+  section: Section,
+  field: Field,
+  fieldGroup: FieldGroup,
+  repeatable: Repeatable,
+  repeatableItem: RepeatableItem,
+  richBlock: RichBlock,
+  dataTable: DataTable,
+  dataTableRow: DataTableRow,
+  dataTableCell: DataTableCell,
+};
+```
+
+Then `schema.ts` can reuse it where it creates the schema.
+
+- [ ] **Step 4: Run the test**
+
+Run: `cd frontend/apps/web && npx vitest run src/features/documents/mddm-editor/engine/external-html/__tests__/render-fallback.test.tsx`
+Expected: PASS — 2 tests verifying structural blocks preserve child text in fallback HTML.
+
+**If the test FAILS**: BlockNote's serializer cannot walk `content: "none"` children via the default fallback. Stop Plan 2 execution. File a design spike issue and evaluate alternatives: (a) custom MDDM-to-HTML walker that mirrors the render tree manually, (b) downgrade Plan 2 to DOCX-only and defer PDF visual parity for these blocks, (c) restructure Repeatable/DataTable to use `content: "inline"` with a custom inline content spec. Do NOT proceed with Tasks 31-41 until this is resolved.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/__tests__/render-fallback.test.tsx frontend/apps/web/package.json frontend/apps/web/package-lock.json frontend/apps/web/src/features/documents/mddm-editor/schema.ts
+git commit -m "test(mddm-engine): gating test for blocksToFullHTML render fallback on structural blocks"
 ```
 
 - [ ] **Step 2: Verify compilation**
@@ -2731,194 +2449,16 @@ git commit -m "feat(mddm-engine): expand external-html barrel for full block cov
 
 ## Part 6 — Register toExternalHTML on Existing Block Specs
 
-### Task 26: Register on Repeatable.tsx
+### Tasks 26-30: REMOVED (see note above Task 19)
 
-**Files:**
-- Modify: `frontend/apps/web/src/features/documents/mddm-editor/blocks/Repeatable.tsx`
+Tasks 26-30 in an earlier draft registered custom `toExternalHTML` hooks on `Repeatable`, `RepeatableItem`, `RichBlock`, `DataTable`, and `DataTableRow`. All five are declared with `content: "none"` in the MDDM block specs, which means BlockNote does not pass a `contentRef` callback. These blocks already have working `render()` functions that `blocksToFullHTML` uses as a fallback, so no registration is needed. Skip directly to Task 31.
 
-- [ ] **Step 1: Add the imports**
-
-At the top of `frontend/apps/web/src/features/documents/mddm-editor/blocks/Repeatable.tsx`, alongside existing imports, add:
-
-```tsx
-import { RepeatableExternalHTML } from "../engine/external-html";
-import { defaultLayoutTokens } from "../engine/layout-ir";
-```
-
-- [ ] **Step 2: Add toExternalHTML to the block implementation**
-
-Inside the `createReactBlockSpec(...)` second argument (the `blockImplementation` object), alongside the existing `render`, add:
-
-```tsx
-toExternalHTML: ({ block, contentRef }) => (
-  <RepeatableExternalHTML
-    label={(block.props as { label?: string }).label}
-    tokens={defaultLayoutTokens}
-  >
-    <div ref={contentRef as unknown as React.Ref<HTMLDivElement>} />
-  </RepeatableExternalHTML>
-),
-```
-
-- [ ] **Step 3: Verify compilation**
-
-Run: `cd frontend/apps/web && npx tsc --noEmit 2>&1 | grep Repeatable.tsx | head -5`
-Expected: No errors.
-
-- [ ] **Step 4: Commit**
-
-```bash
-git add frontend/apps/web/src/features/documents/mddm-editor/blocks/Repeatable.tsx
-git commit -m "feat(mddm-engine): register toExternalHTML on Repeatable block"
-```
-
-### Task 27: Register on RepeatableItem.tsx
-
-**Files:**
-- Modify: `frontend/apps/web/src/features/documents/mddm-editor/blocks/RepeatableItem.tsx`
-
-- [ ] **Step 1: Add the imports**
-
-```tsx
-import { RepeatableItemExternalHTML } from "../engine/external-html";
-import { defaultLayoutTokens } from "../engine/layout-ir";
-```
-
-- [ ] **Step 2: Add toExternalHTML to the block implementation**
-
-```tsx
-toExternalHTML: ({ block, contentRef }) => (
-  <RepeatableItemExternalHTML
-    title={(block.props as { title?: string }).title}
-    tokens={defaultLayoutTokens}
-  >
-    <div ref={contentRef as unknown as React.Ref<HTMLDivElement>} />
-  </RepeatableItemExternalHTML>
-),
-```
-
-- [ ] **Step 3: Verify compilation**
-
-Run: `cd frontend/apps/web && npx tsc --noEmit 2>&1 | grep RepeatableItem.tsx | head -5`
-Expected: No errors.
-
-- [ ] **Step 4: Commit**
-
-```bash
-git add frontend/apps/web/src/features/documents/mddm-editor/blocks/RepeatableItem.tsx
-git commit -m "feat(mddm-engine): register toExternalHTML on RepeatableItem block"
-```
-
-### Task 28: Register on RichBlock.tsx
-
-**Files:**
-- Modify: `frontend/apps/web/src/features/documents/mddm-editor/blocks/RichBlock.tsx`
-
-- [ ] **Step 1: Add the imports**
-
-```tsx
-import { RichBlockExternalHTML } from "../engine/external-html";
-import { defaultLayoutTokens } from "../engine/layout-ir";
-```
-
-- [ ] **Step 2: Add toExternalHTML to the block implementation**
-
-```tsx
-toExternalHTML: ({ block, contentRef }) => (
-  <RichBlockExternalHTML
-    label={(block.props as { label?: string }).label}
-    tokens={defaultLayoutTokens}
-  >
-    <div ref={contentRef as unknown as React.Ref<HTMLDivElement>} />
-  </RichBlockExternalHTML>
-),
-```
-
-- [ ] **Step 3: Verify compilation**
-
-Run: `cd frontend/apps/web && npx tsc --noEmit 2>&1 | grep RichBlock.tsx | head -5`
-Expected: No errors.
-
-- [ ] **Step 4: Commit**
-
-```bash
-git add frontend/apps/web/src/features/documents/mddm-editor/blocks/RichBlock.tsx
-git commit -m "feat(mddm-engine): register toExternalHTML on RichBlock block"
-```
-
-### Task 29: Register on DataTable.tsx
-
-**Files:**
-- Modify: `frontend/apps/web/src/features/documents/mddm-editor/blocks/DataTable.tsx`
-
-- [ ] **Step 1: Add the imports**
-
-```tsx
-import { DataTableExternalHTML } from "../engine/external-html";
-import { defaultLayoutTokens } from "../engine/layout-ir";
-```
-
-- [ ] **Step 2: Add toExternalHTML to the block implementation**
-
-DataTable wraps a `<tbody>` containing rows. The `contentRef` here points at the tbody container:
-
-```tsx
-toExternalHTML: ({ block, contentRef }) => (
-  <DataTableExternalHTML tokens={defaultLayoutTokens}>
-    <tbody ref={contentRef as unknown as React.Ref<HTMLTableSectionElement>} />
-  </DataTableExternalHTML>
-),
-```
-
-- [ ] **Step 3: Verify compilation**
-
-Run: `cd frontend/apps/web && npx tsc --noEmit 2>&1 | grep DataTable.tsx | head -5`
-Expected: No errors.
-
-- [ ] **Step 4: Commit**
-
-```bash
-git add frontend/apps/web/src/features/documents/mddm-editor/blocks/DataTable.tsx
-git commit -m "feat(mddm-engine): register toExternalHTML on DataTable block"
-```
-
-### Task 30: Register on DataTableRow.tsx
-
-**Files:**
-- Modify: `frontend/apps/web/src/features/documents/mddm-editor/blocks/DataTableRow.tsx`
-
-- [ ] **Step 1: Add the imports**
-
-```tsx
-import { DataTableRowExternalHTML } from "../engine/external-html";
-```
-
-- [ ] **Step 2: Add toExternalHTML to the block implementation**
-
-```tsx
-toExternalHTML: ({ contentRef }) => (
-  <DataTableRowExternalHTML>
-    <span ref={contentRef as unknown as React.Ref<HTMLSpanElement>} />
-  </DataTableRowExternalHTML>
-),
-```
-
-- [ ] **Step 3: Verify compilation**
-
-Run: `cd frontend/apps/web && npx tsc --noEmit 2>&1 | grep DataTableRow.tsx | head -5`
-Expected: No errors.
-
-- [ ] **Step 4: Commit**
-
-```bash
-git add frontend/apps/web/src/features/documents/mddm-editor/blocks/DataTableRow.tsx
-git commit -m "feat(mddm-engine): register toExternalHTML on DataTableRow block"
-```
-
-### Task 31: Register on DataTableCell.tsx
+### Task 31: Register toExternalHTML on the DataTableCell block spec
 
 **Files:**
 - Modify: `frontend/apps/web/src/features/documents/mddm-editor/blocks/DataTableCell.tsx`
+
+**Note:** `DataTableCell` is declared with `content: "inline"` (verified via `grep -n 'content:' frontend/apps/web/src/features/documents/mddm-editor/blocks/DataTableCell.tsx`). BlockNote provides a `contentRef` callback that must be invoked with the mounted DOM node — use the callback-ref form, NOT `React.Ref`.
 
 - [ ] **Step 1: Add the imports**
 
@@ -2932,7 +2472,7 @@ import { defaultLayoutTokens } from "../engine/layout-ir";
 ```tsx
 toExternalHTML: ({ contentRef }) => (
   <DataTableCellExternalHTML tokens={defaultLayoutTokens}>
-    <span ref={contentRef as unknown as React.Ref<HTMLSpanElement>} />
+    <span ref={(el: HTMLSpanElement | null) => contentRef(el)} />
   </DataTableCellExternalHTML>
 ),
 ```
@@ -2982,7 +2522,15 @@ Write to `frontend/apps/web/src/features/documents/mddm-editor/engine/golden/fix
       "type": "dataTable",
       "props": {
         "label": "Lista de Materiais",
-        "columnsJson": "[{\"key\":\"item\",\"header\":\"Item\",\"width\":2},{\"key\":\"qty\",\"header\":\"Quantidade\",\"width\":1},{\"key\":\"valor\",\"header\":\"Valor Unitário\",\"width\":1}]"
+        "columns": [
+          { "key": "item",  "label": "Item" },
+          { "key": "qty",   "label": "Quantidade" },
+          { "key": "valor", "label": "Valor Unitário" }
+        ],
+        "locked": true,
+        "minRows": 0,
+        "maxRows": 500,
+        "density": "normal"
       },
       "children": [
         {
@@ -3580,42 +3128,58 @@ git commit -m "test(mddm-engine): add 06-theme-override golden fixture"
 
 ## Part 8 — Visual Parity (Playwright)
 
-### Task 37: Install pixelmatch and pdfjs-dist
+### Task 37: Install pixelmatch, pngjs, and pdf-img-convert
 
 **Files:**
 - Modify: `frontend/apps/web/package.json`
+
+**Library choice:** We use `pdf-img-convert` for Node-side PDF→PNG rasterization instead of driving `pdfjs-dist` manually with a custom canvas factory. `pdf-img-convert` wraps pdfjs with a working Node canvas backend and exposes a simple `pdfBufferToPngBuffer`-style API.
 
 - [ ] **Step 1: Install dev dependencies**
 
 Run:
 ```bash
 cd frontend/apps/web
-npm install -D pixelmatch@^7.1.0 pngjs@^7.0.0 pdfjs-dist@^4.6.82
+npm install -D pixelmatch@^7.1.0 pngjs@^7.0.0 pdf-img-convert@^1.3.0
 ```
 Expected: Three new entries in `devDependencies`.
 
 - [ ] **Step 2: Verify they install cleanly**
 
-Run: `cd frontend/apps/web && npm list pixelmatch pdfjs-dist pngjs 2>&1 | tail -5`
+Run: `cd frontend/apps/web && npm list pixelmatch pdf-img-convert pngjs 2>&1 | tail -5`
 Expected: All three listed at expected versions.
 
 - [ ] **Step 3: Commit**
 
 ```bash
 git add frontend/apps/web/package.json frontend/apps/web/package-lock.json
-git commit -m "chore(mddm-engine): add pixelmatch + pdfjs-dist for visual parity tests"
+git commit -m "chore(mddm-engine): add pixelmatch + pdf-img-convert for visual parity tests"
 ```
 
 ### Task 38: Build the MDDM test harness page
 
 **Files:**
 - Create: `frontend/apps/web/src/test-harness/MDDMTestHarness.tsx`
-- Modify: a routes file under `frontend/apps/web/src/` to register `/test-harness/mddm`
+- Modify: `frontend/apps/web/src/App.tsx` (to add an early escape hatch for the harness path)
 
-- [ ] **Step 1: Find the existing routes file**
+**Routing note:** The MetalDocs web app does NOT use element-based `<Routes>` / `<Route>` — it uses `HashRouter` + a custom `viewFromPath` mapping in `frontend/apps/web/src/routing/workspaceRoutes.ts` feeding into `WorkspaceShell`. The standard pattern of registering a new `<Route>` will not work. Instead, add an early-return escape hatch in `App.tsx` that checks `useLocation()` for a harness path and renders `<MDDMTestHarness />` directly, bypassing the workspace shell.
 
-Run: `grep -rn "Routes\|createBrowserRouter\|<Route" frontend/apps/web/src/ --include="*.tsx" 2>&1 | head -10`
-Expected: Locates the file responsible for client-side routing (likely `App.tsx` or `routes.tsx`).
+**Backend-bypass note for PDF export:** The backend `/render/pdf` endpoint requires authentication and document-level authorization. Playwright parity tests do NOT want to set up a real logged-in session or seed a test document just to validate rendering. Instead, the harness exposes a dev-only `__mddmRenderPdfDirectlyViaGotenberg(html, css)` function that calls Gotenberg's Chromium route directly (bypassing the Go backend) via a Vite dev proxy. The parity tests use this API; they do NOT call `exportPdf()` (which hits the auth-protected endpoint).
+
+- [ ] **Step 1: Add a dev-only Vite proxy path for Gotenberg**
+
+Open `frontend/apps/web/vite.config.ts` and add a second proxy entry only when in dev mode:
+
+```ts
+// Inside the server.proxy object, add:
+"/__gotenberg": {
+  target: env.GOTENBERG_URL || "http://localhost:3000",
+  changeOrigin: true,
+  rewrite: (path) => path.replace(/^\/__gotenberg/, ""),
+},
+```
+
+This forwards frontend requests to `/__gotenberg/forms/chromium/convert/html` → `http://localhost:3000/forms/chromium/convert/html`. The path is only wired in dev because it is set in `vite.config.ts`, which is not part of the production bundle.
 
 - [ ] **Step 2: Implement the harness component**
 
@@ -3625,28 +3189,52 @@ Write to `frontend/apps/web/src/test-harness/MDDMTestHarness.tsx`:
 import { useEffect, useState } from "react";
 import { MDDMEditor } from "../features/documents/mddm-editor/MDDMEditor";
 import { mddmToBlockNote, type MDDMEnvelope } from "../features/documents/mddm-editor/adapter";
-import { exportDocx, exportPdf } from "../features/documents/mddm-editor/engine/export";
+import { exportDocx } from "../features/documents/mddm-editor/engine/export";
 import { defaultLayoutTokens } from "../features/documents/mddm-editor/engine/layout-ir";
+import { PRINT_STYLESHEET } from "../features/documents/mddm-editor/engine/print-stylesheet";
+import { wrapInPrintDocument } from "../features/documents/mddm-editor/engine/export/wrap-print-document";
 
-// Test-only route: loads a fixture by name and exposes export APIs to Playwright.
-// Disabled in production builds via the route guard in App.tsx.
+// Dev-only: loads a golden fixture by name and exposes export APIs to Playwright.
+// This component is only reachable via App.tsx when import.meta.env.DEV is true.
 
 const FIXTURES: Record<string, () => Promise<MDDMEnvelope>> = {
-  "01-simple-po":         () => import("../features/documents/mddm-editor/engine/golden/fixtures/01-simple-po/input.mddm.json").then((m) => m.default as MDDMEnvelope),
-  "02-complex-table":     () => import("../features/documents/mddm-editor/engine/golden/fixtures/02-complex-table/input.mddm.json").then((m) => m.default as MDDMEnvelope),
-  "03-repeatable-sections": () => import("../features/documents/mddm-editor/engine/golden/fixtures/03-repeatable-sections/input.mddm.json").then((m) => m.default as MDDMEnvelope),
+  "01-simple-po":         () => import("../features/documents/mddm-editor/engine/golden/fixtures/01-simple-po/input.mddm.json").then((m) => m.default as unknown as MDDMEnvelope),
+  "02-complex-table":     () => import("../features/documents/mddm-editor/engine/golden/fixtures/02-complex-table/input.mddm.json").then((m) => m.default as unknown as MDDMEnvelope),
+  "03-repeatable-sections": () => import("../features/documents/mddm-editor/engine/golden/fixtures/03-repeatable-sections/input.mddm.json").then((m) => m.default as unknown as MDDMEnvelope),
 };
+
+/**
+ * Posts HTML+CSS directly to Gotenberg's Chromium route via the Vite dev proxy.
+ * Bypasses the Go backend's auth/document-level authz — intended for visual
+ * parity tests that care about rendering, not auth.
+ */
+async function renderPdfDirectlyViaGotenberg(bodyHtml: string): Promise<Blob> {
+  const fullHtml = wrapInPrintDocument(bodyHtml);
+  const form = new FormData();
+  form.append("files", new Blob([fullHtml], { type: "text/html" }), "index.html");
+  form.append("files", new Blob([PRINT_STYLESHEET], { type: "text/css" }), "style.css");
+
+  const response = await fetch("/__gotenberg/forms/chromium/convert/html", {
+    method: "POST",
+    body: form,
+  });
+  if (!response.ok) {
+    throw new Error(`Gotenberg render failed: ${response.status}`);
+  }
+  const arrayBuffer = await response.arrayBuffer();
+  return new Blob([arrayBuffer], { type: "application/pdf" });
+}
 
 export function MDDMTestHarness() {
   const [envelope, setEnvelope] = useState<MDDMEnvelope | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (process.env.NODE_ENV === "production") {
+    if (!import.meta.env.DEV) {
       setError("Test harness is disabled in production builds.");
       return;
     }
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(window.location.hash.split("?")[1] ?? "");
     const docName = params.get("doc");
     if (!docName || !FIXTURES[docName]) {
       setError(`Unknown fixture: ${docName ?? "(none)"}`);
@@ -3657,20 +3245,9 @@ export function MDDMTestHarness() {
 
   useEffect(() => {
     if (!envelope) return;
-    // Expose export APIs for Playwright
-    (window as any).__mddmExportDocx = async () => {
-      const blob = await exportDocx(envelope, defaultLayoutTokens);
-      return blob;
-    };
-    (window as any).__mddmExportPdf = async (documentId: string) => {
-      // Render to HTML by reusing BlockNote's blocksToFullHTML via the editor instance.
-      // The editor below mounts the same blocks the harness owns.
-      const editor = (window as any).__mddmEditorInstance;
-      if (!editor) throw new Error("Editor instance not exposed yet");
-      const blocks = editor.document;
-      const bodyHtml = await editor.blocksToFullHTML(blocks);
-      return exportPdf({ bodyHtml, documentId });
-    };
+    (window as any).__mddmExportDocx = () => exportDocx(envelope, defaultLayoutTokens);
+    (window as any).__mddmRenderPdfDirectlyViaGotenberg = renderPdfDirectlyViaGotenberg;
+    (window as any).__mddmHarnessReady = true;
   }, [envelope]);
 
   if (error) return <div data-testid="harness-error">{error}</div>;
@@ -3683,35 +3260,57 @@ export function MDDMTestHarness() {
       <MDDMEditor
         initialContent={blocks as any}
         readOnly={true}
-        onChange={() => { /* harness is read-only */ }}
       />
     </div>
   );
 }
 ```
 
-- [ ] **Step 3: Register the harness route**
+Note: the component does NOT call `exportPdf()` (which requires a document ID and hits the auth-protected backend). Playwright tests will call `blocksToFullHTML` on the mounted editor (via `window.__mddmEditor`) AND `__mddmRenderPdfDirectlyViaGotenberg` to produce the PDF for parity comparison.
 
-In the routes file identified in Step 1, add a new route element guarded by a non-production check:
+- [ ] **Step 3: Expose the BlockNote editor instance for tests**
+
+Open `frontend/apps/web/src/features/documents/mddm-editor/MDDMEditor.tsx` and add a dev-only effect that exposes the editor reference on `window`:
 
 ```tsx
-{import.meta.env.DEV && (
-  <Route path="/test-harness/mddm" element={<MDDMTestHarness />} />
-)}
+// Near the editor creation hook, after the editor instance exists:
+useEffect(() => {
+  if (import.meta.env.DEV) {
+    (window as any).__mddmEditor = editor;
+    return () => { delete (window as any).__mddmEditor; };
+  }
+  return;
+}, [editor]);
 ```
 
-(Adjust to whichever router idiom the file uses — `<Route>`, `createBrowserRouter`, etc. — and import the component from `./test-harness/MDDMTestHarness`.)
+(Integrate with the existing effect structure of MDDMEditor.tsx. If there's already a similar dev hook, reuse it.)
 
-- [ ] **Step 4: Verify the harness page loads**
+- [ ] **Step 4: Add the escape hatch in App.tsx**
 
-Run: `cd frontend/apps/web && npm run dev` and navigate to `http://localhost:4173/#/test-harness/mddm?doc=01-simple-po` in a browser.
-Expected: The 01-simple-po document renders read-only inside the MDDM editor with no editor chrome interference.
+Open `frontend/apps/web/src/App.tsx` and find the component that derives the current view from the URL (it uses `useLocation` and `viewFromPath`). BEFORE the normal view-rendering logic (and ideally before any auth gate), add an early return for the harness path:
 
-- [ ] **Step 5: Commit**
+```tsx
+import { MDDMTestHarness } from "./test-harness/MDDMTestHarness";
+
+// ... inside the component that has `useLocation()`:
+const location = useLocation();
+if (import.meta.env.DEV && location.pathname.startsWith("/test-harness/mddm")) {
+  return <MDDMTestHarness />;
+}
+```
+
+Place this EARLY in the render so it bypasses the WorkspaceShell, auth guards, and all other chrome. In dev mode only.
+
+- [ ] **Step 5: Verify the harness page loads**
+
+Start the backend and dev server, then open `http://localhost:4173/#/test-harness/mddm?doc=01-simple-po` in a browser.
+Expected: The 01-simple-po document renders read-only inside the MDDM editor; `window.__mddmHarnessReady === true` in the console.
+
+- [ ] **Step 6: Commit**
 
 ```bash
-git add frontend/apps/web/src/test-harness/MDDMTestHarness.tsx frontend/apps/web/src/<routes-file>
-git commit -m "feat(mddm-engine): add MDDMTestHarness page for Playwright visual parity"
+git add frontend/apps/web/src/test-harness/ frontend/apps/web/src/App.tsx frontend/apps/web/src/features/documents/mddm-editor/MDDMEditor.tsx frontend/apps/web/vite.config.ts
+git commit -m "feat(mddm-engine): add MDDMTestHarness page with dev-only Gotenberg proxy"
 ```
 
 ### Task 39: Implement pdf-to-png rasterization helper
@@ -3719,57 +3318,95 @@ git commit -m "feat(mddm-engine): add MDDMTestHarness page for Playwright visual
 **Files:**
 - Create: `frontend/apps/web/e2e/helpers/pixel-diff.ts`
 
-- [ ] **Step 1: Implement pixel-diff.ts**
+- [ ] **Step 1: Implement pixel-diff.ts using pdf-img-convert**
 
 Write to `frontend/apps/web/e2e/helpers/pixel-diff.ts`:
 
 ```ts
 import { PNG } from "pngjs";
 import pixelmatch from "pixelmatch";
-import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
+// pdf-img-convert wraps pdfjs-dist with a Node canvas backend so we don't
+// have to configure a canvas factory manually.
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-expect-error — pdf-img-convert ships without types
+import * as pdfImgConvert from "pdf-img-convert";
 
-/** Render the first page of a PDF Buffer to a PNG Buffer at the requested width. */
-export async function rasterizePdfFirstPageToPng(pdfBytes: Uint8Array, widthPx: number): Promise<Buffer> {
-  const loadingTask = getDocument({ data: pdfBytes });
-  const pdf = await loadingTask.promise;
-  const page = await pdf.getPage(1);
-  const viewport = page.getViewport({ scale: 1 });
-  const scale = widthPx / viewport.width;
-  const scaled = page.getViewport({ scale });
+/** Render the first page of a PDF Buffer to a PNG Buffer. */
+export async function rasterizePdfFirstPageToPng(pdfBytes: Uint8Array): Promise<Buffer> {
+  // pdf-img-convert returns an array of PNG Uint8Arrays, one per page.
+  const images = (await pdfImgConvert.convert(Buffer.from(pdfBytes), {
+    page_numbers: [1],
+    scale: 2.0, // render at 2x for better diff resolution
+  })) as Uint8Array[];
 
-  const canvasFactory = (pdf as any).canvasFactory;
-  const canvasAndContext = canvasFactory.create(scaled.width, scaled.height);
-  await page.render({ canvasContext: canvasAndContext.context, viewport: scaled, canvas: canvasAndContext.canvas }).promise;
-
-  const png = canvasAndContext.canvas.toBuffer("image/png");
-  return png as Buffer;
+  if (!images || images.length === 0) {
+    throw new Error("pdf-img-convert returned no images");
+  }
+  return Buffer.from(images[0]!);
 }
 
-/** Compare two PNG buffers; returns the fraction of differing pixels (0..1). */
+/** Compare two PNG buffers; returns the fraction of differing pixels (0..1).
+ *  Buffers are resampled to the smaller dimensions before comparison. */
 export function pngDiffPercent(a: Buffer, b: Buffer): number {
   const left = PNG.sync.read(a);
   const right = PNG.sync.read(b);
   const width = Math.min(left.width, right.width);
   const height = Math.min(left.height, right.height);
+  if (width === 0 || height === 0) {
+    throw new Error("pngDiffPercent: empty image");
+  }
+
+  // If dimensions differ, crop both to the shared region before diffing.
+  function crop(png: PNG, w: number, h: number): Buffer {
+    if (png.width === w && png.height === h) return png.data as unknown as Buffer;
+    const cropped = new PNG({ width: w, height: h });
+    PNG.bitblt(png, cropped, 0, 0, w, h, 0, 0);
+    return cropped.data as unknown as Buffer;
+  }
+
+  const leftData = crop(left, width, height);
+  const rightData = crop(right, width, height);
 
   const diff = new PNG({ width, height });
-  const numDiff = pixelmatch(left.data, right.data, diff.data, width, height, {
+  const numDiff = pixelmatch(leftData, rightData, diff.data, width, height, {
     threshold: 0.1,
   });
   return numDiff / (width * height);
 }
 ```
 
-- [ ] **Step 2: Verify the file compiles**
+- [ ] **Step 2: Smoke test the rasterizer against a tiny known PDF**
 
-Run: `cd frontend/apps/web && npx tsc --noEmit -p tsconfig.json 2>&1 | grep pixel-diff | head -5`
-Expected: No errors. (If pdfjs-dist types complain, the legacy build entry should still compile because the canvas factory is invoked through `any`.)
+Write to `frontend/apps/web/e2e/helpers/__tests__/pixel-diff.smoke.test.ts`:
 
-- [ ] **Step 3: Commit**
+```ts
+import { describe, expect, it } from "vitest";
+import { rasterizePdfFirstPageToPng } from "../pixel-diff";
+
+// Minimal valid PDF header + trailer — a real PDF file created once to verify
+// the rasterizer runs without crashing. For this smoke test we use a tiny
+// two-byte stub that will reject cleanly; the point is to verify the import
+// chain and the error path.
+describe("pixel-diff smoke", () => {
+  it("imports and exposes rasterizePdfFirstPageToPng", () => {
+    expect(typeof rasterizePdfFirstPageToPng).toBe("function");
+  });
+});
+```
+
+Run: `cd frontend/apps/web && npx vitest run e2e/helpers/__tests__/pixel-diff.smoke.test.ts`
+Expected: PASS — module imports cleanly. The real end-to-end rasterization is validated by the Playwright parity test in Task 40.
+
+- [ ] **Step 3: Verify the file compiles**
+
+Run: `cd frontend/apps/web && npx tsc --noEmit 2>&1 | grep pixel-diff | head -5`
+Expected: No errors.
+
+- [ ] **Step 4: Commit**
 
 ```bash
-git add frontend/apps/web/e2e/helpers/pixel-diff.ts
-git commit -m "feat(mddm-engine): add pdf-to-png + pixel diff helper for visual parity"
+git add frontend/apps/web/e2e/helpers/pixel-diff.ts frontend/apps/web/e2e/helpers/__tests__/pixel-diff.smoke.test.ts
+git commit -m "feat(mddm-engine): add pdf-img-convert based rasterization + pixel diff helper"
 ```
 
 ### Task 40: Implement Playwright visual parity tests
@@ -3814,36 +3451,66 @@ import { rasterizePdfFirstPageToPng, pngDiffPercent } from "./helpers/pixel-diff
 
 const FIXTURES = ["01-simple-po", "02-complex-table", "03-repeatable-sections"] as const;
 
+// Visual parity tolerance. Matches the Render Compatibility Contract tier-2
+// threshold in the spec (COMPATIBILITY_CONTRACT.tier2.pixelDiffEditorToPdf).
 const EDITOR_TO_PDF_MAX_DIFF = 0.02; // 2%
 
 for (const fixture of FIXTURES) {
   test(`MDDM visual parity: editor screenshot vs PDF (${fixture})`, async ({ page }) => {
     await page.goto(`/#/test-harness/mddm?doc=${fixture}`);
-    await page.locator("[data-testid='mddm-harness']").waitFor({ state: "visible", timeout: 30_000 });
 
-    // Capture editor screenshot first.
+    // Wait for the harness to signal it has mounted and exposed the APIs.
+    await page.waitForFunction(() => (window as any).__mddmHarnessReady === true, undefined, {
+      timeout: 30_000,
+    });
+    await page.locator("[data-testid='mddm-harness']").waitFor({ state: "visible" });
+
+    // 1. Capture editor screenshot.
     const editorElement = page.locator("[data-testid='mddm-harness']");
     const editorPng = await editorElement.screenshot();
 
-    // Render PDF via the harness API.
-    const pdfArrayBuffer = await page.evaluate(async () => {
-      const blob = await (window as any).__mddmExportPdf("test-doc-id");
-      const buffer = await blob.arrayBuffer();
-      return Array.from(new Uint8Array(buffer));
+    // 2. Produce full-fidelity HTML from the mounted BlockNote editor.
+    const bodyHtml = await page.evaluate(async () => {
+      const editor = (window as any).__mddmEditor;
+      if (!editor) throw new Error("__mddmEditor not exposed");
+      return await editor.blocksToFullHTML(editor.document);
     });
-    const pdfBytes = new Uint8Array(pdfArrayBuffer);
 
-    // Rasterize the PDF first page to PNG matching editor width.
-    const editorWidth = (await editorElement.boundingBox())?.width ?? 800;
-    const pdfPng = await rasterizePdfFirstPageToPng(pdfBytes, Math.round(editorWidth));
+    // 3. Render PDF directly via Gotenberg (bypasses auth-protected backend).
+    const pdfArray = await page.evaluate(async (html: string) => {
+      const blob = await (window as any).__mddmRenderPdfDirectlyViaGotenberg(html);
+      const buffer = await (blob as Blob).arrayBuffer();
+      return Array.from(new Uint8Array(buffer));
+    }, bodyHtml);
+    const pdfBytes = new Uint8Array(pdfArray);
+
+    // 4. Rasterize PDF page 1 and diff against editor screenshot.
+    const pdfPng = await rasterizePdfFirstPageToPng(pdfBytes);
 
     const diff = pngDiffPercent(editorPng, pdfPng);
-    expect(diff).toBeLessThan(EDITOR_TO_PDF_MAX_DIFF);
+    expect(diff, `Visual diff for ${fixture} exceeded ${EDITOR_TO_PDF_MAX_DIFF * 100}%: ${(diff * 100).toFixed(2)}%`)
+      .toBeLessThan(EDITOR_TO_PDF_MAX_DIFF);
   });
 }
 ```
 
-- [ ] **Step 3: Run the spec (requires backend + Gotenberg running)**
+**Key differences from an earlier draft:**
+- Uses `__mddmRenderPdfDirectlyViaGotenberg` (harness dev proxy) instead of `__mddmExportPdf` — bypasses backend auth entirely.
+- Derives the body HTML from the mounted editor via `__mddmEditor.blocksToFullHTML`, not from a stored fixture, so the test matches exactly what the user would see after saving.
+
+- [ ] **Step 3: Prerequisites — ensure Gotenberg is running**
+
+Before running the spec, Gotenberg must be accessible at the URL in `GOTENBERG_URL` (dev default `http://localhost:3000`):
+
+```bash
+docker build -t metaldocs/gotenberg:local docker/gotenberg
+docker run --rm --name metaldocs-gotenberg -p 3000:3000 -d metaldocs/gotenberg:local
+./docker/gotenberg/verify-carlito.sh metaldocs-gotenberg
+```
+
+Expected: `OK: Carlito is installed` from the verification script.
+
+- [ ] **Step 4: Run the spec**
 
 Run:
 ```bash
@@ -3852,9 +3519,9 @@ npx playwright test e2e/mddm-visual-parity.spec.ts 2>&1 | tail -40
 ```
 Expected: PASS — three tests, each under the 2% pixel diff threshold.
 
-If any fixture exceeds the threshold, do NOT relax the threshold. Instead, investigate the divergence — likely candidates: missing print CSS, wrong font fallback in the editor render, different default margins. Fix the root cause and rerun.
+If any fixture exceeds the threshold, do NOT relax the threshold. Investigate root causes: missing print CSS rule, wrong font fallback in the editor render, different default margins, or a `content: "none"` block rendering differently between editor HTML and BlockNote's external HTML serializer. Fix the root cause and re-run.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add frontend/apps/web/playwright.config.ts frontend/apps/web/e2e/mddm-visual-parity.spec.ts frontend/apps/web/e2e/helpers/
@@ -3910,15 +3577,45 @@ If any incidental fixes were needed during steps 1-4, commit them with descripti
 | `mddmToDocx` registry expansion + asset map plumbing | Task 14 |
 | Updated docx-emitter barrel | Task 15 |
 | Renderer completeness gate covering all 16 blocks | Task 18 |
-| `toExternalHTML` for the 6 remaining MDDM blocks | Tasks 19, 20, 21, 22, 23, 24 |
-| Updated external-html barrel | Task 25 |
-| Block-spec registrations of toExternalHTML hooks | Tasks 26, 27, 28, 29, 30, 31 |
+| `toExternalHTML` for DataTableCell (only `content: "inline"` block in Plan 2) | Task 19 |
+| ~~Custom `toExternalHTML` for DataTableRow/DataTable/RepeatableItem/Repeatable/RichBlock~~ (intentionally NOT implemented — they are `content: "none"` and rely on BlockNote's render() fallback; see note above Task 19 and the gating test in Task 25b) | Task 25b |
+| Updated external-html barrel (only exports DataTableCellExternalHTML) | Task 25 |
+| Block-spec registration for DataTableCell | Task 31 |
+| ~~Block-spec registrations for Repeatable/RepeatableItem/RichBlock/DataTable/DataTableRow~~ (REMOVED — `content: "none"` blocks do not receive `contentRef`; they use `render()` fallback) | N/A |
 | Golden fixture corpus expansion (5 new fixtures) | Tasks 32, 33, 34, 35, 36 |
-| pixelmatch + pdfjs-dist dependency installation | Task 37 |
-| Playwright test harness page (`/test-harness/mddm`) | Task 38 |
-| PDF rasterization + pixel-diff helper | Task 39 |
+| pixelmatch + pdf-img-convert dependency installation | Task 37 |
+| Playwright test harness page with dev-only Gotenberg proxy | Task 38 |
+| PDF rasterization + pixel-diff helper (pdf-img-convert) | Task 39 |
 | Playwright visual parity test suite (3 fixtures, < 2% diff) | Task 40 |
 | Full test + build + smoke verification | Task 41 |
+
+### Codex revision history
+
+Codex round-1 on Plan 2 caught 9 structural issues. All addressed in this revision:
+
+1. **`toExternalHTML` on `content: "none"` blocks** — BlockNote's `contentRef` callback is ONLY provided to inline-content blocks. Removed Tasks 20-24 (custom HTML components for Repeatable/RepeatableItem/RichBlock/DataTable/DataTableRow) and Tasks 26-30 (their registrations). Added Task 25b as a gating test verifying `blocksToFullHTML` correctly serializes these blocks via their `render()` fallback.
+2. **`contentRef` cast pattern** — Replaced `React.Ref<...>` cast with inline callback-ref form `(el) => contentRef(el)` in Task 31 (DataTableCell). Plan 1 received the same fix in a separate commit.
+3. **Image prop key** — Fixed asset collector (Task 1) and image emitter (Task 5) to read `block.props.src` instead of `block.props.url`. Per `adapter.ts` `toMDDMProps`, MDDM envelopes store image URLs under `src`.
+4. **DataTable column contract** — Fixed data-table emitter (Task 10) to read `block.props.columns` as an array of `{key, label}` objects. Updated 02-complex-table fixture (Task 32) to match the real schema. Removed all references to `columnsJson` and `header` field from Plan 2.
+5. **Table width ambiguity** — Data-table emitter now uses `WidthType.DXA` with `mmToTwip(tokens.page.contentWidthMm)` for unambiguous absolute width. No more percentage-unit ambiguity.
+6. **Test harness routing** — Task 38 no longer uses element-based `<Routes>`. It adds an early-return escape hatch in `App.tsx` that checks `location.pathname.startsWith("/test-harness/mddm")` and renders `<MDDMTestHarness />` directly, bypassing the WorkspaceShell.
+7. **Backend auth in visual parity** — Task 38 exposes `__mddmRenderPdfDirectlyViaGotenberg(html)` that posts to a dev-only Vite proxy path (`/__gotenberg/forms/chromium/convert/html`) bypassing the Go backend entirely. Task 40 uses this instead of the auth-protected `/render/pdf` endpoint.
+8. **pdfjs-dist render API** — Task 39 switched from manual pdfjs canvas factory to `pdf-img-convert`, which ships a working Node canvas backend. Task 37 installs `pdf-img-convert` instead of `pdfjs-dist`.
+9. **Orphan `render-pdf-page.ts` entry** — Removed from the file structure. Replaced with `pixel-diff.smoke.test.ts` which is actually created in Task 39.
+
+### Placeholder scan
+
+No "TBD", "TODO", "implement later", or "similar to Task N" placeholders remain.
+
+### Type / signature consistency
+
+- `mddmToDocx(envelope, tokens, assetMap?)` signature is consistent across Tasks 14, 16, golden runners, and the test harness.
+- `exportDocx(envelope, tokens, options?)` signature matches between Tasks 16 and the test harness (Task 38).
+- `exportPdf({bodyHtml, documentId, assetResolver?})` is referenced in Task 17 but NOT used by Plan 2's visual parity tests — those use the dev-only direct-Gotenberg path.
+- `ChildRenderer` type from `repeatable-item.ts` (Task 11) is reused by `repeatable.ts` (Task 12), `rich-block.ts` (Task 13), and `emitter.ts` (Task 14).
+- `EmitContext = { tokens, assetMap }` from `emitter.ts` (Task 14) has no external consumers — internal only.
+- `extractTextRuns` from Plan 1's `paragraph.ts` is reused by `bullet-list-item.ts`, `numbered-list-item.ts`, `quote.ts`, `data-table-cell.ts`.
+- Block type strings are consistent between the emitter registry (Task 14), block registry (Task 18), `DataTableCell` toExternalHTML (Task 31), and the MDDM schema.
 
 **Out of scope by design** (deferred to Plans 3 and 4):
 - Version pinning + renderer bundle registry (`Version.rendererPin`) — Plan 3

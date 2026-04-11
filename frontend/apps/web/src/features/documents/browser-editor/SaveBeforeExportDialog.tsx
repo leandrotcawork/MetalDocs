@@ -62,10 +62,6 @@ export function SaveBeforeExportDialog({
     const el = dialogRef.current;
     if (!el) return;
 
-    const focusable = el.querySelectorAll<HTMLElement>("button");
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
@@ -73,21 +69,26 @@ export function SaveBeforeExportDialog({
         return;
       }
       if (e.key !== "Tab") return;
+
+      const focusable = el.querySelectorAll<HTMLElement>("button");
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
       if (e.shiftKey) {
-        if (document.activeElement === first) {
+        if (document.activeElement === first || !el.contains(document.activeElement)) {
           e.preventDefault();
           last.focus();
         }
       } else {
-        if (document.activeElement === last) {
+        if (document.activeElement === last || !el.contains(document.activeElement)) {
           e.preventDefault();
           first.focus();
         }
       }
     };
 
-    el.addEventListener("keydown", handleKeyDown);
-    return () => el.removeEventListener("keydown", handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [open, onCancel]);
 
   if (!open) {

@@ -2,6 +2,7 @@ package memory
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strings"
 	"sync"
@@ -763,6 +764,29 @@ func (r *Repository) UpdateVersionDocx(_ context.Context, documentID string, ver
 		}
 	}
 	return domain.ErrVersionNotFound
+}
+
+func (r *Repository) SetVersionRendererPin(_ context.Context, documentID string, versionNumber int, pin *domain.RendererPin) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	versions, ok := r.versions[documentID]
+	if !ok {
+		return fmt.Errorf("document %s not found", documentID)
+	}
+	for i, v := range versions {
+		if v.Number == versionNumber {
+			if pin != nil {
+				if err := pin.Validate(); err != nil {
+					return fmt.Errorf("invalid renderer pin: %w", err)
+				}
+			}
+			versions[i].RendererPin = pin
+			r.versions[documentID] = versions
+			return nil
+		}
+	}
+	return fmt.Errorf("version %d of document %s not found", versionNumber, documentID)
 }
 
 func (r *Repository) saveVersionLocked(_ context.Context, version domain.Version) error {

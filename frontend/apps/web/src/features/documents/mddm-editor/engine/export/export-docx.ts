@@ -1,26 +1,31 @@
 import type { MDDMEnvelope } from "../../adapter";
-import { defaultLayoutTokens, type LayoutTokens } from "../layout-ir";
+import type { RendererPin } from "../../../../../lib.types";
 import { canonicalizeAndMigrate } from "../canonicalize-migrate";
-import { collectImageUrls, mddmToDocx } from "../docx-emitter";
+import { collectImageUrls } from "../docx-emitter";
 import {
   AssetResolver,
   RESOURCE_CEILINGS,
   ResourceCeilingExceededError,
   type ResolvedAsset,
 } from "../asset-resolver";
+import { loadCurrentRenderer, loadPinnedRenderer } from "../renderers/registry";
 
 export type ExportDocxOptions = {
+  /** Renderer pin from the version record. `null` or omitted → current renderer. */
+  rendererPin?: RendererPin | null;
   /** Optional resolver injection point — defaults to a fresh AssetResolver. */
   assetResolver?: AssetResolver;
 };
 
 export async function exportDocx(
   envelope: MDDMEnvelope,
-  tokens?: LayoutTokens,
   options: ExportDocxOptions = {},
 ): Promise<Blob> {
+  const renderer = options.rendererPin
+    ? await loadPinnedRenderer(options.rendererPin)
+    : await loadCurrentRenderer();
+
   const canonical = await canonicalizeAndMigrate(envelope);
-  const resolvedTokens = tokens ?? defaultLayoutTokens;
 
   // Resolve assets BEFORE emitter runs so the emitter receives bytes.
   const urls = collectImageUrls(canonical);
@@ -49,5 +54,5 @@ export async function exportDocx(
   }
 
   // mddmToDocx guarantees the DOCX MIME type on the returned blob.
-  return mddmToDocx(canonical, resolvedTokens, assetMap);
+  return renderer.mddmToDocx(canonical, renderer.tokens, assetMap);
 }

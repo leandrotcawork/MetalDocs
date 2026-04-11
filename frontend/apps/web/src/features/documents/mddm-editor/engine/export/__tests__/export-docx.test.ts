@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { exportDocx } from "../export-docx";
-import { defaultLayoutTokens } from "../../layout-ir";
 import type { MDDMEnvelope } from "../../../adapter";
+import type { RendererPin } from "../../../../../../lib.types";
 import * as pipeline from "../../canonicalize-migrate/pipeline";
 import * as emitter from "../../docx-emitter/emitter";
 import { AssetResolver } from "../../asset-resolver";
@@ -21,7 +21,7 @@ const minimalEnvelope: MDDMEnvelope = {
 
 describe("exportDocx", () => {
   it("generates a DOCX Blob for a simple envelope", async () => {
-    const blob = await exportDocx(minimalEnvelope, defaultLayoutTokens);
+    const blob = await exportDocx(minimalEnvelope);
     expect(blob).toBeInstanceOf(Blob);
     expect(blob.size).toBeGreaterThan(100);
     expect(blob.type).toBe("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
@@ -45,7 +45,7 @@ describe("exportDocx", () => {
     emitSpy.mockRestore();
   });
 
-  it("uses defaultLayoutTokens when tokens are omitted", async () => {
+  it("uses current renderer when no rendererPin is provided", async () => {
     const blob = await exportDocx(minimalEnvelope);
     expect(blob).toBeInstanceOf(Blob);
     expect(blob.size).toBeGreaterThan(0);
@@ -73,8 +73,44 @@ describe("exportDocx asset wiring", () => {
       ],
     };
 
-    const blob = await exportDocx(envelope, defaultLayoutTokens, { assetResolver: fakeResolver });
+    const blob = await exportDocx(envelope, { assetResolver: fakeResolver });
     expect(blob).toBeInstanceOf(Blob);
     expect(calls).toEqual(["/api/images/aaa", "/api/images/bbb"]);
+  });
+});
+
+describe("exportDocx renderer pin selection", () => {
+  it("loads the pinned renderer when a version has a rendererPin", async () => {
+    const envelope: MDDMEnvelope = {
+      mddm_version: 1,
+      template_ref: null,
+      blocks: [
+        { id: "p", type: "paragraph", props: {}, children: [{ type: "text", text: "pinned" }] },
+      ],
+    };
+    const pin: RendererPin = {
+      renderer_version: "1.0.0",
+      layout_ir_hash: "h",
+      template_key: "po-mddm-canvas",
+      template_version: 1,
+    };
+
+    const blob = await exportDocx(envelope, { rendererPin: pin });
+    expect(blob).toBeInstanceOf(Blob);
+    expect(blob.size).toBeGreaterThan(100);
+  });
+
+  it("loads the current renderer when rendererPin is null (draft)", async () => {
+    const envelope: MDDMEnvelope = {
+      mddm_version: 1,
+      template_ref: null,
+      blocks: [
+        { id: "p", type: "paragraph", props: {}, children: [{ type: "text", text: "draft" }] },
+      ],
+    };
+
+    const blob = await exportDocx(envelope, { rendererPin: null });
+    expect(blob).toBeInstanceOf(Blob);
+    expect(blob.size).toBeGreaterThan(100);
   });
 });

@@ -14,7 +14,25 @@ type Migration = (envelope: MDDMEnvelope) => MDDMEnvelope;
 
 const MIGRATIONS: Record<number, Migration> = {};
 
-export async function canonicalizeAndMigrate(envelope: MDDMEnvelope): Promise<MDDMEnvelope> {
+export type CanonicalizeAndMigrateOptions = {
+  /** The version to migrate the envelope TO. Defaults to CURRENT_MDDM_VERSION.
+   *  Set to a pinned version for released documents so they stay frozen. */
+  targetVersion?: number;
+};
+
+export async function canonicalizeAndMigrate(
+  envelope: MDDMEnvelope,
+  options: CanonicalizeAndMigrateOptions = {},
+): Promise<MDDMEnvelope> {
+  const target = options.targetVersion ?? CURRENT_MDDM_VERSION;
+
+  if (target > CURRENT_MDDM_VERSION) {
+    throw new MigrationError(
+      `Target version ${target} is newer than current engine version ${CURRENT_MDDM_VERSION}`,
+      "TARGET_TOO_NEW",
+    );
+  }
+
   if (envelope === null || typeof envelope !== "object") {
     throw new MigrationError("Envelope is not an object", "INVALID_ENVELOPE");
   }
@@ -24,7 +42,7 @@ export async function canonicalizeAndMigrate(envelope: MDDMEnvelope): Promise<MD
     throw new MigrationError("Envelope missing a valid mddm_version", "MISSING_VERSION");
   }
 
-  if (version > CURRENT_MDDM_VERSION) {
+  if (version > target) {
     throw new MigrationError(
       `Envelope version ${version} is newer than current engine version ${CURRENT_MDDM_VERSION}`,
       "VERSION_TOO_NEW",
@@ -32,7 +50,7 @@ export async function canonicalizeAndMigrate(envelope: MDDMEnvelope): Promise<MD
   }
 
   let current: MDDMEnvelope = envelope;
-  while ((current.mddm_version ?? 0) < CURRENT_MDDM_VERSION) {
+  while ((current.mddm_version ?? 0) < target) {
     const from = current.mddm_version ?? 0;
     const migrate = MIGRATIONS[from];
     if (!migrate) {

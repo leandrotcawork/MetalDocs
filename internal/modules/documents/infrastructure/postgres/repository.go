@@ -1496,7 +1496,8 @@ func (r *Repository) ListVersions(ctx context.Context, documentID string) ([]dom
 	const q = `
 	SELECT document_id, version_number, content, content_hash, change_summary,
 	       content_source, native_content, values_json, body_blocks, docx_storage_key, pdf_storage_key, text_content,
-	       file_size_bytes, original_filename, page_count, template_key, template_version, created_at
+	       file_size_bytes, original_filename, page_count, template_key, template_version, created_at,
+	       renderer_pin
 	FROM metaldocs.document_versions
 	WHERE document_id = $1
 	ORDER BY version_number ASC
@@ -1521,6 +1522,7 @@ func (r *Repository) ListVersions(ctx context.Context, documentID string) ([]dom
 		var pageCount sql.NullInt64
 		var templateKey sql.NullString
 		var templateVersion sql.NullInt64
+		var pinRaw sql.NullString
 		if err := rows.Scan(
 			&version.DocumentID,
 			&version.Number,
@@ -1540,6 +1542,7 @@ func (r *Repository) ListVersions(ctx context.Context, documentID string) ([]dom
 			&templateKey,
 			&templateVersion,
 			&version.CreatedAt,
+			&pinRaw,
 		); err != nil {
 			return nil, fmt.Errorf("scan version: %w", err)
 		}
@@ -1550,6 +1553,11 @@ func (r *Repository) ListVersions(ctx context.Context, documentID string) ([]dom
 		if templateVersion.Valid {
 			version.TemplateVersion = int(templateVersion.Int64)
 		}
+		pin, err := scanRendererPin(pinRaw)
+		if err != nil {
+			return nil, fmt.Errorf("scan renderer pin: %w", err)
+		}
+		version.RendererPin = pin
 		out = append(out, version)
 	}
 	if err := rows.Err(); err != nil {
@@ -1568,7 +1576,8 @@ func (r *Repository) GetVersion(ctx context.Context, documentID string, versionN
 	const q = `
 	SELECT document_id, version_number, content, content_hash, change_summary,
 	       content_source, native_content, values_json, body_blocks, docx_storage_key, pdf_storage_key, text_content,
-	       file_size_bytes, original_filename, page_count, template_key, template_version, created_at
+	       file_size_bytes, original_filename, page_count, template_key, template_version, created_at,
+	       renderer_pin
 	FROM metaldocs.document_versions
 	WHERE document_id = $1 AND version_number = $2
 	`
@@ -1584,6 +1593,7 @@ func (r *Repository) GetVersion(ctx context.Context, documentID string, versionN
 	var pageCount sql.NullInt64
 	var templateKey sql.NullString
 	var templateVersion sql.NullInt64
+	var pinRaw sql.NullString
 	if err := r.db.QueryRowContext(ctx, q, documentID, versionNumber).Scan(
 		&version.DocumentID,
 		&version.Number,
@@ -1603,6 +1613,7 @@ func (r *Repository) GetVersion(ctx context.Context, documentID string, versionN
 		&templateKey,
 		&templateVersion,
 		&version.CreatedAt,
+		&pinRaw,
 	); err != nil {
 		if err == sql.ErrNoRows {
 			return domain.Version{}, domain.ErrVersionNotFound
@@ -1616,6 +1627,11 @@ func (r *Repository) GetVersion(ctx context.Context, documentID string, versionN
 	if templateVersion.Valid {
 		version.TemplateVersion = int(templateVersion.Int64)
 	}
+	pin, err := scanRendererPin(pinRaw)
+	if err != nil {
+		return domain.Version{}, fmt.Errorf("scan renderer pin: %w", err)
+	}
+	version.RendererPin = pin
 	return version, nil
 }
 
@@ -1988,6 +2004,58 @@ func applyOptionalFields(doc *domain.Document, tagsJSON []byte, metadataJSON []b
 	if doc.UpdatedAt.IsZero() {
 		doc.UpdatedAt = time.Now().UTC()
 	}
+}
+
+func scanRendererPin(raw sql.NullString) (*domain.RendererPin, error) {
+	if !raw.Valid || strings.TrimSpace(raw.String) == "" {
+		return nil, nil
+	}
+	var pin domain.RendererPin
+	if err := json.Unmarshal([]byte(raw.String), &pin); err != nil {
+		return nil, fmt.Errorf("decode renderer pin: %w", err)
+	}
+	return &pin, nil
+}
+
+func (r *Repository) SetVersionRendererPin(ctx context.Context, documentID string, versionNumber int, pin *domain.RendererPin) error {
+	if pin == nil {
+		result, err := r.db.ExecContext(ctx,
+			`UPDATE metaldocs.document_versions
+             SET renderer_pin = NULL
+             WHERE document_id = $1 AND version_number = $2`,
+			documentID, versionNumber)
+		if err != nil {
+			return fmt.Errorf("clear renderer pin: %w", err)
+		}
+		affected, _ := result.RowsAffected()
+		if affected == 0 {
+			return fmt.Errorf("clear renderer pin: version %d of document %s not found", versionNumber, documentID)
+		}
+		return nil
+	}
+
+	if err := pin.Validate(); err != nil {
+		return fmt.Errorf("invalid renderer pin: %w", err)
+	}
+
+	payload, err := json.Marshal(pin)
+	if err != nil {
+		return fmt.Errorf("marshal renderer pin: %w", err)
+	}
+
+	result, err := r.db.ExecContext(ctx,
+		`UPDATE metaldocs.document_versions
+         SET renderer_pin = $3::jsonb
+         WHERE document_id = $1 AND version_number = $2`,
+		documentID, versionNumber, string(payload))
+	if err != nil {
+		return fmt.Errorf("set renderer pin: %w", err)
+	}
+	affected, _ := result.RowsAffected()
+	if affected == 0 {
+		return fmt.Errorf("set renderer pin: version %d of document %s not found", versionNumber, documentID)
+	}
+	return nil
 }
 
 func serializeVersion(version domain.Version) (string, string, string, string, any, error) {

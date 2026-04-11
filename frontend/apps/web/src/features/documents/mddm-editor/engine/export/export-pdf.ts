@@ -1,5 +1,4 @@
-import { wrapInPrintDocument } from "../print-stylesheet/wrap-print-document";
-import { PRINT_STYLESHEET } from "../print-stylesheet";
+import type { RendererPin } from "../../../../../lib.types";
 import {
   AssetResolver,
   RESOURCE_CEILINGS,
@@ -7,12 +6,15 @@ import {
   type ResolvedAsset,
 } from "../asset-resolver";
 import { rewriteImgSrcToDataUri } from "./inline-asset-rewriter";
+import { loadCurrentRenderer, loadPinnedRenderer } from "../renderers/registry";
 
 export type ExportPdfParams = {
   /** Body HTML produced by blocksToFullHTML (still containing /api/images/... src refs). */
   bodyHtml: string;
   /** Document ID — used in the backend endpoint path. */
   documentId: string;
+  /** Renderer pin from the version record. `null` or omitted → current renderer. */
+  rendererPin?: RendererPin | null;
   /** Optional resolver injection point. */
   assetResolver?: AssetResolver;
 };
@@ -34,6 +36,7 @@ function extractImageUrls(html: string): string[] {
 export async function exportPdf({
   bodyHtml,
   documentId,
+  rendererPin,
   assetResolver,
 }: ExportPdfParams): Promise<Blob> {
   // Resolve and inline images so the HTML sent to Gotenberg has zero auth-bound URLs.
@@ -62,8 +65,12 @@ export async function exportPdf({
     assetMap.set(url, asset);
   }
 
+  const renderer = rendererPin
+    ? await loadPinnedRenderer(rendererPin)
+    : await loadCurrentRenderer();
+
   const inlinedBody = rewriteImgSrcToDataUri(bodyHtml, assetMap);
-  const fullHtml = wrapInPrintDocument(inlinedBody);
+  const fullHtml = renderer.wrapInPrintDocument(inlinedBody);
 
   const htmlBytes = new TextEncoder().encode(fullHtml).byteLength;
   if (htmlBytes > RESOURCE_CEILINGS.maxHtmlPayloadBytes) {
@@ -76,7 +83,7 @@ export async function exportPdf({
 
   const formData = new FormData();
   formData.append("index.html", new Blob([fullHtml], { type: "text/html" }), "index.html");
-  formData.append("style.css", new Blob([PRINT_STYLESHEET], { type: "text/css" }), "style.css");
+  formData.append("style.css", new Blob([renderer.printStylesheet], { type: "text/css" }), "style.css");
 
   const response = await fetch(
     `/api/v1/documents/${encodeURIComponent(documentId)}/render/pdf`,

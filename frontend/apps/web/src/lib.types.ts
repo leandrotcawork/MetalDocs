@@ -148,12 +148,21 @@ export interface DocumentListItem {
 export interface SearchDocumentItem extends DocumentListItem {
 }
 
+export type RendererPin = {
+  renderer_version: string;
+  layout_ir_hash: string;
+  template_key: string;
+  template_version: number;
+  pinned_at?: string; // ISO timestamp
+};
+
 export interface VersionListItem {
   documentId: string;
   version: number;
   contentHash: string;
   changeSummary: string;
   createdAt: string;
+  renderer_pin?: RendererPin | null;
 }
 
 export interface VersionDiffResponse {

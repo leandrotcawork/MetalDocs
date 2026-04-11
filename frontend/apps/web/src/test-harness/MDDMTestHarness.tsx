@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { MDDMEditor } from "../features/documents/mddm-editor/MDDMEditor";
 import { mddmToBlockNote, type MDDMEnvelope } from "../features/documents/mddm-editor/adapter";
 import { exportDocx } from "../features/documents/mddm-editor/engine/export";
-import { defaultLayoutTokens } from "../features/documents/mddm-editor/engine/layout-ir";
 import { PRINT_STYLESHEET, wrapInPrintDocument } from "../features/documents/mddm-editor/engine/print-stylesheet";
 
 // Dev-only: loads a golden fixture by name and exposes export APIs to Playwright.
@@ -60,7 +59,7 @@ export function MDDMTestHarness() {
 
   useEffect(() => {
     if (!envelope) return;
-    (window as any).__mddmExportDocx = () => exportDocx(envelope, defaultLayoutTokens);
+    (window as any).__mddmExportDocx = () => exportDocx(envelope, { rendererPin: null });
     (window as any).__mddmRenderPdfDirectlyViaGotenberg = renderPdfDirectlyViaGotenberg;
     (window as any).__mddmHarnessReady = true;
   }, [envelope]);

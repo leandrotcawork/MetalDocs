@@ -5,7 +5,7 @@ import * as wrapModule from "../wrap-print-document";
 
 function mockFetchOk(pdfBytes: Uint8Array): ReturnType<typeof vi.fn> {
   const spy = vi.fn().mockResolvedValue(
-    new Response(pdfBytes, {
+    new Response(pdfBytes.buffer as ArrayBuffer, {
       status: 200,
       headers: { "Content-Type": "application/pdf" },
     }),

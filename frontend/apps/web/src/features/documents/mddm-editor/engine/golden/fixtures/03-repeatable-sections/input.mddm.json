@@ -1,0 +1,45 @@
+{
+  "mddm_version": 1,
+  "template_ref": null,
+  "blocks": [
+    {
+      "id": "00000000-0000-4000-8000-000000000020",
+      "type": "section",
+      "props": { "title": "3. Procedimentos", "color": "red" },
+      "children": []
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000021",
+      "type": "repeatable",
+      "props": { "label": "Etapas", "itemPrefix": "Etapa" },
+      "children": [
+        {
+          "id": "00000000-0000-4000-8000-000000000022",
+          "type": "repeatableItem",
+          "props": { "title": "Etapa 1" },
+          "children": [
+            {
+              "id": "00000000-0000-4000-8000-000000000023",
+              "type": "paragraph",
+              "props": {},
+              "children": [{ "type": "text", "text": "Inspecionar a peça antes de iniciar." }]
+            }
+          ]
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000024",
+          "type": "repeatableItem",
+          "props": { "title": "Etapa 2" },
+          "children": [
+            {
+              "id": "00000000-0000-4000-8000-000000000025",
+              "type": "paragraph",
+              "props": {},
+              "children": [{ "type": "text", "text": "Aplicar o torque conforme tabela." }]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

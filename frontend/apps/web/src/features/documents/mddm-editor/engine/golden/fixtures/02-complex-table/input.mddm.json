@@ -1,0 +1,50 @@
+{
+  "mddm_version": 1,
+  "template_ref": null,
+  "blocks": [
+    {
+      "id": "00000000-0000-4000-8000-000000000010",
+      "type": "section",
+      "props": { "title": "2. Materiais", "color": "red" },
+      "children": []
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000011",
+      "type": "dataTable",
+      "props": {
+        "label": "Lista de Materiais",
+        "columns": [
+          { "key": "item",  "label": "Item" },
+          { "key": "qty",   "label": "Quantidade" },
+          { "key": "valor", "label": "Valor Unitário" }
+        ],
+        "locked": true,
+        "minRows": 0,
+        "maxRows": 500,
+        "density": "normal"
+      },
+      "children": [
+        {
+          "id": "00000000-0000-4000-8000-000000000012",
+          "type": "dataTableRow",
+          "props": {},
+          "children": [
+            { "id": "00000000-0000-4000-8000-000000000013", "type": "dataTableCell", "props": { "columnKey": "item" }, "children": [{ "type": "text", "text": "Parafuso M8" }] },
+            { "id": "00000000-0000-4000-8000-000000000014", "type": "dataTableCell", "props": { "columnKey": "qty" }, "children": [{ "type": "text", "text": "100" }] },
+            { "id": "00000000-0000-4000-8000-000000000015", "type": "dataTableCell", "props": { "columnKey": "valor" }, "children": [{ "type": "text", "text": "R$ 5,00" }] }
+          ]
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000016",
+          "type": "dataTableRow",
+          "props": {},
+          "children": [
+            { "id": "00000000-0000-4000-8000-000000000017", "type": "dataTableCell", "props": { "columnKey": "item" }, "children": [{ "type": "text", "text": "Porca M8" }] },
+            { "id": "00000000-0000-4000-8000-000000000018", "type": "dataTableCell", "props": { "columnKey": "qty" }, "children": [{ "type": "text", "text": "200" }] },
+            { "id": "00000000-0000-4000-8000-000000000019", "type": "dataTableCell", "props": { "columnKey": "valor" }, "children": [{ "type": "text", "text": "R$ 2,50" }] }
+          ]
+        }
+      ]
+    }
+  ]
+}

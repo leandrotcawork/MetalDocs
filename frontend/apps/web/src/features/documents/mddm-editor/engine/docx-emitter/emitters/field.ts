@@ -77,7 +77,7 @@ export function emitField(block: MDDMBlock, tokens: LayoutTokens): Table[] {
   const rowOptions = {
     height: {
       value: mmToTwip(rule.minHeightMm),
-      rule: HeightRule.AT_LEAST,
+      rule: HeightRule.ATLEAST,
     },
     children: [labelCell, valueCell],
   } as const;

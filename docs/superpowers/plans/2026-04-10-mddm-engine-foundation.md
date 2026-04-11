@@ -2882,10 +2882,12 @@ git commit -m "feat(mddm-engine): register toExternalHTML on Section block"
 **Files:**
 - Modify: `frontend/apps/web/src/features/documents/mddm-editor/blocks/Field.tsx`
 
+**Note on `contentRef`:** `Field` is declared with `content: "inline"` (verified via `grep -n 'content:' frontend/apps/web/src/features/documents/mddm-editor/blocks/Field.tsx`), which means BlockNote's custom-block API provides a `contentRef` callback where inline text content is mounted. The callback expects a DOM node, so pass it as an inline callback-ref to a container element — NOT via `React.Ref` cast.
+
 - [ ] **Step 1: Inspect current Field.tsx**
 
 Run: `cat frontend/apps/web/src/features/documents/mddm-editor/blocks/Field.tsx | head -50`
-Expected: Shows `createReactBlockSpec` call.
+Expected: Shows `createReactBlockSpec` call with `content: "inline"`.
 
 - [ ] **Step 2: Add toExternalHTML to Field block spec**
 
@@ -2904,12 +2906,12 @@ toExternalHTML: ({ block, contentRef }) => (
     label={(block.props as { label?: string }).label ?? ""}
     tokens={defaultLayoutTokens}
   >
-    <span ref={contentRef as unknown as React.Ref<HTMLSpanElement>} />
+    <span ref={(el: HTMLSpanElement | null) => contentRef(el)} />
   </FieldExternalHTML>
 ),
 ```
 
-(The `contentRef` pattern mirrors BlockNote's documented inline-content block API; BlockNote replaces the referenced element with the serialized inline content.)
+The inline arrow keeps the contract explicit: BlockNote calls `contentRef(node)` with the mounted DOM element and replaces it with the serialized inline content.
 
 - [ ] **Step 3: Verify the file compiles**
 
@@ -2923,48 +2925,57 @@ git add frontend/apps/web/src/features/documents/mddm-editor/blocks/Field.tsx
 git commit -m "feat(mddm-engine): register toExternalHTML on Field block"
 ```
 
-### Task 29: Register toExternalHTML on the FieldGroup block spec
+### Task 29: FieldGroup — fall back to render() for external HTML
+
+**Files:** (no changes)
+
+**Rationale:** `FieldGroup` is declared with `content: "none"` in `frontend/apps/web/src/features/documents/mddm-editor/blocks/FieldGroup.tsx`. BlockNote's `contentRef` callback is NOT provided to `content: "none"` blocks — only inline-content blocks get it. We could register a `toExternalHTML` that just renders an empty wrapper, but the child `field` blocks inside the group would then be serialized by BlockNote as siblings of the wrapper, breaking the grid layout.
+
+**Decision:** Do NOT register a custom `toExternalHTML` for `FieldGroup`. Per BlockNote's docs (*"If undefined, BlockNote falls back to the standard render function"*), `blocksToFullHTML` will use the `render()` function defined in `FieldGroup.tsx` to serialize the block, which already contains child blocks nested correctly via BlockNote's internal children-container mechanism. The print stylesheet in Plan 1 Task 30 hides editor-only chrome (side menu, drag handle) via `.bn-side-menu`, `.bn-drag-handle` rules, so the editor-render HTML is acceptable for PDF output.
+
+- [ ] **Step 1: Verify no action is required**
+
+Run: `grep -n "content:" frontend/apps/web/src/features/documents/mddm-editor/blocks/FieldGroup.tsx`
+Expected: Confirms `content: "none"`.
+
+- [ ] **Step 2: Add the Plan 1 golden fixture to verify render fallback output**
+
+The existing Plan 1 golden runner at Task 41 already exercises the full envelope (section + fieldGroup + field + paragraph) through `mddmToDocx` AND BlockNote's external HTML export via `blocksToFullHTML` (when Task 38's PDF pipeline is smoke-tested in Task 50). If render fallback produces visibly wrong markup, the smoke test catches it.
+
+No code changes, no commit, no new task. **Task 29 is intentionally a documentation-only placeholder** so the task numbering in the plan stays stable for downstream tools.
+
+### Task 29b: Section — remove contentRef from toExternalHTML
 
 **Files:**
-- Modify: `frontend/apps/web/src/features/documents/mddm-editor/blocks/FieldGroup.tsx`
+- Modify: `frontend/apps/web/src/features/documents/mddm-editor/blocks/Section.tsx` (if Task 27 was already executed with the older contentRef pattern)
 
-- [ ] **Step 1: Inspect current FieldGroup.tsx**
+**Rationale:** `Section` is also `content: "none"`, so it doesn't receive a `contentRef`. Task 27's `SectionExternalHTML` doesn't actually USE any children — it only renders `block.props.title` — so the hook is legitimately safe to register. But the original Task 27 snippet is already correct on this front (it passes no ref). This task is a no-op placeholder unless the earlier code was modified.
 
-Run: `cat frontend/apps/web/src/features/documents/mddm-editor/blocks/FieldGroup.tsx | head -50`
-Expected: Shows current block spec.
+- [ ] **Step 1: Confirm Task 27's code registered does not reference contentRef**
 
-- [ ] **Step 2: Add toExternalHTML to FieldGroup block spec**
-
-In `frontend/apps/web/src/features/documents/mddm-editor/blocks/FieldGroup.tsx`, add imports:
+Open `frontend/apps/web/src/features/documents/mddm-editor/blocks/Section.tsx` and verify the `toExternalHTML` hook body matches:
 
 ```tsx
-import { FieldGroupExternalHTML } from "../engine/external-html";
-import { defaultLayoutTokens } from "../engine/layout-ir";
+toExternalHTML: ({ block }) => (
+  <SectionExternalHTML
+    title={(block.props as { title?: string }).title ?? ""}
+    tokens={defaultLayoutTokens}
+  />
+),
 ```
 
-Add to the `blockImplementation`:
+If the hook references `contentRef`, delete that reference. `Section` has no children, no inline content, and only renders the title from props.
 
-```tsx
-toExternalHTML: ({ block, contentRef }) => {
-  const columns = (block.props as { columns?: 1 | 2 }).columns === 1 ? 1 : 2;
-  return (
-    <FieldGroupExternalHTML columns={columns} tokens={defaultLayoutTokens}>
-      <div ref={contentRef as unknown as React.Ref<HTMLDivElement>} />
-    </FieldGroupExternalHTML>
-  );
-},
-```
+- [ ] **Step 2: Verify compilation**
 
-- [ ] **Step 3: Verify the file compiles**
-
-Run: `cd frontend/apps/web && npx tsc --noEmit 2>&1 | grep FieldGroup.tsx | head -5`
+Run: `cd frontend/apps/web && npx tsc --noEmit 2>&1 | grep Section.tsx | head -5`
 Expected: No errors.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 3: Commit (only if changes were made)**
 
 ```bash
-git add frontend/apps/web/src/features/documents/mddm-editor/blocks/FieldGroup.tsx
-git commit -m "feat(mddm-engine): register toExternalHTML on FieldGroup block"
+git add frontend/apps/web/src/features/documents/mddm-editor/blocks/Section.tsx
+git commit -m "fix(mddm-engine): Section toExternalHTML uses title prop only (content: none block)"
 ```
 
 ---

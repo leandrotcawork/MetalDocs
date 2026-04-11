@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { exportDocumentDocx, getDocumentBrowserEditorBundle, saveDocumentBrowserContent } from "../../../api/documents";
-import type { DocumentBrowserEditorBundleResponse, DocumentListItem } from "../../../lib.types";
+import type { DocumentBrowserEditorBundleResponse, DocumentListItem, RendererPin } from "../../../lib.types";
 import { formatDocumentDisplayName } from "../../shared/documentDisplay";
 import { normalizeDocumentProfileCode } from "../../shared/documentProfile";
 import { featureFlags } from "../../featureFlags";
@@ -152,6 +152,11 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
   const latestVersion = bundle && bundle.versions.length > 0 ? bundle.versions[bundle.versions.length - 1] : null;
   const hasConflict = errorCode === "conflict";
 
+  const rendererPin = useMemo(() => {
+    if (!latestVersion) return null;
+    return (latestVersion.renderer_pin as RendererPin | null | undefined) ?? null;
+  }, [latestVersion]);
+
   async function handleSave(): Promise<boolean> {
     if (!bundle || isSaving || viewState !== "ready" || !document.documentId.trim()) {
       return false;
@@ -236,7 +241,7 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
         const envelope: MDDMEnvelope = body
           ? (JSON.parse(body) as MDDMEnvelope)
           : { mddm_version: 1, template_ref: null, blocks: [] };
-        const blob = await mddmExportDocx(envelope, { rendererPin: null });
+        const blob = await mddmExportDocx(envelope, { rendererPin });
         triggerBlobDownload(blob, `${safeCode}.docx`);
       } else {
         const blob = await exportDocumentDocx(document.documentId);

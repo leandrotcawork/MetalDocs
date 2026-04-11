@@ -14,9 +14,9 @@ import { mmToTwip, ptToHalfPt } from "../../helpers/units";
 import type { MDDMBlock } from "../../../adapter";
 
 function hexToFill(hex: string): string {
-  // docx.js accepts hex strings without the leading "#". We keep the original
-  // casing so downstream tests and styling stay byte-identical to the token.
-  return hex.replace(/^#/, "");
+  // docx.js accepts hex strings without the leading "#". Uppercase for OOXML
+  // canonical form and deterministic golden-fixture diffs.
+  return hex.replace(/^#/, "").toUpperCase();
 }
 
 function attachOptions<T, O extends object>(instance: T, options: O): T {
@@ -32,7 +32,7 @@ export function emitSection(block: MDDMBlock, tokens: LayoutTokens): Table[] {
   const textRunOptions = {
     text: title,
     bold: rule.headerFontWeight === "bold",
-    color: rule.headerFontColor.replace(/^#/, ""),
+    color: rule.headerFontColor.replace(/^#/, "").toUpperCase(),
     size: ptToHalfPt(rule.headerFontSizePt),
     font: tokens.typography.exportFont,
   } as const;

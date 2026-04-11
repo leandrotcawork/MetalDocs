@@ -18,6 +18,7 @@ import type {
   DocumentTemplateAssignmentItem,
   DocumentTemplateItem,
   DocumentTemplateSnapshotItem,
+  RendererPin,
   SearchDocumentItem,
   VersionDiffResponse,
   VersionListItem,
@@ -108,13 +109,14 @@ function normalizeSearchDocument(value: SearchDocumentItem): SearchDocumentItem 
   };
 }
 
-function normalizeVersionItem(value: VersionListItem): VersionListItem {
+export function normalizeVersionItem(value: VersionListItem): VersionListItem {
   return {
     documentId: value?.documentId ?? "",
     version: Number(value?.version ?? 0),
     contentHash: value?.contentHash ?? "",
     changeSummary: value?.changeSummary ?? "",
     createdAt: value?.createdAt ?? "",
+    renderer_pin: (value as unknown as { renderer_pin?: RendererPin | null })?.renderer_pin ?? null,
   };
 }
 

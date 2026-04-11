@@ -1,8 +1,11 @@
 package gotenberg
 
 import (
+	"bytes"
 	"context"
 	"io"
+	"mime"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -66,6 +69,70 @@ func TestConvertDocxToPDFPostsMultipartDOCX(t *testing.T) {
 	}
 	if string(pdfContent) != "pdf-bytes" {
 		t.Fatalf("expected pdf response %q, got %q", "pdf-bytes", string(pdfContent))
+	}
+}
+
+func TestConvertHTMLToPDF_SendsMultipartToChromiumRoute(t *testing.T) {
+	var capturedPath string
+	var capturedBody []byte
+	var capturedContentType string
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		capturedPath = r.URL.Path
+		capturedContentType = r.Header.Get("Content-Type")
+		body, _ := io.ReadAll(r.Body)
+		capturedBody = body
+		w.Header().Set("Content-Type", "application/pdf")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("%PDF-1.4 fake"))
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL)
+
+	pdf, err := client.ConvertHTMLToPDF(
+		context.Background(),
+		[]byte("<html><body>Hi</body></html>"),
+		[]byte("body { color: black; }"),
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !bytes.HasPrefix(pdf, []byte("%PDF")) {
+		t.Fatalf("expected PDF magic bytes, got %q", string(pdf[:8]))
+	}
+	if capturedPath != "/forms/chromium/convert/html" {
+		t.Fatalf("expected chromium route, got %q", capturedPath)
+	}
+	if !strings.HasPrefix(capturedContentType, "multipart/form-data") {
+		t.Fatalf("expected multipart request, got %q", capturedContentType)
+	}
+	if !bytes.Contains(capturedBody, []byte("index.html")) {
+		t.Fatalf("expected body to include index.html part")
+	}
+	if !bytes.Contains(capturedBody, []byte("style.css")) {
+		t.Fatalf("expected body to include style.css part")
+	}
+
+	_, params, err := mime.ParseMediaType(capturedContentType)
+	if err != nil {
+		t.Fatalf("parse media type: %v", err)
+	}
+	mr := multipart.NewReader(bytes.NewReader(capturedBody), params["boundary"])
+	seen := map[string]bool{}
+	for {
+		part, err := mr.NextPart()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatalf("next part: %v", err)
+		}
+		seen[part.FileName()] = true
+	}
+	if !seen["index.html"] || !seen["style.css"] {
+		t.Fatalf("missing parts; saw %v", seen)
 	}
 }
 

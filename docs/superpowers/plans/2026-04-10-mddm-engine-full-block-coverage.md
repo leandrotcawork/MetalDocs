@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build out the remaining DOCX emitters (5 standard BlockNote blocks + 6 MDDM custom blocks) and `toExternalHTML` hooks (6 MDDM custom blocks), wire asset resolution through both export paths, expand the golden fixture corpus to 6 reference documents, and add Playwright visual parity tests — bringing the MDDM engine to full block coverage and parity validation.
+**Goal:** Build out the remaining 11 DOCX emitters (5 standard BlockNote blocks + 6 MDDM custom blocks), wire asset resolution through both export paths, expand the golden fixture corpus to 6 reference documents, and add Playwright visual parity tests — bringing the MDDM engine to full block coverage and parity validation. Plan 2 adds **one** custom `toExternalHTML` hook (for `DataTableCell`, the only new inline-content block); the other five MDDM custom blocks (`Repeatable`, `RepeatableItem`, `RichBlock`, `DataTable`, `DataTableRow`) are all declared with `content: "none"` and rely on BlockNote's `render()` fallback for external HTML serialization, validated by the gating test in Task 25b.
 
-**Architecture:** Plan 2 follows the patterns established in Plan 1 verbatim. New emitters live in `engine/docx-emitter/emitters/`, new HTML hooks in `engine/external-html/`, and the main `mddmToDocx` registry plus the completeness-gate `BLOCK_REGISTRY` are updated in lockstep. Asset resolution is wired by walking the canonicalized envelope before emission to build an `assetMap`, which the image emitter and PDF HTML rewriter consume. Visual parity uses Playwright + pixelmatch against rasterized PDFs from the new `/documents/{id}/render/pdf` endpoint.
+**Architecture:** Plan 2 follows the patterns established in Plan 1 verbatim for DOCX emitters. New emitters live in `engine/docx-emitter/emitters/`; the main `mddmToDocx` registry and the completeness-gate `BLOCK_REGISTRY` are updated in lockstep. Asset resolution is wired by walking the canonicalized envelope before emission to build an `assetMap`, which the image emitter and PDF HTML rewriter consume. Visual parity uses Playwright with `pdf-img-convert` + `pixelmatch` against PDFs produced by a dev-only Vite proxy that posts directly to Gotenberg's Chromium route, bypassing the auth-protected backend endpoint so tests validate rendering without seeding real documents.
 
-**Tech Stack:** TypeScript 5.6, React 18, BlockNote 0.47.3 (core only), docx.js 9.x, Vitest 4.1, Playwright 1.58, pixelmatch, pdf.js (rasterization), Gotenberg 8.x (Chromium route).
+**Tech Stack:** TypeScript 5.6, React 18, BlockNote 0.47.3 (core only), `@blocknote/server-util` (for the Task 25b render-fallback test), docx.js 9.x, Vitest 4.1, Playwright 1.58, `pixelmatch`, `pngjs`, `pdf-img-convert` (Node PDF→PNG rasterization), Gotenberg 8.x (Chromium route via dev-only Vite proxy).
 
 **Spec:** `docs/superpowers/specs/2026-04-10-mddm-unified-document-engine-design.md`
 
@@ -48,19 +48,10 @@ frontend/apps/web/src/features/documents/mddm-editor/engine/
 │       ├── repeatable.test.ts              # NEW
 │       └── rich-block.test.ts              # NEW
 ├── external-html/
-│   ├── data-table-cell-html.tsx            # NEW
-│   ├── data-table-row-html.tsx             # NEW
-│   ├── data-table-html.tsx                 # NEW
-│   ├── repeatable-item-html.tsx            # NEW
-│   ├── repeatable-html.tsx                 # NEW
-│   ├── rich-block-html.tsx                 # NEW
+│   ├── data-table-cell-html.tsx            # NEW (only Plan 2 inline-content block)
 │   └── __tests__/
 │       ├── data-table-cell-html.test.tsx   # NEW
-│       ├── data-table-row-html.test.tsx    # NEW
-│       ├── data-table-html.test.tsx        # NEW
-│       ├── repeatable-item-html.test.tsx   # NEW
-│       ├── repeatable-html.test.tsx        # NEW
-│       └── rich-block-html.test.tsx        # NEW
+│       └── render-fallback.test.tsx        # NEW (Task 25b gating test)
 ├── export/
 │   ├── inline-asset-rewriter.ts            # NEW: rewrite img src → data: URI
 │   └── __tests__/
@@ -112,21 +103,22 @@ frontend/apps/web/src/test-harness/
 ### Modified files
 
 ```
-frontend/apps/web/package.json                                          # MODIFY: add pixelmatch, pdfjs-dist
+frontend/apps/web/package.json                                          # MODIFY: add pixelmatch, pngjs, pdf-img-convert, @blocknote/server-util, jszip (if not already)
+frontend/apps/web/vite.config.ts                                        # MODIFY: add dev-only /__gotenberg proxy (Task 38)
+frontend/apps/web/src/App.tsx                                           # MODIFY: add /test-harness/mddm escape hatch (Task 38)
+frontend/apps/web/src/features/documents/mddm-editor/MDDMEditor.tsx     # MODIFY: dev-only window.__mddmEditor exposure (Task 38)
+frontend/apps/web/src/features/documents/mddm-editor/schema.ts          # MODIFY: export mddmSchemaBlockSpecs for shared schema use (Task 25b)
 frontend/apps/web/src/features/documents/mddm-editor/engine/docx-emitter/emitter.ts                # MODIFY: register 11 new emitters; consume assetMap
 frontend/apps/web/src/features/documents/mddm-editor/engine/docx-emitter/index.ts                  # MODIFY: re-export new emitters
-frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/index.ts                 # MODIFY: re-export new HTML components
+frontend/apps/web/src/features/documents/mddm-editor/engine/external-html/index.ts                 # MODIFY: add only DataTableCellExternalHTML export (Task 25)
 frontend/apps/web/src/features/documents/mddm-editor/engine/export/export-docx.ts                  # MODIFY: collect assets and pass assetMap to emitter
 frontend/apps/web/src/features/documents/mddm-editor/engine/export/export-pdf.ts                   # MODIFY: rewrite img src to data: URIs before sending HTML
-frontend/apps/web/src/features/documents/mddm-editor/engine/completeness-gate/block-registry.ts    # MODIFY: mark 11 blocks as fully supported
-frontend/apps/web/src/features/documents/mddm-editor/blocks/Repeatable.tsx                         # MODIFY: register toExternalHTML
-frontend/apps/web/src/features/documents/mddm-editor/blocks/RepeatableItem.tsx                     # MODIFY: register toExternalHTML
-frontend/apps/web/src/features/documents/mddm-editor/blocks/RichBlock.tsx                          # MODIFY: register toExternalHTML
-frontend/apps/web/src/features/documents/mddm-editor/blocks/DataTable.tsx                          # MODIFY: register toExternalHTML
-frontend/apps/web/src/features/documents/mddm-editor/blocks/DataTableRow.tsx                       # MODIFY: register toExternalHTML
-frontend/apps/web/src/features/documents/mddm-editor/blocks/DataTableCell.tsx                      # MODIFY: register toExternalHTML
+frontend/apps/web/src/features/documents/mddm-editor/engine/completeness-gate/block-registry.ts    # MODIFY: mark all 16 blocks as fully supported (Task 18)
+frontend/apps/web/src/features/documents/mddm-editor/blocks/DataTableCell.tsx                      # MODIFY: register toExternalHTML (Task 31) — ONLY Plan 2 block-spec modification
 frontend/apps/web/playwright.config.ts                                                              # MODIFY (or CREATE): add visual parity test directory
 ```
+
+**Note:** `Repeatable.tsx`, `RepeatableItem.tsx`, `RichBlock.tsx`, `DataTable.tsx`, `DataTableRow.tsx` are **NOT modified by Plan 2**. These blocks all have `content: "none"` and cannot receive a `contentRef`; Plan 2 relies on their existing `render()` functions as the external-HTML fallback. Task 25b is a gating test that verifies `blocksToFullHTML` serializes them correctly.
 
 ---
 

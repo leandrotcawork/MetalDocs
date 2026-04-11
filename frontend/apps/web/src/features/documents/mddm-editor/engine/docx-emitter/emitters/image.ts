@@ -11,16 +11,21 @@ export class MissingAssetError extends Error {
   }
 }
 
+export class UnsupportedMimeTypeError extends Error {
+  constructor(public readonly mimeType: string) {
+    super(`MIME type "${mimeType}" is not supported for DOCX image export. Convert to PNG, JPEG, or GIF first.`);
+    this.name = "UnsupportedMimeTypeError";
+  }
+}
+
 const DEFAULT_IMAGE_WIDTH_MM = 80;
 const DEFAULT_IMAGE_HEIGHT_MM = 60;
 
-// webp is not natively supported by docx.js ImageRun; callers should convert
-// to PNG before adding to the asset map, or catch this error gracefully.
 function toDocxImageType(mimeType: AllowedMimeType): "jpg" | "png" | "gif" {
   if (mimeType === "image/jpeg") return "jpg";
   if (mimeType === "image/png") return "png";
   if (mimeType === "image/gif") return "gif";
-  throw new MissingAssetError(`Unsupported MIME type for DOCX export: ${mimeType}`);
+  throw new UnsupportedMimeTypeError(mimeType);
 }
 
 export function emitImage(

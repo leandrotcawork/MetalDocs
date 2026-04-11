@@ -37,16 +37,30 @@ export type EmitContext = {
 
 type Emitter = (block: MDDMBlock, ctx: EmitContext) => unknown[];
 
-function makeRegistry(ctx: EmitContext): Record<string, Emitter> {
+// Single source of truth for registered block types. TypeScript enforces that
+// makeRegistry's Record uses exactly these keys — adding a type here without
+// wiring the emitter (or vice-versa) is a compile error.
+const KNOWN_BLOCK_TYPES = [
+  "paragraph", "heading", "section", "field", "fieldGroup",
+  "bulletListItem", "numberedListItem", "image", "quote", "divider",
+  "dataTable", "dataTableRow", "dataTableCell",
+  "repeatable", "repeatableItem", "richBlock",
+] as const;
+
+type KnownBlockType = typeof KNOWN_BLOCK_TYPES[number];
+
+export const REGISTERED_EMITTER_TYPES: readonly string[] = KNOWN_BLOCK_TYPES;
+
+function makeRegistry(ctx: EmitContext): Record<KnownBlockType, Emitter> {
   // renderChild is captured by closure so structural emitters can recurse
   // through the registry without an import cycle.
   const renderChild = (child: MDDMBlock): unknown[] => {
-    const emit = registry[child.type];
+    const emit = registry[child.type as KnownBlockType];
     if (!emit) throw new MissingEmitterError(child.type);
     return emit(child, ctx);
   };
 
-  const registry: Record<string, Emitter> = {
+  const registry: Record<KnownBlockType, Emitter> = {
     paragraph: (b, c) => emitParagraph(b, c.tokens),
     heading:   (b, c) => emitHeading(b, c.tokens),
     section:   (b, c) => emitSection(b, c.tokens),
@@ -70,13 +84,6 @@ function makeRegistry(ctx: EmitContext): Record<string, Emitter> {
   return registry;
 }
 
-export const REGISTERED_EMITTER_TYPES: readonly string[] = [
-  "paragraph", "heading", "section", "field", "fieldGroup",
-  "bulletListItem", "numberedListItem", "image", "quote", "divider",
-  "dataTable", "dataTableRow", "dataTableCell",
-  "repeatable", "repeatableItem", "richBlock",
-];
-
 export async function mddmToDocx(
   envelope: MDDMEnvelope,
   tokens: LayoutTokens,
@@ -89,7 +96,7 @@ export async function mddmToDocx(
   const children: unknown[] = [];
 
   for (const block of blocks) {
-    const emit = registry[block.type];
+    const emit = (registry as Record<string, Emitter | undefined>)[block.type];
     if (!emit) {
       throw new MissingEmitterError(block.type);
     }

@@ -9,7 +9,7 @@ export { emitField } from "./emitters/field";
 export { emitFieldGroup } from "./emitters/field-group";
 export { emitBulletListItem } from "./emitters/bullet-list-item";
 export { emitNumberedListItem, MDDM_NUMBERING_REF } from "./emitters/numbered-list-item";
-export { emitImage, MissingAssetError } from "./emitters/image";
+export { emitImage, MissingAssetError, UnsupportedMimeTypeError } from "./emitters/image";
 export { emitQuote } from "./emitters/quote";
 export { emitDivider } from "./emitters/divider";
 export { emitDataTable } from "./emitters/data-table";

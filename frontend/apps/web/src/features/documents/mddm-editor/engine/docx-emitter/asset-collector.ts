@@ -30,7 +30,7 @@ function walkBlock(block: MDDMBlock, urls: Set<string>): void {
  */
 export function collectImageUrls(envelope: MDDMEnvelope): string[] {
   const urls = new Set<string>();
-  for (const block of envelope.blocks ?? []) {
+  for (const block of envelope.blocks) {
     walkBlock(block, urls);
   }
   return Array.from(urls);

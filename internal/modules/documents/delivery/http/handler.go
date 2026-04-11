@@ -25,7 +25,6 @@ type Handler struct {
 	loadHandler              *LoadHandler
 	submitForApprovalHandler *SubmitForApprovalHandler
 	renderPDF                *RenderPDFHandler
-	releaseHandler           *ReleaseHandler
 }
 
 type CreateDocumentRequest struct {
@@ -458,13 +457,6 @@ func (h *Handler) WithMDDMHandlers(load *application.LoadService, submit *applic
 	if submit != nil {
 		h.submitForApprovalHandler = NewSubmitForApprovalHandler(submit)
 	}
-	return h
-}
-
-// WithReleaseHandler wires the MDDM release handler.
-// releaseHandler may be nil; the route guard returns a structured error in that case.
-func (h *Handler) WithReleaseHandler(rh *ReleaseHandler) *Handler {
-	h.releaseHandler = rh
 	return h
 }
 
@@ -1543,14 +1535,6 @@ func (h *Handler) handleDocumentSubRoutes(w http.ResponseWriter, r *http.Request
 			return
 		}
 		h.submitForApprovalHandler.SubmitForApproval(w, r)
-		return
-	}
-	if len(parts) == 2 && strings.TrimSpace(parts[0]) != "" && parts[1] == "release" && r.Method == http.MethodPost {
-		if h.releaseHandler == nil {
-			writeAPIError(w, http.StatusServiceUnavailable, "SERVICE_UNAVAILABLE", "Release service not available", requestTraceID(r))
-			return
-		}
-		h.releaseHandler.Release(w, r)
 		return
 	}
 	if len(parts) == 2 && strings.TrimSpace(parts[0]) != "" && parts[1] == "template-assignment" && r.Method == http.MethodPut {

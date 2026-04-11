@@ -72,33 +72,16 @@ func main() {
 		WithGotenberg(deps.GotenbergClient).
 		WithApprovalReader(docapp.NewWorkflowApprovalAdapter(deps.WorkflowApprovals))
 
-	docsCfg := config.LoadDocumentsConfig()
-
 	var loadService *docapp.LoadService
 	var submitForApprovalService *docapp.SubmitForApprovalService
-	var releaseHandler *docdelivery.ReleaseHandler
 	if deps.MDDMRepo != nil {
 		loadService = docapp.NewLoadService(&mddmLoadRepoAdapter{repo: deps.MDDMRepo})
 		submitForApprovalService = docapp.NewSubmitForApprovalService(deps.MDDMRepo)
-	}
-	if deps.MDDMReleaseRepo != nil {
-		pinCapturer := docapp.NewRendererPinCapturer(docapp.RendererPinCapturerConfig{
-			CurrentRendererVersion: docsCfg.RendererVersion,
-			CurrentLayoutIRHash:    docsCfg.LayoutIRHash,
-			Repo:                   deps.DocumentsRepo,
-			Clock:                  time.Now,
-		})
-		releaseService := docapp.NewReleaseService(
-			deps.MDDMReleaseRepo,
-			newMDDMDocxRenderer(deps.DocgenClient),
-		).WithRendererPinCapturer(pinCapturer)
-		releaseHandler = docdelivery.NewReleaseHandler(nil).WithReleaseService(releaseService)
 	}
 	auditHandler := auditdelivery.NewHandler(auditService)
 	docHandler := docdelivery.NewHandler(docService).
 		WithAttachmentDownloads(security.NewAttachmentSigner(attachmentsCfg.DownloadSecret), time.Duration(attachmentsCfg.DownloadTTLSeconds)*time.Second).
 		WithMDDMHandlers(loadService, submitForApprovalService).
-		WithReleaseHandler(releaseHandler).
 		WithRenderPDF(deps.GotenbergClient)
 	searchService := searchapp.NewService(searchdocs.NewReader(deps.DocumentsRepo))
 	searchHandler := searchdelivery.NewHandler(searchService)

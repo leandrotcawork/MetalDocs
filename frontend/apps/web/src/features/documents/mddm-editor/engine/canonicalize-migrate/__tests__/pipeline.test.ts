@@ -47,3 +47,18 @@ describe("canonicalizeAndMigrate", () => {
     await expect(canonicalizeAndMigrate(envelope)).rejects.toBeInstanceOf(MigrationError);
   });
 });
+
+describe("canonicalizeAndMigrate with explicit target version", () => {
+  it("accepts an explicit target version matching CURRENT_MDDM_VERSION", async () => {
+    const envelope = makeEnvelope({ blocks: [] });
+    const result = await canonicalizeAndMigrate(envelope, { targetVersion: CURRENT_MDDM_VERSION });
+    expect(result.mddm_version).toBe(CURRENT_MDDM_VERSION);
+  });
+
+  it("errors when target version is higher than CURRENT_MDDM_VERSION", async () => {
+    const envelope = makeEnvelope({});
+    await expect(
+      canonicalizeAndMigrate(envelope, { targetVersion: CURRENT_MDDM_VERSION + 1 }),
+    ).rejects.toBeInstanceOf(MigrationError);
+  });
+});

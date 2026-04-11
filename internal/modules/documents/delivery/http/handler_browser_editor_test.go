@@ -440,3 +440,55 @@ func collectMDDMTextForTest(raw json.RawMessage, parts *[]string) {
 		collectMDDMTextForTest(child, parts)
 	}
 }
+
+func TestBrowserEditorBundle_IncludesRendererPinField(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, time.April, 11, 10, 0, 0, 0, time.UTC)
+	repo := documentmemory.NewRepository()
+	service := application.NewService(repo, nil, applicationFixedClock{now: now})
+	body := templateV2Body(t)
+	doc := seedBrowserHandlerDocument(t, ctx, repo, now, body, plainTextFromMDDMForTest(body))
+
+	// Attach a renderer pin to the seeded version (simulates DRAFT→RELEASED capture).
+	pin := &domain.RendererPin{
+		RendererVersion: "1.0.0",
+		LayoutIRHash:    "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+		TemplateKey:     "po-mddm-canvas",
+		TemplateVersion: 1,
+		PinnedAt:        now,
+	}
+	if err := repo.SetVersionRendererPin(ctx, doc.ID, 1, pin); err != nil {
+		t.Fatalf("set renderer pin: %v", err)
+	}
+
+	handler := NewHandler(service)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/documents/"+doc.ID+"/browser-editor-bundle", nil)
+	rec := httptest.NewRecorder()
+	handler.handleDocumentBrowserEditorBundle(rec, req, doc.ID)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body = %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var resp DocumentBrowserEditorBundleResponse
+	decodeJSONBody(t, rec.Body.Bytes(), &resp)
+
+	if len(resp.Versions) != 1 {
+		t.Fatalf("versions len = %d, want 1", len(resp.Versions))
+	}
+	if resp.Versions[0].RendererPin == nil {
+		t.Fatalf("versions[0].renderer_pin = nil, want non-nil (pin was set)")
+	}
+	if resp.Versions[0].RendererPin.RendererVersion != pin.RendererVersion {
+		t.Fatalf("renderer_pin.renderer_version = %q, want %q", resp.Versions[0].RendererPin.RendererVersion, pin.RendererVersion)
+	}
+	if resp.Versions[0].RendererPin.LayoutIRHash != pin.LayoutIRHash {
+		t.Fatalf("renderer_pin.layout_ir_hash = %q, want %q", resp.Versions[0].RendererPin.LayoutIRHash, pin.LayoutIRHash)
+	}
+	if resp.Versions[0].RendererPin.TemplateKey != pin.TemplateKey {
+		t.Fatalf("renderer_pin.template_key = %q, want %q", resp.Versions[0].RendererPin.TemplateKey, pin.TemplateKey)
+	}
+	if resp.Versions[0].RendererPin.TemplateVersion != pin.TemplateVersion {
+		t.Fatalf("renderer_pin.template_version = %d, want %d", resp.Versions[0].RendererPin.TemplateVersion, pin.TemplateVersion)
+	}
+}

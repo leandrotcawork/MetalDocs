@@ -91,11 +91,12 @@ type DocumentCreatedResponse struct {
 }
 
 type VersionResponse struct {
-	DocumentID    string `json:"documentId"`
-	Version       int    `json:"version"`
-	ContentHash   string `json:"contentHash"`
-	ChangeSummary string `json:"changeSummary"`
-	CreatedAt     string `json:"createdAt"`
+	DocumentID    string              `json:"documentId"`
+	Version       int                 `json:"version"`
+	ContentHash   string              `json:"contentHash"`
+	ChangeSummary string              `json:"changeSummary"`
+	CreatedAt     string              `json:"createdAt"`
+	RendererPin   *domain.RendererPin `json:"renderer_pin"` // nil → marshals to null for draft versions
 }
 
 type DocumentTemplateSnapshotResponse struct {
@@ -1639,6 +1640,7 @@ func (h *Handler) handleDocumentEditorBundle(w http.ResponseWriter, r *http.Requ
 			ContentHash:   item.ContentHash,
 			ChangeSummary: item.ChangeSummary,
 			CreatedAt:     item.CreatedAt.UTC().Format(time.RFC3339),
+			RendererPin:   item.RendererPin,
 		})
 	}
 
@@ -1736,6 +1738,7 @@ func (h *Handler) handleDocumentBrowserEditorBundle(w http.ResponseWriter, r *ht
 			ContentHash:   item.ContentHash,
 			ChangeSummary: item.ChangeSummary,
 			CreatedAt:     item.CreatedAt.UTC().Format(time.RFC3339),
+			RendererPin:   item.RendererPin,
 		})
 	}
 
@@ -1813,6 +1816,7 @@ func (h *Handler) handleListVersions(w http.ResponseWriter, r *http.Request, doc
 			ContentHash:   v.ContentHash,
 			ChangeSummary: v.ChangeSummary,
 			CreatedAt:     v.CreatedAt.Format(time.RFC3339),
+			RendererPin:   v.RendererPin,
 		})
 	}
 
@@ -1945,6 +1949,7 @@ func (h *Handler) handleAddVersion(w http.ResponseWriter, r *http.Request, docum
 		ContentHash:   version.ContentHash,
 		ChangeSummary: version.ChangeSummary,
 		CreatedAt:     version.CreatedAt.Format(time.RFC3339),
+		RendererPin:   version.RendererPin,
 	})
 }
 

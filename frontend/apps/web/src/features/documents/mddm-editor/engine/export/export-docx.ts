@@ -14,8 +14,6 @@ export type ExportDocxOptions = {
   assetResolver?: AssetResolver;
 };
 
-const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-
 export async function exportDocx(
   envelope: MDDMEnvelope,
   tokens?: LayoutTokens,
@@ -50,9 +48,6 @@ export async function exportDocx(
     assetMap.set(url, asset);
   }
 
-  const blob = await mddmToDocx(canonical, resolvedTokens, assetMap);
-  // Ensure the returned Blob always carries the correct MIME type.
-  if (blob.type === DOCX_MIME) return blob;
-  const bytes = await blob.arrayBuffer();
-  return new Blob([bytes], { type: DOCX_MIME });
+  // mddmToDocx guarantees the DOCX MIME type on the returned blob.
+  return mddmToDocx(canonical, resolvedTokens, assetMap);
 }

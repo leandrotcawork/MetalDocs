@@ -22,10 +22,10 @@ const PDF_MIME = "application/pdf";
 /** Extract every <img src> URL from the body HTML for asset resolution. */
 function extractImageUrls(html: string): string[] {
   const out = new Set<string>();
-  const re = /<img\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/gi;
+  const re = /<img\b[^>]*\bsrc\s*=\s*(["'])([^"']+)\1/gi;
   let m: RegExpExecArray | null;
   while ((m = re.exec(html)) !== null) {
-    const url = m[1];
+    const url = m[2];
     if (url) out.add(url);
   }
   return Array.from(out);

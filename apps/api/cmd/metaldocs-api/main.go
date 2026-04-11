@@ -27,6 +27,7 @@ import (
 	"metaldocs/internal/platform/authn"
 	"metaldocs/internal/platform/bootstrap"
 	"metaldocs/internal/platform/config"
+	"metaldocs/internal/platform/featureflags"
 	"metaldocs/internal/platform/observability"
 	"metaldocs/internal/platform/security"
 )
@@ -52,6 +53,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("invalid auth config: %v", err)
 	}
+	featureFlagsCfg := config.LoadFeatureFlagsConfig()
 
 	deps, err := bootstrap.BuildAPIDependencies(context.Background(), repoMode, attachmentsCfg)
 	if err != nil {
@@ -78,11 +80,16 @@ func main() {
 		loadService = docapp.NewLoadService(&mddmLoadRepoAdapter{repo: deps.MDDMRepo})
 		submitForApprovalService = docapp.NewSubmitForApprovalService(deps.MDDMRepo)
 	}
+	var shadowDiffHandler *docdelivery.ShadowDiffHandler
+	if deps.ShadowDiffRepo != nil {
+		shadowDiffHandler = docdelivery.NewShadowDiffHandler(deps.ShadowDiffRepo)
+	}
 	auditHandler := auditdelivery.NewHandler(auditService)
 	docHandler := docdelivery.NewHandler(docService).
 		WithAttachmentDownloads(security.NewAttachmentSigner(attachmentsCfg.DownloadSecret), time.Duration(attachmentsCfg.DownloadTTLSeconds)*time.Second).
 		WithMDDMHandlers(loadService, submitForApprovalService).
-		WithRenderPDF(deps.GotenbergClient)
+		WithRenderPDF(deps.GotenbergClient).
+		WithShadowDiffHandler(shadowDiffHandler)
 	searchService := searchapp.NewService(searchdocs.NewReader(deps.DocumentsRepo))
 	searchHandler := searchdelivery.NewHandler(searchService)
 	notificationService := notificationapp.NewService(deps.NotificationsRepo, deps.DocumentsRepo, nil)
@@ -106,6 +113,7 @@ func main() {
 	iamAdminService := iamapp.NewAdminService(deps.RoleAdminRepo, cachedProvider)
 	iamAdminHandler := iamdelivery.NewAdminHandler(iamAdminService, authService, deps.AuditWriter).
 		WithAuditReader(deps.AuditReader)
+	featureFlagsHandler := featureflags.NewHandler(featureFlagsCfg)
 	httpObs := observability.NewHTTPObservability(deps.StatusProvider)
 	rateLimiter := security.NewRateLimiter(rateCfg)
 	cors := security.NewCORS(corsCfg)
@@ -113,6 +121,7 @@ func main() {
 	mux := http.NewServeMux()
 	authHandler.RegisterRoutes(mux)
 	healthHandler.RegisterRoutes(mux)
+	featureFlagsHandler.RegisterRoutes(mux)
 	auditHandler.RegisterRoutes(mux)
 	docHandler.RegisterRoutes(mux)
 	searchHandler.RegisterRoutes(mux)

@@ -30,6 +30,7 @@ func TestPermissionResolver(t *testing.T) {
 		{name: "workflow transition", method: http.MethodPost, path: "/api/v1/workflow/documents/doc-1/transitions", wantPerm: iamdomain.PermWorkflowTransition, wantGuard: true},
 		{name: "iam users list", method: http.MethodGet, path: "/api/v1/iam/users", wantPerm: iamdomain.PermIAMManageRoles, wantGuard: true},
 		{name: "iam roles update", method: http.MethodPut, path: "/api/v1/iam/users/u-1/roles", wantPerm: iamdomain.PermIAMManageRoles, wantGuard: true},
+		{name: "telemetry shadow diff", method: http.MethodPost, path: "/api/v1/telemetry/mddm-shadow-diff", wantPerm: iamdomain.PermDocumentRead, wantGuard: true},
 		{name: "unknown endpoint unguarded", method: http.MethodGet, path: "/api/v1/unknown", wantPerm: "", wantGuard: false},
 	}
 

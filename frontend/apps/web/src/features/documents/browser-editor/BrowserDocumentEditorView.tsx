@@ -4,13 +4,17 @@ import { exportDocumentDocx, getDocumentBrowserEditorBundle, saveDocumentBrowser
 import type { DocumentBrowserEditorBundleResponse, DocumentListItem, RendererPin } from "../../../lib.types";
 import { formatDocumentDisplayName } from "../../shared/documentDisplay";
 import { normalizeDocumentProfileCode } from "../../shared/documentProfile";
-import { featureFlags } from "../../featureFlags";
+import { isMddmNativeExportEnabled } from "../../featureFlags";
 import { exportDocx as mddmExportDocx } from "../mddm-editor/engine/export";
 import styles from "./BrowserDocumentEditorView.module.css";
 import { DocumentEditorHeader } from "./DocumentEditorHeader";
 import { MDDMEditor, type MDDMTheme } from "../mddm-editor/MDDMEditor";
 import { blockNoteToMDDM, mddmToBlockNote, type MDDMEnvelope } from "../mddm-editor/adapter";
 import { SaveBeforeExportDialog } from "./SaveBeforeExportDialog";
+import { runShadowExport } from "../mddm-editor/engine/shadow-testing/shadow-runner";
+import { computeShadowDiff } from "../mddm-editor/engine/shadow-testing/shadow-diff";
+import { postShadowDiff } from "../mddm-editor/engine/shadow-testing/shadow-telemetry";
+import { unzipDocxDocumentXml } from "../mddm-editor/engine/golden/golden-helpers";
 
 type BrowserDocumentEditorViewProps = {
   document: DocumentListItem;
@@ -230,9 +234,11 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
   async function runDocxExport(source: "live" | "saved" = "live") {
     const safeCode = (document.documentCode || "documento").trim().replace(/[^\w.-]+/g, "-");
 
+    const exportStart = performance.now();
     setIsExporting(true);
+    let legacyBlob: Blob | null = null;
     try {
-      if (featureFlags.MDDM_NATIVE_EXPORT) {
+      if (isMddmNativeExportEnabled("")) {
         const rawBody = source === "saved" ? (bundle?.body ?? "") : (editorData ?? "");
         const body = rawBody.trim();
         if (body && !body.startsWith("{")) {
@@ -245,6 +251,7 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
         triggerBlobDownload(blob, `${safeCode}.docx`);
       } else {
         const blob = await exportDocumentDocx(document.documentId);
+        legacyBlob = blob;
         triggerBlobDownload(blob, `${safeCode}.docx`);
       }
       setErrorCode(null);
@@ -259,6 +266,25 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
     } finally {
       setIsExporting(false);
     }
+
+    // Fire-and-forget shadow run AFTER the user-visible export completes (after finally).
+    if (!isMddmNativeExportEnabled("") && legacyBlob !== null && bundle !== null) {
+      const currentDurationMs = Math.round(performance.now() - exportStart);
+      const rawBody = source === "saved" ? (bundle.body ?? "") : (editorData ?? "");
+      const body = rawBody.trim();
+      const envelope: MDDMEnvelope = body && body.startsWith("{")
+        ? (JSON.parse(body) as MDDMEnvelope)
+        : { mddm_version: 1, template_ref: null, blocks: [] };
+      void runShadowAndReport({
+        envelope,
+        rendererPin,
+        currentBlob: legacyBlob,
+        currentDurationMs,
+        documentId: document.documentId,
+        versionNumber: latestVersion?.version ?? 0,
+        userIdHash: "",
+      });
+    }
   }
 
   async function handleExportDocx() {
@@ -266,7 +292,7 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
       return;
     }
 
-    if (!featureFlags.MDDM_NATIVE_EXPORT) {
+    if (!isMddmNativeExportEnabled("")) {
       await runDocxExport();
       return;
     }
@@ -460,4 +486,51 @@ function statusOf(error: unknown): number | undefined {
     return (error as { status: number }).status;
   }
   return undefined;
+}
+
+async function runShadowAndReport(input: {
+  envelope: MDDMEnvelope;
+  rendererPin: RendererPin | null;
+  currentBlob: Blob;
+  currentDurationMs: number;
+  documentId: string;
+  versionNumber: number;
+  userIdHash: string;
+}) {
+  try {
+    const [currentXml, shadow] = await Promise.all([
+      unzipDocxDocumentXml(input.currentBlob),
+      runShadowExport(input.envelope, input.rendererPin),
+    ]);
+
+    if (!shadow.ok) {
+      void postShadowDiff({
+        document_id: input.documentId,
+        version_number: input.versionNumber,
+        user_id_hash: input.userIdHash,
+        current_xml_hash: "",
+        shadow_xml_hash: "",
+        diff_summary: { identical: false, shadow_failed: true },
+        current_duration_ms: input.currentDurationMs,
+        shadow_duration_ms: shadow.durationMs,
+        shadow_error: shadow.error,
+      });
+      return;
+    }
+
+    const diff = computeShadowDiff(currentXml, shadow.xml);
+    void postShadowDiff({
+      document_id: input.documentId,
+      version_number: input.versionNumber,
+      user_id_hash: input.userIdHash,
+      current_xml_hash: diff.current_xml_hash,
+      shadow_xml_hash: diff.shadow_xml_hash,
+      diff_summary: diff.diff_summary,
+      current_duration_ms: input.currentDurationMs,
+      shadow_duration_ms: shadow.durationMs,
+    });
+  } catch (err) {
+    // Never surface shadow errors to the user.
+    console.warn("shadow run failed", err);
+  }
 }

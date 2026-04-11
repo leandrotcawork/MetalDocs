@@ -25,6 +25,7 @@ type Handler struct {
 	loadHandler              *LoadHandler
 	submitForApprovalHandler *SubmitForApprovalHandler
 	renderPDF                *RenderPDFHandler
+	shadowDiff               *ShadowDiffHandler
 }
 
 type CreateDocumentRequest struct {
@@ -468,6 +469,14 @@ func (h *Handler) WithRenderPDF(renderer PDFRenderer) *Handler {
 	return h
 }
 
+// WithShadowDiffHandler wires the shadow diff telemetry handler.
+// s may be nil when the repo is not configured (memory mode); the route will
+// return 503 in that case.
+func (h *Handler) WithShadowDiffHandler(s *ShadowDiffHandler) *Handler {
+	h.shadowDiff = s
+	return h
+}
+
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/document-families", h.handleDocumentFamilies)
 	mux.HandleFunc("/api/v1/document-profiles", h.handleDocumentProfiles)
@@ -484,6 +493,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/documents", h.handleDocuments)
 	mux.HandleFunc("/api/v1/documents/", h.handleDocumentSubRoutes)
 	mux.HandleFunc("/api/v1/attachments/", h.handleAttachmentDownloads)
+	mux.HandleFunc("/api/v1/telemetry/mddm-shadow-diff", h.handleShadowDiffTelemetry)
 }
 
 func (h *Handler) handleDocuments(w http.ResponseWriter, r *http.Request) {
@@ -2128,4 +2138,18 @@ func mapDocumentTemplateSnapshotResponse(item domain.DocumentTemplateSnapshot) *
 		Body:          item.Body,
 		Definition:    item.Definition,
 	}
+}
+
+// handleShadowDiffTelemetry dispatches POST /api/v1/telemetry/mddm-shadow-diff
+// to the ShadowDiffHandler. Non-POST methods are rejected with 405.
+func (h *Handler) handleShadowDiffTelemetry(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	if h.shadowDiff == nil {
+		writeAPIError(w, http.StatusServiceUnavailable, "TELEMETRY_UNAVAILABLE", "Shadow diff telemetry is not configured", requestTraceID(r))
+		return
+	}
+	h.shadowDiff.Handle(w, r)
 }

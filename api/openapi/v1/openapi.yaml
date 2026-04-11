@@ -2735,6 +2735,43 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
+  /telemetry/mddm-shadow-diff:
+    post:
+      summary: Submit a Phase 1 shadow-diff telemetry event
+      description: |
+        Frontend posts one event per browser_editor DOCX export while
+        Plan 4 Phase 1 is active. Records a hash of both the docgen-
+        produced DOCX and the client-side DOCX so engineers can aggregate
+        structural drift before enabling the canary rollout.
+      operationId: recordMDDMShadowDiff
+      tags:
+        - telemetry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MDDMShadowDiffEvent'
+      responses:
+        '202':
+          description: Event accepted for storage
+        '400':
+          description: Malformed body
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiErrorEnvelope' }
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiErrorEnvelope' }
+        '503':
+          description: Telemetry not configured
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiErrorEnvelope' }
+      security:
+        - sessionCookie: []
 components:
   parameters:
     DocumentId:
@@ -4429,5 +4466,23 @@ components:
         pinned_at:
           type: string
           format: date-time
-
-
+    MDDMShadowDiffEvent:
+      type: object
+      required:
+        - document_id
+        - version_number
+        - current_xml_hash
+        - shadow_xml_hash
+      properties:
+        document_id: { type: string }
+        version_number: { type: integer, minimum: 1 }
+        user_id_hash: { type: string }
+        current_xml_hash: { type: string, description: "SHA-256 of normalized docgen document.xml" }
+        shadow_xml_hash: { type: string, description: "SHA-256 of normalized client-side document.xml" }
+        diff_summary:
+          type: object
+          additionalProperties: true
+          description: "Structural diff counters (blocks_equal, blocks_different, etc.)"
+        current_duration_ms: { type: integer, minimum: 0 }
+        shadow_duration_ms: { type: integer, minimum: 0 }
+        shadow_error: { type: string, description: "Non-empty when the shadow path failed" }

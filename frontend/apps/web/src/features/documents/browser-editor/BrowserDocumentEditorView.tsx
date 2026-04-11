@@ -6,7 +6,6 @@ import { formatDocumentDisplayName } from "../../shared/documentDisplay";
 import { normalizeDocumentProfileCode } from "../../shared/documentProfile";
 import { featureFlags } from "../../featureFlags";
 import { exportDocx as mddmExportDocx } from "../mddm-editor/engine/export";
-import { defaultLayoutTokens } from "../mddm-editor/engine/layout-ir";
 import styles from "./BrowserDocumentEditorView.module.css";
 import { DocumentEditorHeader } from "./DocumentEditorHeader";
 import { MDDMEditor, type MDDMTheme } from "../mddm-editor/MDDMEditor";
@@ -237,7 +236,7 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
         const envelope: MDDMEnvelope = body
           ? (JSON.parse(body) as MDDMEnvelope)
           : { mddm_version: 1, template_ref: null, blocks: [] };
-        const blob = await mddmExportDocx(envelope, defaultLayoutTokens);
+        const blob = await mddmExportDocx(envelope, { rendererPin: null });
         triggerBlobDownload(blob, `${safeCode}.docx`);
       } else {
         const blob = await exportDocumentDocx(document.documentId);

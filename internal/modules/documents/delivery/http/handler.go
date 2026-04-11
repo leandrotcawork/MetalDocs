@@ -459,6 +459,14 @@ func (h *Handler) WithMDDMHandlers(load *application.LoadService, submit *applic
 	return h
 }
 
+// WithRenderPDF wires the Gotenberg Chromium HTML→PDF handler.
+// renderer may be nil (e.g. Gotenberg is not configured); the handler's nil
+// guard returns a structured 502 in that case.
+func (h *Handler) WithRenderPDF(renderer PDFRenderer) *Handler {
+	h.renderPDF = NewRenderPDFHandler(renderer, h.service)
+	return h
+}
+
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/document-families", h.handleDocumentFamilies)
 	mux.HandleFunc("/api/v1/document-profiles", h.handleDocumentProfiles)

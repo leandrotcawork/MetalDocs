@@ -5,10 +5,10 @@ export type LayoutTokens = Readonly<{
   page: Readonly<{
     widthMm: number;
     heightMm: number;
-    marginTop: number;
-    marginRight: number;
-    marginBottom: number;
-    marginLeft: number;
+    marginTopMm: number;
+    marginRightMm: number;
+    marginBottomMm: number;
+    marginLeftMm: number;
     contentWidthMm: number;
   }>;
   typography: Readonly<{
@@ -45,10 +45,10 @@ export const defaultLayoutTokens: LayoutTokens = {
   page: {
     widthMm: PAGE_WIDTH_MM,
     heightMm: PAGE_HEIGHT_MM,
-    marginTop: MARGIN_TOP_MM,
-    marginRight: MARGIN_RIGHT_MM,
-    marginBottom: MARGIN_BOTTOM_MM,
-    marginLeft: MARGIN_LEFT_MM,
+    marginTopMm: MARGIN_TOP_MM,
+    marginRightMm: MARGIN_RIGHT_MM,
+    marginBottomMm: MARGIN_BOTTOM_MM,
+    marginLeftMm: MARGIN_LEFT_MM,
     contentWidthMm: PAGE_WIDTH_MM - MARGIN_LEFT_MM - MARGIN_RIGHT_MM,
   },
   typography: {

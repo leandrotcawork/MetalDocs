@@ -9,7 +9,7 @@ describe("Layout IR tokens", () => {
 
   it("computes contentWidthMm from page width minus horizontal margins", () => {
     const { page } = defaultLayoutTokens;
-    expect(page.contentWidthMm).toBe(page.widthMm - page.marginLeft - page.marginRight);
+    expect(page.contentWidthMm).toBe(page.widthMm - page.marginLeftMm - page.marginRightMm);
   });
 
   it("uses Carlito as the default exportFont", () => {

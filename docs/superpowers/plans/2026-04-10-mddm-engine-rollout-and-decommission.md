@@ -91,9 +91,15 @@ Part 4  Percentage-based feature flag rollout                          Phase 2
 Part 5  Canary monitoring runbook                                      Phase 2
 Part 6  100% rollout promotion                                         Phase 3
 Part 7  Decommission (backend MDDM docgen path)                        Phase 4
-Part 8  Decommission (frontend legacy client + flag cleanup)           Phase 4
+Part 8  Decommission (frontend editor+flag collapse, then legacy client) Phase 4
 Part 9  Final verification                                             Phase 4
 ```
+
+**Task ordering inside Part 8 (critical):**
+- **Task 18** — Collapse `BrowserDocumentEditorView`, delete the feature flag module, delete the shadow-testing module. Every reference to `exportDocumentDocx` disappears from the frontend in this task.
+- **Task 19** — Delete `exportDocumentDocx` from `api/documents.ts` and any re-exports in `lib.api.ts`.
+
+This order is REQUIRED. The reverse would break the build between tasks because `BrowserDocumentEditorView.tsx` still imports `exportDocumentDocx` during the shadow/flag period.
 
 ---
 
@@ -2117,8 +2123,12 @@ The original single Task 19 is now split across Tasks 18 and 19. Nothing to do h
 - Delete: `internal/modules/documents/application/shadow_diff_service.go` (if created in Task 2's scope overflow)
 - Delete: `internal/modules/documents/infrastructure/postgres/shadow_diff_repo.go`
 - Delete: `internal/modules/documents/infrastructure/postgres/shadow_diff_repo_test.go`
+- Delete: `internal/modules/documents/domain/shadow_diff.go`
 - Modify: `api/openapi/v1/openapi.yaml`
 - Modify: `apps/api/cmd/metaldocs-api/main.go`
+- Modify: `internal/platform/bootstrap/api.go` (remove `ShadowDiffRepo` field + assignments added in Task 4)
+- Modify: `apps/api/cmd/metaldocs-api/permissions.go` (remove telemetry entry added in Task 4b)
+- Modify: `apps/api/cmd/metaldocs-api/permissions_test.go` (remove the telemetry subtest)
 
 - [ ] **Step 1: Remove the route registration**
 
@@ -2136,7 +2146,20 @@ rm internal/modules/documents/domain/shadow_diff.go
 
 - [ ] **Step 3: Remove bootstrap wiring**
 
-In `apps/api/cmd/metaldocs-api/main.go`, delete the `NewShadowDiffRepository` / `NewShadowDiffHandler` / `WithShadowDiffHandler` lines added in Task 4.
+In `apps/api/cmd/metaldocs-api/main.go`, delete the `NewShadowDiffHandler` construction and the `.WithShadowDiffHandler(shadowDiffHandler)` call added in Task 4 Step 4.
+
+Then open `internal/platform/bootstrap/api.go` and remove the plumbing added in Task 4 Step 3:
+
+- Delete the `ShadowDiffRepo *pgrepo.ShadowDiffRepository` field from the `APIDependencies` struct.
+- Delete the `ShadowDiffRepo: pgrepo.NewShadowDiffRepository(db),` assignment from the postgres branch of `BuildAPIDependencies`.
+- Delete the `ShadowDiffRepo: nil,` assignment from the memory branch.
+- Remove any `pgrepo` imports that become unused once the shadow diff type is gone (but keep them if other repos still reference `pgrepo`).
+
+- [ ] **Step 3b: Remove the permission entry**
+
+Open `apps/api/cmd/metaldocs-api/permissions.go` and delete the entry for `POST /api/v1/telemetry/mddm-shadow-diff` added in Task 4b Step 2. The endpoint no longer exists and any stale entry becomes dead policy.
+
+Open `apps/api/cmd/metaldocs-api/permissions_test.go` and delete the `TestPermissions_MDDMShadowDiffTelemetry` subtest added in Task 4b Step 3.
 
 - [ ] **Step 4: Remove the OpenAPI entry**
 
@@ -2178,8 +2201,8 @@ Expected: Clean build, all remaining tests pass.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add -A internal/modules/documents/delivery/http/ internal/modules/documents/infrastructure/postgres/ internal/modules/documents/domain/shadow_diff.go internal/modules/documents/application/ apps/api/cmd/metaldocs-api/main.go api/openapi/v1/openapi.yaml docs/superpowers/runbooks/mddm-rollout-runbook.md
-git commit -m "feat(mddm-engine): decommission shadow diff telemetry endpoint"
+git add -A internal/modules/documents/delivery/http/ internal/modules/documents/infrastructure/postgres/ internal/modules/documents/domain/shadow_diff.go internal/modules/documents/application/ internal/platform/bootstrap/api.go apps/api/cmd/metaldocs-api/main.go apps/api/cmd/metaldocs-api/permissions.go apps/api/cmd/metaldocs-api/permissions_test.go api/openapi/v1/openapi.yaml docs/superpowers/runbooks/mddm-rollout-runbook.md
+git commit -m "feat(mddm-engine): decommission shadow diff telemetry endpoint + permissions + bootstrap wiring"
 ```
 
 ---

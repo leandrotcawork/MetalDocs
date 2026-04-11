@@ -105,6 +105,10 @@ func newPermissionResolver() iamdelivery.PermissionResolver {
 			return iamdomain.PermIAMManageRoles, true
 		}
 
+		if method == http.MethodPost && path == "/api/v1/telemetry/mddm-shadow-diff" {
+			return iamdomain.PermDocumentRead, true
+		}
+
 		return "", false
 	}
 }

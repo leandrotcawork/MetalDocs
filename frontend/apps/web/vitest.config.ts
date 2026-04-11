@@ -7,5 +7,6 @@ export default defineConfig({
     include: ["src/**/*.test.{ts,tsx}"],
     environment: "jsdom",
     globals: false,
+    pool: "forks",
   },
 });

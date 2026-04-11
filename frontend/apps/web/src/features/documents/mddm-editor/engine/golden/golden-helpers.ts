@@ -31,9 +31,23 @@ export function normalizeHtml(html: string): string {
   );
 }
 
+async function blobToArrayBuffer(blob: Blob): Promise<ArrayBuffer> {
+  // blob.arrayBuffer() is unavailable in jsdom. Use FileReader as a
+  // cross-environment fallback that works in both browser and jsdom.
+  if (typeof blob.arrayBuffer === "function") {
+    return blob.arrayBuffer();
+  }
+  return new Promise<ArrayBuffer>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as ArrayBuffer);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsArrayBuffer(blob);
+  });
+}
+
 export async function unzipDocxDocumentXml(blob: Blob): Promise<string> {
   const JSZip = (await import("jszip")).default;
-  const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+  const zip = await JSZip.loadAsync(await blobToArrayBuffer(blob));
   const documentXml = zip.file("word/document.xml");
   if (!documentXml) {
     throw new Error("word/document.xml not found in DOCX blob");

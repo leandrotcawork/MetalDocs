@@ -43,6 +43,7 @@ type Repository interface {
 	UpdateVersionPDF(ctx context.Context, documentID string, versionNumber int, pdfStorageKey string, pageCount int) error
 	UpdateVersionBodyBlocks(ctx context.Context, documentID string, versionNumber int, bodyBlocks []EtapaBody) error
 	UpdateVersionValues(ctx context.Context, documentID string, versionNumber int, values DocumentValues) error
+	SetVersionRendererPin(ctx context.Context, documentID string, versionNumber int, pin *RendererPin) error
 	GetDocumentTemplateVersion(ctx context.Context, templateKey string, version int) (DocumentTemplateVersion, error)
 	ListDocumentTemplateVersions(ctx context.Context, profileCode string) ([]DocumentTemplateVersion, error)
 	GetDefaultDocumentTemplate(ctx context.Context, profileCode string) (DocumentTemplateVersion, error)

@@ -1,15 +1,27 @@
 import { Document, Packer } from "docx";
 import type { MDDMEnvelope, MDDMBlock } from "../../adapter";
 import type { LayoutTokens } from "../layout-ir";
+import type { ResolvedAsset } from "../asset-resolver";
 import { mmToTwip } from "../helpers/units";
+
 import { emitParagraph } from "./emitters/paragraph";
 import { emitHeading } from "./emitters/heading";
 import { emitSection } from "./emitters/section";
 import { emitField } from "./emitters/field";
 import { emitFieldGroup } from "./emitters/field-group";
+import { emitBulletListItem } from "./emitters/bullet-list-item";
+import { emitNumberedListItem, MDDM_NUMBERING_REF } from "./emitters/numbered-list-item";
+import { emitImage } from "./emitters/image";
+import { emitQuote } from "./emitters/quote";
+import { emitDivider } from "./emitters/divider";
+import { emitDataTable } from "./emitters/data-table";
+import { emitDataTableRow } from "./emitters/data-table-row";
+import { emitDataTableCell } from "./emitters/data-table-cell";
+import { emitRepeatable } from "./emitters/repeatable";
+import { emitRepeatableItem } from "./emitters/repeatable-item";
+import { emitRichBlock } from "./emitters/rich-block";
 
-const DOCX_MIME =
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 export class MissingEmitterError extends Error {
   constructor(public readonly blockType: string) {
@@ -18,35 +30,88 @@ export class MissingEmitterError extends Error {
   }
 }
 
-type Emitter = (block: MDDMBlock, tokens: LayoutTokens) => unknown[];
-
-const emitters: Record<string, Emitter> = {
-  paragraph: emitParagraph,
-  heading: emitHeading,
-  section: emitSection,
-  field: emitField,
-  fieldGroup: emitFieldGroup,
+export type EmitContext = {
+  tokens: LayoutTokens;
+  assetMap: ReadonlyMap<string, ResolvedAsset>;
 };
 
-export const REGISTERED_EMITTER_TYPES: readonly string[] = Object.keys(emitters);
+type Emitter = (block: MDDMBlock, ctx: EmitContext) => unknown[];
+
+function makeRegistry(ctx: EmitContext): Record<string, Emitter> {
+  // renderChild is captured by closure so structural emitters can recurse
+  // through the registry without an import cycle.
+  const renderChild = (child: MDDMBlock): unknown[] => {
+    const emit = registry[child.type];
+    if (!emit) throw new MissingEmitterError(child.type);
+    return emit(child, ctx);
+  };
+
+  const registry: Record<string, Emitter> = {
+    paragraph: (b, c) => emitParagraph(b, c.tokens),
+    heading:   (b, c) => emitHeading(b, c.tokens),
+    section:   (b, c) => emitSection(b, c.tokens),
+    field:     (b, c) => emitField(b, c.tokens),
+    fieldGroup: (b, c) => emitFieldGroup(b, c.tokens),
+
+    bulletListItem:   (b, c) => emitBulletListItem(b, c.tokens),
+    numberedListItem: (b, c) => emitNumberedListItem(b, c.tokens),
+    image:            (b, c) => emitImage(b, c.tokens, c.assetMap),
+    quote:            (b, c) => emitQuote(b, c.tokens),
+    divider:          (b, c) => emitDivider(b, c.tokens),
+
+    dataTable:     (b, c) => emitDataTable(b, c.tokens),
+    dataTableRow:  (b, c) => [emitDataTableRow(b, c.tokens)],
+    dataTableCell: (b, c) => [emitDataTableCell(b, c.tokens)],
+
+    repeatable:     (b, c) => emitRepeatable(b, c.tokens, renderChild),
+    repeatableItem: (b, c) => emitRepeatableItem(b, c.tokens, renderChild),
+    richBlock:      (b, c) => emitRichBlock(b, c.tokens, renderChild),
+  };
+  return registry;
+}
+
+export const REGISTERED_EMITTER_TYPES: readonly string[] = [
+  "paragraph", "heading", "section", "field", "fieldGroup",
+  "bulletListItem", "numberedListItem", "image", "quote", "divider",
+  "dataTable", "dataTableRow", "dataTableCell",
+  "repeatable", "repeatableItem", "richBlock",
+];
 
 export async function mddmToDocx(
   envelope: MDDMEnvelope,
   tokens: LayoutTokens,
+  assetMap: ReadonlyMap<string, ResolvedAsset> = new Map(),
 ): Promise<Blob> {
+  const ctx: EmitContext = { tokens, assetMap };
+  const registry = makeRegistry(ctx);
+
   const blocks = envelope.blocks ?? [];
   const children: unknown[] = [];
 
   for (const block of blocks) {
-    const emit = emitters[block.type];
+    const emit = registry[block.type];
     if (!emit) {
       throw new MissingEmitterError(block.type);
     }
-    const out = emit(block, tokens);
-    children.push(...out);
+    children.push(...emit(block, ctx));
   }
 
   const doc = new Document({
+    numbering: {
+      config: [
+        {
+          reference: MDDM_NUMBERING_REF,
+          levels: [
+            {
+              level: 0,
+              format: "decimal" as any,
+              text: "%1.",
+              alignment: "left" as any,
+            },
+          ],
+        },
+      ],
+    },
     sections: [
       {
         properties: {
@@ -63,7 +128,7 @@ export async function mddmToDocx(
             },
           },
         },
-        children: children as never,
+        children: children as any,
       },
     ],
   });

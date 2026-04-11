@@ -11,7 +11,7 @@ import type { LayoutTokens } from "../../layout-ir";
 import type { MDDMBlock } from "../../../adapter";
 import { emitDataTableRow } from "./data-table-row";
 import { ptToHalfPt, mmToTwip } from "../../helpers/units";
-import { hexToFill } from "../../../helpers/color";
+import { hexToFill } from "../../helpers/color";
 
 type ColumnSpec = { key: string; label: string };
 

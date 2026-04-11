@@ -10,7 +10,7 @@ import {
 import type { LayoutTokens } from "../../layout-ir";
 import type { MDDMBlock } from "../../../adapter";
 import { ptToHalfPt } from "../../helpers/units";
-import { hexToFill } from "../../../helpers/color";
+import { hexToFill } from "../../helpers/color";
 import { isMDDMBlock } from "../guards";
 
 /** ChildRenderer is supplied by the main emitter so repeatable-item can recursively

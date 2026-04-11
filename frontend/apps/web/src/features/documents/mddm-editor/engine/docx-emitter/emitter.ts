@@ -70,8 +70,11 @@ export async function mddmToDocx(
   // Packer.toBlob relies on a browser Blob implementation that jsdom does not
   // fully provide (no arrayBuffer()), so we construct the Blob ourselves with
   // the correct DOCX MIME type.
-  const buffer = await Packer.toBuffer(doc);
-  const bytes =
-    buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer as ArrayBuffer);
+  const buffer = (await Packer.toBuffer(doc)) as Uint8Array;
+  // Copy into a fresh ArrayBuffer-backed Uint8Array so the Blob constructor
+  // gets a concrete BlobPart regardless of whether docx.js returned a Node
+  // Buffer (Uint8Array<ArrayBufferLike>) or a plain Uint8Array.
+  const bytes = new Uint8Array(buffer.byteLength);
+  bytes.set(buffer);
   return new Blob([bytes], { type: DOCX_MIME });
 }

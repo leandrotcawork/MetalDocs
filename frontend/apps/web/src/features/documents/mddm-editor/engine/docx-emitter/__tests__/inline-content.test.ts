@@ -16,7 +16,7 @@ describe("mddmTextRunsToDocxRuns", () => {
     const input: MDDMTextRun[] = [{ type: "text", text: "Bold", marks: [{ type: "bold" }] }];
     const runs = mddmTextRunsToDocxRuns(input, defaultLayoutTokens);
     expect(runs).toHaveLength(1);
-    expect((runs[0] as TextRun).options).toMatchObject({ bold: true });
+    expect((runs[0] as unknown as { options: any }).options).toMatchObject({ bold: true });
   });
 
   it("handles italic, underline, strike, and code marks", () => {
@@ -27,10 +27,10 @@ describe("mddmTextRunsToDocxRuns", () => {
       { type: "text", text: "c", marks: [{ type: "code" }] },
     ];
     const runs = mddmTextRunsToDocxRuns(input, defaultLayoutTokens);
-    expect((runs[0] as TextRun).options).toMatchObject({ italics: true });
-    expect((runs[1] as TextRun).options.underline).toBeDefined();
-    expect((runs[2] as TextRun).options).toMatchObject({ strike: true });
-    expect((runs[3] as TextRun).options.font).toBe("Consolas");
+    expect((runs[0] as unknown as { options: any }).options).toMatchObject({ italics: true });
+    expect((runs[1] as unknown as { options: any }).options.underline).toBeDefined();
+    expect((runs[2] as unknown as { options: any }).options).toMatchObject({ strike: true });
+    expect((runs[3] as unknown as { options: any }).options.font).toBe("Consolas");
   });
 
   it("emits multiple runs for mixed marks", () => {
@@ -47,7 +47,7 @@ describe("mddmTextRunsToDocxRuns", () => {
   it("honors exportFont and baseSizePt from tokens", () => {
     const input: MDDMTextRun[] = [{ type: "text", text: "Hi" }];
     const runs = mddmTextRunsToDocxRuns(input, defaultLayoutTokens);
-    const options = (runs[0] as TextRun).options;
+    const options = (runs[0] as unknown as { options: any }).options;
     expect(options.font).toBe(defaultLayoutTokens.typography.exportFont);
     expect(options.size).toBe(defaultLayoutTokens.typography.baseSizePt * 2);
   });

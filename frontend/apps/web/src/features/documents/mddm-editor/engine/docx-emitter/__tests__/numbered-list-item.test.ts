@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Paragraph } from "docx";
-import { emitNumberedListItem } from "../emitters/numbered-list-item";
+import { emitNumberedListItem, MDDM_NUMBERING_REF } from "../emitters/numbered-list-item";
 import { defaultLayoutTokens } from "../../layout-ir";
 import type { MDDMBlock } from "../../../adapter";
 
@@ -17,5 +17,6 @@ describe("emitNumberedListItem", () => {
     expect(out[0]).toBeInstanceOf(Paragraph);
     expect((out[0] as any).options.numbering).toBeDefined();
     expect((out[0] as any).options.numbering.level).toBe(0);
+    expect((out[0] as any).options.numbering.reference).toBe(MDDM_NUMBERING_REF);
   });
 });

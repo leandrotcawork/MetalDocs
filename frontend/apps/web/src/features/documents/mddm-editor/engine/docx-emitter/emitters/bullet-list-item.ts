@@ -6,10 +6,8 @@ import { extractTextRuns } from "./paragraph";
 
 export function emitBulletListItem(block: MDDMBlock, tokens: LayoutTokens): Paragraph[] {
   const runs = mddmTextRunsToDocxRuns(extractTextRuns(block), tokens);
-  return [
-    new Paragraph({
-      bullet: { level: 0 },
-      children: runs,
-    }),
-  ];
+  const options = { bullet: { level: 0 }, children: runs } as const;
+  const paragraph = new Paragraph(options);
+  (paragraph as unknown as { options: typeof options }).options = options;
+  return [paragraph];
 }

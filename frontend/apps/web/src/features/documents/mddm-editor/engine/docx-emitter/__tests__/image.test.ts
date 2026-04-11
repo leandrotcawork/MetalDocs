@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Paragraph } from "docx";
+import { Paragraph, ImageRun } from "docx";
 import { emitImage, MissingAssetError } from "../emitters/image";
 import { defaultLayoutTokens } from "../../layout-ir";
 import type { MDDMBlock } from "../../../adapter";
@@ -23,6 +23,7 @@ describe("emitImage", () => {
     const out = emitImage(block, defaultLayoutTokens, map);
     expect(out).toHaveLength(1);
     expect(out[0]).toBeInstanceOf(Paragraph);
+    expect((out[0] as any).options.children[0]).toBeInstanceOf(ImageRun);
   });
 
   it("throws MissingAssetError when image src is not in the asset map", () => {

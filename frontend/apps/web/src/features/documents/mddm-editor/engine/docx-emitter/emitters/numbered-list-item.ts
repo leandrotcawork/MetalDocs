@@ -9,13 +9,11 @@ export const MDDM_NUMBERING_REF = "mddm-decimal";
 
 export function emitNumberedListItem(block: MDDMBlock, tokens: LayoutTokens): Paragraph[] {
   const runs = mddmTextRunsToDocxRuns(extractTextRuns(block), tokens);
-  return [
-    new Paragraph({
-      numbering: {
-        reference: MDDM_NUMBERING_REF,
-        level: 0,
-      },
-      children: runs,
-    }),
-  ];
+  const options = {
+    numbering: { reference: MDDM_NUMBERING_REF, level: 0 },
+    children: runs,
+  } as const;
+  const paragraph = new Paragraph(options);
+  (paragraph as unknown as { options: typeof options }).options = options;
+  return [paragraph];
 }

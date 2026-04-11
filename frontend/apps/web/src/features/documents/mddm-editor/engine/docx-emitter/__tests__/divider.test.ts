@@ -13,5 +13,7 @@ describe("emitDivider", () => {
     const opts = (out[0] as any).options;
     expect(opts.border).toBeDefined();
     expect(opts.border.bottom).toBeDefined();
+    // defaultLayoutTokens.theme.accentBorder = "#dfc8c8" → stripped + uppercased
+    expect(opts.border.bottom.color).toBe("DFC8C8");
   });
 });

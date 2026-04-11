@@ -5,7 +5,7 @@ import { defaultLayoutTokens } from "../../layout-ir";
 import type { MDDMBlock } from "../../../adapter";
 
 describe("emitQuote", () => {
-  it("emits a Paragraph with left indentation and italic styling", () => {
+  it("emits a Paragraph with left indentation", () => {
     const block: MDDMBlock = {
       id: "q1",
       type: "quote",

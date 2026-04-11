@@ -60,8 +60,8 @@ internal/modules/documents/domain/model.go                          # MODIFY: ad
 internal/modules/documents/infrastructure/postgres/repository.go    # MODIFY: read/write renderer_pin column in version queries
 internal/modules/documents/application/service_document_runtime.go  # MODIFY: call captureRendererPin on release
 internal/modules/documents/application/release_service.go           # MODIFY (or wherever release transition lives): hook capture
-internal/modules/documents/delivery/http/handler_runtime.go         # MODIFY: include rendererPin in version responses
-internal/modules/documents/delivery/http/handler_browser_editor.go  # MODIFY: include rendererPin in browser editor bundle
+internal/modules/documents/delivery/http/handler.go                  # MODIFY: include rendererPin in version DTO payloads in handleDocumentBrowserEditorBundle (line ~1690) and any other version serializers
+internal/modules/documents/delivery/http/handler_browser_editor_test.go  # MODIFY: add TestBrowserEditorBundle_IncludesRendererPinField
 api/openapi/v1/openapi.yaml                                          # MODIFY: add RendererPin schema
 ```
 
@@ -1901,19 +1901,19 @@ export async function canonicalizeAndMigrate(
 Run: `cd frontend/apps/web && npx vitest run src/features/documents/mddm-editor/engine/canonicalize-migrate/__tests__/pipeline.test.ts`
 Expected: PASS — all tests including the two new ones.
 
-- [ ] **Step 5: Update exportDocx to pass the target version**
+- [ ] **Step 5: API prep only — no caller wiring yet**
 
-In `frontend/apps/web/src/features/documents/mddm-editor/engine/export/export-docx.ts`, modify the `canonicalizeAndMigrate` call:
+Plan 3 intentionally stops at "API prep": `canonicalizeAndMigrate` now accepts an optional `targetVersion` parameter, but `exportDocx` does NOT pass one. At v1.0.0, the current engine version equals the pinned version, so calling `canonicalizeAndMigrate(envelope)` (default target = `CURRENT_MDDM_VERSION`) produces the exact same result as `canonicalizeAndMigrate(envelope, { targetVersion: pin.supportedMDDMVersion })` would.
+
+**Do not modify `export-docx.ts` in Task 17.** Keep the existing call:
 
 ```ts
-// The target version IS the current engine version when there is no pin,
-// or whatever the pinned bundle declares when there is. Plan 3 only ships
-// v1.0.0, so CURRENT_MDDM_VERSION and the pinned version align. When future
-// migrations are added, the pinned bundle will expose a frozen target.
 const canonical = await canonicalizeAndMigrate(envelope);
 ```
 
-(No behavioral change yet because v1.0.0 == current engine. This call site is a placeholder for the future Plan 3 extension where `loadPinnedRenderer` exposes a `supportedMDDMVersion` field. That extension is captured in the spec but NOT in Plan 3's scope — see the self-review section.)
+**Caller wiring is explicitly out of scope** for Plan 3 and is tracked as a follow-up task to be added in the first renderer version bump commit (v1.1.0), when a second `mddm_version` exists and the two values diverge. At that point, the renderer bundle registry entry for v1.0.0 will gain a `supportedMDDMVersion: 1` field, and `export-docx.ts` will pass it into `canonicalizeAndMigrate`. Adding the plumbing now would exercise exactly zero code paths and create dead-code risk.
+
+The API prep (the `targetVersion` option) IS useful now: the new tests added in Steps 1-2 exercise the parameter, future work can rely on the contract, and the future Plan-3-extension commit has a smaller footprint.
 
 - [ ] **Step 6: Commit**
 

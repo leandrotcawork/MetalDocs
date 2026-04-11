@@ -147,6 +147,7 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
     };
   }, [bundle?.templateSnapshot?.definition?.theme]);
 
+  const isReleased = document.status === "PUBLISHED";
   const isDirty = bundle !== null && editorData !== bundle.body;
   const isSaving = viewState === "saving";
   const latestVersion = bundle && bundle.versions.length > 0 ? bundle.versions[bundle.versions.length - 1] : null;
@@ -220,7 +221,7 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
     window.URL.revokeObjectURL(url);
   }
 
-  async function runDocxExport(_useCurrentEditorState: boolean) {
+  async function runDocxExport() {
     const safeCode = (document.documentCode || "documento").trim().replace(/[^\w.-]+/g, "-");
 
     setIsExporting(true);
@@ -256,7 +257,7 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
     }
 
     if (!featureFlags.MDDM_NATIVE_EXPORT) {
-      await runDocxExport(false);
+      await runDocxExport();
       return;
     }
 
@@ -266,7 +267,7 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
       return;
     }
 
-    await runDocxExport(false);
+    await runDocxExport();
   }
 
   const canRetrySave = Boolean(bundle) && !isSaving && isDirty;
@@ -419,7 +420,7 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
 
       <SaveBeforeExportDialog
         open={exportDialogOpen}
-        isReleased={false}
+        isReleased={isReleased}
         onCancel={() => {
           setExportDialogOpen(false);
           setPendingExportKind(null);
@@ -428,14 +429,14 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
           setExportDialogOpen(false);
           await handleSave();
           if (pendingExportKind === "docx") {
-            await runDocxExport(false);
+            await runDocxExport();
           }
           setPendingExportKind(null);
         }}
         onExportSaved={async () => {
           setExportDialogOpen(false);
           if (pendingExportKind === "docx") {
-            await runDocxExport(false);
+            await runDocxExport();
           }
           setPendingExportKind(null);
         }}

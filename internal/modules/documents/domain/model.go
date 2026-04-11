@@ -76,6 +76,9 @@ type Version struct {
 	TemplateKey      string
 	TemplateVersion  int
 	CreatedAt        time.Time
+
+	// RendererPin is set at DRAFT→RELEASED transition. Nil for draft versions.
+	RendererPin *RendererPin
 }
 
 type Attachment struct {

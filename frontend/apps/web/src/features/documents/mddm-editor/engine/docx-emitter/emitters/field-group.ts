@@ -40,7 +40,7 @@ export function emitFieldGroup(block: MDDMBlock, tokens: LayoutTokens): Table[] 
     return [attachOptions(new Table(emptyTableOptions), emptyTableOptions)];
   }
 
-  const cellWidthPct = Math.floor(5000 / columns);
+  const cellWidthPct = Math.floor(100 / columns);
   const rows: TableRow[] = [];
 
   for (let i = 0; i < fields.length; i += columns) {

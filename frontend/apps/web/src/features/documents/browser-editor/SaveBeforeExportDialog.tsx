@@ -1,4 +1,5 @@
 import { useEffect, useRef, type CSSProperties } from "react";
+import { defaultLayoutTokens } from "../mddm-editor/engine/layout-ir";
 
 export type SaveBeforeExportDialogProps = {
   open: boolean;
@@ -43,9 +44,9 @@ const buttonStyle: CSSProperties = {
 
 const primaryButtonStyle: CSSProperties = {
   ...buttonStyle,
-  background: "#6b1f2a",
+  background: defaultLayoutTokens.theme.accent,
   color: "#ffffff",
-  border: "1px solid #6b1f2a",
+  border: `1px solid ${defaultLayoutTokens.theme.accent}`,
 };
 
 export function SaveBeforeExportDialog({

@@ -1,5 +1,8 @@
 import { defaultLayoutTokens } from "../layout-ir";
 
+const { exportFont, exportFontFallbacks } = defaultLayoutTokens.typography;
+const fontFamily = [`"${exportFont}"`, ...exportFontFallbacks.map((f) => (f.includes(" ") ? `"${f}"` : f))].join(", ");
+
 export const PRINT_STYLESHEET = `
 @page {
   size: A4;
@@ -9,7 +12,7 @@ export const PRINT_STYLESHEET = `
 html, body {
   margin: 0;
   padding: 0;
-  font-family: "Carlito", "Liberation Sans", "Arial", sans-serif;
+  font-family: ${fontFamily};
   font-size: ${defaultLayoutTokens.typography.baseSizePt}pt;
   line-height: ${defaultLayoutTokens.typography.lineHeightPt}pt;
 

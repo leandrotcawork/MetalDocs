@@ -6,10 +6,11 @@ import {
   TextRun,
   WidthType,
   BorderStyle,
+  HeightRule,
 } from "docx";
 import type { LayoutTokens } from "../../layout-ir";
 import { defaultComponentRules } from "../../layout-ir";
-import { percentToTablePct, ptToHalfPt } from "../../helpers/units";
+import { mmToTwip, ptToHalfPt } from "../../helpers/units";
 import type { MDDMBlock } from "../../../adapter";
 import { mddmTextRunsToDocxRuns } from "../inline-content";
 import { extractTextRuns } from "./paragraph";
@@ -48,7 +49,7 @@ export function emitField(block: MDDMBlock, tokens: LayoutTokens): Table[] {
 
   const labelCellOptions = {
     width: {
-      size: percentToTablePct(rule.labelWidthPercent),
+      size: rule.labelWidthPercent,
       type: WidthType.PERCENTAGE,
     },
     shading: { fill: labelFill, type: "clear" as const, color: "auto" },
@@ -65,7 +66,7 @@ export function emitField(block: MDDMBlock, tokens: LayoutTokens): Table[] {
 
   const valueCellOptions = {
     width: {
-      size: percentToTablePct(rule.valueWidthPercent),
+      size: rule.valueWidthPercent,
       type: WidthType.PERCENTAGE,
     },
     borders,
@@ -73,7 +74,13 @@ export function emitField(block: MDDMBlock, tokens: LayoutTokens): Table[] {
   };
   const valueCell = attachOptions(new TableCell(valueCellOptions), valueCellOptions);
 
-  const rowOptions = { children: [labelCell, valueCell] } as const;
+  const rowOptions = {
+    height: {
+      value: mmToTwip(rule.minHeightMm),
+      rule: HeightRule.AT_LEAST,
+    },
+    children: [labelCell, valueCell],
+  } as const;
   const row = attachOptions(new TableRow(rowOptions), rowOptions);
 
   const tableOptions = {

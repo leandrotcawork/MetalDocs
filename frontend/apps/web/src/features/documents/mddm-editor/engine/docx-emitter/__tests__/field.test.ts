@@ -21,9 +21,9 @@ describe("emitField", () => {
     const cells = firstRow.options.children;
     expect(cells).toHaveLength(2);
 
-    // First cell width should be 35% (1750 in docx.js fiftieths)
-    expect(cells[0].options.width.size).toBe(1750);
-    expect(cells[1].options.width.size).toBe(3250);
+    // Cell widths use raw integer percentages for WidthType.PERCENTAGE (docx.js formats as "${size}%")
+    expect(cells[0].options.width.size).toBe(35);
+    expect(cells[1].options.width.size).toBe(65);
   });
 
   it("applies the accentLight background to the label cell", () => {

@@ -30,6 +30,12 @@ export function ptToHalfPt(pt: number): number {
 
 // OOXML table column widths can be expressed in fiftieths of a percent (0-5000)
 // when type="pct". 100% = 5000.
+//
+// WARNING: Do NOT use this with docx.js WidthType.PERCENTAGE. That API
+// accepts a plain integer percentage (0-100) and formats it as "${size}%"
+// internally. Passing fiftieths (e.g. 1750) would produce "1750%" — invalid
+// OOXML. This function is only valid when writing raw OOXML w:w attributes
+// with type="pct" directly (i.e. bypassing docx.js width helpers).
 export function percentToTablePct(percent: number): number {
   const clamped = Math.max(0, Math.min(100, percent));
   return Math.round(clamped * 50);

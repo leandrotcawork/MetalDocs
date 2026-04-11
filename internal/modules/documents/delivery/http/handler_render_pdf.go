@@ -56,7 +56,7 @@ func (h *RenderPDFHandler) HandleRenderPDF(w http.ResponseWriter, r *http.Reques
 			case errors.Is(err, domain.ErrDocumentNotFound):
 				writeAPIError(w, http.StatusNotFound, "DOCUMENT_NOT_FOUND", "Document not found", traceID)
 			default:
-				writeAPIError(w, http.StatusInternalServerError, "INTERNAL_ERROR", fmt.Sprintf("authz: %v", err), traceID)
+				writeAPIError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "An internal error occurred", traceID)
 			}
 			return
 		}
@@ -87,7 +87,7 @@ func (h *RenderPDFHandler) HandleRenderPDF(w http.ResponseWriter, r *http.Reques
 
 	pdf, err := h.renderer.ConvertHTMLToPDF(r.Context(), htmlBytes, cssBytes)
 	if err != nil {
-		writeAPIError(w, http.StatusBadGateway, "RENDER_UPSTREAM_ERROR", fmt.Sprintf("pdf render failed: %v", err), traceID)
+		writeAPIError(w, http.StatusBadGateway, "RENDER_UPSTREAM_ERROR", "PDF rendering failed", traceID)
 		return
 	}
 

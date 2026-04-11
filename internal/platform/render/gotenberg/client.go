@@ -66,7 +66,7 @@ func (c *Client) ConvertHTMLToPDF(ctx context.Context, htmlBytes []byte, cssByte
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		payload, _ := io.ReadAll(resp.Body)
+		payload, _ := io.ReadAll(io.LimitReader(resp.Body, 4*1024))
 		return nil, fmt.Errorf("gotenberg: html conversion returned status %d: %s", resp.StatusCode, string(payload))
 	}
 
@@ -105,7 +105,7 @@ func (c *Client) ConvertDocxToPDF(ctx context.Context, docxContent []byte) ([]by
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
+		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 4*1024))
 		return nil, fmt.Errorf("gotenberg: status %d: %s", resp.StatusCode, string(respBody))
 	}
 

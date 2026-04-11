@@ -89,6 +89,7 @@ func TestConvertHTMLToPDF_SendsMultipartToChromiumRoute(t *testing.T) {
 	defer server.Close()
 
 	client := NewClient(server.URL)
+	client.httpClient = server.Client()
 
 	pdf, err := client.ConvertHTMLToPDF(
 		context.Background(),

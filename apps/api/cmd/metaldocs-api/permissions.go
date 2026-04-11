@@ -19,6 +19,9 @@ func newPermissionResolver() iamdelivery.PermissionResolver {
 		if strings.HasPrefix(path, "/api/v1/auth/") {
 			return "", false
 		}
+		if method == http.MethodGet && path == "/api/v1/feature-flags" {
+			return "", false
+		}
 
 		if method == http.MethodPost && path == "/api/v1/documents" {
 			return iamdomain.PermDocumentCreate, true

@@ -27,6 +27,7 @@ import (
 	"metaldocs/internal/platform/authn"
 	"metaldocs/internal/platform/bootstrap"
 	"metaldocs/internal/platform/config"
+	"metaldocs/internal/platform/featureflags"
 	"metaldocs/internal/platform/observability"
 	"metaldocs/internal/platform/security"
 )
@@ -52,6 +53,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("invalid auth config: %v", err)
 	}
+	featureFlagsCfg := config.LoadFeatureFlagsConfig()
 
 	deps, err := bootstrap.BuildAPIDependencies(context.Background(), repoMode, attachmentsCfg)
 	if err != nil {
@@ -111,6 +113,7 @@ func main() {
 	iamAdminService := iamapp.NewAdminService(deps.RoleAdminRepo, cachedProvider)
 	iamAdminHandler := iamdelivery.NewAdminHandler(iamAdminService, authService, deps.AuditWriter).
 		WithAuditReader(deps.AuditReader)
+	featureFlagsHandler := featureflags.NewHandler(featureFlagsCfg)
 	httpObs := observability.NewHTTPObservability(deps.StatusProvider)
 	rateLimiter := security.NewRateLimiter(rateCfg)
 	cors := security.NewCORS(corsCfg)
@@ -118,6 +121,7 @@ func main() {
 	mux := http.NewServeMux()
 	authHandler.RegisterRoutes(mux)
 	healthHandler.RegisterRoutes(mux)
+	featureFlagsHandler.RegisterRoutes(mux)
 	auditHandler.RegisterRoutes(mux)
 	docHandler.RegisterRoutes(mux)
 	searchHandler.RegisterRoutes(mux)

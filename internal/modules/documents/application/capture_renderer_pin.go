@@ -60,3 +60,13 @@ func (c *RendererPinCapturer) OnRelease(ctx context.Context, version domain.Vers
 
 	return c.cfg.Repo.SetVersionRendererPin(ctx, version.DocumentID, version.Number, pin)
 }
+
+// Rollback clears a previously captured pin. It is called as compensation when
+// the release transition fails after OnRelease already wrote the pin, so draft
+// rows never retain a stale pin. Mirrors OnRelease's content-source guard.
+func (c *RendererPinCapturer) Rollback(ctx context.Context, version domain.Version) error {
+	if version.ContentSource != domain.ContentSourceBrowserEditor {
+		return nil
+	}
+	return c.cfg.Repo.SetVersionRendererPin(ctx, version.DocumentID, version.Number, nil)
+}

@@ -140,3 +140,78 @@ func TestReleaseVersion_FailsWhenPinCaptureFails(t *testing.T) {
 		}
 	}
 }
+
+// recordingPinRepo accepts pin writes and records the sequence so tests can
+// assert both the set and the compensating clear.
+type recordingPinRepo struct {
+	calls []*domain.RendererPin
+}
+
+func (r *recordingPinRepo) SetVersionRendererPin(_ context.Context, _ string, _ int, pin *domain.RendererPin) error {
+	r.calls = append(r.calls, pin)
+	return nil
+}
+
+// failingArchiveRepo lets GetDraft succeed (with browser_editor metadata) so
+// the pin capturer fires, then fails ArchivePreviousReleased so the release
+// aborts AFTER the pin has been written. The compensation path must then
+// clear the pin.
+type failingArchiveRepo struct {
+	fakeReleaseRepoWithBrowserEditor
+	archiveErr error
+}
+
+func (f *failingArchiveRepo) ArchivePreviousReleased(_ context.Context, _ string) (uuid.UUID, []byte, []byte, error) {
+	f.steps = append(f.steps, "archive_previous")
+	return uuid.Nil, nil, nil, f.archiveErr
+}
+
+// TestReleaseVersion_RollsBackPinOnDownstreamFailure verifies that when the
+// release sequence fails AFTER the pin has been captured, the pin is cleared
+// (compensated) so draft rows never retain a stale pin. Audit MAJOR #2.
+func TestReleaseVersion_RollsBackPinOnDownstreamFailure(t *testing.T) {
+	archiveErr := errors.New("archive step exploded")
+	pinRepo := &recordingPinRepo{}
+	repo := &failingArchiveRepo{archiveErr: archiveErr}
+
+	capturer := NewRendererPinCapturer(RendererPinCapturerConfig{
+		CurrentRendererVersion: "1.0.0",
+		CurrentLayoutIRHash:    "deadbeef0000000000000000000000000000000000000000000000000000beef",
+		Repo:                   pinRepo,
+		Clock:                  func() time.Time { return time.Now() },
+	})
+
+	svc := NewReleaseService(repo, &fakeDocxRenderer{}).WithRendererPinCapturer(capturer)
+
+	err := svc.ReleaseDraft(context.Background(), ReleaseInput{
+		DocumentID: "PO-118",
+		DraftID:    uuid.New(),
+		ApprovedBy: "approver-1",
+	})
+
+	if err == nil {
+		t.Fatal("expected release to fail when archive step fails, got nil error")
+	}
+	if !errors.Is(err, archiveErr) {
+		t.Errorf("expected wrapped archiveErr, got: %v", err)
+	}
+
+	// Pin repo must see exactly two calls: one write (non-nil pin) and one
+	// compensating clear (nil pin). Any other sequence breaks draft semantics.
+	if len(pinRepo.calls) != 2 {
+		t.Fatalf("expected 2 pin repo calls (set + rollback), got %d: %+v", len(pinRepo.calls), pinRepo.calls)
+	}
+	if pinRepo.calls[0] == nil {
+		t.Errorf("expected first call to be a pin set (non-nil), got nil")
+	}
+	if pinRepo.calls[1] != nil {
+		t.Errorf("expected second call to be a pin clear (nil), got %+v", pinRepo.calls[1])
+	}
+
+	// PromoteDraftToReleased must NOT have been called — archive failed before it.
+	for _, step := range repo.steps {
+		if step == "promote_draft" {
+			t.Errorf("promote_draft was called despite archive failure; steps: %v", repo.steps)
+		}
+	}
+}

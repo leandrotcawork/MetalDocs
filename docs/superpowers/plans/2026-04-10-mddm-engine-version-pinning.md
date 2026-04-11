@@ -11,7 +11,7 @@
 **Spec:** `docs/superpowers/specs/2026-04-10-mddm-unified-document-engine-design.md` (Section 10: Version Pinning)
 
 **Depends on:**
-- Plan 1 — `docs/superpowers/plans/2026-04-10-mddm-engine-foundation.md`
+- Plan 1 — `docs/superpowers/plans/2026-04-10-mddm-engine-foundation.md` (Task 43 creates `frontend/apps/web/src/features/featureFlags.ts` — Plan 3 does not reference it but Plan 4 does)
 - Plan 2 — `docs/superpowers/plans/2026-04-10-mddm-engine-full-block-coverage.md`
 
 Both must be merged before Plan 3 starts.

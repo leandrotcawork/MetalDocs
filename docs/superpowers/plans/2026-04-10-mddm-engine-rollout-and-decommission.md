@@ -17,6 +17,8 @@
 
 All three must be merged before Plan 4 starts.
 
+**Critical precondition:** Plan 1 Task 43 creates `frontend/apps/web/src/features/featureFlags.ts`. If that task was skipped or the file was merged into an existing feature-flags module under a different name, the Plan 4 references to `featureFlags.ts` must be retargeted to the actual file before Tasks 11, 12, 18 are executed. Grep the repo to confirm: `grep -rn "featureFlags\." frontend/apps/web/src/ | head`. If no such file exists, create it with the Plan 1 Task 43 scaffold before starting Part 4 of this plan.
+
 ---
 
 ## File Structure
@@ -350,6 +352,7 @@ import (
     "testing"
 
     "metaldocs/internal/modules/documents/domain"
+    iamdomain "metaldocs/internal/modules/iam/domain"
 )
 
 type fakeShadowDiffRepo struct {
@@ -381,7 +384,7 @@ func TestHandleShadowDiff_PersistsEvent(t *testing.T) {
     })
     req := httptest.NewRequest(http.MethodPost, "/api/v1/telemetry/mddm-shadow-diff", bytes.NewReader(body))
     req.Header.Set("Content-Type", "application/json")
-    req = req.WithContext(contextWithUserID(req.Context(), "u-1"))
+    req = req.WithContext(iamdomain.WithAuthContext(req.Context(), "u-1", nil))
 
     w := httptest.NewRecorder()
     handler.Handle(w, req)
@@ -419,7 +422,7 @@ func TestHandleShadowDiff_RejectsMalformedBody(t *testing.T) {
 
     req := httptest.NewRequest(http.MethodPost, "/api/v1/telemetry/mddm-shadow-diff", bytes.NewReader([]byte("not json")))
     req.Header.Set("Content-Type", "application/json")
-    req = req.WithContext(contextWithUserID(req.Context(), "u-1"))
+    req = req.WithContext(iamdomain.WithAuthContext(req.Context(), "u-1", nil))
 
     w := httptest.NewRecorder()
     handler.Handle(w, req)
@@ -572,21 +575,48 @@ if len(parts) == 2 && parts[0] == "telemetry" && parts[1] == "mddm-shadow-diff" 
 
 Note: adjust to the actual routing pattern — telemetry paths may need a different base-path match than the existing `/documents/{id}/...` routes.
 
-- [ ] **Step 3: Wire at bootstrap**
+- [ ] **Step 3: Add ShadowDiffRepo to APIDependencies**
 
-In `apps/api/cmd/metaldocs-api/main.go`, after the existing handler setup:
+The bootstrap `APIDependencies` struct (at `internal/platform/bootstrap/api.go` line 40, verified via `grep`) currently exposes repositories through typed fields — not a raw `*sql.DB`. There is no `PGDB` field. The cleanest approach is to add a new repository field that follows the existing pattern.
+
+Open `internal/platform/bootstrap/api.go`. In `APIDependencies`, add:
 
 ```go
-shadowDiffRepo := docpg.NewShadowDiffRepository(deps.PGDB) // use whatever exposes *sql.DB in deps
-shadowDiffHandler := docdelivery.NewShadowDiffHandler(shadowDiffRepo)
-
-docHandler := docdelivery.NewHandler(docService).
-    WithAttachmentDownloads(/* ... */).
-    WithMDDMHandlers(loadService, submitForApprovalService).
-    WithShadowDiffHandler(shadowDiffHandler)
+type APIDependencies struct {
+    // ... existing fields ...
+    ShadowDiffRepo    *pgrepo.ShadowDiffRepository // nil for memory mode
+}
 ```
 
-If `deps.PGDB` does not exist, search for the raw `*sql.DB` the postgres repositories use and plumb it through `deps` via a new field.
+In `BuildAPIDependencies`, populate the new field in the postgres branch (around line 92) ALONGSIDE the other repo constructions:
+
+```go
+return APIDependencies{
+    DocumentsRepo:    pgrepo.NewRepository(db),
+    // ... existing assignments ...
+    ShadowDiffRepo:   pgrepo.NewShadowDiffRepository(db),
+}, nil
+```
+
+In the memory branch (around line 127), set `ShadowDiffRepo: nil` explicitly — the shadow diff telemetry is postgres-only and the memory mode simply returns a 503 when the handler is called.
+
+- [ ] **Step 4: Wire the handler at main.go**
+
+In `apps/api/cmd/metaldocs-api/main.go`, after the existing `docHandler` construction:
+
+```go
+var shadowDiffHandler *docdelivery.ShadowDiffHandler
+if deps.ShadowDiffRepo != nil {
+    shadowDiffHandler = docdelivery.NewShadowDiffHandler(deps.ShadowDiffRepo)
+}
+
+docHandler := docdelivery.NewHandler(docService).
+    WithAttachmentDownloads(/* ... existing args ... */).
+    WithMDDMHandlers(loadService, submitForApprovalService).
+    WithShadowDiffHandler(shadowDiffHandler) // nil in memory mode → 503 on the endpoint
+```
+
+The `WithShadowDiffHandler` method from Step 1 must accept nil gracefully and the handler already returns 503 when `h.repo == nil`, so no additional null-guard is needed at the route dispatch level.
 
 - [ ] **Step 4: Build and test**
 
@@ -599,8 +629,60 @@ Expected: Clean build, all tests pass.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add internal/modules/documents/delivery/http/handler.go apps/api/cmd/metaldocs-api/main.go
+git add internal/modules/documents/delivery/http/handler.go apps/api/cmd/metaldocs-api/main.go internal/platform/bootstrap/api.go
 git commit -m "wire(documents-http): register shadow diff telemetry route"
+```
+
+### Task 4b: Add permission mapping for the telemetry endpoint
+
+**Files:**
+- Modify: `apps/api/cmd/metaldocs-api/permissions.go`
+- Modify: `apps/api/cmd/metaldocs-api/permissions_test.go`
+
+**Why this task exists:** MetalDocs enforces route-level permissions via a resolver in `apps/api/cmd/metaldocs-api/permissions.go`. Any new HTTP endpoint must be registered there, otherwise the middleware will reject (or, worse, allow unguarded) requests. Plan 4 Task 4 registers the route but does NOT add a permission entry — Codex round 1 flagged this as a structural gap.
+
+- [ ] **Step 1: Inspect the existing permission registry**
+
+```bash
+grep -n "path.*Permission\|permission.*path\|POST.*permission\|route.*perm" apps/api/cmd/metaldocs-api/permissions.go | head -20
+```
+Expected: Shows the pattern used to map path + method to a permission name.
+
+- [ ] **Step 2: Add the telemetry entry**
+
+Follow the file's existing pattern. The telemetry endpoint only requires a valid authenticated session — no specific document permission — so map it to whatever "authenticated-only" permission the file uses (typically `PermAuthenticated` or similar; search the file for an existing route that needs no special permission to find the canonical name).
+
+If the file uses an explicit permission-required list, add:
+
+```go
+// New entry in the permission table
+{method: http.MethodPost, path: "/api/v1/telemetry/mddm-shadow-diff", permission: PermAuthenticated},
+```
+
+- [ ] **Step 3: Update the permission test**
+
+Open `apps/api/cmd/metaldocs-api/permissions_test.go` and append a subtest that asserts the telemetry endpoint is present in the expected permission map and requires `PermAuthenticated`:
+
+```go
+func TestPermissions_MDDMShadowDiffTelemetry(t *testing.T) {
+    // Pattern mirror: look at a neighboring test in this file and copy its shape.
+    // Assert that the permissions registry contains an entry for
+    // (POST, /api/v1/telemetry/mddm-shadow-diff) with the authenticated-only permission.
+}
+```
+
+- [ ] **Step 4: Run the permissions test**
+
+```bash
+go test ./apps/api/cmd/metaldocs-api/... -run TestPermissions -v 2>&1 | tail -20
+```
+Expected: PASS, including the new subtest.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add apps/api/cmd/metaldocs-api/permissions.go apps/api/cmd/metaldocs-api/permissions_test.go
+git commit -m "feat(permissions): add /telemetry/mddm-shadow-diff to permission registry"
 ```
 
 ### Task 5: Add endpoint to OpenAPI
@@ -1602,6 +1684,108 @@ git commit -m "docs(mddm-engine): log Phase 3 full rollout date"
 
 **Scope clarification:** Plan 4 only removes the `ContentSourceBrowserEditor` branch from the backend — `native` and `docx_upload` content sources continue to use `docgen.Client.Generate`. The docgen HTTP service and Docker image remain running. The spec's wording about "Remove docgen from infrastructure" refers to the **MDDM path** only; migrating `native`/`docx_upload` is a separate, out-of-scope project.
 
+### Task 14b: Regression tests — /export/docx must keep serving native and docx_upload
+
+**Files:**
+- Create: `internal/modules/documents/application/service_document_runtime_post_phase4_test.go`
+
+**Why this task exists:** Plan 4 Phase 4 removes the `browser_editor` branch from `ExportDocumentDocxAuthorized` but keeps the native / docx_upload paths untouched. Without an explicit regression test, a future edit to that function could break those content sources silently. This task adds service-level tests that assert the three content-source behaviors so Tasks 15-20 can safely refactor the surrounding code.
+
+- [ ] **Step 1: Write the failing test**
+
+Write to `internal/modules/documents/application/service_document_runtime_post_phase4_test.go`:
+
+```go
+package application
+
+import (
+    "context"
+    "errors"
+    "testing"
+
+    "metaldocs/internal/modules/documents/domain"
+)
+
+func TestExportDocumentDocxAuthorized_BrowserEditorRejected_PostPhase4(t *testing.T) {
+    // After Phase 4, browser_editor DOCX exports are client-side only.
+    // The backend endpoint must return ErrInvalidCommand.
+    svc := newTestServiceWithFakeRepo(t, fakeDocRepoConfig{
+        Document: domain.Document{ID: "d1"},
+        LatestVersion: domain.Version{
+            DocumentID:    "d1",
+            Number:        1,
+            ContentSource: domain.ContentSourceBrowserEditor,
+        },
+    })
+
+    _, err := svc.ExportDocumentDocxAuthorized(context.Background(), "d1", "trace")
+    if err == nil {
+        t.Fatalf("expected error for browser_editor content source")
+    }
+    if !errors.Is(err, domain.ErrInvalidCommand) {
+        t.Fatalf("expected ErrInvalidCommand, got %v", err)
+    }
+}
+
+func TestExportDocumentDocxAuthorized_NativeStillWorks_PostPhase4(t *testing.T) {
+    svc := newTestServiceWithFakeRepo(t, fakeDocRepoConfig{
+        Document: domain.Document{ID: "d2", DocumentProfile: "po"},
+        LatestVersion: domain.Version{
+            DocumentID:    "d2",
+            Number:        1,
+            ContentSource: domain.ContentSourceNative,
+        },
+        DocgenReturn: []byte("%PDF"), // fake docgen success
+    })
+
+    out, err := svc.ExportDocumentDocxAuthorized(context.Background(), "d2", "trace")
+    if err != nil {
+        t.Fatalf("native export should still work: %v", err)
+    }
+    if len(out) == 0 {
+        t.Fatalf("expected non-empty DOCX bytes")
+    }
+}
+
+func TestExportDocumentDocxAuthorized_DocxUploadStillWorks_PostPhase4(t *testing.T) {
+    svc := newTestServiceWithFakeRepo(t, fakeDocRepoConfig{
+        Document: domain.Document{ID: "d3", DocumentProfile: "po"},
+        LatestVersion: domain.Version{
+            DocumentID:    "d3",
+            Number:        1,
+            ContentSource: domain.ContentSourceDocxUpload,
+        },
+        DocgenReturn: []byte("%DOCX"),
+    })
+
+    out, err := svc.ExportDocumentDocxAuthorized(context.Background(), "d3", "trace")
+    if err != nil {
+        t.Fatalf("docx_upload export should still work: %v", err)
+    }
+    if len(out) == 0 {
+        t.Fatalf("expected non-empty DOCX bytes")
+    }
+}
+```
+
+**Implementer note:** The helpers `newTestServiceWithFakeRepo` and `fakeDocRepoConfig` may need to be created in a `_test.go` helper file that mirrors whatever unit-test pattern already exists for the documents application package. Inspect `service_document_runtime_test.go` (if present) or the closest existing service test file for the actual fake repo shape and adapt from there. The fake repo must satisfy `docdomain.Repository`, the docgen client can be a stub returning `fakeDocRepoConfig.DocgenReturn` when `Generate()` is called, and the schema resolver must return `(schema, true, nil)` for the test profile.
+
+- [ ] **Step 2: Run the test — expect the first subtest to FAIL**
+
+```bash
+go test ./internal/modules/documents/application/... -run TestExportDocumentDocxAuthorized_.*_PostPhase4 -v 2>&1 | tail -30
+```
+Expected: `TestExportDocumentDocxAuthorized_BrowserEditorRejected_PostPhase4` FAILS (current code still routes browser_editor through `generateBrowserDocxBytesWithTemplate`), while the native and docx_upload subtests PASS.
+
+**This is intentional** — the failing test is the executable acceptance criterion for Task 15. Task 15 will make it pass by removing the browser_editor branch.
+
+- [ ] **Step 3: Commit the tests**
+
+```bash
+git add internal/modules/documents/application/service_document_runtime_post_phase4_test.go
+git commit -m "test(documents-app): add post-Phase-4 content-source regression tests"
+```
+
 ### Task 15: Delete generateBrowserDocxBytesWithTemplate
 
 **Files:**
@@ -1710,74 +1894,92 @@ git add internal/platform/render/docgen/client.go internal/platform/render/docge
 git commit -m "feat(docgen): delete GenerateMDDM method + MDDM payload types"
 ```
 
-### Task 17: Decommission the /render/mddm-docx docgen service endpoint
+### Task 17: Delete the /render/mddm-docx route from the in-repo docgen service
 
-**Files:** (no source changes in this repo if docgen lives here; otherwise docs only)
+**Files:**
+- Modify: `apps/docgen/src/index.ts`
+- Modify (or delete): any `apps/docgen/src/mddm*.ts` helper files that become unreferenced
 
-- [ ] **Step 1: Find docgen service source**
+**In-repo location confirmed:** The docgen service lives at `apps/docgen/src/index.ts` in this repo (verified via `find apps/docgen/src`). The MDDM route handler is defined at `apps/docgen/src/index.ts:51` (`app.post("/render/mddm-docx", ...)`). Plan 4 removes it entirely. The other two endpoints (`/generate`, `/generate-browser`) remain in use by native and docx_upload content sources.
 
-Run: `find . -maxdepth 3 -type d -name 'docgen' -not -path '*/.worktrees/*' 2>&1 | head -5`
-Expected: Shows any embedded docgen service source if it lives in this repo.
+- [ ] **Step 1: Find the full scope of the MDDM handler in docgen**
 
-If docgen source is in this repo (unlikely — the spec describes it as external), locate and delete the `/render/mddm-docx` route handler. If docgen is external (typical), document the change in the runbook and notify whoever owns that service.
+```bash
+grep -rn "mddm\|MDDM" apps/docgen/src/ 2>&1 | grep -v node_modules | head -30
+```
+Expected: Lists `index.ts:51` and any supporting files (rendering helpers, type definitions, template mappings).
 
-- [ ] **Step 2: Update the runbook**
+- [ ] **Step 2: Delete the route handler**
+
+Open `apps/docgen/src/index.ts`. Find `app.post("/render/mddm-docx", ...)` and delete the entire block — including its body and any closing `});`. Also delete any imports at the top of the file that become unused.
+
+- [ ] **Step 3: Delete supporting MDDM files**
+
+For each file identified in Step 1 that is referenced ONLY by the deleted route handler, delete it:
+
+```bash
+# Run grep again to confirm the file is no longer imported from anywhere outside itself
+grep -rn "from.*['\"]./mddm" apps/docgen/src/ 2>&1 | grep -v node_modules
+```
+
+Delete every unreferenced helper file. If a file is shared with `/generate` or `/generate-browser`, keep it.
+
+- [ ] **Step 4: Delete MDDM tests in docgen**
+
+```bash
+find apps/docgen -type f -name "*.test.ts" -not -path "*/node_modules/*" -exec grep -l "mddm\|MDDM" {} \;
+```
+For each matching test file, delete the MDDM-specific tests (or the whole file if it only tests MDDM).
+
+- [ ] **Step 5: Build docgen to confirm nothing is broken**
+
+```bash
+cd apps/docgen && npm run build 2>&1 | tail -20
+```
+Expected: Clean build. If TypeScript complains about unused imports, remove them.
+
+- [ ] **Step 6: Update the runbook**
 
 Append to `docs/superpowers/runbooks/mddm-rollout-runbook.md`:
 
 ```markdown
 ## Decommission — docgen /render/mddm-docx endpoint
 
-As of Plan 4 Phase 4, the MetalDocs backend no longer calls docgen's
-`POST /render/mddm-docx` endpoint. The endpoint can be retired in docgen
-itself whenever convenient. The two other docgen endpoints
-(`POST /generate`, `POST /generate-browser`) remain in use for `native`
-and `docx_upload` content sources.
+As of Plan 4 Phase 4, `apps/docgen/src/index.ts` no longer exposes
+`POST /render/mddm-docx`. The two remaining endpoints
+(`POST /generate`, `POST /generate-browser`) continue serving
+native and docx_upload content sources.
 ```
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add docs/superpowers/runbooks/mddm-rollout-runbook.md
-git commit -m "docs(mddm-engine): note docgen /render/mddm-docx is unused post-Phase 4"
+git add apps/docgen/ docs/superpowers/runbooks/mddm-rollout-runbook.md
+git commit -m "feat(docgen): delete /render/mddm-docx route and MDDM helpers"
 ```
 
 ---
 
 ## Part 8 — Decommission (Frontend)
 
-### Task 18: Delete the legacy exportDocumentDocx client
+**Task ordering note:** Tasks 18 and 19 were reordered in Codex round 1. The old order (delete the legacy client first, then collapse the feature flag) broke the build between tasks because `BrowserDocumentEditorView.tsx` still imported `exportDocumentDocx` during Task 18's commit. The corrected order is:
+
+1. **Task 18 (first)** — Collapse `BrowserDocumentEditorView` and the feature flag to the new path only; remove all references to `exportDocumentDocx` and shadow-testing imports.
+2. **Task 19 (second)** — Delete `exportDocumentDocx` from `api/documents.ts` and any re-exports in `lib.api.ts`.
+
+This keeps every intermediate commit in a buildable state.
+
+### Task 18: Collapse BrowserDocumentEditorView to the new path + remove feature flag
 
 **Files:**
-- Modify: `frontend/apps/web/src/api/documents.ts`
-
-- [ ] **Step 1: Remove the legacy export function**
-
-Open `frontend/apps/web/src/api/documents.ts`. Locate `exportDocumentDocx` (the function that POSTs to `/documents/{id}/export/docx`) and DELETE it. It's no longer reachable from any browser_editor code path after Phase 3.
-
-- [ ] **Step 2: Verify no references**
-
-```bash
-grep -rn "exportDocumentDocx" frontend/apps/web/src/ 2>&1 | head -10
-```
-Expected: No matches (the import in `BrowserDocumentEditorView.tsx` will be updated in Task 19 along with the flag cleanup).
-
-- [ ] **Step 3: Commit**
-
-```bash
-git add frontend/apps/web/src/api/documents.ts
-git commit -m "feat(web-api): delete legacy exportDocumentDocx client (Phase 4)"
-```
-
-### Task 19: Collapse the feature flag and remove the shadow code path
-
-**Files:**
-- Modify: `frontend/apps/web/src/features/featureFlags.ts`
+- Modify: `frontend/apps/web/src/features/featureFlags.ts` (delete feature flag module or gut it)
 - Modify: `frontend/apps/web/src/features/documents/browser-editor/BrowserDocumentEditorView.tsx`
+- Modify: `internal/platform/config/` (delete `MDDMNativeExportRolloutPercent` field)
+- Delete: `frontend/apps/web/src/features/documents/mddm-editor/engine/shadow-testing/`
 
-- [ ] **Step 1: Collapse BrowserDocumentEditorView to the new path only**
+- [ ] **Step 1: Collapse BrowserDocumentEditorView's runDocxExport**
 
-In `BrowserDocumentEditorView.tsx`, `runDocxExport` simplifies to:
+In `BrowserDocumentEditorView.tsx`, replace `runDocxExport` with the unconditional new-path version:
 
 ```tsx
 async function runDocxExport(_useCurrentEditorState: boolean) {
@@ -1803,50 +2005,109 @@ async function runDocxExport(_useCurrentEditorState: boolean) {
 }
 ```
 
-Delete the feature-flag branch, the shadow dual-run helpers (`runShadowAndReport`, `hashCurrentUserId`), and the `exportDocumentDocx` import.
+Delete:
+- The feature-flag branch introduced in Plan 1 Task 46
+- The `runShadowAndReport` helper and `hashCurrentUserId` helper introduced in Plan 4 Task 9
+- The `import { exportDocumentDocx } from "../../api/documents"` line
+- The `import { featureFlags, isMddmNativeExportEnabled } from "../../featureFlags"` line
+- Any remaining imports from `../mddm-editor/engine/shadow-testing/`
 
-- [ ] **Step 2: Remove the feature flag itself**
+- [ ] **Step 2: Delete or gut the feature flag module**
 
-In `frontend/apps/web/src/features/featureFlags.ts`, delete `MDDM_NATIVE_EXPORT` and `MDDM_NATIVE_EXPORT_ROLLOUT_PCT`. Also delete the `isMddmNativeExportEnabled` helper. The new path is now unconditional.
+In `frontend/apps/web/src/features/featureFlags.ts` (created in Plan 1 Task 43), delete the entire file or reduce it to an empty shim if other code might import from it:
 
-Update any remaining call sites (the Plan 4 Part 4 tasks already unified them through `isMddmNativeExportEnabled`, so there should be none except the import in `BrowserDocumentEditorView.tsx`).
+```bash
+rm frontend/apps/web/src/features/featureFlags.ts 2>/dev/null || true
+```
 
-- [ ] **Step 3: Delete the backend rollout config**
+Search for any stragglers:
 
-In the config file from Task 12, delete `MDDMNativeExportRolloutPercent` and its env var binding. If the config endpoint was created in Task 12 specifically for this flag and has no other consumers, delete the endpoint too.
+```bash
+grep -rn "from.*featureFlags\|from.*feature-flags/rollout\|isMddmNativeExportEnabled" frontend/apps/web/src/ 2>&1 | head -10
+```
+Expected: No hits. If there are any (outside of the shadow-testing module which is deleted in Step 4), remove those imports too.
+
+- [ ] **Step 3: Delete the backend rollout config field**
+
+Open the config file created in Task 12 (e.g., `internal/platform/config/feature_flags.go`) and delete:
+- `MDDMNativeExportRolloutPercent` field from the struct
+- The `METALDOCS_MDDM_NATIVE_EXPORT_ROLLOUT_PCT` env var binding
+- The HTML shell injection (the `<script>window.__METALDOCS_FEATURE_FLAGS = ...</script>` line) if it was added purely for this flag
+- Any config endpoint that exposed ONLY this flag
+
+If the config endpoint has OTHER flags beyond the MDDM one, leave the endpoint in place and just remove the MDDM entry.
 
 - [ ] **Step 4: Delete the shadow-testing module directory**
 
-Run:
-
 ```bash
 rm -r frontend/apps/web/src/features/documents/mddm-editor/engine/shadow-testing/
+rm -r frontend/apps/web/src/features/feature-flags/
 ```
-
-The shadow testing infrastructure is no longer needed — Phase 4 removes the legacy path it was shadowing.
 
 Verify no references remain:
 
 ```bash
-grep -rn "shadow-testing\|runShadowExport\|postShadowDiff\|computeShadowDiff" frontend/apps/web/src/ 2>&1 | head -10
+grep -rn "shadow-testing\|runShadowExport\|postShadowDiff\|computeShadowDiff\|rolloutBucketForUser" frontend/apps/web/src/ 2>&1 | head -10
 ```
 Expected: No hits.
 
-- [ ] **Step 5: Build + test**
+- [ ] **Step 5: Build and test**
 
 ```bash
-cd frontend/apps/web && npm run build 2>&1 | tail -20
+cd frontend/apps/web && npx tsc --noEmit 2>&1 | tail -20
 cd frontend/apps/web && npx vitest run 2>&1 | tail -30
 ```
-Expected: Clean build, all remaining tests pass.
+Expected: Clean compile, all remaining tests pass. At this point `BrowserDocumentEditorView.tsx` no longer references `exportDocumentDocx` — the client function is unreferenced but NOT yet deleted. That's fine; Task 19 removes it next.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add frontend/apps/web/src/features/featureFlags.ts frontend/apps/web/src/features/documents/browser-editor/BrowserDocumentEditorView.tsx internal/platform/config/ frontend/apps/web/src/features/documents/mddm-editor/engine/shadow-testing/
-git commit -m "feat(mddm-engine): collapse MDDM native export flag and delete shadow module (Phase 4 cleanup)"
+git add frontend/apps/web/src/features/featureFlags.ts frontend/apps/web/src/features/feature-flags/ frontend/apps/web/src/features/documents/browser-editor/BrowserDocumentEditorView.tsx frontend/apps/web/src/features/documents/mddm-editor/engine/shadow-testing/ internal/platform/config/
+git commit -m "feat(mddm-engine): collapse browser editor to new path + delete flag/shadow modules"
 ```
 
+### Task 19: Delete the legacy exportDocumentDocx client
+
+**Files:**
+- Modify: `frontend/apps/web/src/api/documents.ts`
+- Modify: `frontend/apps/web/src/lib.api.ts` (if it re-exports `exportDocumentDocx`)
+
+- [ ] **Step 1: Confirm exportDocumentDocx has zero in-repo consumers**
+
+```bash
+grep -rn "exportDocumentDocx" frontend/apps/web/src/ 2>&1 | grep -v "api/documents.ts" | head -10
+```
+Expected: No hits (only the definition in `api/documents.ts` itself should remain). If there ARE hits, Task 18 was incomplete — go back and remove them first.
+
+- [ ] **Step 2: Remove the legacy export function**
+
+Open `frontend/apps/web/src/api/documents.ts`. Locate `exportDocumentDocx` and DELETE it. Also delete the `DocumentContentDocxResponse` type if it's only used by that function.
+
+- [ ] **Step 3: Remove any re-exports**
+
+```bash
+grep -rn "exportDocumentDocx" frontend/apps/web/src/lib.api.ts 2>&1 | head
+```
+If `lib.api.ts` re-exports `exportDocumentDocx`, delete that line.
+
+- [ ] **Step 4: Build and test**
+
+```bash
+cd frontend/apps/web && npx tsc --noEmit 2>&1 | tail -20
+cd frontend/apps/web && npx vitest run 2>&1 | tail -30
+```
+Expected: Clean compile, all tests pass.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add frontend/apps/web/src/api/documents.ts frontend/apps/web/src/lib.api.ts
+git commit -m "feat(web-api): delete legacy exportDocumentDocx client (Phase 4)"
+```
+
+### Task 19b: (was Task 19) Legacy removal fallthrough — DELETED, merged into Tasks 18 and 19 above
+
+The original single Task 19 is now split across Tasks 18 and 19. Nothing to do here.
 ### Task 20: Decommission the /telemetry/mddm-shadow-diff endpoint
 
 **Files:**
@@ -1881,18 +2142,30 @@ In `apps/api/cmd/metaldocs-api/main.go`, delete the `NewShadowDiffRepository` / 
 
 In `api/openapi/v1/openapi.yaml`, delete the `/telemetry/mddm-shadow-diff` path and the `MDDMShadowDiffEvent` schema added in Task 5.
 
-- [ ] **Step 5: Drop the telemetry table**
+- [ ] **Step 5: Document the deferred table drop (do NOT create the migration file)**
 
-Create migration `migrations/0071_drop_mddm_shadow_diff_events.sql`:
+`scripts/dev-migrate.ps1` applies every `migrations/*.sql` in sorted order on every run. Creating `migrations/0071_drop_mddm_shadow_diff_events.sql` in the same commit as the code deletion would drop the telemetry table on the very next deploy, erasing the 90-day retention window the runbook promises.
+
+Instead, append to `docs/superpowers/runbooks/mddm-rollout-runbook.md`:
+
+```markdown
+## Deferred action — drop mddm_shadow_diff_events table
+
+After 90 days at 100% rollout with no regressions, add a migration
+file and let the next `scripts/dev-migrate.ps1` run apply it:
 
 ```sql
--- 0071: shadow testing ended; drop the telemetry table after rollout.
--- The table is append-only and no longer written. Retain for 90 days
--- before running this migration in case of rollback; then apply.
+-- migrations/0071_drop_mddm_shadow_diff_events.sql
 DROP TABLE IF EXISTS metaldocs.mddm_shadow_diff_events;
 ```
 
-Do NOT apply this migration in the same deploy as the code deletion. Wait until the retention window passes (90 days post-100%) and then run `scripts/dev-migrate.ps1`.
+Scheduled drop date: **YYYY-MM-DD** (fill in when Phase 4 completes).
+
+DO NOT add this file before the scheduled date — the dev-migrate
+script applies every migration on every run, with no gating.
+```
+
+The only artifact in this step is the runbook entry. No SQL file is committed during Plan 4.
 
 - [ ] **Step 6: Build + test**
 
@@ -1905,8 +2178,8 @@ Expected: Clean build, all remaining tests pass.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add -A internal/modules/documents/delivery/http/ internal/modules/documents/infrastructure/postgres/ internal/modules/documents/domain/shadow_diff.go internal/modules/documents/application/ apps/api/cmd/metaldocs-api/main.go api/openapi/v1/openapi.yaml migrations/0071_drop_mddm_shadow_diff_events.sql
-git commit -m "feat(mddm-engine): decommission shadow diff telemetry endpoint and table"
+git add -A internal/modules/documents/delivery/http/ internal/modules/documents/infrastructure/postgres/ internal/modules/documents/domain/shadow_diff.go internal/modules/documents/application/ apps/api/cmd/metaldocs-api/main.go api/openapi/v1/openapi.yaml docs/superpowers/runbooks/mddm-rollout-runbook.md
+git commit -m "feat(mddm-engine): decommission shadow diff telemetry endpoint"
 ```
 
 ---
@@ -1999,9 +2272,22 @@ git commit -m "docs(mddm-engine): log Phase 4 decommission completion"
 - Writing an aggregation dashboard for the shadow diff events — the runbook provides a SQL query; a real dashboard is a follow-up if volume justifies it.
 - Shadow-mode analytics beyond raw event counts (distributions, percentiles, etc.) — the runbook's simple `GROUP BY` query is sufficient for the decision "is canary safe".
 
+### Codex revision history
+
+Codex round-1 on Plan 4 caught 8 structural and local issues. All addressed in this revision:
+
+1. **`featureFlags.ts` existence** (structural) — added an explicit precondition at the top of Plan 4: Plan 1 Task 43 creates the file; if it was skipped or renamed, Plan 4 cannot execute Tasks 11, 12, 18 as written. Plan 3 was also updated to note that Plan 4 depends on the file.
+2. **`deps.PGDB` does not exist** (structural) — Task 4 now adds a new `ShadowDiffRepo` field to `APIDependencies` in `internal/platform/bootstrap/api.go`, populated in the postgres branch (line ~92) and set to `nil` in the memory branch (line ~127). The handler uses the interface via `deps.ShadowDiffRepo` — no raw `*sql.DB` plumbing is required.
+3. **Missing permission mapping** (structural) — new **Task 4b** adds the telemetry endpoint to `apps/api/cmd/metaldocs-api/permissions.go` and extends `permissions_test.go` with an assertion that `POST /api/v1/telemetry/mddm-shadow-diff` requires an authenticated session.
+4. **`contextWithUserID` does not exist** (local) — every test in Plan 4 now uses `iamdomain.WithAuthContext(req.Context(), "u-1", nil)` matching the pattern already in use at `internal/modules/documents/delivery/http/*_test.go`. Imports updated accordingly.
+5. **Task 18/19 ordering** (structural) — swapped. Task 18 now collapses `BrowserDocumentEditorView` and the feature flag (removing all references to `exportDocumentDocx` and shadow-testing imports) BEFORE Task 19 deletes the legacy client from `api/documents.ts`. Every intermediate commit now compiles.
+6. **apps/docgen is in-repo** (structural) — Task 17 now edits `apps/docgen/src/index.ts` directly, removing the `app.post("/render/mddm-docx", ...)` block at line 51 and deleting any MDDM-only helper files. Previously the task assumed docgen was external and only required a runbook note.
+7. **Migration 0071 sequencing** (structural) — Task 20 Step 5 no longer creates `0071_drop_mddm_shadow_diff_events.sql` during Phase 4. `scripts/dev-migrate.ps1` applies every migration on every run, so committing the file would drop the telemetry table on the next deploy. The step now adds a runbook entry documenting the deferred drop, with the actual file to be created 90 days later.
+8. **Missing regression tests for non-MDDM content sources** (local) — new **Task 14b** (runs before Task 15) adds service-level tests for `ExportDocumentDocxAuthorized` asserting three behaviors: browser_editor rejected with `ErrInvalidCommand`, native still works via docgen, docx_upload still works via docgen. The browser_editor test fails initially; Task 15 makes it pass.
+
 ### Placeholder scan
 
-No "TBD", "TODO", or "similar to Task N" placeholders remain. The runbook's `YYYY-MM-DD` date placeholders in Tasks 13, 14, 21 are filled in at execution time — this is intentional, not a plan gap.
+No "TBD", "TODO", or "similar to Task N" placeholders remain. The runbook's `YYYY-MM-DD` date placeholders in Tasks 13, 14, 20, 21 are filled in at execution time — this is intentional, not a plan gap.
 
 ### Type / signature consistency
 

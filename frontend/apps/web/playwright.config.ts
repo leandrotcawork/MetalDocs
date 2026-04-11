@@ -23,5 +23,14 @@ export default defineConfig({
         channel: "chrome",
       },
     },
+    {
+      name: "mddm-visual-parity",
+      testDir: "./e2e",
+      use: {
+        ...devices["Desktop Chrome"],
+        channel: "chrome",
+        baseURL: "http://127.0.0.1:5173",
+      },
+    },
   ],
 });

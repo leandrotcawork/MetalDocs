@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { exportPdf } from "../export-pdf";
 import { ResourceCeilingExceededError } from "../../asset-resolver";
-import * as wrapModule from "../wrap-print-document";
+import * as wrapModule from "../../print-stylesheet/wrap-print-document";
 
 function mockFetchOk(pdfBytes: Uint8Array): ReturnType<typeof vi.fn> {
   const spy = vi.fn().mockResolvedValue(
@@ -22,7 +22,7 @@ describe("exportPdf", () => {
   it("POSTs multipart/form-data to /api/v1/documents/{id}/render/pdf", async () => {
     const fetchSpy = mockFetchOk(new Uint8Array([0x25, 0x50, 0x44, 0x46])); // "%PDF"
 
-    const blob = await exportPdf({ bodyHtml: "<p>Hi</p>", documentId: "doc-1" });
+    const blob = await exportPdf("doc-1", "<p>Hi</p>");
 
     expect(blob.type).toBe("application/pdf");
     expect(fetchSpy).toHaveBeenCalledTimes(1);
@@ -44,7 +44,7 @@ describe("exportPdf", () => {
     const wrapSpy = vi.spyOn(wrapModule, "wrapInPrintDocument");
     mockFetchOk(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
 
-    await exportPdf({ bodyHtml: "<p>Hi</p>", documentId: "doc-1" });
+    await exportPdf("doc-1", "<p>Hi</p>");
 
     expect(wrapSpy).toHaveBeenCalledWith("<p>Hi</p>");
     const htmlText = wrapSpy.mock.results[0].value as string;
@@ -59,7 +59,7 @@ describe("exportPdf", () => {
     const huge = "x".repeat(11 * 1024 * 1024);
     const fetchSpy = mockFetchOk(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
 
-    await expect(exportPdf({ bodyHtml: huge, documentId: "doc-1" }))
+    await expect(exportPdf("doc-1", huge))
       .rejects.toBeInstanceOf(ResourceCeilingExceededError);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
@@ -69,7 +69,7 @@ describe("exportPdf", () => {
       new Response("forbidden", { status: 403 }),
     ));
 
-    await expect(exportPdf({ bodyHtml: "<p/>", documentId: "doc-1" }))
+    await expect(exportPdf("doc-1", "<p/>"))
       .rejects.toThrow(/PDF render failed/);
   });
 
@@ -78,7 +78,7 @@ describe("exportPdf", () => {
       new Response("not a pdf", { status: 200, headers: { "Content-Type": "text/html" } }),
     ));
 
-    await expect(exportPdf({ bodyHtml: "<p/>", documentId: "doc-1" }))
+    await expect(exportPdf("doc-1", "<p/>"))
       .rejects.toThrow(/Content-Type/);
   });
 });

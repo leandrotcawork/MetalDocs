@@ -1,15 +1,15 @@
-import { wrapInPrintDocument } from "./wrap-print-document";
+import { wrapInPrintDocument } from "../print-stylesheet/wrap-print-document";
 import { PRINT_STYLESHEET } from "../print-stylesheet";
+import type { LayoutTokens } from "../layout-ir";
 import { RESOURCE_CEILINGS, ResourceCeilingExceededError } from "../asset-resolver";
-
-export type ExportPdfParams = {
-  bodyHtml: string;
-  documentId: string;
-};
 
 const PDF_MIME = "application/pdf";
 
-export async function exportPdf({ bodyHtml, documentId }: ExportPdfParams): Promise<Blob> {
+export async function exportPdf(
+  documentId: string,
+  bodyHtml: string,
+  tokens?: LayoutTokens,
+): Promise<Blob> {
   const fullHtml = wrapInPrintDocument(bodyHtml);
 
   const htmlBytes = new TextEncoder().encode(fullHtml).byteLength;

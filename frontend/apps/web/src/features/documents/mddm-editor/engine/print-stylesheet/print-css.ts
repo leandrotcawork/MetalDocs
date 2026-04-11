@@ -12,13 +12,13 @@ html, body {
   font-family: "Carlito", "Liberation Sans", "Arial", sans-serif;
   font-size: ${defaultLayoutTokens.typography.baseSizePt}pt;
   line-height: ${defaultLayoutTokens.typography.lineHeightPt}pt;
-  color: #111111;
-  -webkit-print-color-adjust: exact;
-  print-color-adjust: exact;
+
   font-kerning: normal;
   font-feature-settings: "liga" 1, "kern" 1;
   font-synthesis: none;
 }
+
+@media print { * { -webkit-print-color-adjust: exact !important; color-adjust: exact !important; } }
 
 .mddm-section-header,
 .mddm-field,

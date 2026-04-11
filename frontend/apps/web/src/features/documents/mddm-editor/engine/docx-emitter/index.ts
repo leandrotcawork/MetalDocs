@@ -1,7 +1,20 @@
-export { mddmToDocx, MissingEmitterError, REGISTERED_EMITTER_TYPES } from "./emitter";
+export { mddmToDocx, MissingEmitterError, REGISTERED_EMITTER_TYPES, type EmitContext } from "./emitter";
 export { mddmTextRunsToDocxRuns } from "./inline-content";
+export { collectImageUrls } from "./asset-collector";
+
 export { emitParagraph, extractTextRuns } from "./emitters/paragraph";
 export { emitHeading } from "./emitters/heading";
 export { emitSection } from "./emitters/section";
 export { emitField } from "./emitters/field";
 export { emitFieldGroup } from "./emitters/field-group";
+export { emitBulletListItem } from "./emitters/bullet-list-item";
+export { emitNumberedListItem, MDDM_NUMBERING_REF } from "./emitters/numbered-list-item";
+export { emitImage, MissingAssetError } from "./emitters/image";
+export { emitQuote } from "./emitters/quote";
+export { emitDivider } from "./emitters/divider";
+export { emitDataTable } from "./emitters/data-table";
+export { emitDataTableRow } from "./emitters/data-table-row";
+export { emitDataTableCell } from "./emitters/data-table-cell";
+export { emitRepeatable } from "./emitters/repeatable";
+export { emitRepeatableItem, type ChildRenderer } from "./emitters/repeatable-item";
+export { emitRichBlock } from "./emitters/rich-block";

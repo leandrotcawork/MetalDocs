@@ -4,10 +4,14 @@ import { exportDocumentDocx, getDocumentBrowserEditorBundle, saveDocumentBrowser
 import type { DocumentBrowserEditorBundleResponse, DocumentListItem } from "../../../lib.types";
 import { formatDocumentDisplayName } from "../../shared/documentDisplay";
 import { normalizeDocumentProfileCode } from "../../shared/documentProfile";
+import { featureFlags } from "../../featureFlags";
+import { exportDocx as mddmExportDocx } from "../mddm-editor/engine/export";
+import { defaultLayoutTokens } from "../mddm-editor/engine/layout-ir";
 import styles from "./BrowserDocumentEditorView.module.css";
 import { DocumentEditorHeader } from "./DocumentEditorHeader";
 import { MDDMEditor, type MDDMTheme } from "../mddm-editor/MDDMEditor";
 import { blockNoteToMDDM, mddmToBlockNote, type MDDMEnvelope } from "../mddm-editor/adapter";
+import { SaveBeforeExportDialog } from "./SaveBeforeExportDialog";
 
 type BrowserDocumentEditorViewProps = {
   document: DocumentListItem;
@@ -26,6 +30,8 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
   const [errorCode, setErrorCode] = useState<"load" | "save" | "conflict" | null>(null);
   const [saveLabel, setSaveLabel] = useState("Nao salvo");
   const [isExporting, setIsExporting] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [pendingExportKind, setPendingExportKind] = useState<"docx" | null>(null);
   const bundleRef = useRef<DocumentBrowserEditorBundleResponse | null>(null);
   const errorCodeRef = useRef<"load" | "save" | "conflict" | null>(null);
 
@@ -203,23 +209,33 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
     }
   }
 
-  async function handleExportDocx() {
-    if (!document.documentId.trim() || isExporting) {
-      return;
-    }
+  function triggerBlobDownload(blob: Blob, filename: string) {
+    const url = window.URL.createObjectURL(blob);
+    const link = window.document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    window.document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  }
+
+  async function runDocxExport(_useCurrentEditorState: boolean) {
+    const safeCode = (document.documentCode || "documento").trim().replace(/[^\w.-]+/g, "-");
 
     setIsExporting(true);
     try {
-      const blob = await exportDocumentDocx(document.documentId);
-      const url = window.URL.createObjectURL(blob);
-      const link = window.document.createElement("a");
-      const safeCode = (document.documentCode || "documento").trim().replace(/[^\w.-]+/g, "-");
-      link.href = url;
-      link.download = `${safeCode}.docx`;
-      window.document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      if (featureFlags.MDDM_NATIVE_EXPORT) {
+        const body = (editorData ?? "").trim();
+        const envelope: MDDMEnvelope = body
+          ? (JSON.parse(body) as MDDMEnvelope)
+          : { mddm_version: 1, template_ref: null, blocks: [] };
+        const blob = await mddmExportDocx(envelope, defaultLayoutTokens);
+        triggerBlobDownload(blob, `${safeCode}.docx`);
+      } else {
+        const blob = await exportDocumentDocx(document.documentId);
+        triggerBlobDownload(blob, `${safeCode}.docx`);
+      }
       setErrorCode(null);
       setErrorMessage("");
     } catch (error) {
@@ -232,6 +248,25 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
     } finally {
       setIsExporting(false);
     }
+  }
+
+  async function handleExportDocx() {
+    if (!document.documentId.trim() || isExporting) {
+      return;
+    }
+
+    if (!featureFlags.MDDM_NATIVE_EXPORT) {
+      await runDocxExport(false);
+      return;
+    }
+
+    if (isDirty) {
+      setPendingExportKind("docx");
+      setExportDialogOpen(true);
+      return;
+    }
+
+    await runDocxExport(false);
   }
 
   const canRetrySave = Boolean(bundle) && !isSaving && isDirty;
@@ -381,6 +416,30 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
           {saveLabel}
         </span>
       </footer>
+
+      <SaveBeforeExportDialog
+        open={exportDialogOpen}
+        isReleased={false}
+        onCancel={() => {
+          setExportDialogOpen(false);
+          setPendingExportKind(null);
+        }}
+        onSaveAndExport={async () => {
+          setExportDialogOpen(false);
+          await handleSave();
+          if (pendingExportKind === "docx") {
+            await runDocxExport(false);
+          }
+          setPendingExportKind(null);
+        }}
+        onExportSaved={async () => {
+          setExportDialogOpen(false);
+          if (pendingExportKind === "docx") {
+            await runDocxExport(false);
+          }
+          setPendingExportKind(null);
+        }}
+      />
     </section>
   );
 }

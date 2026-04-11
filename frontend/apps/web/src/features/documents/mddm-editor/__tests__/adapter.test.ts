@@ -181,7 +181,7 @@ describe("MDDM ↔ BlockNote adapter", () => {
           id: "10000000-0000-0000-0000-000000000001",
           template_block_id: "20000000-0000-0000-0000-000000000001",
           type: "section",
-          props: { title: "Section", color: "#6b1f2a", locked: true },
+          props: { title: "Section", color: "#6b1f2a", locked: true, variant: "bar" },
           children: [
             {
               id: "10000000-0000-0000-0000-000000000002",
@@ -197,6 +197,7 @@ describe("MDDM ↔ BlockNote adapter", () => {
                     label: "Responsavel",
                     valueMode: "inline",
                     locked: true,
+                    layout: "grid",
                   },
                   children: [
                     {
@@ -233,7 +234,7 @@ describe("MDDM ↔ BlockNote adapter", () => {
                 {
                   id: "10000000-0000-0000-0000-000000000006",
                   type: "repeatableItem",
-                  props: { title: "Item 1" },
+                  props: { title: "Item 1", style: "bordered" },
                   children: [
                     {
                       id: "10000000-0000-0000-0000-000000000007",
@@ -262,6 +263,7 @@ describe("MDDM ↔ BlockNote adapter", () => {
                 locked: true,
                 minRows: 0,
                 maxRows: 3,
+                density: "normal",
               },
               children: [
                 {
@@ -283,7 +285,7 @@ describe("MDDM ↔ BlockNote adapter", () => {
               id: "10000000-0000-0000-0000-000000000011",
               template_block_id: "20000000-0000-0000-0000-000000000006",
               type: "richBlock",
-              props: { label: "Livre", locked: true },
+              props: { label: "Livre", locked: true, chrome: "labeled" },
               children: [
                 {
                   id: "10000000-0000-0000-0000-000000000012",

@@ -1,0 +1,23 @@
+{
+  "mddm_version": 1,
+  "template_ref": null,
+  "blocks": [
+    {
+      "id": "00000000-0000-4000-8000-000000000030",
+      "type": "paragraph",
+      "props": {},
+      "children": [
+        { "type": "text", "text": "Plain " },
+        { "type": "text", "text": "bold", "marks": [{ "type": "bold" }] },
+        { "type": "text", "text": " " },
+        { "type": "text", "text": "italic", "marks": [{ "type": "italic" }] },
+        { "type": "text", "text": " " },
+        { "type": "text", "text": "underline", "marks": [{ "type": "underline" }] },
+        { "type": "text", "text": " " },
+        { "type": "text", "text": "strike", "marks": [{ "type": "strike" }] },
+        { "type": "text", "text": " " },
+        { "type": "text", "text": "code", "marks": [{ "type": "code" }] }
+      ]
+    }
+  ]
+}

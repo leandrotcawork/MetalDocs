@@ -15,8 +15,8 @@ describe("emitRepeatable", () => {
       ],
     };
     const out = emitRepeatable(block, defaultLayoutTokens, () => []);
-    // Header paragraph + 2 repeatable-item tables = 3 elements at minimum
-    expect(out.length).toBeGreaterThanOrEqual(3);
+    // Header paragraph + 2 repeatable-item tables = exactly 3 elements
+    expect(out.length).toBe(3);
   });
 
   it("emits only the header when there are no items", () => {
@@ -27,6 +27,7 @@ describe("emitRepeatable", () => {
       children: [],
     };
     const out = emitRepeatable(block, defaultLayoutTokens, () => []);
-    expect(out.length).toBeGreaterThanOrEqual(1);
+    // Only the header paragraph — exactly 1 element
+    expect(out.length).toBe(1);
   });
 });

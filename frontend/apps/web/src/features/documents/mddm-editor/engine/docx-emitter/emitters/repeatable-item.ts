@@ -10,14 +10,8 @@ import {
 import type { LayoutTokens } from "../../layout-ir";
 import type { MDDMBlock } from "../../../adapter";
 import { ptToHalfPt } from "../../helpers/units";
-
-function hexToFill(hex: string): string {
-  return hex.replace(/^#/, "").toUpperCase();
-}
-
-function isMDDMBlock(child: unknown): child is MDDMBlock {
-  return typeof child === "object" && child !== null && typeof (child as MDDMBlock).type === "string" && !("text" in (child as Record<string, unknown>));
-}
+import { hexToFill } from "../../../helpers/color";
+import { isMDDMBlock } from "../guards";
 
 /** ChildRenderer is supplied by the main emitter so repeatable-item can recursively
  *  emit any block type without depending on the registry directly (avoids cycles). */

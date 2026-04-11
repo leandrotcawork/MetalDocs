@@ -3,10 +3,7 @@ import type { LayoutTokens } from "../../layout-ir";
 import type { MDDMBlock } from "../../../adapter";
 import { ptToHalfPt } from "../../helpers/units";
 import type { ChildRenderer } from "./repeatable-item";
-
-function isMDDMBlock(child: unknown): child is MDDMBlock {
-  return typeof child === "object" && child !== null && typeof (child as MDDMBlock).type === "string" && !("text" in (child as Record<string, unknown>));
-}
+import { isMDDMBlock } from "../guards";
 
 export function emitRichBlock(
   block: MDDMBlock,

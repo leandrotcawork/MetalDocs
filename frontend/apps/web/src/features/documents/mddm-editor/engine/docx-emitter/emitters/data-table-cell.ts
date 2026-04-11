@@ -3,10 +3,7 @@ import type { LayoutTokens } from "../../layout-ir";
 import type { MDDMBlock } from "../../../adapter";
 import { mddmTextRunsToDocxRuns } from "../inline-content";
 import { extractTextRuns } from "./paragraph";
-
-function hexToFill(hex: string): string {
-  return hex.replace(/^#/, "").toUpperCase();
-}
+import { hexToFill } from "../../../helpers/color";
 
 export function emitDataTableCell(block: MDDMBlock, tokens: LayoutTokens): TableCell {
   const borderColor = hexToFill(tokens.theme.accentBorder);

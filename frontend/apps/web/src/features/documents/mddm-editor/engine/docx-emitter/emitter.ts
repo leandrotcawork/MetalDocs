@@ -133,26 +133,10 @@ export async function mddmToDocx(
     ],
   });
 
-  // Packer.toBuffer works in Node/jsdom (Vitest) but JSZip does not support
-  // "nodebuffer" in real browsers, so it throws there. Packer.toBlob is the
-  // browser-native path but jsdom's Blob lacks arrayBuffer(), making it
-  // unreliable in tests. Strategy: try toBuffer first; if it throws the
-  // "nodebuffer is not supported" error, fall back to Packer.toBlob.
-  try {
-    const buffer = (await Packer.toBuffer(doc)) as Uint8Array;
-    const bytes = new Uint8Array(buffer.byteLength);
-    bytes.set(buffer);
-    return new Blob([bytes], { type: DOCX_MIME });
-  } catch (err) {
-    if (
-      err instanceof Error &&
-      err.message.includes("nodebuffer is not supported")
-    ) {
-      const blob = await Packer.toBlob(doc);
-      if (blob.type === DOCX_MIME) return blob;
-      const raw = await blob.arrayBuffer();
-      return new Blob([raw], { type: DOCX_MIME });
-    }
-    throw err;
-  }
+  const blob = await Packer.toBlob(doc);
+  // Re-wrap with explicit DOCX MIME. In some jsdom versions, Blob.arrayBuffer()
+  // is absent — fall back to returning the blob directly since Packer.toBlob
+  // already sets the correct MIME type.
+  if (typeof blob.arrayBuffer !== "function") return blob;
+  return new Blob([await blob.arrayBuffer()], { type: DOCX_MIME });
 }

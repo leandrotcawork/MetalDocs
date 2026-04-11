@@ -4,7 +4,7 @@ import { exportDocumentDocx, getDocumentBrowserEditorBundle, saveDocumentBrowser
 import type { DocumentBrowserEditorBundleResponse, DocumentListItem, RendererPin } from "../../../lib.types";
 import { formatDocumentDisplayName } from "../../shared/documentDisplay";
 import { normalizeDocumentProfileCode } from "../../shared/documentProfile";
-import { featureFlags } from "../../featureFlags";
+import { isMddmNativeExportEnabled } from "../../featureFlags";
 import { exportDocx as mddmExportDocx } from "../mddm-editor/engine/export";
 import styles from "./BrowserDocumentEditorView.module.css";
 import { DocumentEditorHeader } from "./DocumentEditorHeader";
@@ -238,7 +238,7 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
     setIsExporting(true);
     let legacyBlob: Blob | null = null;
     try {
-      if (featureFlags.MDDM_NATIVE_EXPORT) {
+      if (isMddmNativeExportEnabled("")) {
         const rawBody = source === "saved" ? (bundle?.body ?? "") : (editorData ?? "");
         const body = rawBody.trim();
         if (body && !body.startsWith("{")) {
@@ -268,7 +268,7 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
     }
 
     // Fire-and-forget shadow run AFTER the user-visible export completes (after finally).
-    if (!featureFlags.MDDM_NATIVE_EXPORT && legacyBlob !== null && bundle !== null) {
+    if (!isMddmNativeExportEnabled("") && legacyBlob !== null && bundle !== null) {
       const currentDurationMs = Math.round(performance.now() - exportStart);
       const rawBody = source === "saved" ? (bundle.body ?? "") : (editorData ?? "");
       const body = rawBody.trim();
@@ -292,7 +292,7 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
       return;
     }
 
-    if (!featureFlags.MDDM_NATIVE_EXPORT) {
+    if (!isMddmNativeExportEnabled("")) {
       await runDocxExport();
       return;
     }

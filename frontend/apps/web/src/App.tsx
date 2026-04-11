@@ -20,7 +20,6 @@ import { DocumentsWorkspaceView } from "./features/documents/DocumentsWorkspaceV
 import { RegistryExplorerView } from "./features/registry/RegistryExplorerView";
 import { WorkspaceShell } from "./features/shell/WorkspaceShell";
 import { isPathForView, pathFromView, viewFromPath } from "./routing/workspaceRoutes";
-import { MDDMTestHarness } from "./test-harness/MDDMTestHarness";
 
 type AppErrorBoundaryState = {
   hasError: boolean;
@@ -307,10 +306,6 @@ function AppContent() {
       window.clearInterval(timer);
     };
   }, [authState, selectedDocument?.documentId, user?.displayName]);
-
-  if (import.meta.env.DEV && location.pathname.startsWith("/test-harness/mddm")) {
-    return <MDDMTestHarness />;
-  }
 
   if (authState === "loading") {
     return <div className="app-shell"><section className="hero-panel"><strong>Validando sessao...</strong></section></div>;

@@ -4133,6 +4133,11 @@ components:
         createdAt:
           type: string
           format: date-time
+        renderer_pin:
+          oneOf:
+            - $ref: '#/components/schemas/RendererPin'
+            - type: 'null'
+          description: Null for draft versions; populated once released.
     AddVersionRequest:
       type: object
       required: [content]
@@ -4396,5 +4401,33 @@ components:
           additionalProperties: true
         trace_id:
           type: string
+    RendererPin:
+      type: object
+      description: |
+        Frozen renderer inputs captured at DRAFT→RELEASED transition.
+        Guarantees a released document always re-renders with the engine
+        that approved it.
+      required:
+        - renderer_version
+        - layout_ir_hash
+        - template_key
+        - template_version
+      properties:
+        renderer_version:
+          type: string
+          example: "1.0.0"
+        layout_ir_hash:
+          type: string
+          description: SHA-256 of the serialized Layout IR module at release time
+          example: "abcdef0123456789..."
+        template_key:
+          type: string
+          example: "po-mddm-canvas"
+        template_version:
+          type: integer
+          minimum: 1
+        pinned_at:
+          type: string
+          format: date-time
 
 

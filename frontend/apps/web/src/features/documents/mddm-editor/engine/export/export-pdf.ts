@@ -1,6 +1,4 @@
 import { wrapInPrintDocument } from "../print-stylesheet/wrap-print-document";
-import { PRINT_STYLESHEET } from "../print-stylesheet";
-import type { LayoutTokens } from "../layout-ir";
 import { RESOURCE_CEILINGS, ResourceCeilingExceededError } from "../asset-resolver";
 
 const PDF_MIME = "application/pdf";
@@ -8,7 +6,6 @@ const PDF_MIME = "application/pdf";
 export async function exportPdf(
   documentId: string,
   bodyHtml: string,
-  tokens?: LayoutTokens,
 ): Promise<Blob> {
   const fullHtml = wrapInPrintDocument(bodyHtml);
 
@@ -23,7 +20,6 @@ export async function exportPdf(
 
   const formData = new FormData();
   formData.append("index.html", new Blob([fullHtml], { type: "text/html" }), "index.html");
-  formData.append("style.css", new Blob([PRINT_STYLESHEET], { type: "text/css" }), "style.css");
 
   const response = await fetch(
     `/api/v1/documents/${encodeURIComponent(documentId)}/render/pdf`,

@@ -35,7 +35,7 @@ describe("exportPdf", () => {
     const body = init?.body as FormData;
     expect(body).toBeInstanceOf(FormData);
     expect(body.has("index.html")).toBe(true);
-    expect(body.has("style.css")).toBe(true);
+    expect(body.has("style.css")).toBe(false);
   });
 
   it("wraps the body HTML in a full print document", async () => {
@@ -80,5 +80,12 @@ describe("exportPdf", () => {
 
     await expect(exportPdf("doc-1", "<p/>"))
       .rejects.toThrow(/Content-Type/);
+  });
+
+  it("URL-encodes documentId with special characters", async () => {
+    const fetchMock = mockFetchOk(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+    await exportPdf("doc/evil?q=1", "<p>test</p>");
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toContain("doc%2Fevil%3Fq%3D1");
   });
 });

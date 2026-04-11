@@ -10,7 +10,7 @@ describe("Layout IR drift gate", () => {
       components: defaultComponentRules,
     });
 
-    if (RECORDED_IR_HASH === "PLACEHOLDER_REGENERATE_VIA_DRIFT_GATE") {
+    if ((RECORDED_IR_HASH as string) === "PLACEHOLDER_REGENERATE_VIA_DRIFT_GATE") {
       throw new Error(
         `RECORDED_IR_HASH is a placeholder. Edit recorded-hash.ts and set:\n` +
         `  export const RECORDED_IR_HASH = "${current}";\n` +

@@ -5,7 +5,7 @@ import {
   RendererBundleNotFoundError,
   type LoadedRenderer,
 } from "../registry";
-import type { RendererPin } from "../../../../../lib.types";
+import type { RendererPin } from "../../../../../../lib.types";
 
 describe("renderer registry", () => {
   it("loadCurrentRenderer returns a renderer bundle with tokens and mddmToDocx", async () => {

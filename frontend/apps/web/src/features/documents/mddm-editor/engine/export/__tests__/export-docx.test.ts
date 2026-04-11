@@ -4,6 +4,7 @@ import { defaultLayoutTokens } from "../../layout-ir";
 import type { MDDMEnvelope } from "../../../adapter";
 import * as pipeline from "../../canonicalize-migrate/pipeline";
 import * as emitter from "../../docx-emitter/emitter";
+import { AssetResolver } from "../../asset-resolver";
 
 const minimalEnvelope: MDDMEnvelope = {
   mddm_version: 1,
@@ -48,5 +49,32 @@ describe("exportDocx", () => {
     const blob = await exportDocx(minimalEnvelope);
     expect(blob).toBeInstanceOf(Blob);
     expect(blob.size).toBeGreaterThan(0);
+  });
+});
+
+describe("exportDocx asset wiring", () => {
+  it("calls the asset resolver for each unique image URL", async () => {
+    const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
+    const calls: string[] = [];
+
+    const fakeResolver = {
+      async resolveAsset(url: string) {
+        calls.push(url);
+        return { bytes: PNG, mimeType: "image/png" as const, sizeBytes: PNG.byteLength };
+      },
+    } as unknown as AssetResolver;
+
+    const envelope: MDDMEnvelope = {
+      mddm_version: 1,
+      template_ref: null,
+      blocks: [
+        { id: "i1", type: "image", props: { src: "/api/images/aaa" }, children: [] },
+        { id: "i2", type: "image", props: { src: "/api/images/bbb" }, children: [] },
+      ],
+    };
+
+    const blob = await exportDocx(envelope, defaultLayoutTokens, { assetResolver: fakeResolver });
+    expect(blob).toBeInstanceOf(Blob);
+    expect(calls).toEqual(["/api/images/aaa", "/api/images/bbb"]);
   });
 });

@@ -64,7 +64,8 @@ func (h *RenderPDFHandler) HandleRenderPDF(w http.ResponseWriter, r *http.Reques
 
 	r.Body = http.MaxBytesReader(w, r.Body, h.MaxPayloadBytes)
 	if err := r.ParseMultipartForm(h.MaxPayloadBytes); err != nil {
-		if err.Error() == "http: request body too large" {
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
 			writeAPIError(w, http.StatusRequestEntityTooLarge, "PAYLOAD_TOO_LARGE", "Payload exceeds limit", traceID)
 			return
 		}

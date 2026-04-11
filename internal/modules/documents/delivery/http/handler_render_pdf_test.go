@@ -166,3 +166,21 @@ func TestHandleDocumentRenderPDF_RendererError(t *testing.T) {
 
 	requireAPIError(t, rec, http.StatusBadGateway, "RENDER_UPSTREAM_ERROR")
 }
+
+// TestHandleDocumentRenderPDF_AuthzInternalErrorReturns500 verifies 500 when authz returns a
+// non-domain error (exercises the default: branch in the error switch).
+func TestHandleDocumentRenderPDF_AuthzInternalErrorReturns500(t *testing.T) {
+	renderer := &fakePdfRenderer{result: []byte("%PDF")}
+	authz := &fakeDocAuthz{err: errors.New("db connection failed")}
+	handler := NewRenderPDFHandler(renderer, authz)
+
+	body, ct := makeMultipart(t, "<html></html>", "")
+	req := authRenderRequest(t, http.MethodPost, "/api/v1/documents/d1/render/pdf", body, ct)
+	rec := httptest.NewRecorder()
+
+	handler.HandleRenderPDF(rec, req, "d1")
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d: %s", rec.Code, rec.Body.String())
+	}
+}

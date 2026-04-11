@@ -6,7 +6,27 @@ import (
 
 	docapp "metaldocs/internal/modules/documents/application"
 	pgrepo "metaldocs/internal/modules/documents/infrastructure/postgres"
+	"metaldocs/internal/platform/render/docgen"
 )
+
+// mddmDocxRenderer adapts docgen.Client to the application.DocxRenderer interface.
+// The release path sends the raw content-blocks envelope; metadata fields are
+// left empty because the release repo is the authority for document metadata.
+type mddmDocxRenderer struct {
+	client *docgen.Client
+}
+
+func newMDDMDocxRenderer(client *docgen.Client) *mddmDocxRenderer {
+	return &mddmDocxRenderer{client: client}
+}
+
+func (r *mddmDocxRenderer) RenderDocx(ctx context.Context, contentBlocks []byte) ([]byte, error) {
+	payload := docgen.MDDMExportPayload{
+		Envelope: json.RawMessage(contentBlocks),
+		Metadata: docgen.MDDMExportMetadata{},
+	}
+	return r.client.GenerateMDDM(ctx, payload, "")
+}
 
 type mddmLoadRepoAdapter struct {
 	repo *pgrepo.MDDMRepository

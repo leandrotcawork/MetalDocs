@@ -29,16 +29,35 @@ func NewReleaseRepo(db *sql.DB) *ReleaseRepo {
 
 func (r *ReleaseRepo) GetDraft(ctx context.Context, id uuid.UUID) (*application.DraftSnapshot, error) {
 	var snapshot application.DraftSnapshot
+	var templateRef []byte
 	err := r.db.QueryRowContext(ctx, `
-		SELECT id, content_blocks
+		SELECT id, document_id, version_number, content_blocks, template_ref
 		FROM metaldocs.document_versions_mddm
 		WHERE id = $1 AND status IN ('draft', 'pending_approval')
-	`, id).Scan(&snapshot.ID, &snapshot.ContentBlocks)
+	`, id).Scan(&snapshot.ID, &snapshot.DocumentID, &snapshot.VersionNumber, &snapshot.ContentBlocks, &templateRef)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("get draft %s: %w", id, sql.ErrNoRows)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("get draft %s: %w", id, err)
+	}
+	// MDDM versions always originate from the browser editor.
+	snapshot.ContentSource = "browser_editor"
+	// Parse template_ref JSONB to extract template key and version for pin capture.
+	if len(templateRef) > 0 {
+		var ref struct {
+			TemplateKey     string `json:"template_key"`
+			TemplateID      string `json:"template_id"` // legacy fallback
+			TemplateVersion int    `json:"template_version"`
+		}
+		if err := json.Unmarshal(templateRef, &ref); err == nil {
+			if ref.TemplateKey != "" {
+				snapshot.TemplateKey = ref.TemplateKey
+			} else {
+				snapshot.TemplateKey = ref.TemplateID
+			}
+			snapshot.TemplateVersion = ref.TemplateVersion
+		}
 	}
 	return &snapshot, nil
 }

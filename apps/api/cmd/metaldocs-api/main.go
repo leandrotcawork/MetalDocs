@@ -78,11 +78,16 @@ func main() {
 		loadService = docapp.NewLoadService(&mddmLoadRepoAdapter{repo: deps.MDDMRepo})
 		submitForApprovalService = docapp.NewSubmitForApprovalService(deps.MDDMRepo)
 	}
+	var shadowDiffHandler *docdelivery.ShadowDiffHandler
+	if deps.ShadowDiffRepo != nil {
+		shadowDiffHandler = docdelivery.NewShadowDiffHandler(deps.ShadowDiffRepo)
+	}
 	auditHandler := auditdelivery.NewHandler(auditService)
 	docHandler := docdelivery.NewHandler(docService).
 		WithAttachmentDownloads(security.NewAttachmentSigner(attachmentsCfg.DownloadSecret), time.Duration(attachmentsCfg.DownloadTTLSeconds)*time.Second).
 		WithMDDMHandlers(loadService, submitForApprovalService).
-		WithRenderPDF(deps.GotenbergClient)
+		WithRenderPDF(deps.GotenbergClient).
+		WithShadowDiffHandler(shadowDiffHandler)
 	searchService := searchapp.NewService(searchdocs.NewReader(deps.DocumentsRepo))
 	searchHandler := searchdelivery.NewHandler(searchService)
 	notificationService := notificationapp.NewService(deps.NotificationsRepo, deps.DocumentsRepo, nil)

@@ -4,10 +4,14 @@ import { exportDocumentDocx, getDocumentBrowserEditorBundle, saveDocumentBrowser
 import type { DocumentBrowserEditorBundleResponse, DocumentListItem } from "../../../lib.types";
 import { formatDocumentDisplayName } from "../../shared/documentDisplay";
 import { normalizeDocumentProfileCode } from "../../shared/documentProfile";
+import { featureFlags } from "../../featureFlags";
+import { exportDocx as mddmExportDocx } from "../mddm-editor/engine/export";
+import { defaultLayoutTokens } from "../mddm-editor/engine/layout-ir";
 import styles from "./BrowserDocumentEditorView.module.css";
 import { DocumentEditorHeader } from "./DocumentEditorHeader";
 import { MDDMEditor, type MDDMTheme } from "../mddm-editor/MDDMEditor";
 import { blockNoteToMDDM, mddmToBlockNote, type MDDMEnvelope } from "../mddm-editor/adapter";
+import { SaveBeforeExportDialog } from "./SaveBeforeExportDialog";
 
 type BrowserDocumentEditorViewProps = {
   document: DocumentListItem;
@@ -23,11 +27,13 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
   const [editorInstance, setEditorInstance] = useState(0);
   const [viewState, setViewState] = useState<ViewState>("loading");
   const [errorMessage, setErrorMessage] = useState("");
-  const [errorCode, setErrorCode] = useState<"load" | "save" | "conflict" | null>(null);
+  const [errorCode, setErrorCode] = useState<"load" | "save" | "export" | "conflict" | null>(null);
   const [saveLabel, setSaveLabel] = useState("Nao salvo");
   const [isExporting, setIsExporting] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [pendingExportKind, setPendingExportKind] = useState<"docx" | null>(null);
   const bundleRef = useRef<DocumentBrowserEditorBundleResponse | null>(null);
-  const errorCodeRef = useRef<"load" | "save" | "conflict" | null>(null);
+  const errorCodeRef = useRef<"load" | "save" | "export" | "conflict" | null>(null);
 
   useEffect(() => {
     bundleRef.current = bundle;
@@ -141,14 +147,15 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
     };
   }, [bundle?.templateSnapshot?.definition?.theme]);
 
+  const isReleased = document.status === "PUBLISHED";
   const isDirty = bundle !== null && editorData !== bundle.body;
   const isSaving = viewState === "saving";
   const latestVersion = bundle && bundle.versions.length > 0 ? bundle.versions[bundle.versions.length - 1] : null;
   const hasConflict = errorCode === "conflict";
 
-  async function handleSave() {
+  async function handleSave(): Promise<boolean> {
     if (!bundle || isSaving || viewState !== "ready" || !document.documentId.trim()) {
-      return;
+      return false;
     }
 
     setViewState("saving");
@@ -189,41 +196,57 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
       window.setTimeout(() => {
         setSaveLabel((current) => (current === "Salvo agora" ? "Salvo ha pouco" : current));
       }, 3000);
+      return true;
     } catch (error) {
       setViewState("error");
       if (statusOf(error) === 409) {
         setErrorCode("conflict");
         setErrorMessage("O rascunho ficou desatualizado. Recarregue o documento para sincronizar a ultima revisao antes de salvar novamente.");
         setSaveLabel("Conflito de rascunho");
-        return;
+        return false;
       }
       setErrorCode("save");
       setErrorMessage("Nao foi possivel salvar o rascunho no editor do navegador.");
       setSaveLabel("Erro ao salvar");
+      return false;
     }
   }
 
-  async function handleExportDocx() {
-    if (!document.documentId.trim() || isExporting) {
-      return;
-    }
+  function triggerBlobDownload(blob: Blob, filename: string) {
+    const url = window.URL.createObjectURL(blob);
+    const link = window.document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    window.document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => window.URL.revokeObjectURL(url), 100);
+  }
+
+  async function runDocxExport(source: "live" | "saved" = "live") {
+    const safeCode = (document.documentCode || "documento").trim().replace(/[^\w.-]+/g, "-");
 
     setIsExporting(true);
     try {
-      const blob = await exportDocumentDocx(document.documentId);
-      const url = window.URL.createObjectURL(blob);
-      const link = window.document.createElement("a");
-      const safeCode = (document.documentCode || "documento").trim().replace(/[^\w.-]+/g, "-");
-      link.href = url;
-      link.download = `${safeCode}.docx`;
-      window.document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      if (featureFlags.MDDM_NATIVE_EXPORT) {
+        const rawBody = source === "saved" ? (bundle?.body ?? "") : (editorData ?? "");
+        const body = rawBody.trim();
+        if (body && !body.startsWith("{")) {
+          throw new Error("Document body is not in MDDM JSON format");
+        }
+        const envelope: MDDMEnvelope = body
+          ? (JSON.parse(body) as MDDMEnvelope)
+          : { mddm_version: 1, template_ref: null, blocks: [] };
+        const blob = await mddmExportDocx(envelope, defaultLayoutTokens);
+        triggerBlobDownload(blob, `${safeCode}.docx`);
+      } else {
+        const blob = await exportDocumentDocx(document.documentId);
+        triggerBlobDownload(blob, `${safeCode}.docx`);
+      }
       setErrorCode(null);
       setErrorMessage("");
     } catch (error) {
-      setErrorCode("save");
+      setErrorCode("export");
       setErrorMessage("Nao foi possivel exportar o DOCX deste documento.");
       const status = statusOf(error);
       if (status === 503) {
@@ -232,6 +255,25 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
     } finally {
       setIsExporting(false);
     }
+  }
+
+  async function handleExportDocx() {
+    if (!document.documentId.trim() || isExporting) {
+      return;
+    }
+
+    if (!featureFlags.MDDM_NATIVE_EXPORT) {
+      await runDocxExport();
+      return;
+    }
+
+    if (isDirty) {
+      setPendingExportKind("docx");
+      setExportDialogOpen(true);
+      return;
+    }
+
+    await runDocxExport();
   }
 
   const canRetrySave = Boolean(bundle) && !isSaving && isDirty;
@@ -381,6 +423,30 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
           {saveLabel}
         </span>
       </footer>
+
+      <SaveBeforeExportDialog
+        open={exportDialogOpen}
+        isReleased={isReleased}
+        onCancel={() => {
+          setExportDialogOpen(false);
+          setPendingExportKind(null);
+        }}
+        onSaveAndExport={async () => {
+          setExportDialogOpen(false);
+          const saved = await handleSave();
+          if (saved && pendingExportKind === "docx") {
+            await runDocxExport("saved");
+          }
+          setPendingExportKind(null);
+        }}
+        onExportSaved={async () => {
+          setExportDialogOpen(false);
+          if (pendingExportKind === "docx") {
+            await runDocxExport("saved");
+          }
+          setPendingExportKind(null);
+        }}
+      />
     </section>
   );
 }

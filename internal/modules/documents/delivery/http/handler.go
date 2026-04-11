@@ -24,6 +24,7 @@ type Handler struct {
 	downloadTTL              time.Duration
 	loadHandler              *LoadHandler
 	submitForApprovalHandler *SubmitForApprovalHandler
+	renderPDF                *RenderPDFHandler
 }
 
 type CreateDocumentRequest struct {
@@ -455,6 +456,14 @@ func (h *Handler) WithMDDMHandlers(load *application.LoadService, submit *applic
 	if submit != nil {
 		h.submitForApprovalHandler = NewSubmitForApprovalHandler(submit)
 	}
+	return h
+}
+
+// WithRenderPDF wires the Gotenberg Chromium HTML→PDF handler.
+// renderer may be nil (e.g. Gotenberg is not configured); the handler's nil
+// guard returns a structured 502 in that case.
+func (h *Handler) WithRenderPDF(renderer PDFRenderer) *Handler {
+	h.renderPDF = NewRenderPDFHandler(renderer, h.service)
 	return h
 }
 
@@ -1473,6 +1482,14 @@ func (h *Handler) handleDocumentSubRoutes(w http.ResponseWriter, r *http.Request
 	}
 	if len(parts) == 3 && strings.TrimSpace(parts[0]) != "" && parts[1] == "content" && parts[2] == "render-pdf" && r.Method == http.MethodPost {
 		h.handleDocumentContentRenderPDF(w, r, parts[0])
+		return
+	}
+	if len(parts) == 3 && strings.TrimSpace(parts[0]) != "" && parts[1] == "render" && parts[2] == "pdf" && r.Method == http.MethodPost {
+		if h.renderPDF == nil {
+			writeAPIError(w, http.StatusBadGateway, "RENDER_UNAVAILABLE", "PDF renderer not configured", requestTraceID(r))
+			return
+		}
+		h.renderPDF.HandleRenderPDF(w, r, parts[0])
 		return
 	}
 	if len(parts) == 3 && strings.TrimSpace(parts[0]) != "" && parts[1] == "export" && parts[2] == "docx" && r.Method == http.MethodPost {

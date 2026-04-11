@@ -1767,6 +1767,93 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorEnvelope'
+  /documents/{documentId}/render/pdf:
+    post:
+      summary: Convert client-produced HTML (MDDM engine) to PDF via Gotenberg Chromium
+      description: |
+        Stateless HTML→PDF proxy used by the MDDM client-side rendering engine.
+        The request body is multipart/form-data containing `index.html` (required)
+        and `style.css` (optional). The server forwards the parts to Gotenberg's
+        Chromium route and streams the resulting PDF back. Differs from
+        `/content/render-pdf`, which re-renders a stored document from backend state.
+      operationId: renderDocumentPDF
+      tags:
+        - documents
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - index.html
+              properties:
+                index.html:
+                  type: string
+                  format: binary
+                  description: HTML document produced by blocksToFullHTML + print wrapper
+                style.css:
+                  type: string
+                  format: binary
+                  description: Optional additional stylesheet
+      responses:
+        '200':
+          description: PDF bytes
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Malformed request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '403':
+          description: Not authorized for this document
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '413':
+          description: Payload exceeds the 10 MB limit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '422':
+          description: Unprocessable Entity
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+        '502':
+          description: Gotenberg upstream unavailable or misconfigured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorEnvelope'
+      security:
+        - sessionCookie: []
   /documents/{documentId}/content/render-pdf:
     post:
       summary: Forca re-render do PDF do documento

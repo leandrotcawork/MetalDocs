@@ -1,7 +1,7 @@
 import { type PartialBlock } from "@blocknote/core";
 import { BlockNoteView } from "@blocknote/mantine";
 import { useCreateBlockNote } from "@blocknote/react";
-import { useMemo, type CSSProperties } from "react";
+import { useEffect, useMemo, type CSSProperties } from "react";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
 import "./mddm-editor-global.css";
@@ -32,6 +32,14 @@ export function MDDMEditor({
     schema: mddmSchema,
     initialContent: initialContent?.length ? initialContent : undefined,
   });
+
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      (window as any).__mddmEditor = editor;
+      return () => { delete (window as any).__mddmEditor; };
+    }
+    return undefined;
+  }, [editor]);
 
   const themeStyle = useMemo(() => {
     if (!theme) {

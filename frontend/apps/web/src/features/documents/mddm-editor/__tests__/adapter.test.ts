@@ -80,7 +80,7 @@ describe("MDDM ↔ BlockNote adapter", () => {
     ).toThrow(/valueMode/i);
   });
 
-  it("defaults repeatable and dataTable max constraints to schema defaults", () => {
+  it("defaults repeatable max constraints to schema defaults", () => {
     const output = blockNoteToMDDM([
       {
         id: "10000000-0000-0000-0000-000000000001",
@@ -88,19 +88,37 @@ describe("MDDM ↔ BlockNote adapter", () => {
         props: { label: "R", itemPrefix: "Item", locked: true },
         children: [],
       } as any,
-      {
-        id: "10000000-0000-0000-0000-000000000002",
-        type: "dataTable",
-        props: { label: "T", columnsJson: "[]", locked: true },
-        children: [],
-      } as any,
     ]);
 
     expect((output.blocks[0] as any).props.minItems).toBe(0);
     expect((output.blocks[0] as any).props.maxItems).toBe(100);
+  });
 
-    expect((output.blocks[1] as any).props.minRows).toBe(0);
-    expect((output.blocks[1] as any).props.maxRows).toBe(500);
+  it("serializes dataTable with tableContent and no minRows/maxRows/columns", () => {
+    const tableContent = {
+      type: "tableContent",
+      columnWidths: [null],
+      headerRows: 1,
+      rows: [{ cells: [[{ type: "text", text: "Item" }]] }],
+    };
+    const output = blockNoteToMDDM([
+      {
+        id: "10000000-0000-0000-0000-000000000002",
+        type: "dataTable",
+        props: { label: "T", locked: true, density: "normal" },
+        content: tableContent,
+        children: [],
+      } as any,
+    ]);
+
+    const dt = output.blocks[0] as any;
+    expect(dt.props.label).toBe("T");
+    expect(dt.props.locked).toBe(true);
+    expect(dt.props.density).toBe("normal");
+    expect(dt.props.minRows).toBeUndefined();
+    expect(dt.props.maxRows).toBeUndefined();
+    expect(dt.props.columns).toBeUndefined();
+    expect(dt.content).toEqual(tableContent);
   });
 
   it("preserves id and template_block_id through round-trip", () => {
@@ -165,6 +183,82 @@ describe("MDDM ↔ BlockNote adapter", () => {
     expect((output.blocks[0].children?.[0] as any).props.hint).toBe(
       "hint: d.kpis[i].indicador",
     );
+  });
+
+  it("migrates old dataTable (dataTableRow/Cell children) to tableContent on import", () => {
+    const input: MDDMEnvelope = {
+      mddm_version: 1,
+      template_ref: null,
+      blocks: [
+        {
+          id: "10000000-0000-0000-0000-000000000001",
+          type: "dataTable",
+          props: {
+            label: "Lista",
+            columns: [
+              { key: "item", label: "Item" },
+              { key: "qty", label: "Quantidade" },
+              { key: "value", label: "Valor" },
+            ],
+            locked: true,
+            minRows: 0,
+            maxRows: 500,
+            density: "normal",
+          },
+          children: [
+            {
+              id: "10000000-0000-0000-0000-000000000002",
+              type: "dataTableRow",
+              props: {},
+              children: [
+                {
+                  id: "10000000-0000-0000-0000-000000000003",
+                  type: "dataTableCell",
+                  props: { columnKey: "item" },
+                  children: [{ text: "Parafuso M8" }],
+                },
+                {
+                  id: "10000000-0000-0000-0000-000000000004",
+                  type: "dataTableCell",
+                  props: { columnKey: "qty" },
+                  children: [{ text: "100" }],
+                },
+                {
+                  id: "10000000-0000-0000-0000-000000000005",
+                  type: "dataTableCell",
+                  props: { columnKey: "value" },
+                  children: [{ text: "R$ 5,00" }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const blocks = mddmToBlockNote(input);
+    const dt = blocks[0] as any;
+
+    // Should have tableContent with header row + 1 data row
+    expect(dt.content?.type).toBe("tableContent");
+    expect(dt.content?.headerRows).toBe(1);
+    expect(dt.content?.rows).toHaveLength(2);
+
+    // Header row has 3 cells with column labels
+    const headerRow = dt.content?.rows[0];
+    expect(headerRow.cells).toHaveLength(3);
+    expect(headerRow.cells[0][0].text).toBe("Item");
+    expect(headerRow.cells[1][0].text).toBe("Quantidade");
+    expect(headerRow.cells[2][0].text).toBe("Valor");
+
+    // Data row has cell values
+    const dataRow = dt.content?.rows[1];
+    expect(dataRow.cells[0][0].text).toBe("Parafuso M8");
+    expect(dataRow.cells[1][0].text).toBe("100");
+    expect(dataRow.cells[2][0].text).toBe("R$ 5,00");
+
+    // columnWidths has 3 nulls
+    expect(dt.content?.columnWidths).toEqual([null, null, null]);
   });
 
   it("keeps envelope metadata and all 17 block types canonically equivalent in a round-trip", () => {
@@ -252,34 +346,19 @@ describe("MDDM ↔ BlockNote adapter", () => {
               type: "dataTable",
               props: {
                 label: "Tabela",
-                columns: [
-                  {
-                    key: "item",
-                    label: "Item",
-                    type: "text",
-                    required: false,
-                  },
-                ],
                 locked: true,
-                minRows: 0,
-                maxRows: 3,
                 density: "normal",
               },
-              children: [
-                {
-                  id: "10000000-0000-0000-0000-000000000009",
-                  type: "dataTableRow",
-                  props: {},
-                  children: [
-                    {
-                      id: "10000000-0000-0000-0000-000000000010",
-                      type: "dataTableCell",
-                      props: { columnKey: "item" },
-                      children: [{ text: "valor" }],
-                    },
-                  ],
-                },
-              ],
+              content: {
+                type: "tableContent",
+                columnWidths: [null],
+                headerRows: 1,
+                rows: [
+                  { cells: [[{ type: "text", text: "Item" }]] },
+                  { cells: [[{ type: "text", text: "valor" }]] },
+                ],
+              },
+              children: [],
             },
             {
               id: "10000000-0000-0000-0000-000000000011",

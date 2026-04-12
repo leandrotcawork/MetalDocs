@@ -25,6 +25,7 @@ export type MDDMBlock = {
   template_block_id?: string;
   type: string;
   props: UnknownRecord;
+  content?: unknown;
   children?: MDDMBlock[] | MDDMTextRun[];
 };
 
@@ -52,11 +53,20 @@ type BlockNoteLink = {
 
 type BlockNoteInline = BlockNoteText | BlockNoteLink;
 
+type TableCellContent = { type: "text"; text: string; styles?: Record<string, boolean> };
+type TableRow = { cells: TableCellContent[][] };
+type TableContent = {
+  type: "tableContent";
+  columnWidths: (number | null)[];
+  headerRows: number;
+  rows: TableRow[];
+};
+
 type BlockNoteBlock = {
   id?: string;
   type: string;
   props?: UnknownRecord;
-  content?: BlockNoteInline[];
+  content?: BlockNoteInline[] | TableContent;
   children?: BlockNoteBlock[];
 };
 
@@ -78,8 +88,6 @@ const ALLOWED_MDDM_TYPES = new Set<string>([
   "repeatable",
   "repeatableItem",
   "dataTable",
-  "dataTableRow",
-  "dataTableCell",
   "richBlock",
   "paragraph",
   "heading",
@@ -97,7 +105,6 @@ const INLINE_BLOCK_TYPES = new Set<string>([
   "bulletListItem",
   "numberedListItem",
   "field",
-  "dataTableCell",
   "code",
 ]);
 
@@ -149,6 +156,43 @@ export function mddmToBlockNote(envelope: MDDMEnvelope): BlockNoteBlock[] {
   return blocks;
 }
 
+// Convert old dataTable (with dataTableRow/dataTableCell children) to new tableContent format.
+// Returns null if block is already in new format or is not a dataTable.
+function migrateOldDataTable(block: MDDMBlock): TableContent | null {
+  if (block.type !== "dataTable") return null;
+  const children = block.children ?? [];
+  if (!Array.isArray(children) || children.length === 0) return null;
+  const firstChild = (children as unknown[])[0];
+  if (!isRecord(firstChild) || (firstChild as MDDMBlock).type !== "dataTableRow") return null;
+
+  const columns = parseColumns(block.props?.columns ?? block.props?.columnsJson) as Array<{ key: string; label: string }>;
+
+  // Header row: one cell per column with column label
+  const headerRow: TableRow = {
+    cells: columns.map((col) => [{ type: "text" as const, text: col.label ?? "" }]),
+  };
+
+  // Data rows from dataTableRow children
+  const dataRows: TableRow[] = (children as MDDMBlock[]).map((row) => {
+    const rowCells = (row.children ?? []) as MDDMBlock[];
+    const cells: TableCellContent[][] = columns.map((col) => {
+      const cell = rowCells.find((c) => asString(c.props?.columnKey) === col.key);
+      if (!cell) return [{ type: "text" as const, text: "" }];
+      const runs = (cell.children ?? []) as Array<{ text?: string }>;
+      const text = runs.map((r) => asString(r.text)).join("");
+      return [{ type: "text" as const, text }];
+    });
+    return { cells };
+  });
+
+  return {
+    type: "tableContent",
+    columnWidths: columns.map(() => null),
+    headerRows: 1,
+    rows: [headerRow, ...dataRows],
+  };
+}
+
 function toBlockNoteBlock(block: MDDMBlock): BlockNoteBlock {
   const props = cloneRecord(block.props);
   if (block.template_block_id) {
@@ -160,6 +204,32 @@ function toBlockNoteBlock(block: MDDMBlock): BlockNoteBlock {
     type: toBlockNoteType(block.type),
     props: toBlockNoteProps(block.type, props),
   };
+
+  // DataTable: migrate old children format to tableContent, or pass through new format
+  if (block.type === "dataTable") {
+    const migrated = migrateOldDataTable(block);
+    if (migrated) {
+      // Old format detected — convert to tableContent
+      output.content = migrated;
+      output.children = [];
+      return output;
+    }
+    // New format: block.content is already tableContent
+    if (isRecord(block.content) && (block.content as any).type === "tableContent") {
+      output.content = block.content as TableContent;
+      output.children = [];
+      return output;
+    }
+    // Empty table (new doc from template without rows)
+    output.content = {
+      type: "tableContent",
+      columnWidths: [],
+      headerRows: 1,
+      rows: [{ cells: [] }],
+    };
+    output.children = [];
+    return output;
+  }
 
   if (block.type === "quote") {
     const quoteChildren = Array.isArray(block.children)
@@ -222,6 +292,16 @@ function toMDDMBlock(block: BlockNoteBlock): MDDMBlock {
 
   if (templateBlockID) {
     output.template_block_id = templateBlockID;
+  }
+
+  // DataTable: store tableContent in content field, not children
+  if (mddmType === "dataTable") {
+    const tableContent = block.content;
+    if (isRecord(tableContent) && (tableContent as any).type === "tableContent") {
+      output.content = tableContent;
+    }
+    output.children = [];
+    return output;
   }
 
   if (mddmType === "quote") {
@@ -287,12 +367,9 @@ function toBlockNoteProps(type: string, props: UnknownRecord): UnknownRecord {
 
   if (type === "dataTable") {
     const next = cloneRecord(props);
-    if (Array.isArray(next.columns)) {
-      next.columnsJson = JSON.stringify(next.columns);
-      delete next.columns;
-    } else if (!isString(next.columnsJson)) {
-      next.columnsJson = "[]";
-    }
+    // Remove columnsJson — columns are now stored as the header row in tableContent
+    delete next.columnsJson;
+    delete next.columns;
     return next;
   }
 
@@ -308,7 +385,6 @@ function toMDDMProps(type: string, props: UnknownRecord): UnknownRecord {
     case "paragraph":
     case "quote":
     case "divider":
-    case "dataTableRow":
       return {};
 
     case "heading": {
@@ -338,15 +414,9 @@ function toMDDMProps(type: string, props: UnknownRecord): UnknownRecord {
     case "dataTable":
       return {
         label: asString(next.label),
-        columns: parseColumns(next.columnsJson ?? next.columns),
         locked: Boolean(next.locked),
-        minRows: normalizeInt(next.minRows, 0),
-        maxRows: normalizeInt(next.maxRows, 500),
         density: asString(next.density) || "normal",
       };
-
-    case "dataTableCell":
-      return { columnKey: asString(next.columnKey) };
 
     case "field": {
       const valueMode = asOptionalString(next.valueMode);

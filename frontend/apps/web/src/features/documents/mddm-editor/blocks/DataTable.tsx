@@ -1,100 +1,44 @@
 import { createReactBlockSpec } from "@blocknote/react";
 import styles from "./DataTable.module.css";
 
-type Column = { key: string; label: string };
-
-export function parseDataTableColumns(columnsJson: string): Column[] {
-  try {
-    const parsed = JSON.parse(columnsJson);
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-
-    const columns: Column[] = [];
-    const seenKeys = new Set<string>();
-
-    for (const column of parsed) {
-      if (!column || typeof column !== "object") {
-        continue;
-      }
-
-      const key = typeof (column as { key?: unknown }).key === "string"
-        ? (column as { key: string }).key.trim()
-        : "";
-      const label = typeof (column as { label?: unknown }).label === "string"
-        ? (column as { label: string }).label.trim()
-        : "";
-
-      if (!key || !label || seenKeys.has(key)) {
-        continue;
-      }
-
-      seenKeys.add(key);
-      columns.push({ key, label });
-    }
-
-    return columns;
-  } catch {
-    return [];
-  }
-}
-
-export const DataTable = createReactBlockSpec(
+// createReactBlockSpec's types restrict content to "inline" | "none",
+// but the BlockNote runtime fully supports "table" content at the lower level.
+// We cast through unknown to bypass the type-level restriction.
+const _dataTableSpec = createReactBlockSpec(
   {
-    type: "dataTable",
+    type: "dataTable" as const,
     propSchema: {
       label: { default: "" },
-      columnsJson: { default: "[]" },
-      locked: { default: true },
-      minRows: { default: 0 },
-      maxRows: { default: 500 },
+      locked: { default: false },
       density: { default: "normal" },
       __template_block_id: { default: "" },
     },
-    content: "none",
+    content: "none" as "none",
   },
   {
-    render: (props) => {
-      const columns = parseDataTableColumns(props.block.props.columnsJson);
-
-      return (
-        <div
-          className={styles.dataTable}
-          data-mddm-block="dataTable"
-          data-density={props.block.props.density || "normal"}
-        >
-          <div className={styles.dataTableHeader}>
-            <strong className={styles.tableLabel}>
-              {props.block.props.label || "Data Table"}
-            </strong>
-            <span className={styles.tableMeta}>
-              {columns.length} colunas
-            </span>
-          </div>
-          {columns.length > 0 ? (
-            <div
-              className={styles.tableGrid}
-              style={{
-                gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))`,
-              }}
-            >
-              {columns.map((column) => (
-                <div key={column.key} className={styles.tableHeaderCell}>
-                  {column.label}
-                </div>
-              ))}
-            </div>
-          ) : null}
-          <button
-            type="button"
-            className={styles.addRowButton}
-            disabled
-            aria-label="Adicionar linha, indisponível no momento"
-          >
-            + Adicionar linha
-          </button>
+    render: (props) => (
+      <div
+        className={styles.dataTable}
+        data-mddm-block="dataTable"
+        data-density={props.block.props.density || "normal"}
+        data-locked={String(props.block.props.locked)}
+      >
+        <div className={styles.dataTableHeader}>
+          <strong className={styles.tableLabel}>
+            {props.block.props.label || "Data Table"}
+          </strong>
         </div>
-      );
-    },
+        <div className={styles.tableContainer} ref={(props as any).contentRef} />
+      </div>
+    ),
   },
 );
+
+// Re-export with the config patched to content:"table" so BlockNote renders
+// the native table grid and enables Tab navigation / cell editing.
+export const DataTable: () => (typeof _dataTableSpec extends () => infer S ? S : never) =
+  () => {
+    const spec = (_dataTableSpec as () => any)();
+    spec.config = { ...spec.config, content: "table" };
+    return spec;
+  };

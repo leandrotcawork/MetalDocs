@@ -9,7 +9,6 @@
 .dataTableHeader {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--mddm-spacing-sm);
   padding: 0.75rem 1rem;
   background: var(--mddm-table-header-bg);
@@ -22,52 +21,10 @@
   font-weight: 700;
 }
 
-.tableMeta {
-  color: var(--mddm-raw-gray-400);
-  font-size: 0.78rem;
-  white-space: nowrap;
+.tableContainer {
+  overflow-x: auto;
 }
 
-.tableGrid {
-  display: grid;
-}
-
-.tableHeaderCell {
-  padding: 0.65rem 0.85rem;
-  border-right: 1px solid var(--mddm-table-border);
-  border-bottom: 1px solid var(--mddm-table-border);
-  background: var(--mddm-raw-white);
-  color: var(--mddm-raw-gray-700);
-  font-size: var(--mddm-font-size-sm);
-  font-weight: 600;
-}
-
-.tableHeaderCell:last-child {
-  border-right: none;
-}
-
-.addRowButton {
-  display: block;
-  width: 100%;
-  padding: var(--mddm-spacing-xs) var(--mddm-spacing-sm);
-  border: 1px dashed var(--mddm-table-border);
-  border-radius: 0 0 calc(var(--mddm-radius) * 2) calc(var(--mddm-radius) * 2);
-  border-top: none;
-  background: var(--mddm-raw-white);
-  color: var(--mddm-raw-gray-400);
-  font-size: var(--mddm-font-size-sm);
-  cursor: pointer;
-  transition: color 150ms ease, border-color 150ms ease, background-color 150ms ease;
-}
-
-.addRowButton:hover {
-  color: var(--mddm-accent);
-  border-color: var(--mddm-accent-border);
-  background: var(--mddm-accent-light);
-}
-
-.dataTable[data-density="compact"] .dataTableHeader,
-.dataTable[data-density="compact"] .tableHeaderCell,
-.dataTable[data-density="compact"] .addRowButton {
+.dataTable[data-density="compact"] .dataTableHeader {
   padding-block: 0.45rem;
 }

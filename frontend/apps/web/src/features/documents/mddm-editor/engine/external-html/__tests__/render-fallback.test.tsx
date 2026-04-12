@@ -44,7 +44,7 @@ describe('blocksToFullHTML render fallback for MDDM content:"none" blocks', () =
     expect(html).toContain("inspect");
   });
 
-  it("serializes a dataTable + dataTableRow + dataTableCell with cell text preserved", async () => {
+  it("serializes a dataTable with tableContent (new format) with cell text preserved", async () => {
     const envelope: MDDMEnvelope = {
       mddm_version: 1,
       template_ref: null,
@@ -54,28 +54,24 @@ describe('blocksToFullHTML render fallback for MDDM content:"none" blocks', () =
           type: "dataTable",
           props: {
             label: "Items",
-            columns: [{ key: "c0", label: "Item" }],
-            locked: true, minRows: 0, maxRows: 500, density: "normal",
+            locked: true,
+            density: "normal",
           },
-          children: [
-            {
-              id: "row1",
-              type: "dataTableRow",
-              props: {},
-              children: [
-                {
-                  id: "cell1",
-                  type: "dataTableCell",
-                  props: { columnKey: "c0" },
-                  children: [{ type: "text", text: "Parafuso" }],
-                },
-              ],
-            },
-          ],
+          content: {
+            type: "tableContent",
+            columnWidths: [null],
+            headerRows: 1,
+            rows: [
+              { cells: [[{ type: "text" as const, text: "Item" }]] },
+              { cells: [[{ type: "text" as const, text: "Parafuso" }]] },
+            ],
+          },
+          children: [],
         },
       ],
     };
     const html = await toHtml(envelope);
     expect(html).toContain("Parafuso");
   });
+
 });

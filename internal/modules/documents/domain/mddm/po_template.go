@@ -39,7 +39,7 @@ func POTemplateMDDM() map[string]any {
 				}),
 			}),
 			sectionBlock("a0000040-0000-0000-0000-000000000040", "Detalhamento das Etapas", true, false, []map[string]any{
-				repeatableBlock("a0000041-0000-0000-0000-000000000041", "Etapas", "Etapa", 1, 100, true, []map[string]any{
+				repeatableBlock("a0000041-0000-0000-0000-000000000041", "Etapas", "Etapa", 1, 100, false, []map[string]any{
 					repeatableItemBlock("a0000042-0000-0000-0000-000000000042", "Etapa 1", []map[string]any{
 						contentRichBlockBlock("a0000043-0000-0000-0000-000000000043", "Conteúdo da etapa", true, []map[string]any{
 							paragraphBlock("a0000044-0000-0000-0000-000000000044", "Detalhe a execução desta etapa com texto livre, listas, tabelas e imagens."),
@@ -68,16 +68,16 @@ func POTemplateMDDM() map[string]any {
 				}),
 			}),
 			sectionBlock("a0000060-0000-0000-0000-000000000060", "Indicadores de Desempenho", true, true, []map[string]any{
-				repeatableBlock("a0000061-0000-0000-0000-000000000061", "KPIs", "KPI", 0, 100, true, []map[string]any{}),
+				repeatableBlock("a0000061-0000-0000-0000-000000000061", "KPIs", "KPI", 0, 100, false, []map[string]any{}),
 			}),
 			sectionBlock("a0000070-0000-0000-0000-000000000070", "Documentos e Referências", true, true, []map[string]any{
-				repeatableBlock("a0000071-0000-0000-0000-000000000071", "Referências", "Referência", 0, 100, true, []map[string]any{}),
+				repeatableBlock("a0000071-0000-0000-0000-000000000071", "Referências", "Referência", 0, 100, false, []map[string]any{}),
 			}),
 			sectionBlock("a0000080-0000-0000-0000-000000000080", "Glossário", true, true, []map[string]any{
-				repeatableBlock("a0000081-0000-0000-0000-000000000081", "Glossário", "Termo", 0, 100, true, []map[string]any{}),
+				repeatableBlock("a0000081-0000-0000-0000-000000000081", "Glossário", "Termo", 0, 100, false, []map[string]any{}),
 			}),
 			sectionBlock("a0000090-0000-0000-0000-000000000090", "Histórico de Revisões", true, true, []map[string]any{
-				repeatableBlock("a0000091-0000-0000-0000-000000000091", "Revisões", "Revisão", 0, 100, true, []map[string]any{}),
+				repeatableBlock("a0000091-0000-0000-0000-000000000091", "Revisões", "Revisão", 0, 100, false, []map[string]any{}),
 			}),
 		},
 	}
@@ -234,7 +234,7 @@ func dataTableBlock(id, label string, columns []map[string]any, rows []map[strin
 		"props": map[string]any{
 			"label":   label,
 			"columns": toAnySlice(columns),
-			"locked":  true,
+			"locked":  false,
 			"minRows": 0,
 			"maxRows": 500,
 		},

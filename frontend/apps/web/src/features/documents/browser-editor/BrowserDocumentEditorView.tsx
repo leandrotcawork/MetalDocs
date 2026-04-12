@@ -5,10 +5,11 @@ import type { DocumentBrowserEditorBundleResponse, DocumentListItem, RendererPin
 import { formatDocumentDisplayName } from "../../shared/documentDisplay";
 import { normalizeDocumentProfileCode } from "../../shared/documentProfile";
 import { isMddmNativeExportEnabled } from "../../featureFlags";
-import { exportDocx as mddmExportDocx } from "../mddm-editor/engine/export";
+import { exportDocx as mddmExportDocx, exportPdf } from "../mddm-editor/engine/export";
 import styles from "./BrowserDocumentEditorView.module.css";
 import { DocumentEditorHeader } from "./DocumentEditorHeader";
 import { MDDMEditor, type MDDMTheme } from "../mddm-editor/MDDMEditor";
+import { MDDMViewer } from "../mddm-editor/MDDMViewer";
 import { blockNoteToMDDM, mddmToBlockNote, type MDDMEnvelope } from "../mddm-editor/adapter";
 import { SaveBeforeExportDialog } from "./SaveBeforeExportDialog";
 import { runShadowExport } from "../mddm-editor/engine/shadow-testing/shadow-runner";
@@ -34,10 +35,12 @@ export function BrowserDocumentEditorView({ document, onBack, currentUserId }: B
   const [errorCode, setErrorCode] = useState<"load" | "save" | "export" | "conflict" | null>(null);
   const [saveLabel, setSaveLabel] = useState("Nao salvo");
   const [isExporting, setIsExporting] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [pendingExportKind, setPendingExportKind] = useState<"docx" | null>(null);
   const bundleRef = useRef<DocumentBrowserEditorBundleResponse | null>(null);
   const errorCodeRef = useRef<"load" | "save" | "export" | "conflict" | null>(null);
+  const editorRef = useRef<unknown>(null);
 
   useEffect(() => {
     bundleRef.current = bundle;
@@ -152,6 +155,8 @@ export function BrowserDocumentEditorView({ document, onBack, currentUserId }: B
   }, [bundle?.templateSnapshot?.definition?.theme]);
 
   const isReleased = document.status === "PUBLISHED";
+  const isViewOnly = document.status === "RELEASED" || document.status === "ARCHIVED";
+  const isPendingApproval = document.status === "PENDING_APPROVAL";
   const isDirty = bundle !== null && editorData !== bundle.body;
   const isSaving = viewState === "saving";
   const latestVersion = bundle && bundle.versions.length > 0 ? bundle.versions[bundle.versions.length - 1] : null;
@@ -307,6 +312,37 @@ export function BrowserDocumentEditorView({ document, onBack, currentUserId }: B
     await runDocxExport();
   }
 
+  async function handleExportPdf() {
+    if (!document.documentId.trim() || isExporting || isExportingPdf) return;
+
+    setIsExportingPdf(true);
+    try {
+      const editorInstance = editorRef.current as any;
+      if (!editorInstance) throw new Error("Editor not ready");
+
+      const bodyHtml = await editorInstance.blocksToFullHTML(editorInstance.document);
+      const blob = await exportPdf({
+        bodyHtml,
+        documentId: document.documentId,
+        rendererPin: rendererPin ?? null,
+      });
+      const safeCode = (document.documentCode || "documento").trim().replace(/[^\w.-]+/g, "-");
+      triggerBlobDownload(blob, `${safeCode}.pdf`);
+      setErrorCode(null);
+      setErrorMessage("");
+    } catch (error) {
+      setErrorCode("export");
+      const status = statusOf(error);
+      if (status === 503) {
+        setErrorMessage("Servico de PDF indisponivel. Tente exportar em DOCX.");
+      } else {
+        setErrorMessage("Nao foi possivel exportar o PDF deste documento.");
+      }
+    } finally {
+      setIsExportingPdf(false);
+    }
+  }
+
   const canRetrySave = Boolean(bundle) && !isSaving && isDirty;
   const showInlineError = errorMessage.trim().length > 0;
 
@@ -332,19 +368,29 @@ export function BrowserDocumentEditorView({ document, onBack, currentUserId }: B
           <button
             type="button"
             className={styles.exportButton}
-            onClick={() => void handleExportDocx()}
-            disabled={!bundle || isSaving || isExporting}
+            onClick={() => void handleExportPdf()}
+            disabled={!bundle || isSaving || isExporting || isExportingPdf}
           >
-            {isExporting ? "Exportando..." : "Exportar DOCX"}
+            {isExportingPdf ? "Exportando PDF..." : "Exportar PDF"}
           </button>
           <button
             type="button"
-            className={styles.saveButton}
-            onClick={() => void handleSave()}
-            disabled={!bundle || viewState !== "ready" || isSaving || !isDirty || hasConflict}
+            className={styles.exportButton}
+            onClick={() => void handleExportDocx()}
+            disabled={!bundle || isSaving || isExporting || isExportingPdf}
           >
-            Salvar rascunho
+            {isExporting ? "Exportando..." : "Exportar DOCX"}
           </button>
+          {!isViewOnly && (
+            <button
+              type="button"
+              className={styles.saveButton}
+              onClick={() => void handleSave()}
+              disabled={!bundle || viewState !== "ready" || isSaving || !isDirty || hasConflict}
+            >
+              Salvar rascunho
+            </button>
+          )}
         </div>
       </header>
 
@@ -386,37 +432,47 @@ export function BrowserDocumentEditorView({ document, onBack, currentUserId }: B
           <DocumentEditorHeader bundle={bundle} />
           <div className={styles.editorShell}>
             {blockNoteDocument ? (
-              <MDDMEditor
-                key={`${document.documentId}:${editorInstance}`}
-                initialContent={blockNoteDocument as any}
-                onChange={(blocks) => {
-                  try {
-                    const envelope = blockNoteToMDDM(blocks as any[]);
-                    const nextData = JSON.stringify(envelope);
+              isViewOnly ? (
+                <MDDMViewer
+                  key={`${document.documentId}:${editorInstance}`}
+                  initialContent={blockNoteDocument as any}
+                  theme={editorTheme}
+                />
+              ) : (
+                <MDDMEditor
+                  key={`${document.documentId}:${editorInstance}`}
+                  initialContent={blockNoteDocument as any}
+                  onChange={(blocks) => {
+                    try {
+                      const envelope = blockNoteToMDDM(blocks as any[]);
+                      const nextData = JSON.stringify(envelope);
 
-                    setEditorData(nextData);
-                    if (viewState !== "saving") {
-                      setViewState("ready");
+                      setEditorData(nextData);
+                      if (viewState !== "saving") {
+                        setViewState("ready");
+                      }
+                      if (errorCode !== null && errorCode !== "conflict") {
+                        setErrorCode(null);
+                        setErrorMessage("");
+                      }
+                      setSaveLabel(nextData === bundle.body ? "Salvo" : "Editando...");
+                    } catch {
+                      // Keep the editor responsive; surface an actionable error and avoid persisting invalid JSON.
+                      if (viewState !== "saving") {
+                        setViewState("ready");
+                      }
+                      setErrorCode("save");
+                      setErrorMessage(
+                        "Falha ao converter o conteudo do editor para o formato MDDM. Continue editando e tente salvar novamente. Se o erro persistir, recarregue o documento.",
+                      );
+                      setSaveLabel("Erro de conversao");
                     }
-                    if (errorCode !== null && errorCode !== "conflict") {
-                      setErrorCode(null);
-                      setErrorMessage("");
-                    }
-                    setSaveLabel(nextData === bundle.body ? "Salvo" : "Editando...");
-                  } catch {
-                    // Keep the editor responsive; surface an actionable error and avoid persisting invalid JSON.
-                    if (viewState !== "saving") {
-                      setViewState("ready");
-                    }
-                    setErrorCode("save");
-                    setErrorMessage(
-                      "Falha ao converter o conteudo do editor para o formato MDDM. Continue editando e tente salvar novamente. Se o erro persistir, recarregue o documento.",
-                    );
-                    setSaveLabel("Erro de conversao");
-                  }
-                }}
-                theme={editorTheme}
-              />
+                  }}
+                  readOnly={isPendingApproval}
+                  theme={editorTheme}
+                  onEditorReady={(ed) => { editorRef.current = ed; }}
+                />
+              )
             ) : (
               <div className={styles.stateCard} role="alert">
                 <strong>Conteudo indisponivel</strong>

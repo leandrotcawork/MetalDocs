@@ -21,6 +21,7 @@ export type MDDMEditorProps = {
   onChange?: (blocks: unknown[]) => void;
   readOnly?: boolean;
   theme?: MDDMTheme;
+  onEditorReady?: (editor: unknown) => void;
 };
 
 export function MDDMEditor({
@@ -28,6 +29,7 @@ export function MDDMEditor({
   onChange,
   readOnly,
   theme,
+  onEditorReady,
 }: MDDMEditorProps) {
   const editor = useCreateBlockNote({
     schema: mddmSchema,
@@ -41,6 +43,10 @@ export function MDDMEditor({
     }
     return undefined;
   }, [editor]);
+
+  useEffect(() => {
+    onEditorReady?.(editor);
+  }, [editor, onEditorReady]);
 
   const tokens = useMemo(() => {
     if (!theme) return defaultLayoutTokens;

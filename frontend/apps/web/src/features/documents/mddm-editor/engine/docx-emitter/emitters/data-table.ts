@@ -38,7 +38,7 @@ function cellToTextRun(cells: RawCell[][], tokens: LayoutTokens): TextRun[] {
       new TextRun({
         text: run.text ?? "",
         bold: run.styles?.bold === true,
-        italic: run.styles?.italic === true,
+        italics: run.styles?.italic === true,
         underline: run.styles?.underline === true ? {} : undefined,
         size: ptToHalfPt(tokens.typography.baseSizePt),
         font: tokens.typography.exportFont,

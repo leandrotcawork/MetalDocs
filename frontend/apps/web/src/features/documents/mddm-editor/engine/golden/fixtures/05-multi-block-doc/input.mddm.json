@@ -1,5 +1,5 @@
 {
-  "mddm_version": 1,
+  "mddm_version": 2,
   "template_ref": null,
   "blocks": [
     { "id": "00000000-0000-4000-8000-000000000040", "type": "heading", "props": { "level": 1 }, "children": [{ "type": "text", "text": "Manual de Operações" }] },

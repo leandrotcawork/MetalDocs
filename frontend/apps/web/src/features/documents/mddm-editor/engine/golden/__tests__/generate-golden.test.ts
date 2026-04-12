@@ -62,4 +62,12 @@ describe.skipIf(!process.env.MDDM_GOLDEN_UPDATE)("Golden regenerator (02-05 + 06
     const xml = await unzipDocxDocumentXml(blob);
     writeFileSync(resolve(dir, "expected.document.xml"), xml, "utf8");
   });
+
+  it("writes expected.document.xml for 07-repeatable-nested", async () => {
+    const dir = resolve(__dirname, "../fixtures/07-repeatable-nested");
+    const envelope = JSON.parse(readFileSync(resolve(dir, "input.mddm.json"), "utf8")) as MDDMEnvelope;
+    const blob = await mddmToDocx(envelope, defaultLayoutTokens);
+    const xml = await unzipDocxDocumentXml(blob);
+    writeFileSync(resolve(dir, "expected.document.xml"), xml, "utf8");
+  });
 });

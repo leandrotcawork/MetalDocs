@@ -155,8 +155,8 @@ export function BrowserDocumentEditorView({ document, onBack, currentUserId }: B
   }, [bundle?.templateSnapshot?.definition?.theme]);
 
   const isReleased = document.status === "PUBLISHED";
-  const isViewOnly = document.status === "RELEASED" || document.status === "ARCHIVED";
-  const isPendingApproval = document.status === "PENDING_APPROVAL";
+  const isViewOnly = document.status === "PUBLISHED" || document.status === "ARCHIVED";
+  const isPendingApproval = document.status === "IN_REVIEW" || document.status === "APPROVED";
   const isDirty = bundle !== null && editorData !== bundle.body;
   const isSaving = viewState === "saving";
   const latestVersion = bundle && bundle.versions.length > 0 ? bundle.versions[bundle.versions.length - 1] : null;

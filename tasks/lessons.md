@@ -5,6 +5,13 @@ Correct: `toMDDMProps` explicitly persists those props with safe defaults for ea
 Rule:    Adapter save mappings must preserve all renderer-relevant block props to avoid silent style regressions.
 Layer:   application
 
+## Lesson 6 - Ready callback must observe fully initialized editor state
+Date: 2026-04-12 | Trigger: review
+Wrong:   `onEditorReady` fired before `setEditorTokens(editor, tokens)` and tests only asserted token state after callback completion.
+Correct: `MDDMEditor` now sets runtime tokens before calling `onEditorReady`, and callback-time test assertions verify tokens are already attached when the callback runs.
+Rule:    Any readiness callback must expose a fully initialized object, and tests must assert state at callback time to catch ordering regressions.
+Layer:   application
+
 ## Lesson 5 - Ignore local build/runtime artifacts at repo root
 Date: 2026-04-10 | Trigger: correction
 Wrong:   Root-local artifacts (`.gocache-build/`, `node_modules/`, `metaldocs-api.exe`) remained unignored and polluted `git status`.

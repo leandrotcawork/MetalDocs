@@ -13,23 +13,23 @@ import "@fontsource/dm-mono/500.css";
 import "./styles.css";
 
 // Fetch server-controlled feature flags before first render.
-// initFeatureFlags() is fire-and-forget safe — failures keep defaults.
-void initFeatureFlags();
-
+// .finally() ensures a network error still mounts the app (defaults apply).
 // Dev-only: mount MDDMTestHarness before App so auth hooks never fire.
 // Hash routing encodes the path in location.hash, e.g. /#/test-harness/mddm.
 const isTestHarness =
   import.meta.env.DEV &&
   window.location.hash.startsWith("#/test-harness/mddm");
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    {isTestHarness ? (
-      <MDDMTestHarness />
-    ) : (
-      <HashRouter>
-        <App />
-      </HashRouter>
-    )}
-  </React.StrictMode>,
-);
+initFeatureFlags().finally(() => {
+  ReactDOM.createRoot(document.getElementById("root")!).render(
+    <React.StrictMode>
+      {isTestHarness ? (
+        <MDDMTestHarness />
+      ) : (
+        <HashRouter>
+          <App />
+        </HashRouter>
+      )}
+    </React.StrictMode>,
+  );
+});

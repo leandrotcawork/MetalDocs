@@ -39,3 +39,10 @@ Wrong:   `parseDataTableColumns` accepted objects with empty `key`/`label` value
 Correct: `parseDataTableColumns` only returns array entries with non-empty trimmed `key`/`label` values and skips repeated keys after the first valid occurrence.
 Rule:    Parsers must enforce structural invariants at the boundary so downstream render code can assume valid, unique column definitions.
 Layer:   application
+
+## Lesson 7 - Repeatable item numbering must search only repeatable siblings
+Date: 2026-04-12 | Trigger: correction
+Wrong:   `findItemIndex` matched any block children and used `1` as the recursive miss value, so helper blocks and empty branches produced incorrect nested repeatable numbering.
+Correct: `findItemIndex` now matches only `repeatableItem` siblings inside `repeatable` blocks, recurses deeper with `0` as the miss sentinel, and falls back to `1` only at the call site.
+Rule:    Recursive numbering helpers must scope sibling matching to the owning container type and use a distinct not-found sentinel during traversal.
+Layer:   application

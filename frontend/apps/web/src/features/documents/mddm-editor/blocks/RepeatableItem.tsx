@@ -4,17 +4,25 @@ import { RepeatableItemExternalHTML } from "../engine/external-html";
 import { getEditorTokens } from "../engine/editor-tokens";
 import styles from "./RepeatableItem.module.css";
 
-function findItemIndex(document: any[], itemId: string): number {
+export function findItemIndex(document: any[], itemId: string): number {
   for (const block of document) {
-    if (block.children) {
-      const idx = block.children.findIndex((c: any) => c.id === itemId);
+    if (block.type === "repeatable" && block.children) {
+      const repeatableItems = block.children.filter((child: any) => child.type === "repeatableItem");
+      const idx = repeatableItems.findIndex((child: any) => child.id === itemId);
       if (idx >= 0) return idx + 1;
-      // Recurse into children
+    }
+
+    if (block.children) {
       const nested = findItemIndex(block.children, itemId);
       if (nested > 0) return nested;
     }
   }
-  return 1;
+  return 0;
+}
+
+function resolveItemIndex(document: any[], itemId: string): number {
+  const itemIndex = findItemIndex(document, itemId);
+  return itemIndex > 0 ? itemIndex : 1;
 }
 
 export const RepeatableItem = createReactBlockSpec(
@@ -29,7 +37,7 @@ export const RepeatableItem = createReactBlockSpec(
   {
     render: (props) => {
       const itemNumber = useMemo(
-        () => findItemIndex(props.editor.document, props.block.id ?? ""),
+        () => resolveItemIndex(props.editor.document, props.block.id ?? ""),
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [props.editor.document, props.block.id],
       );
@@ -54,7 +62,7 @@ export const RepeatableItem = createReactBlockSpec(
       <RepeatableItemExternalHTML
         tokens={getEditorTokens(props.editor)}
         title={props.block.props.title as string}
-        itemNumber={findItemIndex(props.editor.document, props.block.id ?? "")}
+        itemNumber={resolveItemIndex(props.editor.document, props.block.id ?? "")}
       />
     ),
   },

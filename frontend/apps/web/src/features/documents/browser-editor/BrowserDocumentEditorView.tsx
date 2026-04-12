@@ -12,18 +12,19 @@ import { MDDMEditor, type MDDMTheme } from "../mddm-editor/MDDMEditor";
 import { blockNoteToMDDM, mddmToBlockNote, type MDDMEnvelope } from "../mddm-editor/adapter";
 import { SaveBeforeExportDialog } from "./SaveBeforeExportDialog";
 import { runShadowExport } from "../mddm-editor/engine/shadow-testing/shadow-runner";
-import { computeShadowDiff } from "../mddm-editor/engine/shadow-testing/shadow-diff";
+import { computeShadowDiff, hashNormalizedXml } from "../mddm-editor/engine/shadow-testing/shadow-diff";
 import { postShadowDiff } from "../mddm-editor/engine/shadow-testing/shadow-telemetry";
 import { unzipDocxDocumentXml } from "../mddm-editor/engine/golden/golden-helpers";
 
 type BrowserDocumentEditorViewProps = {
   document: DocumentListItem;
   onBack: () => void;
+  currentUserId?: string;
 };
 
 type ViewState = "loading" | "ready" | "saving" | "error";
 
-export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentEditorViewProps) {
+export function BrowserDocumentEditorView({ document, onBack, currentUserId }: BrowserDocumentEditorViewProps) {
   const [bundle, setBundle] = useState<DocumentBrowserEditorBundleResponse | null>(null);
   const [editorData, setEditorData] = useState("");
   const [blockNoteDocument, setBlockNoteDocument] = useState<unknown[] | null>(null);
@@ -238,7 +239,7 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
     setIsExporting(true);
     let legacyBlob: Blob | null = null;
     try {
-      if (isMddmNativeExportEnabled("")) {
+      if (isMddmNativeExportEnabled(currentUserId ?? "")) {
         const rawBody = source === "saved" ? (bundle?.body ?? "") : (editorData ?? "");
         const body = rawBody.trim();
         if (body && !body.startsWith("{")) {
@@ -268,7 +269,7 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
     }
 
     // Fire-and-forget shadow run AFTER the user-visible export completes (after finally).
-    if (!isMddmNativeExportEnabled("") && legacyBlob !== null && bundle !== null) {
+    if (!isMddmNativeExportEnabled(currentUserId ?? "") && legacyBlob !== null && bundle !== null) {
       const currentDurationMs = Math.round(performance.now() - exportStart);
       const rawBody = source === "saved" ? (bundle.body ?? "") : (editorData ?? "");
       const body = rawBody.trim();
@@ -282,7 +283,7 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
         currentDurationMs,
         documentId: document.documentId,
         versionNumber: latestVersion?.version ?? 0,
-        userIdHash: "",
+        userIdHash: await hashCurrentUserId(currentUserId ?? ""),
       });
     }
   }
@@ -292,7 +293,7 @@ export function BrowserDocumentEditorView({ document, onBack }: BrowserDocumentE
       return;
     }
 
-    if (!isMddmNativeExportEnabled("")) {
+    if (!isMddmNativeExportEnabled(currentUserId ?? "")) {
       await runDocxExport();
       return;
     }
@@ -488,6 +489,16 @@ function statusOf(error: unknown): number | undefined {
   return undefined;
 }
 
+async function hashCurrentUserId(userId: string): Promise<string> {
+  if (!userId) return "";
+  const salted = `mddm-shadow-salt:${userId}`;
+  const bytes = new TextEncoder().encode(salted);
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 async function runShadowAndReport(input: {
   envelope: MDDMEnvelope;
   rendererPin: RendererPin | null;
@@ -519,12 +530,16 @@ async function runShadowAndReport(input: {
     }
 
     const diff = computeShadowDiff(currentXml, shadow.xml);
+    const [currentHash, shadowHash] = await Promise.all([
+      hashNormalizedXml(currentXml),
+      hashNormalizedXml(shadow.xml),
+    ]);
     void postShadowDiff({
       document_id: input.documentId,
       version_number: input.versionNumber,
       user_id_hash: input.userIdHash,
-      current_xml_hash: diff.current_xml_hash,
-      shadow_xml_hash: diff.shadow_xml_hash,
+      current_xml_hash: currentHash,
+      shadow_xml_hash: shadowHash,
       diff_summary: diff.diff_summary,
       current_duration_ms: input.currentDurationMs,
       shadow_duration_ms: shadow.durationMs,

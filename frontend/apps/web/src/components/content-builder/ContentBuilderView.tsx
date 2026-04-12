@@ -4,6 +4,7 @@ import { BrowserDocumentEditorView } from "../../features/documents/browser-edit
 type ContentBuilderViewProps = {
   document: DocumentListItem | null;
   onBack: () => void;
+  currentUserId?: string;
 };
 
 export function ContentBuilderView(props: ContentBuilderViewProps) {
@@ -30,5 +31,5 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
       </section>
     );
   }
-  return <BrowserDocumentEditorView document={props.document} onBack={props.onBack} />;
+  return <BrowserDocumentEditorView document={props.document} onBack={props.onBack} currentUserId={props.currentUserId} />;
 }

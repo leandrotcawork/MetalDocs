@@ -386,6 +386,7 @@ function AppContent() {
         <ContentBuilderView
           document={selectedDocument}
           onBack={handleBackToCreate}
+          currentUserId={user?.userId ?? ""}
         />
       );
     }

@@ -101,9 +101,15 @@ func main() {
 
 	authorizer := iamapp.NewStaticAuthorizer()
 	cachedProvider := iamapp.NewCachedRoleProvider(deps.RoleProvider, authn.CacheTTL())
-	authMiddleware := authdelivery.NewMiddleware(authService, authCfg, authn.Enabled())
+	// permResolver is the single authoritative source of truth for route
+	// visibility. It is shared with the auth middleware so that fully public
+	// routes (no session required) and the IAM permission layer stay in sync
+	// automatically — adding a new public route requires one change here, not two.
+	permResolver := newPermissionResolver()
+	authMiddleware := authdelivery.NewMiddleware(authService, authCfg, authn.Enabled()).
+		WithPublicPathChecker(newPublicPathChecker(permResolver))
 	iamMiddleware := iamdelivery.NewMiddleware(authorizer, cachedProvider, authn.Enabled(), authCfg.LegacyHeaderEnabled).
-		WithPermissionResolver(newPermissionResolver())
+		WithPermissionResolver(permResolver)
 	originProtection := security.NewOriginProtection(security.OriginProtectionConfig{
 		Enabled:           authCfg.OriginProtection,
 		SessionCookieName: authCfg.SessionCookieName,

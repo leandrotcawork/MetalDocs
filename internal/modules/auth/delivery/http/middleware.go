@@ -10,14 +10,37 @@ import (
 	iamdomain "metaldocs/internal/modules/iam/domain"
 )
 
+// PublicPathChecker returns true if the given method+path requires no session
+// cookie (i.e. it is fully unauthenticated). Injecting this function into the
+// middleware lets the composition root own the single authoritative list of
+// public routes, preventing the auth layer and the IAM permission layer from
+// maintaining two independent lists that can drift apart.
+type PublicPathChecker func(method, path string) bool
+
 type Middleware struct {
-	service *authapp.Service
-	cfg     authapp.Config
-	enabled bool
+	service      *authapp.Service
+	cfg          authapp.Config
+	enabled      bool
+	publicChecker PublicPathChecker // optional; falls back to defaultPublicPaths
 }
 
 func NewMiddleware(service *authapp.Service, cfg authapp.Config, enabled bool) *Middleware {
 	return &Middleware{service: service, cfg: cfg, enabled: enabled}
+}
+
+// WithPublicPathChecker replaces the built-in public-path list with the
+// provided checker. Use this in the composition root so there is one
+// authoritative source of truth for which routes bypass authentication.
+func (m *Middleware) WithPublicPathChecker(fn PublicPathChecker) *Middleware {
+	m.publicChecker = fn
+	return m
+}
+
+func (m *Middleware) isPublic(method, path string) bool {
+	if m.publicChecker != nil {
+		return m.publicChecker(method, path)
+	}
+	return defaultPublicPaths(method, path)
 }
 
 func (m *Middleware) Wrap(next http.Handler) http.Handler {
@@ -26,7 +49,7 @@ func (m *Middleware) Wrap(next http.Handler) http.Handler {
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if isPublicPath(r.URL.Path, r.Method) {
+		if m.isPublic(r.Method, r.URL.Path) {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -62,7 +85,10 @@ func (m *Middleware) Wrap(next http.Handler) http.Handler {
 	})
 }
 
-func isPublicPath(path, method string) bool {
+// defaultPublicPaths is the fallback used when no PublicPathChecker is
+// injected. Keep this in sync with the composition root's authoritative list
+// whenever WithPublicPathChecker is not used (e.g. tests).
+func defaultPublicPaths(method, path string) bool {
 	switch {
 	case path == "/api/v1/health/live", path == "/api/v1/health/ready":
 		return true

@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strings"
 
+	authdelivery "metaldocs/internal/modules/auth/delivery/http"
 	iamdelivery "metaldocs/internal/modules/iam/delivery/http"
 	iamdomain "metaldocs/internal/modules/iam/domain"
 )
@@ -115,3 +116,16 @@ func newPermissionResolver() iamdelivery.PermissionResolver {
 		return "", false
 	}
 }
+
+// newPublicPathChecker derives a PublicPathChecker from the permission resolver.
+// A route is fully public (no session cookie required) when the resolver says
+// it is not guarded (guarded=false). This ensures the auth middleware and the
+// IAM middleware share the same single source of truth — one change to the
+// resolver propagates to both layers automatically.
+func newPublicPathChecker(resolver iamdelivery.PermissionResolver) authdelivery.PublicPathChecker {
+	return func(method, path string) bool {
+		_, guarded := resolver(method, path)
+		return !guarded
+	}
+}
+

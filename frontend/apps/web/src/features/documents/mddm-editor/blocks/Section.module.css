@@ -13,9 +13,10 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--mddm-spacing-sm);
-  padding: 0.85rem 1rem;
-  background: linear-gradient(135deg, var(--mddm-section-header-bg), var(--mddm-accent-dark));
-  color: var(--mddm-section-header-text);
+  padding: 0 1rem;
+  min-height: var(--mddm-section-header-height, 8mm);
+  background: var(--mddm-accent);
+  color: var(--mddm-section-header-color, #ffffff);
 }
 
 .section[data-variant="inline"] .sectionHeader {
@@ -26,7 +27,7 @@
 }
 
 .sectionTitle {
-  font-size: var(--mddm-font-size-section);
+  font-size: var(--mddm-section-header-font-size, 13pt);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;

@@ -2,7 +2,7 @@
   width: 100%;
   display: grid;
   grid-template-columns: 1fr;
-  border-bottom: 1px solid var(--mddm-field-border);
+  border-bottom: var(--mddm-field-border-width, 0.5pt) solid var(--mddm-accent-border);
   background: var(--mddm-raw-white);
   min-width: 0;
 }
@@ -12,7 +12,8 @@
 }
 
 .field[data-layout="grid"] {
-  grid-template-columns: minmax(12rem, 35%) minmax(0, 1fr);
+  grid-template-columns: var(--mddm-field-label-width, 35%) var(--mddm-field-value-width, 65%);
+  min-height: var(--mddm-field-min-height, 7mm);
 }
 
 .fieldLabel {
@@ -20,11 +21,11 @@
   flex-direction: column;
   gap: var(--mddm-spacing-xs);
   padding: var(--mddm-spacing-sm) var(--mddm-spacing-md);
-  background: var(--mddm-field-label-bg);
-  color: var(--mddm-field-label-text);
-  font-size: var(--mddm-font-size-sm);
+  background: var(--mddm-accent-light);
+  color: var(--mddm-accent-dark);
+  font-size: var(--mddm-label-font-size, 9pt);
   font-weight: 600;
-  border-right: 1px solid var(--mddm-field-border);
+  border-right: var(--mddm-field-border-width, 0.5pt) solid var(--mddm-accent-border);
 }
 
 .field[data-layout="stack"] .fieldLabel {

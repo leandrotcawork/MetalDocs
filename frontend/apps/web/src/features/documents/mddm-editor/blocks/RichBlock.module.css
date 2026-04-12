@@ -1,6 +1,6 @@
 .richBlock {
   margin: var(--mddm-spacing-md) 0;
-  border: 1px dashed var(--mddm-accent-border);
+  border: var(--mddm-field-border-width, 0.5pt) dashed var(--mddm-accent-border);
   border-radius: var(--mddm-radius);
   overflow: hidden;
   background: linear-gradient(180deg, var(--mddm-raw-white), var(--mddm-accent-light));

@@ -88,3 +88,77 @@ func TestHandleShadowDiff_RejectsMalformedBody(t *testing.T) {
 		t.Fatalf("expected 400, got %d", w.Code)
 	}
 }
+
+func TestHandleShadowDiff_RejectsNegativeDurations(t *testing.T) {
+	repo := &fakeShadowDiffRepo{}
+	handler := NewShadowDiffHandler(repo)
+
+	body, _ := json.Marshal(map[string]any{
+		"document_id":         "doc-1",
+		"version_number":      1,
+		"current_xml_hash":    "h1",
+		"shadow_xml_hash":     "h2",
+		"current_duration_ms": -1,
+		"shadow_duration_ms":  500,
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/telemetry/mddm-shadow-diff", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req = req.WithContext(iamdomain.WithAuthContext(req.Context(), "u-1", nil))
+
+	w := httptest.NewRecorder()
+	handler.Handle(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for negative duration, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleShadowDiff_RejectsSuccessWithEmptyHashes(t *testing.T) {
+	repo := &fakeShadowDiffRepo{}
+	handler := NewShadowDiffHandler(repo)
+
+	body, _ := json.Marshal(map[string]any{
+		"document_id":         "doc-1",
+		"version_number":      1,
+		"current_xml_hash":    "", // empty hash, no shadow_error = invalid
+		"shadow_xml_hash":     "",
+		"current_duration_ms": 500,
+		"shadow_duration_ms":  800,
+		// shadow_error omitted (empty)
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/telemetry/mddm-shadow-diff", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req = req.WithContext(iamdomain.WithAuthContext(req.Context(), "u-1", nil))
+
+	w := httptest.NewRecorder()
+	handler.Handle(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for empty hashes on success row, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandleShadowDiff_AllowsFailureRowWithEmptyHashes(t *testing.T) {
+	repo := &fakeShadowDiffRepo{}
+	handler := NewShadowDiffHandler(repo)
+
+	body, _ := json.Marshal(map[string]any{
+		"document_id":         "doc-1",
+		"version_number":      1,
+		"current_xml_hash":    "",
+		"shadow_xml_hash":     "",
+		"current_duration_ms": 500,
+		"shadow_duration_ms":  0,
+		"shadow_error":        "worker timeout", // failure row — empty hashes OK
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/telemetry/mddm-shadow-diff", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req = req.WithContext(iamdomain.WithAuthContext(req.Context(), "u-1", nil))
+
+	w := httptest.NewRecorder()
+	handler.Handle(w, req)
+
+	if w.Code != http.StatusAccepted {
+		t.Fatalf("expected 202 for failure row with empty hashes, got %d: %s", w.Code, w.Body.String())
+	}
+}

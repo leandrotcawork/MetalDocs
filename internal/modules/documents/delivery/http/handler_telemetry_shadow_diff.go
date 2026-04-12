@@ -63,6 +63,18 @@ func (h *ShadowDiffHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Reject negative durations regardless of success/failure.
+	if req.CurrentDurationMs < 0 || req.ShadowDurationMs < 0 {
+		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "duration fields must be non-negative", traceID)
+		return
+	}
+
+	// On success rows (no shadow_error), both hashes must be present.
+	if req.ShadowError == "" && (req.CurrentXMLHash == "" || req.ShadowXMLHash == "") {
+		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "current_xml_hash and shadow_xml_hash required when shadow_error is empty", traceID)
+		return
+	}
+
 	event := domain.ShadowDiffEvent{
 		DocumentID:        req.DocumentID,
 		VersionNumber:     req.VersionNumber,

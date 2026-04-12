@@ -13,38 +13,38 @@
       "type": "dataTable",
       "props": {
         "label": "Lista de Materiais",
-        "columns": [
-          { "key": "item",  "label": "Item" },
-          { "key": "qty",   "label": "Quantidade" },
-          { "key": "valor", "label": "Valor Unitário" }
-        ],
-        "locked": true,
-        "minRows": 0,
-        "maxRows": 500,
+        "locked": false,
         "density": "normal"
       },
-      "children": [
-        {
-          "id": "00000000-0000-4000-8000-000000000012",
-          "type": "dataTableRow",
-          "props": {},
-          "children": [
-            { "id": "00000000-0000-4000-8000-000000000013", "type": "dataTableCell", "props": { "columnKey": "item" }, "children": [{ "type": "text", "text": "Parafuso M8" }] },
-            { "id": "00000000-0000-4000-8000-000000000014", "type": "dataTableCell", "props": { "columnKey": "qty" }, "children": [{ "type": "text", "text": "100" }] },
-            { "id": "00000000-0000-4000-8000-000000000015", "type": "dataTableCell", "props": { "columnKey": "valor" }, "children": [{ "type": "text", "text": "R$ 5,00" }] }
-          ]
-        },
-        {
-          "id": "00000000-0000-4000-8000-000000000016",
-          "type": "dataTableRow",
-          "props": {},
-          "children": [
-            { "id": "00000000-0000-4000-8000-000000000017", "type": "dataTableCell", "props": { "columnKey": "item" }, "children": [{ "type": "text", "text": "Porca M8" }] },
-            { "id": "00000000-0000-4000-8000-000000000018", "type": "dataTableCell", "props": { "columnKey": "qty" }, "children": [{ "type": "text", "text": "200" }] },
-            { "id": "00000000-0000-4000-8000-000000000019", "type": "dataTableCell", "props": { "columnKey": "valor" }, "children": [{ "type": "text", "text": "R$ 2,50" }] }
-          ]
-        }
-      ]
+      "content": {
+        "type": "tableContent",
+        "columnWidths": [null, null, null],
+        "headerRows": 1,
+        "rows": [
+          {
+            "cells": [
+              [{"type": "text", "text": "Item"}],
+              [{"type": "text", "text": "Quantidade"}],
+              [{"type": "text", "text": "Valor Unitário"}]
+            ]
+          },
+          {
+            "cells": [
+              [{"type": "text", "text": "Parafuso M8"}],
+              [{"type": "text", "text": "100"}],
+              [{"type": "text", "text": "R$ 5,00"}]
+            ]
+          },
+          {
+            "cells": [
+              [{"type": "text", "text": "Porca M8"}],
+              [{"type": "text", "text": "200"}],
+              [{"type": "text", "text": "R$ 2,50"}]
+            ]
+          }
+        ]
+      },
+      "children": []
     }
   ]
 }

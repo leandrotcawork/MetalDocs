@@ -45,18 +45,12 @@ func POTemplateMDDM() map[string]any {
 							paragraphBlock("a0000044-0000-0000-0000-000000000044", "Detalhe a execução desta etapa com texto livre, listas, tabelas e imagens."),
 							bulletListItemBlock("a0000045-0000-0000-0000-000000000045", "Ponto de controle da etapa"),
 							numberedListItemBlock("a0000046-0000-0000-0000-000000000046", "Sequência operacional"),
-							dataTableBlock("a0000048-0000-0000-0000-000000000048", "Checklist da etapa", []map[string]any{
-								{
-									"key":      "item",
-									"label":    "Item",
-									"type":     "text",
-									"required": false,
-								},
-							}, []map[string]any{
-								dataTableRowBlock("a0000049-0000-0000-0000-000000000049", []map[string]any{
-									dataTableCellBlock("a0000050-0000-0000-0000-000000000050", "item", "Registro inicial"),
-								}),
-							}),
+							dataTableBlock("a0000048-0000-0000-0000-000000000048", "Checklist da etapa",
+							[]string{"Item"},
+							[][]string{
+								{"Registro inicial"},
+							},
+						),
 						}),
 					}),
 				}),
@@ -227,40 +221,57 @@ func imageBlock(id, src, alt, caption string) map[string]any {
 	}
 }
 
-func dataTableBlock(id, label string, columns []map[string]any, rows []map[string]any) map[string]any {
+// dataTableBlock creates a DataTable block using the new tableContent format.
+// columnLabels: column header texts (e.g., []string{"Item", "Quantidade"})
+// rowTexts: data rows, each row is a slice of cell texts (one per column)
+func dataTableBlock(id, label string, columnLabels []string, rowTexts [][]string) map[string]any {
+	// Build header row (first row = column labels)
+	headerCells := make([]any, len(columnLabels))
+	for i, col := range columnLabels {
+		headerCells[i] = []any{map[string]any{"type": "text", "text": col}}
+	}
+	headerRow := map[string]any{"cells": headerCells}
+
+	// Build data rows
+	dataRows := make([]any, len(rowTexts))
+	for i, row := range rowTexts {
+		cells := make([]any, len(columnLabels))
+		for j := range columnLabels {
+			text := ""
+			if j < len(row) {
+				text = row[j]
+			}
+			cells[j] = []any{map[string]any{"type": "text", "text": text}}
+		}
+		dataRows[i] = map[string]any{"cells": cells}
+	}
+
+	// Combine header + data rows
+	allRows := make([]any, 0, 1+len(dataRows))
+	allRows = append(allRows, headerRow)
+	allRows = append(allRows, dataRows...)
+
+	// columnWidths: null for each column
+	columnWidths := make([]any, len(columnLabels))
+	for i := range columnWidths {
+		columnWidths[i] = nil
+	}
+
 	return map[string]any{
 		"id":   id,
 		"type": "dataTable",
 		"props": map[string]any{
 			"label":   label,
-			"columns": toAnySlice(columns),
 			"locked":  false,
-			"minRows": 0,
-			"maxRows": 500,
+			"density": "normal",
 		},
-		"children": toAnySlice(rows),
-	}
-}
-
-func dataTableRowBlock(id string, cells []map[string]any) map[string]any {
-	return map[string]any{
-		"id":       id,
-		"type":     "dataTableRow",
-		"props":    map[string]any{},
-		"children": toAnySlice(cells),
-	}
-}
-
-func dataTableCellBlock(id, columnKey, text string) map[string]any {
-	return map[string]any{
-		"id":   id,
-		"type": "dataTableCell",
-		"props": map[string]any{
-			"columnKey": columnKey,
+		"content": map[string]any{
+			"type":         "tableContent",
+			"columnWidths": columnWidths,
+			"headerRows":   1,
+			"rows":         allRows,
 		},
-		"children": []any{
-			textRun(text),
-		},
+		"children": []any{},
 	}
 }
 

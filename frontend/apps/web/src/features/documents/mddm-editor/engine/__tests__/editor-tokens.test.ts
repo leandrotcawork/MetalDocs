@@ -15,12 +15,13 @@ describe("editor tokens", () => {
       ...defaultLayoutTokens,
       theme: {
         ...defaultLayoutTokens.theme,
-        accent: "#123456",
+        accent: "#ff0000",
       },
     };
 
     setEditorTokens(editor, tokens);
 
     expect(getEditorTokens(editor)).toBe(tokens);
+    expect(getEditorTokens(editor).theme.accent).toBe("#ff0000");
   });
 });

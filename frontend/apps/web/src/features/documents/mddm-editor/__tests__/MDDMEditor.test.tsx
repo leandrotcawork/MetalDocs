@@ -30,10 +30,15 @@ describe("MDDMEditor", () => {
   });
 
   it("attaches theme tokens before calling onEditorReady", () => {
-    const onEditorReady = vi.fn();
+    const readySnapshots: string[] = [];
     const host = document.createElement("div");
     document.body.appendChild(host);
     const root = createRoot(host);
+    const onEditorReady = vi.fn((editorArg: unknown) => {
+      const readyTokens = getEditorTokens(editorArg as object);
+      readySnapshots.push(readyTokens.theme.accent);
+      expect(readyTokens.theme.accent).toBe("#00ff00");
+    });
 
     act(() => {
       root.render(
@@ -46,7 +51,7 @@ describe("MDDMEditor", () => {
 
     expect(onEditorReady).toHaveBeenCalledTimes(1);
     expect(onEditorReady).toHaveBeenCalledWith(editor);
-    expect(getEditorTokens(editor).theme.accent).toBe("#00ff00");
+    expect(readySnapshots).toEqual(["#00ff00"]);
     expect(getEditorTokens(editor)).not.toBe(defaultLayoutTokens);
 
     act(() => {
@@ -59,6 +64,7 @@ describe("MDDMEditor", () => {
     });
 
     expect(onEditorReady).toHaveBeenCalledTimes(1);
+    expect(readySnapshots).toEqual(["#00ff00"]);
     expect(getEditorTokens(editor).theme.accent).toBe("#ff00ff");
 
     act(() => {

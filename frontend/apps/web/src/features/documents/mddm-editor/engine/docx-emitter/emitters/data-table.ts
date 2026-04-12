@@ -9,31 +9,49 @@ import {
 } from "docx";
 import type { LayoutTokens } from "../../layout-ir";
 import type { MDDMBlock } from "../../../adapter";
-import { emitDataTableRow } from "./data-table-row";
 import { ptToHalfPt, mmToTwip } from "../../helpers/units";
 import { hexToFill } from "../../helpers/color";
 
-type ColumnSpec = { key: string; label: string };
+type RawCell = { type?: string; text?: string; styles?: Record<string, boolean> };
+type RawRow = { cells?: RawCell[][] };
+type RawTableContent = {
+  type?: string;
+  columnWidths?: (number | null)[];
+  headerRows?: number;
+  rows?: RawRow[];
+};
 
-function readColumns(props: Record<string, unknown>): ColumnSpec[] {
-  const columns = props.columns;
-  if (!Array.isArray(columns)) return [];
-  const out: ColumnSpec[] = [];
-  for (const column of columns) {
-    if (!column || typeof column !== "object") continue;
-    const key = typeof (column as { key?: unknown }).key === "string" ? (column as { key: string }).key : "";
-    const label = typeof (column as { label?: unknown }).label === "string" ? (column as { label: string }).label : "";
-    if (key && label) out.push({ key, label });
+function readTableContent(content: unknown): RawTableContent | null {
+  if (
+    typeof content !== "object" ||
+    content === null ||
+    (content as any).type !== "tableContent"
+  ) {
+    return null;
   }
-  return out;
+  return content as RawTableContent;
 }
 
-function isRowBlock(child: unknown): child is MDDMBlock {
-  return typeof child === "object" && child !== null && (child as MDDMBlock).type === "dataTableRow";
+function cellToTextRun(cells: RawCell[][], tokens: LayoutTokens): TextRun[] {
+  return cells.flatMap((cell) =>
+    cell.map((run) =>
+      new TextRun({
+        text: run.text ?? "",
+        bold: run.styles?.bold === true,
+        italic: run.styles?.italic === true,
+        underline: run.styles?.underline === true ? {} : undefined,
+        size: ptToHalfPt(tokens.typography.baseSizePt),
+        font: tokens.typography.exportFont,
+      })
+    )
+  );
 }
 
-function buildHeaderRow(columns: ColumnSpec[], tokens: LayoutTokens): TableRow {
-  const headerFill = hexToFill(tokens.theme.accentLight);
+function buildRow(
+  rowData: RawRow,
+  tokens: LayoutTokens,
+  isHeader: boolean,
+): TableRow {
   const borderColor = hexToFill(tokens.theme.accentBorder);
   const borders = {
     top:    { style: BorderStyle.SINGLE, size: 4, color: borderColor },
@@ -42,47 +60,58 @@ function buildHeaderRow(columns: ColumnSpec[], tokens: LayoutTokens): TableRow {
     right:  { style: BorderStyle.SINGLE, size: 4, color: borderColor },
   };
 
-  const cells = columns.map((col) => new TableCell({
-    shading: { fill: headerFill, type: "clear", color: "auto" },
-    borders,
-    children: [
-      new Paragraph({
-        children: [
-          new TextRun({
-            text: col.label,
-            bold: true,
-            size: ptToHalfPt(tokens.typography.baseSizePt),
-            font: tokens.typography.exportFont,
-          }),
-        ],
-      }),
-    ],
-  }));
+  const cellsData = rowData.cells ?? [];
+  const tableCells = cellsData.map((cellContent) => {
+    const runs = cellToTextRun([cellContent], tokens);
+    const shading = isHeader
+      ? { fill: hexToFill(tokens.theme.accentLight), type: "clear" as const, color: "auto" }
+      : undefined;
 
-  return new TableRow({ children: cells });
+    return new TableCell({
+      borders,
+      shading,
+      children: [
+        new Paragraph({
+          children: runs.length > 0 ? runs : [new TextRun({ text: "" })],
+        }),
+      ],
+    });
+  });
+
+  if (tableCells.length === 0) {
+    tableCells.push(new TableCell({ children: [new Paragraph({ children: [] })] }));
+  }
+
+  return new TableRow({ children: tableCells, tableHeader: isHeader });
 }
 
 export function emitDataTable(block: MDDMBlock, tokens: LayoutTokens): Table[] {
-  const columns = readColumns(block.props as Record<string, unknown>);
-  const rowChildren = ((block.children ?? []) as unknown[]).filter(isRowBlock) as MDDMBlock[];
+  const tableContent = readTableContent(block.content);
 
-  const headerRow = columns.length > 0 ? [buildHeaderRow(columns, tokens)] : [];
-  const dataRows = rowChildren.map((r) => emitDataTableRow(r, tokens));
-  const rows = [...headerRow, ...dataRows];
+  if (!tableContent) {
+    // Fallback: empty table when no tableContent (shouldn't happen after migration)
+    const emptyTable = new Table({
+      width: { size: mmToTwip(tokens.page.contentWidthMm), type: WidthType.DXA },
+      rows: [new TableRow({ children: [new TableCell({ children: [new Paragraph({ children: [] })] })] })],
+    });
+    return [emptyTable];
+  }
 
-  // docx's Table constructor throws "Invalid array length" when rows is empty
-  // (columnWidths uses Math.max(...[]) = -Infinity). Guard with a placeholder row.
+  const headerRows = tableContent.headerRows ?? 1;
+  const rows = tableContent.rows ?? [];
+
+  const builtRows = rows.map((row, i) => buildRow(row, tokens, i < headerRows));
+
   const safeRows =
-    rows.length > 0
-      ? rows
+    builtRows.length > 0
+      ? builtRows
       : [new TableRow({ children: [new TableCell({ children: [new Paragraph({ children: [] })] })] })];
 
-  const tableOptions = {
+  const table = new Table({
     width: { size: mmToTwip(tokens.page.contentWidthMm), type: WidthType.DXA },
     rows: safeRows,
-  } as const;
+  });
 
-  const table = new Table(tableOptions);
   // Back-patch so tests can introspect via (out[0] as any).options.rows
   (table as unknown as { options: { rows: typeof safeRows } }).options = { rows: safeRows };
 

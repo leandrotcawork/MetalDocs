@@ -13,8 +13,6 @@ export { emitImage, MissingAssetError, UnsupportedMimeTypeError } from "./emitte
 export { emitQuote } from "./emitters/quote";
 export { emitDivider } from "./emitters/divider";
 export { emitDataTable } from "./emitters/data-table";
-export { emitDataTableRow } from "./emitters/data-table-row";
-export { emitDataTableCell } from "./emitters/data-table-cell";
 export { emitRepeatable } from "./emitters/repeatable";
 export { emitRepeatableItem, type ChildRenderer } from "./emitters/repeatable-item";
 export { emitRichBlock } from "./emitters/rich-block";

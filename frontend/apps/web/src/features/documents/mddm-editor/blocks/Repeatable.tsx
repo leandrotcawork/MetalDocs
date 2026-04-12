@@ -15,17 +15,37 @@ export const Repeatable = createReactBlockSpec(
     content: "none",
   },
   {
-    render: (props) => (
-      <div className={styles.repeatable} data-mddm-block="repeatable">
-        <div className={styles.repeatableHeader}>
-          <strong className={styles.repeatableTitle}>
-            {props.block.props.label || "Repeatable"}
-          </strong>
-          <span className={styles.repeatableMeta}>
-            {props.block.props.itemPrefix || "Item"}
-          </span>
+    render: (props) => {
+      const prefix = props.block.props.itemPrefix || "Item";
+      return (
+        <div className={styles.repeatable} data-mddm-block="repeatable">
+          <div className={styles.repeatableHeader}>
+            <strong className={styles.repeatableTitle}>
+              {props.block.props.label || "Repeatable"}
+            </strong>
+            <span className={styles.repeatableMeta}>{prefix}</span>
+          </div>
+          {!props.block.props.locked && (
+            <button
+              type="button"
+              className={styles.addItemButton}
+              aria-label={`Adicionar ${prefix}`}
+              onClick={() => {
+                const newItem = {
+                  type: "repeatableItem" as const,
+                  props: { title: prefix, style: "bordered" },
+                  children: [] as [],
+                };
+                props.editor.updateBlock(props.block, {
+                  children: [...(props.block.children ?? []), newItem],
+                });
+              }}
+            >
+              + Adicionar {prefix}
+            </button>
+          )}
         </div>
-      </div>
-    ),
+      );
+    },
   },
 );

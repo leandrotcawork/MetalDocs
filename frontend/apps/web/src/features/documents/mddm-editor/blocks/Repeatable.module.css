@@ -26,3 +26,23 @@
   color: var(--mddm-raw-gray-400);
   font-size: 0.78rem;
 }
+
+.addItemButton {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0.5rem 1rem;
+  background: none;
+  border: none;
+  border-top: 1px dashed var(--mddm-accent-border);
+  color: var(--mddm-accent);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.addItemButton:hover {
+  background: var(--mddm-accent-light);
+}

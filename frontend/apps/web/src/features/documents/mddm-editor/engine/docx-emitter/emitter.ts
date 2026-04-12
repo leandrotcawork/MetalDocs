@@ -15,8 +15,6 @@ import { emitImage } from "./emitters/image";
 import { emitQuote } from "./emitters/quote";
 import { emitDivider } from "./emitters/divider";
 import { emitDataTable } from "./emitters/data-table";
-import { emitDataTableRow } from "./emitters/data-table-row";
-import { emitDataTableCell } from "./emitters/data-table-cell";
 import { emitRepeatable } from "./emitters/repeatable";
 import { emitRepeatableItem } from "./emitters/repeatable-item";
 import { emitRichBlock } from "./emitters/rich-block";
@@ -43,7 +41,7 @@ type Emitter = (block: MDDMBlock, ctx: EmitContext) => unknown[];
 const KNOWN_BLOCK_TYPES = [
   "paragraph", "heading", "section", "field", "fieldGroup",
   "bulletListItem", "numberedListItem", "image", "quote", "divider",
-  "dataTable", "dataTableRow", "dataTableCell",
+  "dataTable",
   "repeatable", "repeatableItem", "richBlock",
 ] as const;
 
@@ -73,9 +71,7 @@ function makeRegistry(ctx: EmitContext): Record<KnownBlockType, Emitter> {
     quote:            (b, c) => emitQuote(b, c.tokens),
     divider:          (b, c) => emitDivider(b, c.tokens),
 
-    dataTable:     (b, c) => emitDataTable(b, c.tokens),
-    dataTableRow:  (b, c) => [emitDataTableRow(b, c.tokens)],
-    dataTableCell: (b, c) => [emitDataTableCell(b, c.tokens)],
+    dataTable: (b, c) => emitDataTable(b, c.tokens),
 
     repeatable:     (b, c) => emitRepeatable(b, c.tokens, renderChild),
     repeatableItem: (b, c) => emitRepeatableItem(b, c.tokens, renderChild),

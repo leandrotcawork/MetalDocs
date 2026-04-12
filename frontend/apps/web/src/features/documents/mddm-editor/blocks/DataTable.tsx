@@ -1,5 +1,7 @@
 import { createReactBlockSpec } from "@blocknote/react";
 import styles from "./DataTable.module.css";
+import { DataTableExternalHTML } from "../engine/external-html";
+import { defaultLayoutTokens } from "../engine/layout-ir";
 
 // createReactBlockSpec's types restrict content to "inline" | "none",
 // but the BlockNote runtime fully supports "table" content at the lower level.
@@ -30,6 +32,13 @@ const _dataTableSpec = createReactBlockSpec(
         </div>
         <div className={styles.tableContainer} ref={(props as any).contentRef} />
       </div>
+    ),
+    toExternalHTML: (props) => (
+      <DataTableExternalHTML
+        tokens={defaultLayoutTokens}
+        label={props.block.props.label as string}
+        tableContent={props.block.content}
+      />
     ),
   },
 );

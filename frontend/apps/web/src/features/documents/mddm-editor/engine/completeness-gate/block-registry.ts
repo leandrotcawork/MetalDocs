@@ -26,8 +26,6 @@ export const BLOCK_REGISTRY: readonly BlockSupport[] = [
   { type: "repeatableItem",   hasReactRender: true, hasExternalHtml: true, hasDocxEmitter: true },
   { type: "richBlock",        hasReactRender: true, hasExternalHtml: true, hasDocxEmitter: true },
   { type: "dataTable",        hasReactRender: true, hasExternalHtml: true, hasDocxEmitter: true },
-  { type: "dataTableRow",     hasReactRender: true, hasExternalHtml: true, hasDocxEmitter: true },
-  { type: "dataTableCell",    hasReactRender: true, hasExternalHtml: true, hasDocxEmitter: true },
 ];
 
 export function getFullySupportedBlockTypes(): readonly string[] {

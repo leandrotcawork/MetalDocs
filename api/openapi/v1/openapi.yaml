@@ -2772,6 +2772,27 @@ paths:
               schema: { $ref: '#/components/schemas/ApiErrorEnvelope' }
       security:
         - sessionCookie: []
+  /feature-flags:
+    get:
+      summary: Return server-controlled feature flag values
+      description: |
+        Returns feature flag values read from server environment at startup.
+        Consumed by the frontend at app init to configure per-user rollout gates.
+        Response is not user-specific and may be cached client-side for the
+        duration of the session; the server sets Cache-Control: no-store.
+      operationId: getFeatureFlags
+      tags:
+        - configuration
+      responses:
+        '200':
+          description: Current feature flag values
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureFlagsResponse'
+        '405':
+          description: Method not allowed
+      security: []
 components:
   parameters:
     DocumentId:
@@ -4486,3 +4507,15 @@ components:
         current_duration_ms: { type: integer, minimum: 0 }
         shadow_duration_ms: { type: integer, minimum: 0 }
         shadow_error: { type: string, description: "Non-empty when the shadow path failed" }
+    FeatureFlagsResponse:
+      type: object
+      description: Server-controlled feature flag values exposed to the frontend.
+      properties:
+        MDDM_NATIVE_EXPORT_ROLLOUT_PCT:
+          type: integer
+          minimum: 0
+          maximum: 100
+          default: 0
+          description: >
+            Percentage (0–100) of users for whom the new client-side MDDM DOCX
+            export path is active. 0 = shadow-only (Phase 1); 100 = all users (Phase 3).

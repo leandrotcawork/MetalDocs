@@ -171,6 +171,14 @@ function toBlockNoteBlock(block: MDDMBlock): BlockNoteBlock {
     return output;
   }
 
+  // multiParagraph fields store their value as child blocks, not inline runs
+  if (block.type === "field" && asString(block.props?.valueMode) === "multiParagraph") {
+    if (Array.isArray(block.children)) {
+      output.children = (block.children as MDDMBlock[]).map(toBlockNoteBlock);
+    }
+    return output;
+  }
+
   if (INLINE_BLOCK_TYPES.has(block.type)) {
     output.content = toBlockNoteInline(
       Array.isArray(block.children) ? (block.children as MDDMTextRun[]) : [],
@@ -218,6 +226,14 @@ function toMDDMBlock(block: BlockNoteBlock): MDDMBlock {
 
   if (mddmType === "quote") {
     output.children = quoteFromBlockNote(block.content, rawProps);
+    return output;
+  }
+
+  // multiParagraph fields store their value as child blocks, not inline runs
+  if (mddmType === "field" && asString(block.props?.valueMode) === "multiParagraph") {
+    output.children = Array.isArray(block.children)
+      ? block.children.map(toMDDMBlock)
+      : [];
     return output;
   }
 
@@ -334,12 +350,12 @@ function toMDDMProps(type: string, props: UnknownRecord): UnknownRecord {
 
     case "field": {
       const valueMode = asOptionalString(next.valueMode);
-      if (valueMode && valueMode !== "inline") {
+      if (valueMode && valueMode !== "inline" && valueMode !== "multiParagraph") {
         throw new Error(`unsupported field valueMode: ${valueMode}`);
       }
       const props: UnknownRecord = {
         label: asString(next.label),
-        valueMode: "inline",
+        valueMode: valueMode || "inline",
         locked: Boolean(next.locked),
       };
       const hint = asOptionalString(next.hint);

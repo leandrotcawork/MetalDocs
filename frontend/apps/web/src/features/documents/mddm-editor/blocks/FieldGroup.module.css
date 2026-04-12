@@ -1,4 +1,5 @@
 .fieldGroup {
+  width: 100%;
   margin: var(--mddm-spacing-sm) 0 var(--mddm-spacing-md);
   border: 1px solid var(--mddm-field-border);
   border-radius: var(--mddm-radius);

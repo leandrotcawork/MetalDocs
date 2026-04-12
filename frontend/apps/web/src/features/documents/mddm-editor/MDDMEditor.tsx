@@ -56,12 +56,14 @@ export function MDDMEditor({
   }, [theme]);
 
   return (
-    <div className={styles.editorRoot} style={themeStyle}>
-      <BlockNoteView
-        editor={editor}
-        editable={!readOnly}
-        onChange={(currentEditor) => onChange?.(currentEditor.document)}
-      />
+    <div className={styles.pageShell}>
+      <div className={styles.editorRoot} style={themeStyle}>
+        <BlockNoteView
+          editor={editor}
+          editable={!readOnly}
+          onChange={(currentEditor) => onChange?.(currentEditor.document)}
+        />
+      </div>
     </div>
   );
 }

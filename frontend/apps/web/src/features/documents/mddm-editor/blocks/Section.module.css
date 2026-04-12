@@ -1,7 +1,8 @@
 .section {
-  margin: var(--mddm-spacing-lg) 0 var(--mddm-spacing-md);
-  border: 1px solid var(--mddm-accent-border);
-  border-radius: calc(var(--mddm-radius) * 2);
+  width: 100%;
+  margin: var(--mddm-spacing-lg) 0 0;
+  /* No side borders — the header bar is the visual boundary.
+     A full border on a full-width block creates vertical lines down the page. */
   overflow: hidden;
   background: var(--mddm-raw-white);
   counter-increment: mddm-section;

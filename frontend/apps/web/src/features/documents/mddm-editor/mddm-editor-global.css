@@ -42,6 +42,38 @@
   font-family: var(--mddm-font-family);
 }
 
+/* BlockNote's .bn-editor has 54px padding-left built-in for its drag-handle gutter.
+   We manage our own margins via editorRoot padding, so zero this out. */
+.bn-container .bn-editor {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Strip BlockNote's 24px margin-left indent from structural block-groups.
+   BlockNote wraps bn-block-content in a .react-renderer.node-X div, so that wrapper
+   is the actual adjacent sibling of .bn-block-group — target it directly. */
+.bn-container .react-renderer.node-section + .bn-block-group,
+.bn-container .react-renderer.node-fieldGroup + .bn-block-group,
+.bn-container .react-renderer.node-repeatable + .bn-block-group,
+.bn-container .react-renderer.node-repeatableItem + .bn-block-group,
+.bn-container .react-renderer.node-richBlock + .bn-block-group,
+.bn-container .react-renderer.node-dataTable + .bn-block-group {
+  margin-left: 0;
+  padding-left: 0;
+}
+
+/* Force all structural blocks to fill the block-content flex container */
+.bn-container .bn-block-content[data-content-type="section"] > *,
+.bn-container .bn-block-content[data-content-type="fieldGroup"] > *,
+.bn-container .bn-block-content[data-content-type="field"] > *,
+.bn-container .bn-block-content[data-content-type="dataTable"] > *,
+.bn-container .bn-block-content[data-content-type="repeatable"] > *,
+.bn-container .bn-block-content[data-content-type="repeatableItem"] > *,
+.bn-container .bn-block-content[data-content-type="richBlock"] > * {
+  width: 100%;
+  min-width: 0;
+}
+
 .bn-container .bn-inline-content {
   font-family: var(--mddm-font-family);
   font-size: var(--mddm-font-size-base);
@@ -53,23 +85,14 @@
   border-radius: var(--mddm-radius);
 }
 
-.bn-container .bn-block-content[data-content-type="fieldGroup"]:has([data-columns]) + .bn-block-group {
+.bn-container .react-renderer.node-fieldGroup:has([data-columns]) + .bn-block-group {
   display: grid;
   gap: var(--mddm-spacing-sm);
-  padding-left: 0;
   grid-template-columns: 1fr;
 }
 
-.bn-container .bn-block-content[data-content-type="fieldGroup"]:has([data-columns="2"]) + .bn-block-group {
+.bn-container .react-renderer.node-fieldGroup:has([data-columns="2"]) + .bn-block-group {
   grid-template-columns: 1fr 1fr;
-}
-
-.bn-container .bn-block-content[data-content-type="section"] + .bn-block-group,
-.bn-container .bn-block-content[data-content-type="repeatable"] + .bn-block-group,
-.bn-container .bn-block-content[data-content-type="repeatableItem"] + .bn-block-group,
-.bn-container .bn-block-content[data-content-type="richBlock"] + .bn-block-group,
-.bn-container .bn-block-content[data-content-type="dataTable"] + .bn-block-group {
-  padding-left: 0;
 }
 
 .bn-container [data-content-type="section"] > .bn-block-outer > .bn-block > .bn-side-menu,

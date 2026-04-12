@@ -39,10 +39,3 @@ Wrong:   `parseDataTableColumns` accepted objects with empty `key`/`label` value
 Correct: `parseDataTableColumns` only returns array entries with non-empty trimmed `key`/`label` values and skips repeated keys after the first valid occurrence.
 Rule:    Parsers must enforce structural invariants at the boundary so downstream render code can assume valid, unique column definitions.
 Layer:   application
-
-## Lesson 7 - External HTML exporters must read runtime editor tokens
-Date: 2026-04-12 | Trigger: correction
-Wrong:   MDDM block `toExternalHTML` implementations closed over `defaultLayoutTokens`, and `RepeatableItem` export hardcoded `itemNumber={1}`.
-Correct: All MDDM block exporters now call `getEditorTokens(editor)`, while section and repeatable item numbering derive from `editor.document`.
-Rule:    Export renderers must consume runtime editor state instead of static defaults whenever layout tokens or derived numbering can vary at runtime.
-Layer:   application

@@ -7,6 +7,7 @@ import "@blocknote/mantine/style.css";
 import "./mddm-editor-global.css";
 import { mddmSchema } from "./schema";
 import styles from "./MDDMEditor.module.css";
+import { defaultLayoutTokens, tokensToCssVars } from "./engine/layout-ir";
 
 export type MDDMTheme = {
   accent?: string;
@@ -41,23 +42,29 @@ export function MDDMEditor({
     return undefined;
   }, [editor]);
 
-  const themeStyle = useMemo(() => {
-    if (!theme) {
-      return undefined;
-    }
-
-    const vars: Record<string, string> = {};
-    if (theme.accent) vars["--mddm-accent"] = theme.accent;
-    if (theme.accentLight) vars["--mddm-accent-light"] = theme.accentLight;
-    if (theme.accentDark) vars["--mddm-accent-dark"] = theme.accentDark;
-    if (theme.accentBorder) vars["--mddm-accent-border"] = theme.accentBorder;
-
-    return Object.keys(vars).length > 0 ? (vars as CSSProperties) : undefined;
+  const tokens = useMemo(() => {
+    if (!theme) return defaultLayoutTokens;
+    return {
+      ...defaultLayoutTokens,
+      theme: {
+        ...defaultLayoutTokens.theme,
+        ...(theme.accent ? { accent: theme.accent } : {}),
+        ...(theme.accentLight ? { accentLight: theme.accentLight } : {}),
+        ...(theme.accentDark ? { accentDark: theme.accentDark } : {}),
+        ...(theme.accentBorder ? { accentBorder: theme.accentBorder } : {}),
+      },
+    };
   }, [theme]);
+
+  const cssVars = useMemo(() => tokensToCssVars(tokens), [tokens]);
 
   return (
     <div className={styles.pageShell}>
-      <div className={styles.editorRoot} style={themeStyle}>
+      <div
+        className={styles.editorRoot}
+        style={cssVars as CSSProperties}
+        data-editable={!readOnly}
+      >
         <BlockNoteView
           editor={editor}
           editable={!readOnly}

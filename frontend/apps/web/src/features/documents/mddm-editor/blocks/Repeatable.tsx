@@ -1,4 +1,6 @@
 import { createReactBlockSpec } from "@blocknote/react";
+import { RepeatableExternalHTML } from "../engine/external-html";
+import { defaultLayoutTokens } from "../engine/layout-ir";
 import styles from "./Repeatable.module.css";
 
 export const Repeatable = createReactBlockSpec(
@@ -17,6 +19,10 @@ export const Repeatable = createReactBlockSpec(
   {
     render: (props) => {
       const prefix = props.block.props.itemPrefix || "Item";
+      const maxItems = props.block.props.maxItems ?? 100;
+      const currentChildren = props.block.children ?? [];
+      const canAddItem = !props.block.props.locked && currentChildren.length < maxItems;
+
       return (
         <div className={styles.repeatable} data-mddm-block="repeatable">
           <div className={styles.repeatableHeader}>
@@ -25,19 +31,23 @@ export const Repeatable = createReactBlockSpec(
             </strong>
             <span className={styles.repeatableMeta}>{prefix}</span>
           </div>
-          {!props.block.props.locked && (
+          {canAddItem && (
             <button
               type="button"
               className={styles.addItemButton}
               aria-label={`Adicionar ${prefix}`}
               onClick={() => {
+                // Read current block state at click time to avoid stale closure
+                const currentBlock = props.editor.getBlock(props.block.id);
+                const freshChildren = currentBlock?.children ?? [];
                 const newItem = {
                   type: "repeatableItem" as const,
-                  props: { title: prefix, style: "bordered" },
+                  props: { title: `${prefix} ${freshChildren.length + 1}`, style: "bordered" },
                   children: [] as [],
                 };
-                props.editor.updateBlock(props.block, {
-                  children: [...(props.block.children ?? []), newItem],
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (props.editor as any).updateBlock(props.block, {
+                  children: [...freshChildren, newItem],
                 });
               }}
             >
@@ -47,5 +57,11 @@ export const Repeatable = createReactBlockSpec(
         </div>
       );
     },
+    toExternalHTML: (props) => (
+      <RepeatableExternalHTML
+        tokens={defaultLayoutTokens}
+        label={props.block.props.label as string}
+      />
+    ),
   },
 );

@@ -5,3 +5,5 @@ export { FieldGroupExternalHTML, type FieldGroupExternalHTMLProps } from "./fiel
 
 // DataTable renders via tableContent (native BlockNote table content)
 export { DataTableExternalHTML, type DataTableExternalHTMLProps } from "./data-table-html";
+export { RepeatableExternalHTML, type RepeatableExternalHTMLProps } from "./repeatable-html";
+export { RepeatableItemExternalHTML, type RepeatableItemExternalHTMLProps } from "./repeatable-item-html";

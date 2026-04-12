@@ -62,6 +62,10 @@
   padding-left: 0;
 }
 
+.bn-container .react-renderer.node-repeatable + .bn-block-group {
+  padding: 0 var(--mddm-spacing-sm) var(--mddm-spacing-sm);
+}
+
 /* Force all structural blocks to fill the block-content flex container */
 .bn-container .bn-block-content[data-content-type="section"] > *,
 .bn-container .bn-block-content[data-content-type="fieldGroup"] > *,

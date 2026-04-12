@@ -8,6 +8,7 @@ import "./mddm-editor-global.css";
 import { mddmSchema } from "./schema";
 import styles from "./MDDMEditor.module.css";
 import { defaultLayoutTokens, tokensToCssVars } from "./engine/layout-ir";
+import setEditorTokens from "./engine/editor-tokens";
 
 export type MDDMTheme = {
   accent?: string;
@@ -63,6 +64,10 @@ export function MDDMEditor({
   }, [theme]);
 
   const cssVars = useMemo(() => tokensToCssVars(tokens), [tokens]);
+
+  useEffect(() => {
+    setEditorTokens(editor, tokens);
+  }, [editor, tokens]);
 
   return (
     <div className={styles.pageShell}>

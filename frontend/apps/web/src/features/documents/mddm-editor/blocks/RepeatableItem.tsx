@@ -1,7 +1,7 @@
 import { createReactBlockSpec } from "@blocknote/react";
 import { useMemo } from "react";
 import { RepeatableItemExternalHTML } from "../engine/external-html";
-import { defaultLayoutTokens } from "../engine/layout-ir";
+import { getEditorTokens } from "../engine/editor-tokens";
 import styles from "./RepeatableItem.module.css";
 
 function findItemIndex(document: any[], itemId: string): number {
@@ -52,9 +52,9 @@ export const RepeatableItem = createReactBlockSpec(
     },
     toExternalHTML: (props) => (
       <RepeatableItemExternalHTML
-        tokens={defaultLayoutTokens}
+        tokens={getEditorTokens(props.editor)}
         title={props.block.props.title as string}
-        itemNumber={1}
+        itemNumber={findItemIndex(props.editor.document, props.block.id ?? "")}
       />
     ),
   },

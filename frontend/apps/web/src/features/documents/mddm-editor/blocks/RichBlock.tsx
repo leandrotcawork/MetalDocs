@@ -1,7 +1,7 @@
 import { createReactBlockSpec } from "@blocknote/react";
 import styles from "./RichBlock.module.css";
 import { RichBlockExternalHTML } from "../engine/external-html";
-import { defaultLayoutTokens } from "../engine/layout-ir";
+import { getEditorTokens } from "../engine/editor-tokens";
 
 export const RichBlock = createReactBlockSpec(
   {
@@ -28,7 +28,7 @@ export const RichBlock = createReactBlockSpec(
     ),
     toExternalHTML: (props) => (
       <RichBlockExternalHTML
-        tokens={defaultLayoutTokens}
+        tokens={getEditorTokens(props.editor)}
         label={props.block.props.label as string}
         chrome={props.block.props.chrome as string}
       />

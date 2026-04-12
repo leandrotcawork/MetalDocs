@@ -1,7 +1,7 @@
 import { createReactBlockSpec } from "@blocknote/react";
 import styles from "./Section.module.css";
 import { SectionExternalHTML } from "../engine/external-html";
-import { defaultLayoutTokens } from "../engine/layout-ir";
+import { getEditorTokens } from "../engine/editor-tokens";
 
 export const Section = createReactBlockSpec(
   {
@@ -43,7 +43,7 @@ export const Section = createReactBlockSpec(
       return (
         <SectionExternalHTML
           title={(block.props as { title?: string }).title ?? ""}
-          tokens={defaultLayoutTokens}
+          tokens={getEditorTokens(editor)}
           sectionNumber={sectionNumber}
         />
       );

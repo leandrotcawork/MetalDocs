@@ -1,6 +1,6 @@
 import { createReactBlockSpec } from "@blocknote/react";
 import { RepeatableExternalHTML } from "../engine/external-html";
-import { defaultLayoutTokens } from "../engine/layout-ir";
+import { getEditorTokens } from "../engine/editor-tokens";
 import styles from "./Repeatable.module.css";
 
 export const Repeatable = createReactBlockSpec(
@@ -59,7 +59,7 @@ export const Repeatable = createReactBlockSpec(
     },
     toExternalHTML: (props) => (
       <RepeatableExternalHTML
-        tokens={defaultLayoutTokens}
+        tokens={getEditorTokens(props.editor)}
         label={props.block.props.label as string}
       />
     ),

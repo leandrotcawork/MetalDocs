@@ -12,3 +12,4 @@ export {
   type CompatibilityContract,
   type ForbiddenConstruct,
 } from "./compatibility-contract";
+export { tokensToCssVars } from "./token-bridge";

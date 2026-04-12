@@ -100,3 +100,62 @@
 .bn-container [data-content-type="repeatable"] > .bn-block-outer > .bn-block > .bn-side-menu {
   display: none;
 }
+
+/* ── Chrome: hidden by default, visible on hover/focus ── */
+
+.bn-container .bn-side-menu {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease;
+}
+
+.bn-container .bn-block:hover > .bn-side-menu,
+.bn-container .bn-block:focus-within > .bn-side-menu {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.bn-container .bn-drag-handle {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease;
+}
+
+.bn-container .bn-block:hover .bn-drag-handle,
+.bn-container .bn-block:focus-within .bn-drag-handle {
+  opacity: 0.6;
+  pointer-events: auto;
+}
+
+.bn-container .bn-drag-handle:hover {
+  opacity: 1;
+}
+
+/* Remove nesting indent lines */
+.bn-container .bn-block-group {
+  border-left: none;
+}
+
+/* Block spacing from tokens */
+.bn-container .bn-block {
+  margin-bottom: var(--mddm-block-gap, 2px);
+}
+
+.bn-container .bn-block-content[data-content-type="section"] {
+  margin-top: var(--mddm-section-gap, 6mm);
+}
+
+/* Read-only mode: all chrome removed */
+[data-editable="false"] .bn-side-menu,
+[data-editable="false"] .bn-drag-handle,
+[data-editable="false"] .bn-formatting-toolbar {
+  display: none !important;
+}
+
+[data-editable="false"] .bn-inline-content {
+  cursor: default;
+}
+
+[data-editable="false"] [data-mddm-block]:focus-within {
+  outline: none;
+}

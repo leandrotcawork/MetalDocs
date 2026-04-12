@@ -4,10 +4,12 @@ import { defaultComponentRules } from "../layout-ir";
 export type SectionExternalHTMLProps = {
   title: string;
   tokens: LayoutTokens;
+  sectionNumber?: number;
 };
 
-export function SectionExternalHTML({ title, tokens }: SectionExternalHTMLProps) {
+export function SectionExternalHTML({ title, tokens, sectionNumber }: SectionExternalHTMLProps) {
   const rule = defaultComponentRules.section;
+  const displayTitle = sectionNumber ? `${sectionNumber}. ${title}` : title;
 
   return (
     <table
@@ -32,7 +34,7 @@ export function SectionExternalHTML({ title, tokens }: SectionExternalHTMLProps)
               verticalAlign: "middle",
             }}
           >
-            {title}
+            {displayTitle}
           </td>
         </tr>
       </tbody>

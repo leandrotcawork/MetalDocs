@@ -7,3 +7,4 @@ export { FieldGroupExternalHTML, type FieldGroupExternalHTMLProps } from "./fiel
 export { DataTableExternalHTML, type DataTableExternalHTMLProps } from "./data-table-html";
 export { RepeatableExternalHTML, type RepeatableExternalHTMLProps } from "./repeatable-html";
 export { RepeatableItemExternalHTML, type RepeatableItemExternalHTMLProps } from "./repeatable-item-html";
+export { RichBlockExternalHTML, type RichBlockExternalHTMLProps } from "./rich-block-html";

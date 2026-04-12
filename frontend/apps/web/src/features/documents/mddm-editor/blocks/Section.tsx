@@ -34,11 +34,19 @@ export const Section = createReactBlockSpec(
         </div>
       </div>
     ),
-    toExternalHTML: ({ block }) => (
-      <SectionExternalHTML
-        title={(block.props as { title?: string }).title ?? ""}
-        tokens={defaultLayoutTokens}
-      />
-    ),
+    toExternalHTML: ({ block, editor }) => {
+      const sectionIndex = (editor.document as any[])
+        .filter((b: any) => b.type === "section")
+        .findIndex((b: any) => b.id === block.id);
+      const sectionNumber = sectionIndex >= 0 ? sectionIndex + 1 : undefined;
+
+      return (
+        <SectionExternalHTML
+          title={(block.props as { title?: string }).title ?? ""}
+          tokens={defaultLayoutTokens}
+          sectionNumber={sectionNumber}
+        />
+      );
+    },
   },
 );

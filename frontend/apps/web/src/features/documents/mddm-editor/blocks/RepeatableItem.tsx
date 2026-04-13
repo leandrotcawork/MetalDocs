@@ -54,6 +54,8 @@ export const RepeatableItem = createReactBlockSpec(
       title: { default: "" },
       style: { default: "bordered" },
       locked: { default: false },
+      styleJson: { default: "{}" },
+      capabilitiesJson: { default: "{}" },
     },
     content: "none",
   },

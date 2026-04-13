@@ -13,6 +13,8 @@ export const Section = createReactBlockSpec(
       optional: { default: false },
       variant: { default: "bar" },
       __template_block_id: { default: "" },
+      styleJson: { default: "{}" },
+      capabilitiesJson: { default: "{}" },
     },
     content: "none",
   },

@@ -10,6 +10,8 @@ const dataTablePropSchema = {
   locked: { default: false },
   density: { default: "normal" },
   __template_block_id: { default: "" },
+  styleJson: { default: "{}" },
+  capabilitiesJson: { default: "{}" },
 };
 
 // Proper ProseMirror / Tiptap node for the dataTable block.

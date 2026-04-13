@@ -13,6 +13,8 @@ export const Repeatable = createReactBlockSpec(
       minItems: { default: 0 },
       maxItems: { default: 100 },
       __template_block_id: { default: "" },
+      styleJson: { default: "{}" },
+      capabilitiesJson: { default: "{}" },
     },
     content: "none",
   },

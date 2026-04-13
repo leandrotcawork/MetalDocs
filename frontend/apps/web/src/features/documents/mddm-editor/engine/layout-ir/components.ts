@@ -26,10 +26,35 @@ export type FieldGroupRule = Readonly<{
   fullWidth: true;
 }>;
 
+export type DataTableRule = Readonly<{
+  headerBackgroundToken: "theme.accentLight";
+  headerFontColor: string;
+  headerFontWeight: "bold" | "normal";
+  cellBorderColorToken: "theme.accentBorder";
+  cellPaddingMm: number;
+  defaultDensity: "normal" | "compact";
+}>;
+
+export type RepeatableRule = Readonly<{
+  borderColorToken: "theme.accentBorder";
+  itemAccentBorderToken: "theme.accent";
+  itemAccentWidthPt: number;
+}>;
+
+export type RichBlockRule = Readonly<{
+  labelBackgroundToken: "theme.accentLight";
+  labelFontSizePt: number;
+  labelFontColor: string;
+  borderColorToken: "theme.accentBorder";
+}>;
+
 export type ComponentRules = Readonly<{
   section: SectionRule;
   field: FieldRule;
   fieldGroup: FieldGroupRule;
+  dataTable: DataTableRule;
+  repeatable: RepeatableRule;
+  richBlock: RichBlockRule;
 }>;
 
 export const defaultComponentRules: ComponentRules = {
@@ -54,5 +79,24 @@ export const defaultComponentRules: ComponentRules = {
     defaultColumns: 2,
     gapMm: 0,
     fullWidth: true,
+  },
+  dataTable: {
+    headerBackgroundToken: "theme.accentLight",
+    headerFontColor: "#3e1018",
+    headerFontWeight: "bold",
+    cellBorderColorToken: "theme.accentBorder",
+    cellPaddingMm: 2,
+    defaultDensity: "normal",
+  },
+  repeatable: {
+    borderColorToken: "theme.accentBorder",
+    itemAccentBorderToken: "theme.accent",
+    itemAccentWidthPt: 3,
+  },
+  richBlock: {
+    labelBackgroundToken: "theme.accentLight",
+    labelFontSizePt: 9,
+    labelFontColor: "#3e1018",
+    borderColorToken: "theme.accentBorder",
   },
 };

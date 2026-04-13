@@ -11,6 +11,8 @@ export const RichBlock = createReactBlockSpec(
       locked: { default: true },
       chrome: { default: "labeled" },
       __template_block_id: { default: "" },
+      styleJson: { default: "{}" },
+      capabilitiesJson: { default: "{}" },
     },
     content: "none",
   },

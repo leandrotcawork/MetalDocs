@@ -121,22 +121,19 @@ export function MDDMEditor({
     }
 
     const lockHeaders = () => {
-      // Lock all th cells (headerRows / headerCols = 1 columns in native tables)
+      // Lock th cells (produced by headerRows / headerCols on native tables).
       root.querySelectorAll("th").forEach((cell) => {
         (cell as HTMLElement).contentEditable = "false";
       });
-      // 2-column fieldGroup tables render as 4-column native tables:
-      //   [Label(th) | Value(td) | Label(td) | Value(td)]
-      // BlockNote's headerCols:1 only promotes column-0 to th. Column-2 is a
-      // label td and must be locked the same way, scoped to native table blocks
-      // (data-content-type="table") so DataTable custom blocks are unaffected.
-      root
-        .querySelectorAll('.bn-block-content[data-content-type="table"] tr')
-        .forEach((row) => {
-          if (row.children.length === 4) {
-            (row.children[2] as HTMLElement).contentEditable = "false";
-          }
-        });
+      // Lock any td/th that carries data-background-color — BlockNote's DOM
+      // attribute for tableCell / tableHeader backgroundColor prop.
+      // fieldGroupToTable marks label cells with backgroundColor:"gray" which
+      // renders as data-background-color="gray" in the DOM. This is the
+      // template's explicit signal: "this cell is a header, not editable."
+      // No column-position assumptions; works for any layout, any column count.
+      root.querySelectorAll("td[data-background-color], th[data-background-color]").forEach((cell) => {
+        (cell as HTMLElement).contentEditable = "false";
+      });
     };
 
     lockHeaders();

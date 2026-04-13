@@ -138,10 +138,10 @@ describe("MDDMEditor", () => {
     host.remove();
   });
 
-  it("locks column-2 label cells in 4-column fieldGroup tables", async () => {
-    // 2-col fieldGroup renders as [Label(th)|Value(td)|Label(td)|Value(td)].
-    // headerCols:1 only makes column-0 a th. Column-2 is a label td that must
-    // also be locked so the second column's labels are non-editable.
+  it("locks table cells that carry data-background-color (fieldGroup label cells)", async () => {
+    // fieldGroupToTable marks label cells with backgroundColor:"gray" which
+    // BlockNote renders as data-background-color="gray" in the DOM. The lock
+    // is driven by the template's explicit header marker, not column position.
     const host = document.createElement("div");
     document.body.appendChild(host);
     const root = createRoot(host);
@@ -150,34 +150,26 @@ describe("MDDMEditor", () => {
       root.render(<MDDMEditor />);
     });
 
-    const blockContent = document.createElement("div");
-    blockContent.className = "bn-block-content";
-    blockContent.setAttribute("data-content-type", "table");
+    const labelTd = document.createElement("td");
+    labelTd.contentEditable = "true";
+    labelTd.setAttribute("data-background-color", "gray");
 
-    const table = document.createElement("table");
-    const tbody = document.createElement("tbody");
-    const row = document.createElement("tr");
+    const valueTd = document.createElement("td");
+    valueTd.contentEditable = "true";
 
-    const cells = [0, 1, 2, 3].map((i) => {
-      const cell = document.createElement(i === 0 ? "th" : "td");
-      cell.contentEditable = "true";
-      row.appendChild(cell);
-      return cell;
-    });
+    const labelTh = document.createElement("th");
+    labelTh.contentEditable = "true";
+    labelTh.setAttribute("data-background-color", "gray");
 
-    tbody.appendChild(row);
-    table.appendChild(tbody);
-    blockContent.appendChild(table);
-    tiptapDom.appendChild(blockContent);
+    tiptapDom.append(labelTd, valueTd, labelTh);
 
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
-    expect(cells[0].contentEditable).toBe("false"); // th — always locked
-    expect(cells[1].contentEditable).toBe("true");  // value td — editable
-    expect(cells[2].contentEditable).toBe("false"); // label td — locked
-    expect(cells[3].contentEditable).toBe("true");  // value td — editable
+    expect(labelTd.contentEditable).toBe("false");  // td with background-color → locked
+    expect(valueTd.contentEditable).toBe("true");   // td without background-color → editable
+    expect(labelTh.contentEditable).toBe("false");  // th with background-color → locked
 
     act(() => { root.unmount(); });
     host.remove();

@@ -241,17 +241,10 @@ func (s *Service) ExportDocumentDocxAuthorized(ctx context.Context, documentID, 
 		return nil, err
 	}
 	if strings.TrimSpace(version.ContentSource) == domain.ContentSourceBrowserEditor {
-		var exportConfig *domain.TemplateExportConfig
-		var templateVersion *domain.DocumentTemplateVersion
-		if version.TemplateKey != "" && version.TemplateVersion > 0 {
-			tmpl, err := s.repo.GetDocumentTemplateVersion(ctx, version.TemplateKey, version.TemplateVersion)
-			if err != nil {
-				return nil, err
-			}
-			exportConfig = tmpl.ExportConfig
-			templateVersion = &tmpl
-		}
-		return s.generateBrowserDocxBytesWithTemplate(ctx, doc, version, exportConfig, templateVersion, traceID)
+		// MDDM browser-editor documents are exported client-side via the native
+		// DOCX engine. The server-side docgen path for this content source has
+		// been decommissioned. Callers must use client-side mddmExportDocx().
+		return nil, domain.ErrRenderUnavailable
 	}
 
 	schema, ok, err := s.resolveDocumentProfileSchema(ctx, doc.DocumentProfile, doc.ProfileSchemaVersion)

@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { exportDocumentDocx, getDocumentBrowserEditorBundle, saveDocumentBrowserContent } from "../../../api/documents";
+import { getDocumentBrowserEditorBundle, saveDocumentBrowserContent } from "../../../api/documents";
 import type { DocumentBrowserEditorBundleResponse, DocumentListItem, RendererPin } from "../../../lib.types";
 import { formatDocumentDisplayName } from "../../shared/documentDisplay";
 import { normalizeDocumentProfileCode } from "../../shared/documentProfile";
-import { isMddmNativeExportEnabled } from "../../featureFlags";
 import { exportDocx as mddmExportDocx, exportPdf } from "../mddm-editor/engine/export";
 import styles from "./BrowserDocumentEditorView.module.css";
 import { DocumentEditorHeader } from "./DocumentEditorHeader";
@@ -12,10 +11,6 @@ import { MDDMEditor, type MDDMTheme } from "../mddm-editor/MDDMEditor";
 import { MDDMViewer } from "../mddm-editor/MDDMViewer";
 import { blockNoteToMDDM, mddmToBlockNote, type MDDMEnvelope } from "../mddm-editor/adapter";
 import { SaveBeforeExportDialog } from "./SaveBeforeExportDialog";
-import { runShadowExport } from "../mddm-editor/engine/shadow-testing/shadow-runner";
-import { computeShadowDiff, hashNormalizedXml } from "../mddm-editor/engine/shadow-testing/shadow-diff";
-import { postShadowDiff } from "../mddm-editor/engine/shadow-testing/shadow-telemetry";
-import { unzipDocxDocumentXml } from "../mddm-editor/engine/golden/golden-helpers";
 
 type BrowserDocumentEditorViewProps = {
   document: DocumentListItem;
@@ -239,67 +234,30 @@ export function BrowserDocumentEditorView({ document, onBack, currentUserId }: B
 
   async function runDocxExport(source: "live" | "saved" = "live") {
     const safeCode = (document.documentCode || "documento").trim().replace(/[^\w.-]+/g, "-");
-
-    const exportStart = performance.now();
     setIsExporting(true);
-    let legacyBlob: Blob | null = null;
     try {
-      if (isMddmNativeExportEnabled(currentUserId ?? "")) {
-        const rawBody = source === "saved" ? (bundle?.body ?? "") : (editorData ?? "");
-        const body = rawBody.trim();
-        if (body && !body.startsWith("{")) {
-          throw new Error("Document body is not in MDDM JSON format");
-        }
-        const envelope: MDDMEnvelope = body
-          ? (JSON.parse(body) as MDDMEnvelope)
-          : { mddm_version: 1, template_ref: null, blocks: [] };
-        const blob = await mddmExportDocx(envelope, { rendererPin });
-        triggerBlobDownload(blob, `${safeCode}.docx`);
-      } else {
-        const blob = await exportDocumentDocx(document.documentId);
-        legacyBlob = blob;
-        triggerBlobDownload(blob, `${safeCode}.docx`);
+      const rawBody = source === "saved" ? (bundle?.body ?? "") : (editorData ?? "");
+      const body = rawBody.trim();
+      if (body && !body.startsWith("{")) {
+        throw new Error("Document body is not in MDDM JSON format");
       }
+      const envelope: MDDMEnvelope = body
+        ? (JSON.parse(body) as MDDMEnvelope)
+        : { mddm_version: 1, template_ref: null, blocks: [] };
+      const blob = await mddmExportDocx(envelope, { rendererPin });
+      triggerBlobDownload(blob, `${safeCode}.docx`);
       setErrorCode(null);
       setErrorMessage("");
     } catch (error) {
       setErrorCode("export");
       setErrorMessage("Nao foi possivel exportar o DOCX deste documento.");
-      const status = statusOf(error);
-      if (status === 503) {
-        setErrorMessage("Servico de render indisponivel. Inicie o docgen e tente novamente.");
-      }
     } finally {
       setIsExporting(false);
-    }
-
-    // Fire-and-forget shadow run AFTER the user-visible export completes (after finally).
-    if (!isMddmNativeExportEnabled(currentUserId ?? "") && legacyBlob !== null && bundle !== null) {
-      const currentDurationMs = Math.round(performance.now() - exportStart);
-      const rawBody = source === "saved" ? (bundle.body ?? "") : (editorData ?? "");
-      const body = rawBody.trim();
-      const envelope: MDDMEnvelope = body && body.startsWith("{")
-        ? (JSON.parse(body) as MDDMEnvelope)
-        : { mddm_version: 1, template_ref: null, blocks: [] };
-      void runShadowAndReport({
-        envelope,
-        rendererPin,
-        currentBlob: legacyBlob,
-        currentDurationMs,
-        documentId: document.documentId,
-        versionNumber: latestVersion?.version ?? 0,
-        userIdHash: await hashCurrentUserId(currentUserId ?? ""),
-      });
     }
   }
 
   async function handleExportDocx() {
     if (!document.documentId.trim() || isExporting) {
-      return;
-    }
-
-    if (!isMddmNativeExportEnabled(currentUserId ?? "")) {
-      await runDocxExport();
       return;
     }
 
@@ -545,63 +503,3 @@ function statusOf(error: unknown): number | undefined {
   return undefined;
 }
 
-async function hashCurrentUserId(userId: string): Promise<string> {
-  if (!userId) return "";
-  const salted = `mddm-shadow-salt:${userId}`;
-  const bytes = new TextEncoder().encode(salted);
-  const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-async function runShadowAndReport(input: {
-  envelope: MDDMEnvelope;
-  rendererPin: RendererPin | null;
-  currentBlob: Blob;
-  currentDurationMs: number;
-  documentId: string;
-  versionNumber: number;
-  userIdHash: string;
-}) {
-  try {
-    const [currentXml, shadow] = await Promise.all([
-      unzipDocxDocumentXml(input.currentBlob),
-      runShadowExport(input.envelope, input.rendererPin),
-    ]);
-
-    if (!shadow.ok) {
-      void postShadowDiff({
-        document_id: input.documentId,
-        version_number: input.versionNumber,
-        user_id_hash: input.userIdHash,
-        current_xml_hash: "",
-        shadow_xml_hash: "",
-        diff_summary: { identical: false, shadow_failed: true },
-        current_duration_ms: input.currentDurationMs,
-        shadow_duration_ms: shadow.durationMs,
-        shadow_error: shadow.error,
-      });
-      return;
-    }
-
-    const diff = computeShadowDiff(currentXml, shadow.xml);
-    const [currentHash, shadowHash] = await Promise.all([
-      hashNormalizedXml(currentXml),
-      hashNormalizedXml(shadow.xml),
-    ]);
-    void postShadowDiff({
-      document_id: input.documentId,
-      version_number: input.versionNumber,
-      user_id_hash: input.userIdHash,
-      current_xml_hash: currentHash,
-      shadow_xml_hash: shadowHash,
-      diff_summary: diff.diff_summary,
-      current_duration_ms: input.currentDurationMs,
-      shadow_duration_ms: shadow.durationMs,
-    });
-  } catch (err) {
-    // Never surface shadow errors to the user.
-    console.warn("shadow run failed", err);
-  }
-}

@@ -1,53 +1,31 @@
 import type { LayoutTokens } from "../layout-ir";
-import type { InterpretContext, BlockLayoutInterpreter } from "./types";
+import { defaultComponentRules } from "../layout-ir";
+import { RepeatableCodec } from "../codecs";
+import { resolveThemeRef } from "../codecs/codec-utils";
+import type { RepeatableViewModel } from "./view-models";
 
-type RepeatableBlock = {
-  props: {
-    label?: string;
-    itemPrefix?: string;
-    locked?: boolean;
-    minItems?: number;
-    maxItems?: number;
+export function interpretRepeatable(
+  block: { props: Record<string, unknown>; children?: unknown[] },
+  tokens: LayoutTokens,
+): RepeatableViewModel {
+  const style = RepeatableCodec.parseStyle((block.props.styleJson as string) ?? "{}");
+  const caps = RepeatableCodec.parseCaps((block.props.capabilitiesJson as string) ?? "{}");
+  const rule = defaultComponentRules.repeatable;
+
+  const currentItemCount = block.children?.length ?? 0;
+
+  return {
+    label: (block.props.label as string) ?? "",
+    itemPrefix: (block.props.itemPrefix as string) ?? "Item",
+    borderColor: resolveThemeRef(style.borderColor, tokens.theme) ?? tokens.theme.accentBorder,
+    itemAccentBorder: resolveThemeRef(style.itemAccentBorder, tokens.theme) ?? tokens.theme.accent,
+    itemAccentWidth: style.itemAccentWidth ?? `${rule.itemAccentWidthPt}pt`,
+    locked: caps.locked,
+    removable: caps.removable,
+    canAddItems: caps.addItems && currentItemCount < caps.maxItems,
+    canRemoveItems: caps.removeItems && currentItemCount > caps.minItems,
+    maxItems: caps.maxItems,
+    minItems: caps.minItems,
+    currentItemCount,
   };
-  children?: Array<{ type: string; id?: string }>;
-};
-
-type RepeatableItemViewModel = {
-  id?: string;
-  number: number;
-  displayNumber: string;
-};
-
-type RepeatableViewModel = {
-  label: string;
-  itemPrefix: string;
-  items: RepeatableItemViewModel[];
-  canAddItem: boolean;
-};
-
-export const RepeatableInterpreter: BlockLayoutInterpreter<RepeatableBlock, RepeatableViewModel> = {
-  interpret(block, _tokens: LayoutTokens, context: InterpretContext): RepeatableViewModel {
-    const label = block.props.label ?? "";
-    const itemPrefix = block.props.itemPrefix ?? "Item";
-    const locked = block.props.locked ?? false;
-    const maxItems = block.props.maxItems ?? 100;
-
-    const children = block.children ?? [];
-    const items = children
-      .filter((c) => c.type === "repeatableItem")
-      .map((child, index) => {
-        const number = index + 1;
-        const parentNum = context.parentNumber;
-        const displayNumber = parentNum ? `${parentNum}.${number}` : String(number);
-        return {
-          id: child.id,
-          number,
-          displayNumber,
-        };
-      });
-
-    const canAddItem = !locked && items.length < maxItems;
-
-    return { label, itemPrefix, items, canAddItem };
-  },
-};
+}

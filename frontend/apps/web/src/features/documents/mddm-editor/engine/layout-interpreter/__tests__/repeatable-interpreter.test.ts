@@ -1,47 +1,48 @@
 import { describe, it, expect } from "vitest";
-import { RepeatableInterpreter } from "../repeatable-interpreter";
+import { interpretRepeatable } from "../repeatable-interpreter";
 import { defaultLayoutTokens } from "../../layout-ir";
 
-const makeBlock = (items: number, locked = false, maxItems = 100) => ({
-  props: { label: "Etapas", itemPrefix: "Etapa", locked, minItems: 0, maxItems },
-  children: Array.from({ length: items }, (_, i) => ({
-    type: "repeatableItem",
-    id: `item-${i}`,
-  })),
-});
+describe("interpretRepeatable", () => {
+  it("uses Layout IR defaults when no style override", () => {
+    const block = { props: { label: "Etapas", itemPrefix: "Etapa", styleJson: "{}", capabilitiesJson: "{}" }, children: [] };
+    const vm = interpretRepeatable(block as any, defaultLayoutTokens);
 
-describe("RepeatableInterpreter", () => {
-  it("numbers items sequentially", () => {
-    const block = makeBlock(3);
-    const vm = RepeatableInterpreter.interpret(block, defaultLayoutTokens, { depth: 0 });
-    expect(vm.items[0].number).toBe(1);
-    expect(vm.items[1].number).toBe(2);
-    expect(vm.items[2].number).toBe(3);
+    expect(vm.label).toBe("Etapas");
+    expect(vm.itemPrefix).toBe("Etapa");
+    expect(vm.borderColor).toBe(defaultLayoutTokens.theme.accentBorder);
+    expect(vm.locked).toBe(true);
   });
 
-  it("uses parentNumber for displayNumber", () => {
-    const block = makeBlock(3);
-    const vm = RepeatableInterpreter.interpret(block, defaultLayoutTokens, { depth: 1, parentNumber: "4" });
-    expect(vm.items[0].displayNumber).toBe("4.1");
-    expect(vm.items[1].displayNumber).toBe("4.2");
-    expect(vm.items[2].displayNumber).toBe("4.3");
+  it("computes canAddItems based on count vs maxItems", () => {
+    const block = {
+      props: {
+        label: "Etapas",
+        styleJson: "{}",
+        capabilitiesJson: JSON.stringify({ addItems: true, maxItems: 3, minItems: 0 }),
+      },
+      children: [1, 2, 3], // 3 items, at max
+    };
+    const vm = interpretRepeatable(block as any, defaultLayoutTokens);
+    expect(vm.canAddItems).toBe(false);
   });
 
-  it("canAddItem is true when not locked and under maxItems", () => {
-    const block = makeBlock(2);
-    const vm = RepeatableInterpreter.interpret(block, defaultLayoutTokens, { depth: 0 });
-    expect(vm.canAddItem).toBe(true);
+  it("allows adding items when under maxItems", () => {
+    const block = {
+      props: {
+        label: "Etapas",
+        styleJson: "{}",
+        capabilitiesJson: JSON.stringify({ addItems: true, maxItems: 10, minItems: 0 }),
+      },
+      children: [1, 2],
+    };
+    const vm = interpretRepeatable(block as any, defaultLayoutTokens);
+    expect(vm.canAddItems).toBe(true);
+    expect(vm.currentItemCount).toBe(2);
   });
 
-  it("canAddItem is false when locked", () => {
-    const block = makeBlock(2, true);
-    const vm = RepeatableInterpreter.interpret(block, defaultLayoutTokens, { depth: 0 });
-    expect(vm.canAddItem).toBe(false);
-  });
-
-  it("canAddItem is false when at maxItems", () => {
-    const block = makeBlock(3, false, 3);
-    const vm = RepeatableInterpreter.interpret(block, defaultLayoutTokens, { depth: 0 });
-    expect(vm.canAddItem).toBe(false);
+  it("resolves theme color for itemAccentBorder", () => {
+    const block = { props: { label: "L", styleJson: "{}", capabilitiesJson: "{}" }, children: [] };
+    const vm = interpretRepeatable(block as any, defaultLayoutTokens);
+    expect(vm.itemAccentBorder).toBe(defaultLayoutTokens.theme.accent);
   });
 });

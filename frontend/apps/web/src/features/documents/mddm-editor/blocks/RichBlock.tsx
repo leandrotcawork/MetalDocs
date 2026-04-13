@@ -2,6 +2,7 @@ import { createReactBlockSpec } from "@blocknote/react";
 import styles from "./RichBlock.module.css";
 import { RichBlockExternalHTML } from "../engine/external-html";
 import { getEditorTokens } from "../engine/editor-tokens";
+import { interpretRichBlock } from "../engine/layout-interpreter/rich-block-interpreter";
 
 export const RichBlock = createReactBlockSpec(
   {
@@ -17,18 +18,32 @@ export const RichBlock = createReactBlockSpec(
     content: "none",
   },
   {
-    render: (props) => (
-      <div
-        className={styles.richBlock}
-        data-mddm-block="richBlock"
-        data-chrome={props.block.props.chrome || "labeled"}
-        data-locked={props.block.props.locked}
-      >
-        <div className={styles.richBlockHeader}>
-          <strong>{props.block.props.label || "Rich Block"}</strong>
+    render: (props) => {
+      const tokens = getEditorTokens(props.editor);
+      const vm = interpretRichBlock(
+        { props: props.block.props as Record<string, unknown> },
+        tokens,
+      );
+
+      return (
+        <div
+          className={styles.richBlock}
+          data-mddm-block="richBlock"
+          data-chrome={vm.chrome}
+          data-locked={vm.locked}
+          style={{
+            "--mddm-richblock-label-bg": vm.labelBackground,
+            "--mddm-richblock-label-color": vm.labelColor,
+            "--mddm-richblock-label-font-size": vm.labelFontSize,
+            "--mddm-richblock-border-color": vm.borderColor,
+          } as React.CSSProperties}
+        >
+          <div className={styles.richBlockHeader}>
+            <strong>{vm.label || "Rich Block"}</strong>
+          </div>
         </div>
-      </div>
-    ),
+      );
+    },
     toExternalHTML: (props) => (
       <RichBlockExternalHTML
         tokens={getEditorTokens(props.editor)}

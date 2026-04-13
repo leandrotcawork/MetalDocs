@@ -1,6 +1,7 @@
 import { createReactBlockSpec } from "@blocknote/react";
 import { RepeatableExternalHTML } from "../engine/external-html";
 import { getEditorTokens } from "../engine/editor-tokens";
+import { interpretRepeatable } from "../engine/layout-interpreter/repeatable-interpreter";
 import styles from "./Repeatable.module.css";
 
 export const Repeatable = createReactBlockSpec(
@@ -20,31 +21,30 @@ export const Repeatable = createReactBlockSpec(
   },
   {
     render: (props) => {
-      const prefix = props.block.props.itemPrefix || "Item";
-      const maxItems = props.block.props.maxItems ?? 100;
-      const currentChildren = props.block.children ?? [];
-      const canAddItem = !props.block.props.locked && currentChildren.length < maxItems;
+      const tokens = getEditorTokens(props.editor);
+      const vm = interpretRepeatable(
+        { props: props.block.props as Record<string, unknown>, children: props.block.children },
+        tokens,
+      );
 
       return (
-        <div className={styles.repeatable} data-mddm-block="repeatable" data-locked={props.block.props.locked}>
+        <div className={styles.repeatable} data-mddm-block="repeatable" data-locked={vm.locked}>
           <div className={styles.repeatableHeader}>
-            <strong className={styles.repeatableTitle}>
-              {props.block.props.label || "Repeatable"}
-            </strong>
-            <span className={styles.repeatableMeta}>{prefix}</span>
+            <strong className={styles.repeatableTitle}>{vm.label || "Repeatable"}</strong>
+            <span className={styles.repeatableMeta}>{vm.itemPrefix}</span>
           </div>
-          {canAddItem && (
+          {vm.canAddItems && (
             <button
               type="button"
               className={styles.addItemButton}
-              aria-label={`Adicionar ${prefix}`}
+              aria-label={`Adicionar ${vm.itemPrefix}`}
               onClick={() => {
                 // Read current block state at click time to avoid stale closure
                 const currentBlock = props.editor.getBlock(props.block.id);
                 const freshChildren = currentBlock?.children ?? [];
                 const newItem = {
                   type: "repeatableItem" as const,
-                  props: { title: `${prefix} ${freshChildren.length + 1}`, style: "bordered" },
+                  props: { title: `${vm.itemPrefix} ${freshChildren.length + 1}`, style: "bordered" },
                   children: [] as [],
                 };
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -53,7 +53,7 @@ export const Repeatable = createReactBlockSpec(
                 });
               }}
             >
-              + Adicionar {prefix}
+              + Adicionar {vm.itemPrefix}
             </button>
           )}
         </div>

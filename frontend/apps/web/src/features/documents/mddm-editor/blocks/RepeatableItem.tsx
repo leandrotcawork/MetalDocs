@@ -2,6 +2,7 @@ import { createReactBlockSpec } from "@blocknote/react";
 import { useMemo } from "react";
 import { RepeatableItemExternalHTML } from "../engine/external-html";
 import { getEditorTokens } from "../engine/editor-tokens";
+import { interpretRepeatableItem } from "../engine/layout-interpreter/repeatable-item-interpreter";
 import styles from "./RepeatableItem.module.css";
 
 export function findItemIndex(document: any[], itemId: string): number {
@@ -67,17 +68,24 @@ export const RepeatableItem = createReactBlockSpec(
         [props.editor.document, props.block.id],
       );
 
-      const prefix = sectionNumber > 0 ? `${sectionNumber}.${itemNumber}` : `${itemNumber}.`;
-      const displayTitle = props.block.props.title
-        ? `${prefix} ${props.block.props.title}`
-        : `Item ${prefix}`;
+      const tokens = getEditorTokens(props.editor);
+      const vm = interpretRepeatableItem(
+        { props: props.block.props as Record<string, unknown> },
+        tokens,
+        {
+          itemIndex: itemNumber - 1,
+          parentNumber: sectionNumber > 0 ? String(sectionNumber) : undefined,
+        },
+      );
+
+      const displayTitle = vm.title ? `${vm.number} ${vm.title}` : `Item ${vm.number}`;
 
       return (
         <div
           className={styles.repeatableItem}
           data-mddm-block="repeatableItem"
           data-style={props.block.props.style || "bordered"}
-          data-locked={props.block.props.locked}
+          data-locked={vm.locked}
         >
           <div className={styles.repeatableItemHeader}>
             <strong>{displayTitle}</strong>

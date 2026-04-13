@@ -17,11 +17,12 @@ describe("tokensToCssVars", () => {
     expect(vars["--mddm-font-size-base"]).toBe("11pt");
   });
 
-  it("maps spacing correctly", () => {
-    expect(vars["--mddm-section-gap"]).toBe("6mm");
-    expect(vars["--mddm-field-gap"]).toBe("3mm");
-    expect(vars["--mddm-block-gap"]).toBe("2mm");
-    expect(vars["--mddm-cell-padding"]).toBe("2mm");
+  it("maps spacing to screen values (not print mm)", () => {
+    // token-bridge uses screenSpacing for CSS vars; DOCX/PDF emitters use spacing.*Mm directly
+    expect(vars["--mddm-section-gap"]).toBe(defaultLayoutTokens.screenSpacing.sectionGap);
+    expect(vars["--mddm-field-gap"]).toBe(defaultLayoutTokens.screenSpacing.fieldGap);
+    expect(vars["--mddm-block-gap"]).toBe(defaultLayoutTokens.screenSpacing.blockGap);
+    expect(vars["--mddm-cell-padding"]).toBe(defaultLayoutTokens.screenSpacing.cellPadding);
   });
 
   it("maps component rules correctly", () => {

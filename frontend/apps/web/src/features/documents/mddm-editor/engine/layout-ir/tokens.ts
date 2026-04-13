@@ -20,11 +20,19 @@ export type LayoutTokens = Readonly<{
     lineHeightPt: number;
     labelSizePt: number;
   }>;
+  /** Print dimensions (mm) — consumed by DOCX/PDF emitters. */
   spacing: Readonly<{
     sectionGapMm: number;
     fieldGapMm: number;
     blockGapMm: number;
     cellPaddingMm: number;
+  }>;
+  /** Screen dimensions (CSS strings) — consumed by tokensToCssVars only. */
+  screenSpacing: Readonly<{
+    sectionGap: string;
+    fieldGap: string;
+    blockGap: string;
+    cellPadding: string;
   }>;
   theme: Readonly<{
     accent: string;
@@ -65,6 +73,12 @@ export const defaultLayoutTokens: LayoutTokens = {
     fieldGapMm: 3,
     blockGapMm: 2,
     cellPaddingMm: 2,
+  },
+  screenSpacing: {
+    sectionGap: "1rem",    // 16px — print equivalent 6mm; reduced for screen UX
+    fieldGap: "0.75rem",   // 12px — print equivalent 3mm (11.3px)
+    blockGap: "2px",       // 2px  — keeps blocks tight within sections
+    cellPadding: "0.5rem", // 8px  — print equivalent 2mm (7.6px)
   },
   theme: {
     accent: "#6b1f2a",

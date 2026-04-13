@@ -170,7 +170,7 @@
 }
 
 .bn-container .bn-block-content[data-content-type="section"] {
-  margin-top: var(--mddm-section-gap, 6mm);
+  margin-top: var(--mddm-section-gap, 1rem);
 }
 
 /* Read-only mode: all chrome removed */

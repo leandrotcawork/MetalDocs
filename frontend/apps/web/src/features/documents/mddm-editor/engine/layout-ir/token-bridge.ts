@@ -19,11 +19,11 @@ export function tokensToCssVars(tokens: LayoutTokens): Record<string, string> {
     "--mddm-font-size-h3": `${tokens.typography.headingSizePt.h3}pt`,
     "--mddm-line-height": `${tokens.typography.lineHeightPt}pt`,
     "--mddm-label-font-size": `${tokens.typography.labelSizePt}pt`,
-    // Spacing
-    "--mddm-section-gap": `${tokens.spacing.sectionGapMm}mm`,
-    "--mddm-field-gap": `${tokens.spacing.fieldGapMm}mm`,
-    "--mddm-block-gap": `${tokens.spacing.blockGapMm}mm`,
-    "--mddm-cell-padding": `${tokens.spacing.cellPaddingMm}mm`,
+    // Spacing — screen values (rem/px); print mm values live in tokens.spacing for DOCX/PDF emitters
+    "--mddm-section-gap": tokens.screenSpacing.sectionGap,
+    "--mddm-field-gap": tokens.screenSpacing.fieldGap,
+    "--mddm-block-gap": tokens.screenSpacing.blockGap,
+    "--mddm-cell-padding": tokens.screenSpacing.cellPadding,
     // Theme colors
     "--mddm-accent": tokens.theme.accent,
     "--mddm-accent-light": tokens.theme.accentLight,

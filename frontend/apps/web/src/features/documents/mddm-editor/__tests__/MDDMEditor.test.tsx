@@ -36,7 +36,6 @@ vi.mock("@blocknote/react", () => ({
     ...spec,
   })),
   BlockNoteViewEditor: () => null,
-  FilePanelController: () => null,
   FormattingToolbar: () => null,
   getFormattingToolbarItems: () => [],
 }));

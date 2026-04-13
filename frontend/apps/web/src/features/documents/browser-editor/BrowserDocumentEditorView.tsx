@@ -306,7 +306,7 @@ export function BrowserDocumentEditorView({ document, onBack, currentUserId }: B
 
   return (
     <section className={styles.root} data-testid="browser-document-editor">
-      <header className={styles.topbar}>
+      <header className={styles.topbar} data-testid="browser-editor-topbar">
         <button type="button" className={styles.backButton} onClick={onBack}>
           Voltar
         </button>
@@ -352,7 +352,7 @@ export function BrowserDocumentEditorView({ document, onBack, currentUserId }: B
         </div>
       </header>
 
-      <div className={styles.metaBar}>
+      <div className={styles.metaBar} data-testid="browser-editor-meta">
         <span className={styles.metaItem}>
           <span className={styles.metaLabel}>Profile</span>
           <strong>{documentProfileCode.toUpperCase()}</strong>
@@ -368,7 +368,7 @@ export function BrowserDocumentEditorView({ document, onBack, currentUserId }: B
       </div>
 
       {bundle ? (
-        <div className={styles.surface}>
+        <div className={styles.surface} data-testid="browser-editor-surface">
           {showInlineError ? (
             <div className={styles.errorBanner} role="alert">
               <div className={styles.errorCopy}>
@@ -387,60 +387,64 @@ export function BrowserDocumentEditorView({ document, onBack, currentUserId }: B
               </div>
             </div>
           ) : null}
-          <DocumentEditorHeader bundle={bundle} />
-          <div className={styles.editorShell}>
-            {blockNoteDocument ? (
-              isViewOnly ? (
-                <MDDMViewer
-                  key={`${document.documentId}:${editorInstance}`}
-                  initialContent={blockNoteDocument as any}
-                  documentId={document.documentId}
-                  theme={editorTheme}
-                />
-              ) : (
-                <MDDMEditor
-                  key={`${document.documentId}:${editorInstance}`}
-                  initialContent={blockNoteDocument as any}
-                  documentId={document.documentId}
-                  onChange={(blocks) => {
-                    try {
-                      const envelope = blockNoteToMDDM(blocks as any[]);
-                      const nextData = JSON.stringify(envelope);
+          <div className={styles.editorViewport} data-testid="browser-editor-viewport">
+            <div className={styles.documentFrame}>
+              <DocumentEditorHeader bundle={bundle} />
+              <div className={styles.editorShell}>
+                {blockNoteDocument ? (
+                  isViewOnly ? (
+                    <MDDMViewer
+                      key={`${document.documentId}:${editorInstance}`}
+                      initialContent={blockNoteDocument as any}
+                      documentId={document.documentId}
+                      theme={editorTheme}
+                    />
+                  ) : (
+                    <MDDMEditor
+                      key={`${document.documentId}:${editorInstance}`}
+                      initialContent={blockNoteDocument as any}
+                      documentId={document.documentId}
+                      onChange={(blocks) => {
+                        try {
+                          const envelope = blockNoteToMDDM(blocks as any[]);
+                          const nextData = JSON.stringify(envelope);
 
-                      setEditorData(nextData);
-                      if (viewState !== "saving") {
-                        setViewState("ready");
-                      }
-                      if (errorCode !== null && errorCode !== "conflict") {
-                        setErrorCode(null);
-                        setErrorMessage("");
-                      }
-                      setSaveLabel(nextData === bundle.body ? "Salvo" : "Editando...");
-                    } catch {
-                      // Keep the editor responsive; surface an actionable error and avoid persisting invalid JSON.
-                      if (viewState !== "saving") {
-                        setViewState("ready");
-                      }
-                      setErrorCode("save");
-                      setErrorMessage(
-                        "Falha ao converter o conteudo do editor para o formato MDDM. Continue editando e tente salvar novamente. Se o erro persistir, recarregue o documento.",
-                      );
-                      setSaveLabel("Erro de conversao");
-                    }
-                  }}
-                  readOnly={isPendingApproval}
-                  theme={editorTheme}
-                  onEditorReady={(ed) => { editorRef.current = ed; }}
-                />
-              )
-            ) : (
-              <div className={styles.stateCard} role="alert">
-                <strong>Conteudo indisponivel</strong>
-                <p className={styles.errorText}>
-                  {errorMessage || "Este documento nao possui conteudo MDDM valido para edicao."}
-                </p>
+                          setEditorData(nextData);
+                          if (viewState !== "saving") {
+                            setViewState("ready");
+                          }
+                          if (errorCode !== null && errorCode !== "conflict") {
+                            setErrorCode(null);
+                            setErrorMessage("");
+                          }
+                          setSaveLabel(nextData === bundle.body ? "Salvo" : "Editando...");
+                        } catch {
+                          // Keep the editor responsive; surface an actionable error and avoid persisting invalid JSON.
+                          if (viewState !== "saving") {
+                            setViewState("ready");
+                          }
+                          setErrorCode("save");
+                          setErrorMessage(
+                            "Falha ao converter o conteudo do editor para o formato MDDM. Continue editando e tente salvar novamente. Se o erro persistir, recarregue o documento.",
+                          );
+                          setSaveLabel("Erro de conversao");
+                        }
+                      }}
+                      readOnly={isPendingApproval}
+                      theme={editorTheme}
+                      onEditorReady={(ed) => { editorRef.current = ed; }}
+                    />
+                  )
+                ) : (
+                  <div className={styles.stateCard} role="alert">
+                    <strong>Conteudo indisponivel</strong>
+                    <p className={styles.errorText}>
+                      {errorMessage || "Este documento nao possui conteudo MDDM valido para edicao."}
+                    </p>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
       ) : (
@@ -457,7 +461,7 @@ export function BrowserDocumentEditorView({ document, onBack, currentUserId }: B
         </div>
       )}
 
-      <footer className={styles.footer}>
+      <footer className={styles.footer} data-testid="browser-editor-footer">
         <span className={styles.footerHint}>Superficie unica de edicao, sem painel legado de preview.</span>
         <span
           className={[

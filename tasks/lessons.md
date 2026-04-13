@@ -88,3 +88,45 @@ Wrong:   `MDDMEditor` tried to reject label-cell edits via BlockNote `onBeforeCh
 Correct: Header-cell edit locks now attach to the Tiptap view DOM and force `<th>` nodes to `contentEditable="false"` on mount and after DOM mutations.
 Rule:    When text editing happens in a lower editor layer, enforcement must be attached at that layer's live DOM or transaction surface rather than a higher-level block diff hook.
 Layer:   application
+
+## Lesson 14 - Scrollbar fixes must target the true scroll owner
+Date: 2026-04-13 | Trigger: correction
+Wrong:   The content-builder scrollbar bug investigation focused on BlockNote/editor wrappers before confirming which element actually owned `scrollTop` and `scrollHeight`.
+Correct: Instrument the live page first and apply scrollbar behavior changes only on the confirmed scroll owner (`DocumentWorkspaceShell.workspace-main`), leaving non-scrolling editor descendants untouched.
+Rule:    Visual scrolling bugs must be fixed on the element that truly owns scrolling, not on descendant content surfaces that only move with their parent.
+Layer:   process
+
+## Lesson 15 - Locked editor guards must preserve node identity, not counts
+Date: 2026-04-13 | Trigger: correction
+Wrong:   `MDDMEditor` accepted transactions that replaced locked template blocks as long as the total count of `locked=true` nodes stayed the same.
+Correct: The transaction guard now compares locked-node identities across `state.doc` and `tr.doc` and rejects any mutation that removes a previously locked node identity.
+Rule:    Lock enforcement for structured editors must validate protected-node identity continuity, not just aggregate counts.
+Layer:   application
+
+## Lesson 15 - Static toolbar buttons must not steal table-cell focus
+Date: 2026-04-13 | Trigger: correction
+Wrong:   The MDDM formatting toolbar let `mousedown`/`pointerdown` on interactive controls blur the active ProseMirror table cell before the BlockNote button logic ran.
+Correct: The toolbar now captures pointer/mouse down on interactive controls and prevents default so the table-cell selection survives until the click handler applies the formatting.
+Rule:    In ProseMirror table editing, preserve cell selection through toolbar interaction or formatting state will desynchronize from the visible cursor.
+Layer:   delivery
+
+## Lesson 16 - Table alignment state must come from the active cell
+Date: 2026-04-13 | Trigger: correction
+Wrong:   The default BlockNote alignment button path in MDDM read table alignment from `rows[0].cells[0]` and then moved the caret to the table start after updates, which desynced toolbar state and cursor position for non-first cells.
+Correct: MDDM now uses table-aware alignment buttons that read alignment from the currently selected cell and reapply selection after table updates instead of forcing cursor placement at table start.
+Rule:    For table formatting controls, derive UI state and post-update cursor behavior from the active cell selection, not from a fixed cell.
+Layer:   delivery
+
+## Lesson 17 - Table alignment must restore text cursor, not cell selection
+Date: 2026-04-13 | Trigger: correction
+Wrong:   After table alignment updates, the editor restored a `CellSelection`, leaving the cell highlighted and causing next typing to replace the whole cell content.
+Correct: When alignment is triggered from a collapsed text cursor, the post-update restore now converts selection back to `TextSelection` inside the same cell.
+Rule:    In rich-text tables, style actions triggered from a caret must return to caret mode after structural updates to preserve typing semantics.
+Layer:   delivery
+
+## Lesson 18 - Locked-node identity checks cannot use document position fallback
+Date: 2026-04-13 | Trigger: correction
+Wrong:   The lock guard used `pos:${pos}` as fallback identity for locked nodes without `attrs.id`, causing normal edits to be rejected when node positions shifted.
+Correct: Lock guard now enforces stable `attrs.id` continuity for locked nodes and uses count-only fallback for legacy anonymous locked nodes to avoid false rejections.
+Rule:    Transaction guards must never use mutable position as identity when edits can reorder or reflow the same protected nodes.
+Layer:   application

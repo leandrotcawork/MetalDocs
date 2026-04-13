@@ -817,6 +817,9 @@
   /* Standard scrollbar model (Chrome 121+) */
   scrollbar-width: thin;
   scrollbar-color: rgba(139, 46, 58, 0.72) transparent;
+  /* Force permanent scrollbar — suppresses Windows 11 compositor overlay
+     which renders a gray native bar that can't be styled or inspected */
+  scrollbar-gutter: stable;
 }
 
 /* Webkit scrollbar fallback — covers Chromium before Chrome 121 and ensures
@@ -931,4 +934,3 @@
   flex-shrink: 0;
   display: block;
 }
-

@@ -156,7 +156,7 @@
 .surface {
   min-height: 0;
   display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   padding: 1rem 1rem 0;
   gap: 0.75rem;
 }
@@ -215,62 +215,29 @@
   color: var(--text-soft);
 }
 
-.toolbarShell {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  min-height: 3.5rem;
-  display: flex;
-  align-items: center;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: 1.1rem;
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 12px 24px rgba(50, 26, 26, 0.06);
+.editorViewport {
+  position: relative;
+  min-height: 0;
+  isolation: isolate;
+  padding: 0.25rem;
+  border-radius: 1.5rem 1.5rem 0 0;
+  background: linear-gradient(180deg, rgba(237, 233, 228, 0.98), rgba(237, 233, 228, 0.9));
+  overflow: clip;
+}
+
+.documentFrame {
+  min-height: 0;
+  display: grid;
+  gap: 0.75rem;
+  align-content: start;
 }
 
 .editorShell {
   min-height: 0;
-  background: var(--surface);
-  border: 1px solid rgba(107, 31, 42, 0.1);
-  border-radius: 1.4rem 1.4rem 0 0;
-  overflow: clip; /* same as root — clips visually without creating a scroll container */
-}
-
-.editorShell :global(.ck.ck-editor) {
-  height: 100%;
   border: 0;
-}
-
-.editorShell :global(.ck.ck-editor__main),
-.editorShell :global(.ck.ck-editor__editable_inline) {
-  height: 100%;
-}
-
-.editorShell :global(.ck.ck-editor__editable_inline) {
-  padding: 2rem clamp(1rem, 1.8vw, 2.4rem);
-  border: 0;
-  min-height: 60vh;
-  color: var(--text);
-  font-family: "DM Sans", sans-serif;
-  line-height: 1.7;
-  box-shadow: none;
-}
-
-.editorShell :global(.ck.ck-editor__editable_inline.ck-focused) {
-  outline: none;
-  box-shadow: inset 0 0 0 2px rgba(107, 31, 42, 0.1);
-}
-
-.editorShell :global(.ck-content h1),
-.editorShell :global(.ck-content h2),
-.editorShell :global(.ck-content h3) {
-  color: var(--vinho-d);
-  font-family: "DM Sans", sans-serif;
-}
-
-.editorShell :global(.ck-content table) {
-  width: 100%;
+  border-radius: 1.4rem;
+  overflow: clip;
+  background: transparent;
 }
 
 .statePanel {

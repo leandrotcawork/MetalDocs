@@ -29,6 +29,9 @@
     background: none;
     padding: 0;
   }
+  .toolbarWrapper {
+    display: none;
+  }
   .editorRoot {
     max-width: none;
     padding: 0;

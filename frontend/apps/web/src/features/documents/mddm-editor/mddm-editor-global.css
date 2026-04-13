@@ -40,14 +40,22 @@
 .bn-container {
   color: var(--mddm-raw-gray-700);
   font-family: var(--mddm-font-family);
-  /* Static formatting toolbar: place it above the editor */
   display: flex;
   flex-direction: column-reverse;
-  gap: 8px;
 }
 
-.bn-formatting-toolbar {
-  margin-inline: auto;
+/* Formatting toolbar — always visible above the document content */
+.bn-container .bn-formatting-toolbar {
+  display: flex !important;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #f8f8f8;
+  border: 1px solid var(--mddm-raw-gray-200);
+  border-radius: 6px;
+  padding: 2px 4px;
+  margin: -2.5rem -3rem 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 /* BlockNote's .bn-editor has 54px padding-left built-in for its drag-handle gutter.

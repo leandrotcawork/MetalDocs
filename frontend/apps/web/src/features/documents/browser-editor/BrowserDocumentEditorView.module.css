@@ -8,7 +8,7 @@
     linear-gradient(180deg, #fffdfd 0%, var(--surface-2) 100%);
   border: 1px solid rgba(107, 31, 42, 0.08);
   border-radius: 28px;
-  overflow: hidden;
+  overflow: clip; /* clip preserves border-radius without creating a scroll container, allowing position:sticky inside */
   box-shadow: var(--shadow);
 }
 
@@ -234,7 +234,7 @@
   background: var(--surface);
   border: 1px solid rgba(107, 31, 42, 0.1);
   border-radius: 1.4rem 1.4rem 0 0;
-  overflow: hidden;
+  overflow: clip; /* same as root — clips visually without creating a scroll container */
 }
 
 .editorShell :global(.ck.ck-editor) {

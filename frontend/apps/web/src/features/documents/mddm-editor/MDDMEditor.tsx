@@ -1,6 +1,7 @@
 import { type PartialBlock } from "@blocknote/core";
 import { BlockNoteView } from "@blocknote/mantine";
 import {
+  BlockNoteViewEditor,
   FormattingToolbar,
   getFormattingToolbarItems,
   useCreateBlockNote,
@@ -140,33 +141,58 @@ export function MDDMEditor({
     onEditorReady?.(editor);
   }, [editor, onEditorReady]);
 
-  // Focus the editor on mount so the toolbar items render immediately
+  // Place cursor in first inline-editable block on mount so toolbar items
+  // have a ProseMirror selection and render immediately.
   useEffect(() => {
-    if (!readOnly) {
+    if (readOnly) return;
+
+    function findFirstInlineBlock(
+      blocks: (typeof editor.document),
+    ): (typeof editor.document)[number] | undefined {
+      for (const block of blocks) {
+        if (Array.isArray(block.content)) {
+          return block;
+        }
+        if (block.children.length > 0) {
+          const found = findFirstInlineBlock(block.children);
+          if (found) return found;
+        }
+      }
+      return undefined;
+    }
+
+    const firstBlock = findFirstInlineBlock(editor.document);
+    if (firstBlock) {
+      editor.setTextCursorPosition(firstBlock, "start");
+    } else {
       editor.focus();
     }
   }, [editor, readOnly]);
 
   return (
     <div className={styles.pageShell}>
-      <div
-        className={styles.editorRoot}
-        style={cssVars as CSSProperties}
-        data-editable={!readOnly}
+      <BlockNoteView
+        editor={editor}
+        editable={!readOnly}
+        formattingToolbar={false}
+        renderEditor={false}
+        onChange={(currentEditor) => onChange?.(currentEditor.document)}
       >
-        <BlockNoteView
-          editor={editor}
-          editable={!readOnly}
-          formattingToolbar={false}
-          onChange={(currentEditor) => onChange?.(currentEditor.document)}
-        >
-          {!readOnly && (
+        {!readOnly && (
+          <div className={styles.toolbarWrapper}>
             <FormattingToolbar>
               {getFormattingToolbarItems()}
             </FormattingToolbar>
-          )}
-        </BlockNoteView>
-      </div>
+          </div>
+        )}
+        <div
+          className={styles.editorRoot}
+          style={cssVars as CSSProperties}
+          data-editable={!readOnly}
+        >
+          <BlockNoteViewEditor />
+        </div>
+      </BlockNoteView>
     </div>
   );
 }

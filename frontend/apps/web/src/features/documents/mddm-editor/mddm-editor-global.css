@@ -37,21 +37,10 @@
   --mddm-font-size-section: 0.85rem;
 }
 
-/* column-reverse: toolbar renders last in DOM but appears first visually */
+/* BlockNote container — context wrapper rendered by BlockNoteView */
 .bn-container {
   color: var(--mddm-raw-gray-700);
   font-family: var(--mddm-font-family);
-  display: flex;
-  flex-direction: column-reverse;
-}
-
-/* Static toolbar — always visible above document content */
-.bn-container .bn-formatting-toolbar {
-  display: flex !important;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  margin-bottom: 1rem;
 }
 
 /* BlockNote's .bn-editor has 54px padding-left built-in for its drag-handle gutter.

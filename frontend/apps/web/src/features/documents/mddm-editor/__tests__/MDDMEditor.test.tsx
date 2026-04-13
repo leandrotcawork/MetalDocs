@@ -25,6 +25,8 @@ const editor = {
     },
   },
   focus: vi.fn(),
+  setTextCursorPosition: vi.fn(),
+  document: [] as unknown[],
 };
 
 vi.mock("@blocknote/react", () => ({
@@ -33,6 +35,7 @@ vi.mock("@blocknote/react", () => ({
     config,
     ...spec,
   })),
+  BlockNoteViewEditor: () => null,
   FormattingToolbar: () => null,
   getFormattingToolbarItems: () => [],
 }));

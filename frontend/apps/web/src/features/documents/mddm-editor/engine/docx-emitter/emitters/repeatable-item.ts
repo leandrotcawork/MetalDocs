@@ -22,22 +22,25 @@ export function emitRepeatableItem(
   block: MDDMBlock,
   tokens: LayoutTokens,
   renderChild: ChildRenderer,
+  itemIndex = 0,
 ): Table[] {
   const vm = interpretRepeatableItem(
     { props: block.props as Record<string, unknown> },
     tokens,
-    { itemIndex: 0 },
+    { itemIndex },
   );
   const accent = hexToFill(vm.accentBorderColor);
   const borderColor = hexToFill(tokens.theme.accentBorder);
 
+  const displayTitle = vm.title ? `${vm.number} ${vm.title}` : `Item ${vm.number}`;
+
   const innerChildren: unknown[] = [];
-  if (vm.title) {
+  if (displayTitle) {
     innerChildren.push(
       new Paragraph({
         children: [
           new TextRun({
-            text: vm.title,
+            text: displayTitle,
             bold: true,
             size: ptToHalfPt(tokens.typography.baseSizePt),
             font: tokens.typography.exportFont,

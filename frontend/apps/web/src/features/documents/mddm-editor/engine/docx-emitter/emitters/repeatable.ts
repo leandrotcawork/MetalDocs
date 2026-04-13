@@ -36,8 +36,8 @@ export function emitRepeatable(
   }
 
   const items = ((block.children ?? []) as unknown[]).filter(isItemBlock) as MDDMBlock[];
-  for (const item of items) {
-    out.push(...emitRepeatableItem(item, tokens, renderChild));
+  for (let i = 0; i < items.length; i++) {
+    out.push(...emitRepeatableItem(items[i], tokens, renderChild, i));
   }
 
   return out;

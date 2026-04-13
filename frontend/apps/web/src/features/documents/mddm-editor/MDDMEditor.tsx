@@ -121,9 +121,22 @@ export function MDDMEditor({
     }
 
     const lockHeaders = () => {
-      root.querySelectorAll("th").forEach((headerCell) => {
-        (headerCell as HTMLElement).contentEditable = "false";
+      // Lock all th cells (headerRows / headerCols = 1 columns in native tables)
+      root.querySelectorAll("th").forEach((cell) => {
+        (cell as HTMLElement).contentEditable = "false";
       });
+      // 2-column fieldGroup tables render as 4-column native tables:
+      //   [Label(th) | Value(td) | Label(td) | Value(td)]
+      // BlockNote's headerCols:1 only promotes column-0 to th. Column-2 is a
+      // label td and must be locked the same way, scoped to native table blocks
+      // (data-content-type="table") so DataTable custom blocks are unaffected.
+      root
+        .querySelectorAll('.bn-block-content[data-content-type="table"] tr')
+        .forEach((row) => {
+          if (row.children.length === 4) {
+            (row.children[2] as HTMLElement).contentEditable = "false";
+          }
+        });
     };
 
     lockHeaders();

@@ -138,6 +138,51 @@ describe("MDDMEditor", () => {
     host.remove();
   });
 
+  it("locks column-2 label cells in 4-column fieldGroup tables", async () => {
+    // 2-col fieldGroup renders as [Label(th)|Value(td)|Label(td)|Value(td)].
+    // headerCols:1 only makes column-0 a th. Column-2 is a label td that must
+    // also be locked so the second column's labels are non-editable.
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const root = createRoot(host);
+
+    act(() => {
+      root.render(<MDDMEditor />);
+    });
+
+    const blockContent = document.createElement("div");
+    blockContent.className = "bn-block-content";
+    blockContent.setAttribute("data-content-type", "table");
+
+    const table = document.createElement("table");
+    const tbody = document.createElement("tbody");
+    const row = document.createElement("tr");
+
+    const cells = [0, 1, 2, 3].map((i) => {
+      const cell = document.createElement(i === 0 ? "th" : "td");
+      cell.contentEditable = "true";
+      row.appendChild(cell);
+      return cell;
+    });
+
+    tbody.appendChild(row);
+    table.appendChild(tbody);
+    blockContent.appendChild(table);
+    tiptapDom.appendChild(blockContent);
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(cells[0].contentEditable).toBe("false"); // th — always locked
+    expect(cells[1].contentEditable).toBe("true");  // value td — editable
+    expect(cells[2].contentEditable).toBe("false"); // label td — locked
+    expect(cells[3].contentEditable).toBe("true");  // value td — editable
+
+    act(() => { root.unmount(); });
+    host.remove();
+  });
+
   it("provides BlockNote attachment hooks when documentId is present", async () => {
     uploadAttachmentMock.mockResolvedValue({ attachmentId: "att-123" });
     getAttachmentDownloadURLMock.mockResolvedValue({

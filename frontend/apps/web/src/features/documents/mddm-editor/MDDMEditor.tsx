@@ -186,6 +186,7 @@ export function MDDMEditor({
         editor={editor}
         editable={!readOnly}
         formattingToolbar={false}
+        filePanel={false}
         renderEditor={false}
         onChange={(currentEditor) => onChange?.(currentEditor.document)}
       >

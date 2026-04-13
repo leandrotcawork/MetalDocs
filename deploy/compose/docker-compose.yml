@@ -158,8 +158,8 @@ services:
 
   web:
     build:
-      context: ../../frontend/apps/web
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: frontend/apps/web/Dockerfile
     image: ${WEB_IMAGE}
     container_name: metaldocs-web
     restart: unless-stopped

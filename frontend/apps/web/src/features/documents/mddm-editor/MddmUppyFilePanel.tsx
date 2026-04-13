@@ -74,6 +74,7 @@ export function MddmUppyFilePanel({ blockId, documentId }: MddmUppyFilePanelProp
       plugins={["ImageEditor"]}
       proudlyDisplayPoweredByUppy={false}
       height={380}
+      width={750}
       theme="light"
     />
   );

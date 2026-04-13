@@ -1,0 +1,31 @@
+# Exclude dev artifacts that should never be in the Docker build context.
+# Applies to all images built from the repo root (api, worker, web).
+
+.git
+.gitignore
+
+# Node.js — each image runs its own npm ci inside the container
+**/node_modules
+
+# Frontend build output (Vite/Next) — not needed in context
+frontend/**/dist
+frontend/**/.next
+frontend/**/.turbo
+
+# Go test / coverage artifacts
+**/*_test.go.tmp
+**/coverage.out
+
+# Local dev env files
+.env.local
+.env.*.local
+**/.env.local
+
+# Editor / OS noise
+.vscode
+.idea
+**/.DS_Store
+**/Thumbs.db
+
+# Worktrees
+.worktrees

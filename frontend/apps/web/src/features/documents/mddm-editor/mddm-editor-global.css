@@ -243,3 +243,10 @@
   margin: 0;
   min-height: 1.4rem;
 }
+
+/* Uppy Dashboard — the animateOpenClose transition starts innerWrap at opacity:0 and
+   relies on a CSS animation that never fires when the panel is embedded inside
+   BlockNote's floating container (not a true Uppy modal). Force it visible. */
+.uppy-Dashboard-innerWrap {
+  opacity: 1 !important;
+}

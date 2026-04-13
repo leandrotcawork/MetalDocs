@@ -1,8 +1,21 @@
 /* Gray background that simulates the "desk" behind the document page */
 .pageShell {
   background: #ede9e4;
-  padding: 2rem 1.5rem 4rem;
+  padding: 0 1.5rem 4rem;
   min-height: 100%;
+}
+
+/* Toolbar lives in the gray desk area — visually separate from the white paper */
+.toolbarWrapper {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  justify-content: center;
+  padding: 0.5rem 0;
+  background: #ede9e4;
+  border-bottom: 1px solid #d4cfc9;
+  margin-bottom: 1.5rem;
 }
 
 /* The white "paper" page — mimics a Word document page */
@@ -30,7 +43,7 @@
     padding: 0;
   }
   .toolbarWrapper {
-    display: none;
+    display: none !important;
   }
   .editorRoot {
     max-width: none;

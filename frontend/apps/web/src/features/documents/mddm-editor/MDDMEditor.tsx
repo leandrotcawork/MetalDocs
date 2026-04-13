@@ -1,6 +1,11 @@
 import { type PartialBlock } from "@blocknote/core";
 import { BlockNoteView } from "@blocknote/mantine";
-import { FormattingToolbar, useCreateBlockNote } from "@blocknote/react";
+import {
+  BlockTypeSelect,
+  BlockNoteViewEditor,
+  FormattingToolbar,
+  useCreateBlockNote,
+} from "@blocknote/react";
 import { useEffect, useMemo, type CSSProperties } from "react";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
@@ -137,21 +142,29 @@ export function MDDMEditor({
   }, [editor, onEditorReady]);
 
   return (
-    <div className={styles.pageShell}>
-      <div
-        className={styles.editorRoot}
-        style={cssVars as CSSProperties}
-        data-editable={!readOnly}
-      >
-        <BlockNoteView
-          editor={editor}
-          editable={!readOnly}
-          formattingToolbar={false}
-          onChange={(currentEditor) => onChange?.(currentEditor.document)}
+    <BlockNoteView
+      editor={editor}
+      editable={!readOnly}
+      formattingToolbar={false}
+      renderEditor={false}
+      onChange={(currentEditor) => onChange?.(currentEditor.document)}
+    >
+      <div className={styles.pageShell}>
+        {!readOnly && (
+          <div className={styles.toolbarWrapper}>
+            <FormattingToolbar>
+              <BlockTypeSelect key="blockTypeSelect" />
+            </FormattingToolbar>
+          </div>
+        )}
+        <div
+          className={styles.editorRoot}
+          style={cssVars as CSSProperties}
+          data-editable={!readOnly}
         >
-          {!readOnly && <FormattingToolbar />}
-        </BlockNoteView>
+          <BlockNoteViewEditor />
+        </div>
       </div>
-    </div>
+    </BlockNoteView>
   );
 }

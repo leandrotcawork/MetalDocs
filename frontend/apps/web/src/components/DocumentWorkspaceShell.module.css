@@ -808,38 +808,18 @@
   display: block;
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* Standard scrollbar model — prevents Windows 11 double-scrollbar bug caused by
+     ::-webkit-scrollbar (legacy mode) coexisting with the OS overlay scrollbar. */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139, 46, 58, 0.72) transparent;
 }
 
 .workspace-main.is-content-builder-view {
   display: block;
   overflow-y: auto;
   overscroll-behavior: contain;
-}
-
-.workspace-main.is-create-view::-webkit-scrollbar {
-  width: 6px;
-}
-
-.workspace-main.is-content-builder-view::-webkit-scrollbar {
-  width: 6px;
-}
-
-.workspace-main.is-create-view::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.workspace-main.is-content-builder-view::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.workspace-main.is-create-view::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(176, 88, 102, 0.94), rgba(107, 31, 42, 0.98));
-  border-radius: 999px;
-}
-
-.workspace-main.is-content-builder-view::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(176, 88, 102, 0.94), rgba(107, 31, 42, 0.98));
-  border-radius: 999px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139, 46, 58, 0.72) transparent;
 }
 
 .workspace-main.is-create-view .create-doc-layout {

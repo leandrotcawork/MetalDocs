@@ -1,6 +1,10 @@
 import { type PartialBlock } from "@blocknote/core";
 import { BlockNoteView } from "@blocknote/mantine";
-import { FormattingToolbar, useCreateBlockNote } from "@blocknote/react";
+import {
+  FormattingToolbar,
+  getFormattingToolbarItems,
+  useCreateBlockNote,
+} from "@blocknote/react";
 import { useEffect, useMemo, type CSSProperties } from "react";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
@@ -136,6 +140,13 @@ export function MDDMEditor({
     onEditorReady?.(editor);
   }, [editor, onEditorReady]);
 
+  // Focus the editor on mount so the toolbar items render immediately
+  useEffect(() => {
+    if (!readOnly) {
+      editor.focus();
+    }
+  }, [editor, readOnly]);
+
   return (
     <div className={styles.pageShell}>
       <div
@@ -149,7 +160,11 @@ export function MDDMEditor({
           formattingToolbar={false}
           onChange={(currentEditor) => onChange?.(currentEditor.document)}
         >
-          {!readOnly && <FormattingToolbar />}
+          {!readOnly && (
+            <FormattingToolbar>
+              {getFormattingToolbarItems()}
+            </FormattingToolbar>
+          )}
         </BlockNoteView>
       </div>
     </div>

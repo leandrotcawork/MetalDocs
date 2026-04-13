@@ -1,38 +1,32 @@
 import type { LayoutTokens } from "../layout-ir";
 import { defaultComponentRules } from "../layout-ir";
-import type { InterpretContext, BlockLayoutInterpreter } from "./types";
+import { SectionCodec } from "../codecs";
+import { resolveThemeRef } from "../codecs/codec-utils";
+import type { SectionViewModel } from "./view-models";
 
-type SectionBlock = {
-  props: {
-    title?: string;
-    optional?: boolean;
-    variant?: string;
+type InterpretSectionContext = {
+  sectionIndex: number;
+};
+
+export function interpretSection(
+  block: { props: Record<string, unknown> },
+  tokens: LayoutTokens,
+  context: InterpretSectionContext,
+): SectionViewModel {
+  const style = SectionCodec.parseStyle((block.props.styleJson as string) ?? "{}");
+  const caps = SectionCodec.parseCaps((block.props.capabilitiesJson as string) ?? "{}");
+  const rule = defaultComponentRules.section;
+
+  return {
+    number: String(context.sectionIndex + 1),
+    title: (block.props.title as string) ?? "",
+    optional: (block.props.optional as boolean) ?? false,
+    headerHeight: style.headerHeight ?? `${rule.headerHeightMm}mm`,
+    headerBg: resolveThemeRef(style.headerBackground, tokens.theme) ?? tokens.theme.accent,
+    headerColor: style.headerColor ?? rule.headerFontColor,
+    headerFontSize: style.headerFontSize ?? `${rule.headerFontSizePt}pt`,
+    headerFontWeight: style.headerFontWeight ?? rule.headerFontWeight,
+    locked: caps.locked,
+    removable: caps.removable,
   };
-};
-
-type SectionViewModel = {
-  title: string;
-  optional: boolean;
-  variant: string;
-  headerHeightMm: number;
-  headerFontSizePt: number;
-  headerFontColor: string;
-  headerBackground: string;
-  sectionNumber: number;
-};
-
-export const SectionInterpreter: BlockLayoutInterpreter<SectionBlock, SectionViewModel> = {
-  interpret(block, tokens: LayoutTokens, context: InterpretContext): SectionViewModel {
-    const rule = defaultComponentRules.section;
-    return {
-      title: block.props.title ?? "",
-      optional: block.props.optional ?? false,
-      variant: block.props.variant ?? "bar",
-      headerHeightMm: rule.headerHeightMm,
-      headerFontSizePt: rule.headerFontSizePt,
-      headerFontColor: rule.headerFontColor,
-      headerBackground: tokens.theme.accent,
-      sectionNumber: context.sectionIndex ?? 1,
-    };
-  },
-};
+}

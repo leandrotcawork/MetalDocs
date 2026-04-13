@@ -97,6 +97,13 @@
   display: none !important;
 }
 
+/* BlockNote adds 22px bottom/right padding on tableWrapper for its "add row/col"
+   buttons. We hide those buttons above, so collapse the wasted space. */
+.bn-container .tableWrapper {
+  padding-bottom: 4px !important;
+  padding-right: 4px !important;
+}
+
 /* Force native tables to fill the full content width.
    Also override BlockNote's inline width styles via the wrapper. */
 .bn-container .tableWrapper-inner {

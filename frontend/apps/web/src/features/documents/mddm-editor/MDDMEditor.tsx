@@ -2,9 +2,11 @@ import { type PartialBlock } from "@blocknote/core";
 import { BlockNoteView } from "@blocknote/mantine";
 import {
   BlockNoteViewEditor,
+  FilePanelController,
   FormattingToolbar,
   getFormattingToolbarItems,
   useCreateBlockNote,
+  type FilePanelProps,
 } from "@blocknote/react";
 import { useEffect, useMemo, type CSSProperties } from "react";
 import "@blocknote/core/fonts/inter.css";
@@ -15,6 +17,7 @@ import { mddmSchema } from "./schema";
 import styles from "./MDDMEditor.module.css";
 import { defaultLayoutTokens, tokensToCssVars } from "./engine/layout-ir";
 import { setEditorTokens } from "./engine/editor-tokens";
+import { MddmUppyFilePanel } from "./MddmUppyFilePanel";
 
 export type MDDMTheme = {
   accent?: string;
@@ -141,6 +144,14 @@ export function MDDMEditor({
     onEditorReady?.(editor);
   }, [editor, onEditorReady]);
 
+  // Uppy file panel — only when a documentId is available (upload endpoint requires it)
+  const uppyFilePanel = useMemo(() => {
+    if (!documentId) return undefined;
+    return (props: FilePanelProps) => (
+      <MddmUppyFilePanel {...props} documentId={documentId} />
+    );
+  }, [documentId]);
+
   // Place cursor in first inline-editable block on mount so toolbar items
   // have a ProseMirror selection and render immediately.
   useEffect(() => {
@@ -179,11 +190,14 @@ export function MDDMEditor({
         onChange={(currentEditor) => onChange?.(currentEditor.document)}
       >
         {!readOnly && (
-          <div className={styles.toolbarWrapper}>
-            <FormattingToolbar>
-              {getFormattingToolbarItems()}
-            </FormattingToolbar>
-          </div>
+          <>
+            <div className={styles.toolbarWrapper}>
+              <FormattingToolbar>
+                {getFormattingToolbarItems()}
+              </FormattingToolbar>
+            </div>
+            <FilePanelController filePanel={uppyFilePanel} />
+          </>
         )}
         <div
           className={styles.editorRoot}

@@ -35,7 +35,10 @@ func POTemplateMDDM() map[string]any {
 			sectionBlock("a0000030-0000-0000-0000-000000000030", "Visão Geral do Processo", true, false, []map[string]any{
 				richBlockBlock("a0000031-0000-0000-0000-000000000031", "Descrição do processo", true, []map[string]any{
 					paragraphBlock("a0000032-0000-0000-0000-000000000032", "Descreva o fluxo e adicione imagens do fluxograma quando fizer sentido."),
-					bulletListItemBlock("a0000033-0000-0000-0000-000000000033", "Inclua os principais pontos de decisÃ£o do fluxo"),
+					bulletListItemBlock("a0000033-0000-0000-0000-000000000033", "Inclua os principais pontos de decisão do fluxo"),
+				}),
+				richBlockBlock("a0000034-0000-0000-0000-000000000034", "Diagrama", true, []map[string]any{
+					imageBlock("a0000035-0000-0000-0000-000000000035", "", "Diagrama do processo", ""),
 				}),
 			}),
 			sectionBlock("a0000040-0000-0000-0000-000000000040", "Detalhamento das Etapas", true, false, []map[string]any{

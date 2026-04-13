@@ -4,6 +4,8 @@ import { createReactBlockSpec } from "@blocknote/react";
 import styles from "./DataTable.module.css";
 import { DataTableExternalHTML } from "../engine/external-html";
 import { getEditorTokens } from "../engine/editor-tokens";
+import { interpretDataTable } from "../engine/layout-interpreter/data-table-interpreter";
+import { defaultLayoutTokens } from "../engine/layout-ir";
 
 const dataTablePropSchema = {
   label: { default: "" },
@@ -66,9 +68,14 @@ const _dataTablePMNode = TiptapNode.create({
       dom.append(header, container);
 
       const syncAttrs = (nextNode: typeof node) => {
-        dom.dataset.density = nextNode.attrs.density || "normal";
-        dom.dataset.locked = String(nextNode.attrs.locked);
-        label.textContent = nextNode.attrs.label || "Data Table";
+        const vm = interpretDataTable(
+          { props: nextNode.attrs as Record<string, unknown> },
+          defaultLayoutTokens,
+        );
+        dom.dataset.density = vm.density;
+        dom.dataset.locked = String(vm.locked);
+        dom.dataset.mode = vm.mode;
+        label.textContent = vm.label || "Data Table";
       };
 
       syncAttrs(currentNode);
@@ -110,21 +117,27 @@ const _dataTableSpec = createReactBlockSpec(
     content: "none" as "none",
   },
   {
-    render: (props) => (
-      <div
-        className={styles.dataTable}
-        data-mddm-block="dataTable"
-        data-density={props.block.props.density || "normal"}
-        data-locked={String(props.block.props.locked)}
-      >
-        <div className={styles.dataTableHeader}>
-          <strong className={styles.tableLabel}>
-            {props.block.props.label || "Data Table"}
-          </strong>
+    render: (props) => {
+      const tokens = getEditorTokens(props.editor);
+      const vm = interpretDataTable(
+        { props: props.block.props as Record<string, unknown> },
+        tokens,
+      );
+      return (
+        <div
+          className={styles.dataTable}
+          data-mddm-block="dataTable"
+          data-density={vm.density}
+          data-locked={String(vm.locked)}
+          data-mode={vm.mode}
+        >
+          <div className={styles.dataTableHeader}>
+            <strong className={styles.tableLabel}>{vm.label || "Data Table"}</strong>
+          </div>
+          <div className={styles.tableContainer} ref={(props as any).contentRef} />
         </div>
-        <div className={styles.tableContainer} ref={(props as any).contentRef} />
-      </div>
-    ),
+      );
+    },
     toExternalHTML: (props) => (
       <DataTableExternalHTML
         tokens={getEditorTokens(props.editor)}

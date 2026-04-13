@@ -24,7 +24,7 @@ export const Repeatable = createReactBlockSpec(
       const canAddItem = !props.block.props.locked && currentChildren.length < maxItems;
 
       return (
-        <div className={styles.repeatable} data-mddm-block="repeatable">
+        <div className={styles.repeatable} data-mddm-block="repeatable" data-locked={props.block.props.locked}>
           <div className={styles.repeatableHeader}>
             <strong className={styles.repeatableTitle}>
               {props.block.props.label || "Repeatable"}

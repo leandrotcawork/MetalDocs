@@ -725,7 +725,7 @@ describe("MDDM ↔ BlockNote adapter", () => {
                 {
                   id: "10000000-0000-0000-0000-000000000006",
                   type: "repeatableItem",
-                  props: { title: "Item 1", style: "bordered" },
+                  props: { title: "Item 1", style: "bordered", locked: false },
                   children: [
                     {
                       id: "10000000-0000-0000-0000-000000000007",

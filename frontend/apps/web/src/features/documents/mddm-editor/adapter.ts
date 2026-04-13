@@ -701,6 +701,7 @@ function toMDDMProps(type: string, props: UnknownRecord): UnknownRecord {
       return {
         title: asString(next.title),
         style: asString(next.style) || "bordered",
+        locked: Boolean(next.locked),
       };
 
     case "richBlock":

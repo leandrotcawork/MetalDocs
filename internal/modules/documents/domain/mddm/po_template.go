@@ -43,7 +43,7 @@ func POTemplateMDDM() map[string]any {
 			}),
 			sectionBlock("a0000040-0000-0000-0000-000000000040", "Detalhamento das Etapas", true, false, []map[string]any{
 				repeatableBlock("a0000041-0000-0000-0000-000000000041", "Etapas", "Etapa", 1, 100, false, []map[string]any{
-					repeatableItemBlock("a0000042-0000-0000-0000-000000000042", "Etapa 1", []map[string]any{}),
+					repeatableItemBlock("a0000042-0000-0000-0000-000000000042", "Etapa 1", true, []map[string]any{}),
 				}),
 			}),
 			sectionBlock("a0000055-0000-0000-0000-000000000055", "Controle e Exceções", true, false, []map[string]any{
@@ -144,11 +144,14 @@ func repeatableBlock(id, label, itemPrefix string, minItems, maxItems int, locke
 	}
 }
 
-func repeatableItemBlock(id, title string, children []map[string]any) map[string]any {
+func repeatableItemBlock(id, title string, locked bool, children []map[string]any) map[string]any {
 	return map[string]any{
-		"id":       id,
-		"type":     "repeatableItem",
-		"props":    map[string]any{"title": title},
+		"id":   id,
+		"type": "repeatableItem",
+		"props": map[string]any{
+			"title":  title,
+			"locked": locked,
+		},
 		"children": toAnySlice(children),
 	}
 }

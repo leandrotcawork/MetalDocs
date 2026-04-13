@@ -138,10 +138,11 @@ export function MDDMEditor({
     };
   }, [editor]);
 
-  // Prevent deletion of locked structural blocks (sections, repeatableItems) via
-  // keyboard or programmatic transactions. The ProseMirror filterTransaction hook
-  // runs synchronously before every transaction is applied; if the count of
-  // protected nodes decreases the transaction is rejected outright.
+  // Prevent deletion of any block whose ProseMirror node has locked=true in its
+  // attrs. This is the universal lock — the template definition sets locked on
+  // seed blocks; user-added blocks default to locked=false and remain deletable.
+  // filterTransaction runs synchronously before every transaction is applied;
+  // if the count of locked nodes would decrease, the transaction is rejected.
   useEffect(() => {
     const tiptap = (editor as any)?._tiptapEditor;
     if (!tiptap || typeof tiptap.registerPlugin !== "function") return;
@@ -152,9 +153,7 @@ export function MDDMEditor({
       filterTransaction(tr, state) {
         if (!tr.docChanged) return true;
 
-        const isLocked = (node: any): boolean =>
-          (node.type.name === "section" && Boolean(node.attrs?.locked)) ||
-          node.type.name === "repeatableItem";
+        const isLocked = (node: any): boolean => Boolean(node.attrs?.locked);
 
         let before = 0;
         let after = 0;

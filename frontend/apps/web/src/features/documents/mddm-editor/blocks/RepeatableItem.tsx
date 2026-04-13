@@ -53,6 +53,7 @@ export const RepeatableItem = createReactBlockSpec(
     propSchema: {
       title: { default: "" },
       style: { default: "bordered" },
+      locked: { default: false },
     },
     content: "none",
   },
@@ -74,6 +75,7 @@ export const RepeatableItem = createReactBlockSpec(
           className={styles.repeatableItem}
           data-mddm-block="repeatableItem"
           data-style={props.block.props.style || "bordered"}
+          data-locked={props.block.props.locked}
         >
           <div className={styles.repeatableItemHeader}>
             <strong>{displayTitle}</strong>

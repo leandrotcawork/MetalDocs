@@ -20,6 +20,7 @@ export const RichBlock = createReactBlockSpec(
         className={styles.richBlock}
         data-mddm-block="richBlock"
         data-chrome={props.block.props.chrome || "labeled"}
+        data-locked={props.block.props.locked}
       >
         <div className={styles.richBlockHeader}>
           <strong>{props.block.props.label || "Rich Block"}</strong>

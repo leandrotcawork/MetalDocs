@@ -20,9 +20,31 @@ export function findItemIndex(document: any[], itemId: string): number {
   return 0;
 }
 
-function resolveItemIndex(document: any[], itemId: string): number {
-  const itemIndex = findItemIndex(document, itemId);
-  return itemIndex > 0 ? itemIndex : 1;
+/**
+ * Returns { sectionNumber, itemNumber } for a repeatableItem so it can be
+ * displayed as "5.1 Etapa 1" instead of "1. Etapa 1".
+ *
+ * Walks root-level sections, then their direct repeatable children, so the
+ * section number always reflects which top-level section owns this item.
+ */
+function resolveItemContext(
+  document: any[],
+  itemId: string,
+): { sectionNumber: number; itemNumber: number } {
+  const rootSections = document.filter((b) => b.type === "section");
+
+  for (let si = 0; si < rootSections.length; si++) {
+    for (const child of rootSections[si].children ?? []) {
+      if (child.type !== "repeatable" || !child.children) continue;
+      const items = child.children.filter((c: any) => c.type === "repeatableItem");
+      const idx = items.findIndex((c: any) => c.id === itemId);
+      if (idx >= 0) return { sectionNumber: si + 1, itemNumber: idx + 1 };
+    }
+  }
+
+  // Fallback: flat item index only (no section prefix)
+  const itemNumber = findItemIndex(document, itemId);
+  return { sectionNumber: 0, itemNumber: itemNumber > 0 ? itemNumber : 1 };
 }
 
 export const RepeatableItem = createReactBlockSpec(
@@ -36,15 +58,16 @@ export const RepeatableItem = createReactBlockSpec(
   },
   {
     render: (props) => {
-      const itemNumber = useMemo(
-        () => resolveItemIndex(props.editor.document, props.block.id ?? ""),
+      const { sectionNumber, itemNumber } = useMemo(
+        () => resolveItemContext(props.editor.document, props.block.id ?? ""),
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [props.editor.document, props.block.id],
       );
 
+      const prefix = sectionNumber > 0 ? `${sectionNumber}.${itemNumber}` : `${itemNumber}.`;
       const displayTitle = props.block.props.title
-        ? `${itemNumber}. ${props.block.props.title}`
-        : `Item ${itemNumber}`;
+        ? `${prefix} ${props.block.props.title}`
+        : `Item ${prefix}`;
 
       return (
         <div
@@ -58,12 +81,19 @@ export const RepeatableItem = createReactBlockSpec(
         </div>
       );
     },
-    toExternalHTML: (props) => (
-      <RepeatableItemExternalHTML
-        tokens={getEditorTokens(props.editor)}
-        title={props.block.props.title as string}
-        itemNumber={resolveItemIndex(props.editor.document, props.block.id ?? "")}
-      />
-    ),
+    toExternalHTML: (props) => {
+      const { sectionNumber, itemNumber } = resolveItemContext(
+        props.editor.document,
+        props.block.id ?? "",
+      );
+      return (
+        <RepeatableItemExternalHTML
+          tokens={getEditorTokens(props.editor)}
+          title={props.block.props.title as string}
+          sectionNumber={sectionNumber}
+          itemNumber={itemNumber}
+        />
+      );
+    },
   },
 );

@@ -43,19 +43,7 @@ func POTemplateMDDM() map[string]any {
 			}),
 			sectionBlock("a0000040-0000-0000-0000-000000000040", "Detalhamento das Etapas", true, false, []map[string]any{
 				repeatableBlock("a0000041-0000-0000-0000-000000000041", "Etapas", "Etapa", 1, 100, false, []map[string]any{
-					repeatableItemBlock("a0000042-0000-0000-0000-000000000042", "Etapa 1", []map[string]any{
-						contentRichBlockBlock("a0000043-0000-0000-0000-000000000043", "Conteúdo da etapa", true, []map[string]any{
-							paragraphBlock("a0000044-0000-0000-0000-000000000044", "Detalhe a execução desta etapa com texto livre, listas, tabelas e imagens."),
-							bulletListItemBlock("a0000045-0000-0000-0000-000000000045", "Ponto de controle da etapa"),
-							numberedListItemBlock("a0000046-0000-0000-0000-000000000046", "Sequência operacional"),
-							dataTableBlock("a0000048-0000-0000-0000-000000000048", "Checklist da etapa",
-							[]string{"Item"},
-							[][]string{
-								{"Registro inicial"},
-							},
-						),
-						}),
-					}),
+					repeatableItemBlock("a0000042-0000-0000-0000-000000000042", "Etapa 1", []map[string]any{}),
 				}),
 			}),
 			sectionBlock("a0000055-0000-0000-0000-000000000055", "Controle e Exceções", true, false, []map[string]any{

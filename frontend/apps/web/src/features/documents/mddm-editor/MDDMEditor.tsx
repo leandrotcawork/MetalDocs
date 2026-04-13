@@ -6,6 +6,7 @@ import {
   getFormattingToolbarItems,
   useCreateBlockNote,
 } from "@blocknote/react";
+import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { useEffect, useMemo, type CSSProperties } from "react";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
@@ -135,6 +136,36 @@ export function MDDMEditor({
     return () => {
       observer.disconnect();
     };
+  }, [editor]);
+
+  // Prevent deletion of locked structural blocks (sections) via keyboard or
+  // programmatic transactions. The ProseMirror filterTransaction hook runs
+  // synchronously before every transaction is applied; if the number of locked
+  // nodes decreases the transaction is rejected outright.
+  useEffect(() => {
+    const tiptap = (editor as any)?._tiptapEditor;
+    if (!tiptap || typeof tiptap.registerPlugin !== "function") return;
+
+    const pluginKey = new PluginKey("mddm-locked-blocks");
+    const plugin = new Plugin({
+      key: pluginKey,
+      filterTransaction(tr, state) {
+        if (!tr.docChanged) return true;
+
+        const isLocked = (node: any): boolean =>
+          node.type.name === "section" && Boolean(node.attrs?.locked);
+
+        let before = 0;
+        let after = 0;
+        state.doc.descendants((node: any) => { if (isLocked(node)) before++; });
+        tr.doc.descendants((node: any) => { if (isLocked(node)) after++; });
+
+        return after >= before;
+      },
+    });
+
+    tiptap.registerPlugin(plugin);
+    return () => { tiptap.unregisterPlugin(pluginKey); };
   }, [editor]);
 
   useEffect(() => {

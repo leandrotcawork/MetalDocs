@@ -114,6 +114,11 @@
   border-radius: var(--mddm-radius);
 }
 
+/* Hide the side menu for locked section blocks themselves — they cannot be deleted */
+.bn-container .bn-block:has([data-locked="true"]) > .bn-side-menu {
+  display: none !important;
+}
+
 .bn-container [data-content-type="section"] > .bn-block-outer > .bn-block > .bn-side-menu,
 .bn-container [data-content-type="repeatable"] > .bn-block-outer > .bn-block > .bn-side-menu {
   display: none;

@@ -3,13 +3,16 @@ import type { LayoutTokens } from "../layout-ir";
 export type RepeatableItemExternalHTMLProps = {
   tokens: LayoutTokens;
   title?: string;
+  sectionNumber?: number;
   itemNumber?: number;
 };
 
-export function RepeatableItemExternalHTML({ tokens, title, itemNumber }: RepeatableItemExternalHTMLProps) {
-  const displayTitle = title && itemNumber
-    ? `${itemNumber}. ${title}`
-    : title ?? `Item ${itemNumber ?? 1}`;
+export function RepeatableItemExternalHTML({ tokens, title, sectionNumber, itemNumber }: RepeatableItemExternalHTMLProps) {
+  const n = itemNumber ?? 1;
+  const prefix = sectionNumber && sectionNumber > 0 ? `${sectionNumber}.${n}` : `${n}.`;
+  const displayTitle = title
+    ? `${prefix} ${title}`
+    : `Item ${prefix}`;
 
   return (
     <table

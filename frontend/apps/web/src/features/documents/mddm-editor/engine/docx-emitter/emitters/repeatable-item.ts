@@ -11,6 +11,7 @@ import type { LayoutTokens } from "../../layout-ir";
 import type { MDDMBlock } from "../../../adapter";
 import { ptToHalfPt } from "../../helpers/units";
 import { hexToFill } from "../../helpers/color";
+import { interpretRepeatableItem } from "../../layout-interpreter";
 import { isMDDMBlock } from "../guards";
 
 /** ChildRenderer is supplied by the main emitter so repeatable-item can recursively
@@ -22,17 +23,21 @@ export function emitRepeatableItem(
   tokens: LayoutTokens,
   renderChild: ChildRenderer,
 ): Table[] {
-  const accent = hexToFill(tokens.theme.accent);
+  const vm = interpretRepeatableItem(
+    { props: block.props as Record<string, unknown> },
+    tokens,
+    { itemIndex: 0 },
+  );
+  const accent = hexToFill(vm.accentBorderColor);
   const borderColor = hexToFill(tokens.theme.accentBorder);
-  const title = (block.props as { title?: string }).title ?? "";
 
   const innerChildren: unknown[] = [];
-  if (title) {
+  if (vm.title) {
     innerChildren.push(
       new Paragraph({
         children: [
           new TextRun({
-            text: title,
+            text: vm.title,
             bold: true,
             size: ptToHalfPt(tokens.typography.baseSizePt),
             font: tokens.typography.exportFont,

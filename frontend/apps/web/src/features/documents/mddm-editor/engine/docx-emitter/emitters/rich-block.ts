@@ -2,6 +2,7 @@ import { Paragraph, TextRun } from "docx";
 import type { LayoutTokens } from "../../layout-ir";
 import type { MDDMBlock } from "../../../adapter";
 import { ptToHalfPt } from "../../helpers/units";
+import { interpretRichBlock } from "../../layout-interpreter";
 import type { ChildRenderer } from "./repeatable-item";
 import { isMDDMBlock } from "../guards";
 
@@ -10,17 +11,21 @@ export function emitRichBlock(
   tokens: LayoutTokens,
   renderChild: ChildRenderer,
 ): unknown[] {
-  const label = (block.props as { label?: string }).label ?? "";
+  const vm = interpretRichBlock(
+    { props: block.props as Record<string, unknown> },
+    tokens,
+  );
+  const fontSizePt = parseFloat(vm.labelFontSize); // e.g. "9pt" → 9
   const out: unknown[] = [];
 
-  if (label) {
+  if (vm.label) {
     out.push(
       new Paragraph({
         children: [
           new TextRun({
-            text: label,
+            text: vm.label,
             bold: true,
-            size: ptToHalfPt(tokens.typography.labelSizePt),
+            size: ptToHalfPt(isNaN(fontSizePt) ? tokens.typography.labelSizePt : fontSizePt),
             font: tokens.typography.exportFont,
           }),
         ],

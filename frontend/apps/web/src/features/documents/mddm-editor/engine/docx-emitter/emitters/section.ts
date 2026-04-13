@@ -9,8 +9,8 @@ import {
   VerticalAlign,
 } from "docx";
 import type { LayoutTokens } from "../../layout-ir";
-import { defaultComponentRules } from "../../layout-ir";
 import { mmToTwip, ptToHalfPt } from "../../helpers/units";
+import { interpretSection } from "../../layout-interpreter";
 import type { MDDMBlock } from "../../../adapter";
 
 function hexToFill(hex: string): string {
@@ -25,15 +25,21 @@ function attachOptions<T, O extends object>(instance: T, options: O): T {
 }
 
 export function emitSection(block: MDDMBlock, tokens: LayoutTokens): Table[] {
-  const rule = defaultComponentRules.section;
-  const title = (block.props as { title?: string }).title ?? "";
-  const fill = hexToFill(tokens.theme.accent);
+  const vm = interpretSection(
+    { props: block.props as Record<string, unknown> },
+    tokens,
+    { sectionIndex: 0 },
+  );
+
+  const fill = hexToFill(vm.headerBg);
+  const fontSizePt = parseFloat(vm.headerFontSize); // e.g. "9pt" → 9
+  const heightMm = parseFloat(vm.headerHeight);     // e.g. "10mm" → 10
 
   const textRunOptions = {
-    text: title,
-    bold: rule.headerFontWeight === "bold",
-    color: rule.headerFontColor.replace(/^#/, "").toUpperCase(),
-    size: ptToHalfPt(rule.headerFontSizePt),
+    text: vm.title,
+    bold: vm.headerFontWeight === "bold",
+    color: hexToFill(vm.headerColor),
+    size: ptToHalfPt(isNaN(fontSizePt) ? 9 : fontSizePt),
     font: tokens.typography.exportFont,
   } as const;
   const titleRun = attachOptions(new TextRun(textRunOptions), textRunOptions);
@@ -50,7 +56,7 @@ export function emitSection(block: MDDMBlock, tokens: LayoutTokens): Table[] {
 
   const rowOptions = {
     height: {
-      value: mmToTwip(rule.headerHeightMm),
+      value: mmToTwip(isNaN(heightMm) ? 10 : heightMm),
       rule: HeightRule.EXACT,
     },
     children: [cell],

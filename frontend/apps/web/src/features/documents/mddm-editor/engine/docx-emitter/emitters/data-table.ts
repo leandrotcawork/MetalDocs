@@ -11,6 +11,7 @@ import type { LayoutTokens } from "../../layout-ir";
 import type { MDDMBlock } from "../../../adapter";
 import { ptToHalfPt, mmToTwip } from "../../helpers/units";
 import { hexToFill } from "../../helpers/color";
+import { interpretDataTable } from "../../layout-interpreter";
 
 type RawCell = { type?: string; text?: string; styles?: Record<string, boolean> };
 type RawRow = { cells?: RawCell[][] };
@@ -51,8 +52,9 @@ function buildRow(
   rowData: RawRow,
   tokens: LayoutTokens,
   isHeader: boolean,
+  headerFill: string,
+  borderColor: string,
 ): TableRow {
-  const borderColor = hexToFill(tokens.theme.accentBorder);
   const borders = {
     top:    { style: BorderStyle.SINGLE, size: 4, color: borderColor },
     bottom: { style: BorderStyle.SINGLE, size: 4, color: borderColor },
@@ -64,7 +66,7 @@ function buildRow(
   const tableCells = cellsData.map((cellContent) => {
     const runs = cellToTextRun([cellContent], tokens);
     const shading = isHeader
-      ? { fill: hexToFill(tokens.theme.accentLight), type: "clear" as const, color: "auto" }
+      ? { fill: headerFill, type: "clear" as const, color: "auto" }
       : undefined;
 
     return new TableCell({
@@ -86,6 +88,13 @@ function buildRow(
 }
 
 export function emitDataTable(block: MDDMBlock, tokens: LayoutTokens): Table[] {
+  const vm = interpretDataTable(
+    { props: block.props as Record<string, unknown> },
+    tokens,
+  );
+  const headerFill = hexToFill(vm.headerBg);
+  const borderColor = hexToFill(vm.cellBorderColor);
+
   const tableContent = readTableContent(block.content);
 
   if (!tableContent) {
@@ -100,7 +109,7 @@ export function emitDataTable(block: MDDMBlock, tokens: LayoutTokens): Table[] {
   const headerRows = tableContent.headerRows ?? 1;
   const rows = tableContent.rows ?? [];
 
-  const builtRows = rows.map((row, i) => buildRow(row, tokens, i < headerRows));
+  const builtRows = rows.map((row, i) => buildRow(row, tokens, i < headerRows, headerFill, borderColor));
 
   const safeRows =
     builtRows.length > 0

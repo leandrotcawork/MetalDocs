@@ -2,6 +2,7 @@ import { Paragraph, TextRun } from "docx";
 import type { LayoutTokens } from "../../layout-ir";
 import type { MDDMBlock } from "../../../adapter";
 import { ptToHalfPt } from "../../helpers/units";
+import { interpretRepeatable } from "../../layout-interpreter";
 import { emitRepeatableItem, type ChildRenderer } from "./repeatable-item";
 
 function isItemBlock(child: unknown): child is MDDMBlock {
@@ -13,15 +14,18 @@ export function emitRepeatable(
   tokens: LayoutTokens,
   renderChild: ChildRenderer,
 ): unknown[] {
-  const label = (block.props as { label?: string }).label ?? "";
+  const vm = interpretRepeatable(
+    { props: block.props as Record<string, unknown>, children: block.children as unknown[] },
+    tokens,
+  );
   const out: unknown[] = [];
 
-  if (label) {
+  if (vm.label) {
     out.push(
       new Paragraph({
         children: [
           new TextRun({
-            text: label,
+            text: vm.label,
             bold: true,
             size: ptToHalfPt(tokens.typography.baseSizePt),
             font: tokens.typography.exportFont,

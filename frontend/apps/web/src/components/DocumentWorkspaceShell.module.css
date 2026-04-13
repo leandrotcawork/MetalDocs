@@ -804,20 +804,17 @@
   overflow: auto;
 }
 
-.workspace-main.is-create-view {
-  display: block;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  /* Standard scrollbar model — prevents Windows 11 double-scrollbar bug caused by
-     ::-webkit-scrollbar (legacy mode) coexisting with the OS overlay scrollbar. */
-  scrollbar-width: thin;
-  scrollbar-color: rgba(139, 46, 58, 0.72) transparent;
-}
-
+.workspace-main.is-create-view,
 .workspace-main.is-content-builder-view {
   display: block;
+  /* Override the bidirectional overflow:auto from .is-toolbarless.
+     MAIN must be a strictly vertical scroller — overflow-x:auto on a two-axis
+     container triggers extra Windows 11 compositor scroll affordances (ghost
+     gray overlay bar) even when there is no actual horizontal overflow. */
+  overflow-x: hidden;
   overflow-y: auto;
-  overscroll-behavior: contain;
+  overscroll-behavior-x: none;
+  overscroll-behavior-y: contain;
   scrollbar-width: thin;
   scrollbar-color: rgba(139, 46, 58, 0.72) transparent;
 }

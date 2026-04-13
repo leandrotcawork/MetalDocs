@@ -1,6 +1,6 @@
 import { type PartialBlock } from "@blocknote/core";
 import { BlockNoteView } from "@blocknote/mantine";
-import { useCreateBlockNote } from "@blocknote/react";
+import { FormattingToolbar, useCreateBlockNote } from "@blocknote/react";
 import { useEffect, useMemo, type CSSProperties } from "react";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
@@ -146,8 +146,11 @@ export function MDDMEditor({
         <BlockNoteView
           editor={editor}
           editable={!readOnly}
+          formattingToolbar={false}
           onChange={(currentEditor) => onChange?.(currentEditor.document)}
-        />
+        >
+          {!readOnly && <FormattingToolbar />}
+        </BlockNoteView>
       </div>
     </div>
   );

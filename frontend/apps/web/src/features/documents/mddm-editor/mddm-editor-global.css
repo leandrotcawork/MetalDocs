@@ -40,6 +40,14 @@
 .bn-container {
   color: var(--mddm-raw-gray-700);
   font-family: var(--mddm-font-family);
+  /* Static formatting toolbar: place it above the editor */
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 8px;
+}
+
+.bn-formatting-toolbar {
+  margin-inline: auto;
 }
 
 /* BlockNote's .bn-editor has 54px padding-left built-in for its drag-handle gutter.

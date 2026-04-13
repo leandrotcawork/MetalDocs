@@ -54,12 +54,38 @@ type BlockNoteLink = {
 type BlockNoteInline = BlockNoteText | BlockNoteLink;
 
 type TableCellContent = { type: "text"; text: string; styles?: Record<string, boolean> };
-type TableRow = { cells: TableCellContent[][] };
+type TableCellObject = {
+  type: "tableCell";
+  props?: {
+    backgroundColor?: string;
+    textColor?: string;
+  };
+  content: TableCellContent[];
+};
+type TableCell = TableCellContent[] | TableCellObject;
+type TableRow = { cells: TableCell[] };
 type TableContent = {
   type: "tableContent";
   columnWidths: (number | null)[];
   headerRows: number;
+  headerCols?: number;
   rows: TableRow[];
+};
+
+type FieldGroupTableMetadata = {
+  id: string;
+  templateBlockId?: string;
+  columns: number;
+  locked: boolean;
+  fields: Array<{
+    id: string;
+    templateBlockId?: string;
+    label: string;
+    valueMode: string;
+    locked: boolean;
+    hint?: string;
+    layout: string;
+  }>;
 };
 
 type BlockNoteBlock = {
@@ -193,6 +219,203 @@ function migrateOldDataTable(block: MDDMBlock): TableContent | null {
   };
 }
 
+function fieldGroupToTable(block: MDDMBlock): BlockNoteBlock {
+  const props = cloneRecord(toBlockNoteProps(block.type, cloneRecord(block.props)));
+  const columns = Number(block.props?.columns) === 2 ? 2 : 1;
+  const fields = Array.isArray(block.children)
+    ? (block.children as MDDMBlock[]).filter((child) => child.type === "field")
+    : [];
+
+  if (block.template_block_id) {
+    props.__template_block_id = block.template_block_id;
+  }
+
+  props.__mddm_field_group = JSON.stringify({
+    id: block.id,
+    templateBlockId: asOptionalString(block.template_block_id),
+    columns,
+    locked: Boolean(block.props?.locked),
+    fields: fields.map((field) => ({
+      id: field.id,
+      templateBlockId: asOptionalString(field.template_block_id),
+      label: asString(field.props?.label),
+      valueMode: asString(field.props?.valueMode) || "inline",
+      locked: Boolean(field.props?.locked),
+      hint: asOptionalString(field.props?.hint),
+      layout: asString(field.props?.layout) || "grid",
+    })),
+  });
+
+  // Detect if fields use stacked layout (label above value, not beside)
+  const isStacked = fields.length > 0 && asString(fields[0].props?.layout) === "stack";
+
+  const rows: TableRow[] = [];
+  let columnWidths: (number | null)[];
+  let headerCols: number;
+
+  if (isStacked && columns === 2) {
+    // Stacked 2-column: header row (labels) + value row, repeated per pair
+    //   Row 1: th[Label1]  | th[Label2]
+    //   Row 2: td[Value1]  | td[Value2]
+    columnWidths = [360, 360];
+    headerCols = 0; // no column-based headers; rows alternate header/value
+    for (let i = 0; i < fields.length; i += 2) {
+      const left = fields[i];
+      const right = fields[i + 1];
+      // Header row — both labels with background
+      rows.push({
+        cells: [
+          labelCell(asString(left?.props?.label)),
+          right ? labelCell(asString(right.props?.label)) : emptyCell(),
+        ],
+      });
+      // Value row — both editable
+      rows.push({
+        cells: [
+          valueCell(left),
+          valueCell(right),
+        ],
+      });
+    }
+  } else if (columns === 2) {
+    // Grid 2-column: Label1 | Value1 | Label2 | Value2
+    columnWidths = [150, 210, 150, 210];
+    headerCols = 1;
+    for (let i = 0; i < fields.length; i += 2) {
+      const left = fields[i];
+      const right = fields[i + 1];
+      rows.push({
+        cells: [
+          labelCell(asString(left?.props?.label)),
+          valueCell(left),
+          right ? labelCell(asString(right.props?.label)) : emptyCell(),
+          valueCell(right),
+        ],
+      });
+    }
+  } else {
+    // 1-column: Label | Value per row
+    columnWidths = [180, 540];
+    headerCols = 1;
+    for (const field of fields) {
+      rows.push({
+        cells: [labelCell(asString(field.props?.label)), valueCell(field)],
+      });
+    }
+  }
+
+  return {
+    id: block.id,
+    type: "table",
+    props,
+    content: {
+      type: "tableContent",
+      columnWidths,
+      headerRows: 0,
+      headerCols,
+      rows,
+    },
+    children: [],
+  };
+}
+
+function tableToFieldGroup(block: BlockNoteBlock): MDDMBlock | null {
+  const metadataValue = block.props?.__mddm_field_group;
+  if (!isString(metadataValue)) {
+    return null;
+  }
+
+  let metadata: FieldGroupTableMetadata;
+  try {
+    const parsed = JSON.parse(metadataValue);
+    if (!isRecord(parsed) || !Array.isArray(parsed.fields)) {
+      return null;
+    }
+    metadata = parsed as FieldGroupTableMetadata;
+  } catch {
+    return null;
+  }
+
+  const tableContent = block.content;
+  if (!isRecord(tableContent) || tableContent.type !== "tableContent") {
+    return null;
+  }
+
+  const columns = metadata.columns === 2 ? 2 : 1;
+  const isStacked = metadata.fields.length > 0 && metadata.fields[0].layout === "stack";
+  const rows = Array.isArray(tableContent.rows) ? tableContent.rows : [];
+  const fields = metadata.fields.map((field, fieldIndex) => {
+    let rowIndex: number;
+    let valueCellIndex: number;
+    if (isStacked && columns === 2) {
+      // Stacked 2-col: rows alternate header/value. Each pair of fields uses 2 rows.
+      // Field 0 → value row 1, cell 0 | Field 1 → value row 1, cell 1
+      // Field 2 → value row 3, cell 0 | Field 3 → value row 3, cell 1
+      const pairIndex = Math.floor(fieldIndex / 2);
+      rowIndex = pairIndex * 2 + 1; // value row is the odd row
+      valueCellIndex = fieldIndex % 2;
+    } else if (columns === 2) {
+      // Grid 2-col: 4-column rows. Label | Value | Label | Value
+      rowIndex = Math.floor(fieldIndex / 2);
+      valueCellIndex = fieldIndex % 2 === 0 ? 1 : 3;
+    } else {
+      // 1-col: Label | Value per row
+      rowIndex = fieldIndex;
+      valueCellIndex = 1;
+    }
+    const cellContent = getTableCellContent(rows[rowIndex]?.cells?.[valueCellIndex]);
+    const valueRuns: MDDMTextRun[] = Array.isArray(cellContent)
+      ? cellContent
+          .filter((cell) => isRecord(cell) && cell.text !== "")
+          .map((cell) => {
+            const run: MDDMTextRun = { text: asString(cell.text) };
+            const marks = stylesToMarks(cell.styles);
+            if (marks.length > 0) {
+              run.marks = marks;
+            }
+            return run;
+          })
+      : [];
+
+    const fieldBlock: MDDMBlock = {
+      id: field.id,
+      type: "field",
+      props: {
+        label: field.label,
+        valueMode: field.valueMode || "inline",
+        locked: Boolean(field.locked),
+        layout: field.layout || "grid",
+      },
+      children: valueRuns,
+    };
+
+    if (field.templateBlockId) {
+      fieldBlock.template_block_id = field.templateBlockId;
+    }
+    if (field.hint) {
+      fieldBlock.props.hint = field.hint;
+    }
+
+    return fieldBlock;
+  });
+
+  const fieldGroup: MDDMBlock = {
+    id: metadata.id,
+    type: "fieldGroup",
+    props: {
+      columns,
+      locked: Boolean(metadata.locked),
+    },
+    children: fields,
+  };
+
+  if (metadata.templateBlockId) {
+    fieldGroup.template_block_id = metadata.templateBlockId;
+  }
+
+  return fieldGroup;
+}
+
 function toBlockNoteBlock(block: MDDMBlock): BlockNoteBlock {
   const props = cloneRecord(block.props);
   if (block.template_block_id) {
@@ -204,6 +427,10 @@ function toBlockNoteBlock(block: MDDMBlock): BlockNoteBlock {
     type: toBlockNoteType(block.type),
     props: toBlockNoteProps(block.type, props),
   };
+
+  if (block.type === "fieldGroup") {
+    return fieldGroupToTable(block);
+  }
 
   // DataTable: migrate old children format to tableContent, or pass through new format
   if (block.type === "dataTable") {
@@ -220,12 +447,15 @@ function toBlockNoteBlock(block: MDDMBlock): BlockNoteBlock {
       output.children = [];
       return output;
     }
-    // Empty table (new doc from template without rows)
+    // Empty table (new doc from template without rows or column definitions).
+    // ProseMirror's tableRow node requires tableCell+ (at least one cell), so
+    // we always produce a minimal 1×1 table rather than a row with zero cells
+    // which would throw in schema.nodes.tableRow.createChecked().
     output.content = {
       type: "tableContent",
-      columnWidths: [],
+      columnWidths: [null],
       headerRows: 1,
-      rows: [{ cells: [] }],
+      rows: [{ cells: [[{ type: "text" as const, text: "" }]] }],
     };
     output.children = [];
     return output;
@@ -277,6 +507,13 @@ export function blockNoteToMDDM(
 }
 
 function toMDDMBlock(block: BlockNoteBlock): MDDMBlock {
+  if (block.type === "table") {
+    const converted = tableToFieldGroup(block);
+    if (converted) {
+      return converted;
+    }
+  }
+
   const mddmType = toMDDMType(block.type);
   const rawProps = cloneRecord(block.props);
   const templateBlockID = asOptionalString(rawProps.__template_block_id);
@@ -514,6 +751,61 @@ function toBlockNoteInline(runs: MDDMTextRun[]): BlockNoteInline[] {
 
     return textNode;
   });
+}
+
+function labelCell(label: string): TableCellObject {
+  return {
+    type: "tableCell",
+    props: { backgroundColor: "gray" },
+    content: [
+      {
+        type: "text",
+        text: label,
+        styles: { bold: true },
+      },
+    ],
+  };
+}
+
+function emptyCell(): TableCellContent[] {
+  return [{ type: "text", text: "" }];
+}
+
+function valueCell(field: MDDMBlock | undefined): TableCellContent[] {
+  if (!field || !Array.isArray(field.children) || field.children.length === 0) {
+    return emptyCell();
+  }
+
+  const cells = (field.children as MDDMTextRun[])
+    .map((run) => {
+      const styles = normalizeTableStyles(marksToStyles(run.marks));
+      return {
+        type: "text" as const,
+        text: asString(run.text),
+        ...(styles ? { styles } : {}),
+      };
+    })
+    .filter((run) => run.text !== "" || run.styles !== undefined);
+
+  return cells.length > 0 ? cells : emptyCell();
+}
+
+function getTableCellContent(cell: unknown): TableCellContent[] {
+  if (Array.isArray(cell)) {
+    return cell;
+  }
+  if (isRecord(cell) && cell.type === "tableCell" && Array.isArray(cell.content)) {
+    return cell.content.filter((item): item is TableCellContent => {
+      return isRecord(item) && item.type === "text" && isString(item.text);
+    });
+  }
+  return [];
+}
+
+function normalizeTableStyles(
+  styles: Record<string, boolean>,
+): Record<string, boolean> | undefined {
+  return Object.keys(styles).length > 0 ? styles : undefined;
 }
 
 function fromBlockNoteInline(content: unknown): MDDMTextRun[] {

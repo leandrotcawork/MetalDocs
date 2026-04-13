@@ -16,7 +16,7 @@ func POTemplateMDDM() map[string]any {
 				}),
 			}),
 			sectionBlock("a0000010-0000-0000-0000-000000000010", "Identificação do Processo", true, false, []map[string]any{
-				fieldGroupBlock("a0000011-0000-0000-0000-000000000011", 2, []map[string]any{
+				fieldGroupBlock("a0000011-0000-0000-0000-000000000011", 1, []map[string]any{
 					fieldBlock("a0000012-0000-0000-0000-000000000012", "Objetivo", "multiParagraph"),
 					fieldBlock("a0000013-0000-0000-0000-000000000013", "Escopo", "multiParagraph"),
 					fieldBlock("a0000014-0000-0000-0000-000000000014", "Cargo responsável", "inline"),
@@ -26,10 +26,10 @@ func POTemplateMDDM() map[string]any {
 			}),
 			sectionBlock("a0000020-0000-0000-0000-000000000020", "Entradas e Saídas", true, false, []map[string]any{
 				fieldGroupBlock("a0000021-0000-0000-0000-000000000021", 2, []map[string]any{
-					fieldBlock("a0000022-0000-0000-0000-000000000022", "Entradas", "multiParagraph"),
-					fieldBlock("a0000023-0000-0000-0000-000000000023", "Saídas", "multiParagraph"),
-					fieldBlock("a0000024-0000-0000-0000-000000000024", "Documentos relacionados", "multiParagraph"),
-					fieldBlock("a0000025-0000-0000-0000-000000000025", "Sistemas utilizados", "multiParagraph"),
+					stackFieldBlock("a0000022-0000-0000-0000-000000000022", "Entradas", "multiParagraph"),
+					stackFieldBlock("a0000023-0000-0000-0000-000000000023", "Saídas", "multiParagraph"),
+					stackFieldBlock("a0000024-0000-0000-0000-000000000024", "Documentos relacionados", "multiParagraph"),
+					stackFieldBlock("a0000025-0000-0000-0000-000000000025", "Sistemas utilizados", "multiParagraph"),
 				}),
 			}),
 			sectionBlock("a0000030-0000-0000-0000-000000000030", "Visão Geral do Processo", true, false, []map[string]any{
@@ -117,6 +117,21 @@ func fieldBlock(id, label, valueMode string) map[string]any {
 			"label":     label,
 			"valueMode": valueMode,
 			"locked":    true,
+		},
+		"children": []any{},
+	}
+}
+
+func stackFieldBlock(id, label, valueMode string) map[string]any {
+	return map[string]any{
+		"id":                id,
+		"template_block_id": id,
+		"type":              "field",
+		"props": map[string]any{
+			"label":     label,
+			"valueMode": valueMode,
+			"locked":    true,
+			"layout":    "stack",
 		},
 		"children": []any{},
 	}

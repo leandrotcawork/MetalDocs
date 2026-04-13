@@ -394,12 +394,14 @@ export function BrowserDocumentEditorView({ document, onBack, currentUserId }: B
                 <MDDMViewer
                   key={`${document.documentId}:${editorInstance}`}
                   initialContent={blockNoteDocument as any}
+                  documentId={document.documentId}
                   theme={editorTheme}
                 />
               ) : (
                 <MDDMEditor
                   key={`${document.documentId}:${editorInstance}`}
                   initialContent={blockNoteDocument as any}
+                  documentId={document.documentId}
                   onChange={(blocks) => {
                     try {
                       const envelope = blockNoteToMDDM(blocks as any[]);

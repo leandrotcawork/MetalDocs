@@ -51,12 +51,6 @@ describe("blocksToHTMLLossy runtime token export threading", () => {
         props: { title: "Introduction" },
       },
       {
-        id: "field-1",
-        type: "field",
-        props: { label: "Owner" },
-        content: [{ type: "text", text: "Leandro", styles: {} }],
-      },
-      {
         id: "table-1",
         type: "dataTable",
         props: { label: "Items", locked: true, density: "normal" },

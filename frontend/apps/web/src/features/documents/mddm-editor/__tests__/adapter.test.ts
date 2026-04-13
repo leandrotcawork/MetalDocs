@@ -6,7 +6,440 @@ import {
   type MDDMEnvelope,
 } from "../adapter";
 
+function parseFieldGroupTable(input: MDDMEnvelope) {
+  return mddmToBlockNote(input)[0] as any;
+}
+
 describe("MDDM ↔ BlockNote adapter", () => {
+  it("imports 1-column fieldGroup as a native table with label and value cells", () => {
+    const table = parseFieldGroupTable({
+      mddm_version: 1,
+      template_ref: null,
+      blocks: [
+        {
+          id: "10000000-0000-0000-0000-000000000001",
+          template_block_id: "20000000-0000-0000-0000-000000000001",
+          type: "fieldGroup",
+          props: { columns: 1, locked: true },
+          children: [
+            {
+              id: "10000000-0000-0000-0000-000000000002",
+              template_block_id: "20000000-0000-0000-0000-000000000002",
+              type: "field",
+              props: {
+                label: "Nome",
+                valueMode: "inline",
+                locked: true,
+                hint: "hint: d.nome",
+                layout: "grid",
+              },
+              children: [
+                { text: "Joao" },
+                { text: " Silva", marks: [{ type: "italic" }] },
+              ],
+            },
+            {
+              id: "10000000-0000-0000-0000-000000000003",
+              type: "field",
+              props: {
+                label: "Cargo",
+                valueMode: "inline",
+                locked: false,
+                layout: "stacked",
+              },
+              children: [],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(table.type).toBe("table");
+    expect(table.content?.type).toBe("tableContent");
+    expect(table.content?.headerCols).toBe(1);
+    expect(table.content?.headerRows).toBe(0);
+    expect(table.content?.columnWidths).toEqual([180, 540]);
+    expect(table.content?.rows).toHaveLength(2);
+    expect(table.content?.rows[0].cells[0]).toEqual({
+      type: "tableCell",
+      props: { backgroundColor: "gray" },
+      content: [{ type: "text", text: "Nome", styles: { bold: true } }],
+    });
+    expect(table.content?.rows[0].cells[1]).toEqual([
+      { type: "text", text: "Joao" },
+      { type: "text", text: " Silva", styles: { italic: true } },
+    ]);
+    expect(table.content?.rows[1].cells[1]).toEqual([{ type: "text", text: "" }]);
+  });
+
+  it("imports 2-column fieldGroup as a native table with paired field rows", () => {
+    const table = parseFieldGroupTable({
+      mddm_version: 1,
+      template_ref: null,
+      blocks: [
+        {
+          id: "10000000-0000-0000-0000-000000000010",
+          type: "fieldGroup",
+          props: { columns: 2, locked: false },
+          children: [
+            {
+              id: "10000000-0000-0000-0000-000000000011",
+              type: "field",
+              props: { label: "A", valueMode: "inline", locked: true, layout: "grid" },
+              children: [{ text: "1" }],
+            },
+            {
+              id: "10000000-0000-0000-0000-000000000012",
+              type: "field",
+              props: { label: "B", valueMode: "inline", locked: true, layout: "grid" },
+              children: [{ text: "2" }],
+            },
+            {
+              id: "10000000-0000-0000-0000-000000000013",
+              type: "field",
+              props: { label: "C", valueMode: "inline", locked: true, layout: "grid" },
+              children: [{ text: "3" }],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(table.type).toBe("table");
+    expect(table.content?.headerCols).toBe(1);
+    expect(table.content?.columnWidths).toEqual([150, 210, 150, 210]);
+    expect(table.content?.rows).toHaveLength(2);
+    expect(table.content?.rows[0].cells).toEqual([
+      {
+        type: "tableCell",
+        props: { backgroundColor: "gray" },
+        content: [{ type: "text", text: "A", styles: { bold: true } }],
+      },
+      [{ type: "text", text: "1" }],
+      {
+        type: "tableCell",
+        props: { backgroundColor: "gray" },
+        content: [{ type: "text", text: "B", styles: { bold: true } }],
+      },
+      [{ type: "text", text: "2" }],
+    ]);
+    expect(table.content?.rows[1].cells).toEqual([
+      {
+        type: "tableCell",
+        props: { backgroundColor: "gray" },
+        content: [{ type: "text", text: "C", styles: { bold: true } }],
+      },
+      [{ type: "text", text: "3" }],
+      [{ type: "text", text: "" }],
+      [{ type: "text", text: "" }],
+    ]);
+  });
+
+  it("stores fieldGroup round-trip metadata in table props", () => {
+    const table = parseFieldGroupTable({
+      mddm_version: 1,
+      template_ref: null,
+      blocks: [
+        {
+          id: "10000000-0000-0000-0000-000000000020",
+          template_block_id: "20000000-0000-0000-0000-000000000020",
+          type: "fieldGroup",
+          props: { columns: 1, locked: true },
+          children: [
+            {
+              id: "10000000-0000-0000-0000-000000000021",
+              template_block_id: "20000000-0000-0000-0000-000000000021",
+              type: "field",
+              props: {
+                label: "Responsavel",
+                valueMode: "inline",
+                locked: true,
+                hint: "hint: d.owner",
+                layout: "stacked",
+              },
+              children: [{ text: "Joao" }],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(JSON.parse(table.props.__mddm_field_group)).toEqual({
+      id: "10000000-0000-0000-0000-000000000020",
+      templateBlockId: "20000000-0000-0000-0000-000000000020",
+      columns: 1,
+      locked: true,
+      fields: [
+        {
+          id: "10000000-0000-0000-0000-000000000021",
+          templateBlockId: "20000000-0000-0000-0000-000000000021",
+          label: "Responsavel",
+          valueMode: "inline",
+          locked: true,
+          hint: "hint: d.owner",
+          layout: "stacked",
+        },
+      ],
+    });
+  });
+
+  it("round-trips 1-column fieldGroup tables back to fieldGroup blocks", () => {
+    const input: MDDMEnvelope = {
+      mddm_version: 1,
+      template_ref: null,
+      blocks: [
+        {
+          id: "10000000-0000-0000-0000-000000000030",
+          template_block_id: "20000000-0000-0000-0000-000000000030",
+          type: "fieldGroup",
+          props: { columns: 1, locked: true },
+          children: [
+            {
+              id: "10000000-0000-0000-0000-000000000031",
+              template_block_id: "20000000-0000-0000-0000-000000000031",
+              type: "field",
+              props: {
+                label: "Nome",
+                valueMode: "inline",
+                locked: true,
+                hint: "hint: d.nome",
+                layout: "grid",
+              },
+              children: [
+                { text: "Joao", marks: [{ type: "bold" }] },
+                { text: " Silva", marks: [{ type: "italic" }] },
+              ],
+            },
+            {
+              id: "10000000-0000-0000-0000-000000000032",
+              template_block_id: "20000000-0000-0000-0000-000000000032",
+              type: "field",
+              props: {
+                label: "Cargo",
+                valueMode: "inline",
+                locked: false,
+                layout: "stacked",
+              },
+              children: [{ text: "Analista" }],
+            },
+          ],
+        },
+      ],
+    };
+
+    const output = blockNoteToMDDM(mddmToBlockNote(input));
+    const fieldGroup = output.blocks[0] as any;
+
+    expect(fieldGroup.type).toBe("fieldGroup");
+    expect(fieldGroup.id).toBe("10000000-0000-0000-0000-000000000030");
+    expect(fieldGroup.template_block_id).toBe("20000000-0000-0000-0000-000000000030");
+    expect(fieldGroup.props.columns).toBe(1);
+    expect(fieldGroup.props.locked).toBe(true);
+    expect(fieldGroup.children).toHaveLength(2);
+
+    expect(fieldGroup.children[0]).toMatchObject({
+      id: "10000000-0000-0000-0000-000000000031",
+      template_block_id: "20000000-0000-0000-0000-000000000031",
+      type: "field",
+      props: {
+        label: "Nome",
+        valueMode: "inline",
+        locked: true,
+        hint: "hint: d.nome",
+        layout: "grid",
+      },
+    });
+    expect(fieldGroup.children[0].children).toEqual([
+      { text: "Joao", marks: [{ type: "bold" }] },
+      { text: " Silva", marks: [{ type: "italic" }] },
+    ]);
+
+    expect(fieldGroup.children[1]).toMatchObject({
+      id: "10000000-0000-0000-0000-000000000032",
+      template_block_id: "20000000-0000-0000-0000-000000000032",
+      type: "field",
+      props: {
+        label: "Cargo",
+        valueMode: "inline",
+        locked: false,
+        layout: "stacked",
+      },
+    });
+    expect(fieldGroup.children[1].children).toEqual([{ text: "Analista" }]);
+  });
+
+  it("round-trips 2-column fieldGroup tables back to fieldGroup blocks", () => {
+    const input: MDDMEnvelope = {
+      mddm_version: 1,
+      template_ref: null,
+      blocks: [
+        {
+          id: "10000000-0000-0000-0000-000000000040",
+          template_block_id: "20000000-0000-0000-0000-000000000040",
+          type: "fieldGroup",
+          props: { columns: 2, locked: false },
+          children: [
+            {
+              id: "10000000-0000-0000-0000-000000000041",
+              template_block_id: "20000000-0000-0000-0000-000000000041",
+              type: "field",
+              props: { label: "A", valueMode: "inline", locked: true, layout: "grid" },
+              children: [{ text: "1" }],
+            },
+            {
+              id: "10000000-0000-0000-0000-000000000042",
+              template_block_id: "20000000-0000-0000-0000-000000000042",
+              type: "field",
+              props: { label: "B", valueMode: "inline", locked: false, layout: "grid" },
+              children: [{ text: "2", marks: [{ type: "italic" }] }],
+            },
+            {
+              id: "10000000-0000-0000-0000-000000000043",
+              template_block_id: "20000000-0000-0000-0000-000000000043",
+              type: "field",
+              props: { label: "C", valueMode: "inline", locked: true, layout: "stacked" },
+              children: [{ text: "3" }],
+            },
+            {
+              id: "10000000-0000-0000-0000-000000000044",
+              template_block_id: "20000000-0000-0000-0000-000000000044",
+              type: "field",
+              props: {
+                label: "D",
+                valueMode: "inline",
+                locked: true,
+                hint: "hint: d",
+                layout: "grid",
+              },
+              children: [{ text: "4", marks: [{ type: "bold" }] }],
+            },
+          ],
+        },
+      ],
+    };
+
+    const output = blockNoteToMDDM(mddmToBlockNote(input));
+    const fieldGroup = output.blocks[0] as any;
+
+    expect(fieldGroup.type).toBe("fieldGroup");
+    expect(fieldGroup.id).toBe("10000000-0000-0000-0000-000000000040");
+    expect(fieldGroup.template_block_id).toBe("20000000-0000-0000-0000-000000000040");
+    expect(fieldGroup.props.columns).toBe(2);
+    expect(fieldGroup.children).toHaveLength(4);
+    expect(fieldGroup.children.map((field: any) => field.id)).toEqual([
+      "10000000-0000-0000-0000-000000000041",
+      "10000000-0000-0000-0000-000000000042",
+      "10000000-0000-0000-0000-000000000043",
+      "10000000-0000-0000-0000-000000000044",
+    ]);
+    expect(fieldGroup.children.map((field: any) => field.props.label)).toEqual([
+      "A",
+      "B",
+      "C",
+      "D",
+    ]);
+    expect(fieldGroup.children.map((field: any) => field.props.valueMode)).toEqual([
+      "inline",
+      "inline",
+      "inline",
+      "inline",
+    ]);
+    expect(fieldGroup.children.map((field: any) => field.props.locked)).toEqual([
+      true,
+      false,
+      true,
+      true,
+    ]);
+    expect(fieldGroup.children[1].children).toEqual([
+      { text: "2", marks: [{ type: "italic" }] },
+    ]);
+    expect(fieldGroup.children[3].children).toEqual([
+      { text: "4", marks: [{ type: "bold" }] },
+    ]);
+  });
+
+  it("exports fieldGroup values correctly when label cells use full tableCell objects", () => {
+    const output = blockNoteToMDDM([
+      {
+        id: "10000000-0000-0000-0000-000000000060",
+        type: "table",
+        props: {
+          __mddm_field_group: JSON.stringify({
+            id: "10000000-0000-0000-0000-000000000060",
+            columns: 1,
+            locked: true,
+            fields: [
+              {
+                id: "10000000-0000-0000-0000-000000000061",
+                label: "Objetivo",
+                valueMode: "inline",
+                locked: true,
+                layout: "grid",
+              },
+            ],
+          }),
+        },
+        content: {
+          type: "tableContent",
+          columnWidths: [180, 540],
+          headerRows: 0,
+          headerCols: 1,
+          rows: [
+            {
+              cells: [
+                {
+                  type: "tableCell",
+                  props: { backgroundColor: "gray" },
+                  content: [{ type: "text", text: "Objetivo", styles: { bold: true } }],
+                },
+                [{ type: "text", text: "Definir o escopo" }],
+              ],
+            },
+          ],
+        },
+        children: [],
+      } as any,
+    ]);
+
+    expect((output.blocks[0] as any).children[0]).toMatchObject({
+      type: "field",
+      props: {
+        label: "Objetivo",
+        valueMode: "inline",
+        locked: true,
+        layout: "grid",
+      },
+      children: [{ text: "Definir o escopo" }],
+    });
+  });
+
+  it("rejects regular native tables without fieldGroup metadata on export", () => {
+    expect(() =>
+      blockNoteToMDDM([
+        {
+          id: "10000000-0000-0000-0000-000000000050",
+          type: "table",
+          props: {},
+          content: {
+            type: "tableContent",
+            columnWidths: [180, 540],
+            headerRows: 0,
+            headerCols: 1,
+            rows: [
+              {
+                cells: [
+                  [{ type: "text", text: "Nome", styles: { bold: true } }],
+                  [{ type: "text", text: "Joao" }],
+                ],
+              },
+            ],
+          },
+          children: [],
+        } as any,
+      ]),
+    ).toThrow(/unsupported block type: table/i);
+  });
+
   it("exports quote edits from BlockNote content (regression lock)", () => {
     const input: MDDMEnvelope = {
       mddm_version: 1,
@@ -261,7 +694,7 @@ describe("MDDM ↔ BlockNote adapter", () => {
     expect(dt.content?.columnWidths).toEqual([null, null, null]);
   });
 
-  it("keeps envelope metadata and all 17 block types canonically equivalent in a round-trip", () => {
+  it("keeps envelope metadata and canonically round-trips blocks that still preserve their native types", () => {
     const input: MDDMEnvelope = {
       mddm_version: 1,
       template_ref: {
@@ -277,42 +710,6 @@ describe("MDDM ↔ BlockNote adapter", () => {
           type: "section",
           props: { title: "Section", color: "#6b1f2a", locked: true, variant: "bar" },
           children: [
-            {
-              id: "10000000-0000-0000-0000-000000000002",
-              template_block_id: "20000000-0000-0000-0000-000000000002",
-              type: "fieldGroup",
-              props: { columns: 1, locked: true },
-              children: [
-                {
-                  id: "10000000-0000-0000-0000-000000000003",
-                  template_block_id: "20000000-0000-0000-0000-000000000003",
-                  type: "field",
-                  props: {
-                    label: "Responsavel",
-                    valueMode: "inline",
-                    locked: true,
-                    layout: "grid",
-                  },
-                  children: [
-                    {
-                      text: "Joao",
-                      marks: [{ type: "bold" }],
-                    },
-                    {
-                      text: " Procedimento",
-                      link: {
-                        href: "https://example.com",
-                        title: "Exemplo",
-                      },
-                      document_ref: {
-                        target_document_id: "30000000-0000-0000-0000-000000000001",
-                        target_revision_label: "v2",
-                      },
-                    },
-                  ],
-                },
-              ],
-            },
             {
               id: "10000000-0000-0000-0000-000000000005",
               template_block_id: "20000000-0000-0000-0000-000000000004",
@@ -396,18 +793,46 @@ describe("MDDM ↔ BlockNote adapter", () => {
         },
         {
           id: "10000000-0000-0000-0000-000000000016",
+          template_block_id: "20000000-0000-0000-0000-000000000007",
+          type: "field",
+          props: {
+            label: "Responsavel",
+            valueMode: "inline",
+            locked: true,
+            layout: "grid",
+          },
+          children: [
+            {
+              text: "Joao",
+              marks: [{ type: "bold" }],
+            },
+            {
+              text: " Procedimento",
+              link: {
+                href: "https://example.com",
+                title: "Exemplo",
+              },
+              document_ref: {
+                target_document_id: "30000000-0000-0000-0000-000000000001",
+                target_revision_label: "v2",
+              },
+            },
+          ],
+        },
+        {
+          id: "10000000-0000-0000-0000-000000000017",
           type: "bulletListItem",
           props: { level: 0 },
           children: [{ text: "Bullet" }],
         },
         {
-          id: "10000000-0000-0000-0000-000000000017",
+          id: "10000000-0000-0000-0000-000000000018",
           type: "numberedListItem",
           props: { level: 0 },
           children: [{ text: "Numbered" }],
         },
         {
-          id: "10000000-0000-0000-0000-000000000018",
+          id: "10000000-0000-0000-0000-000000000019",
           type: "image",
           props: {
             src: "/api/images/40000000-0000-0000-0000-000000000001",

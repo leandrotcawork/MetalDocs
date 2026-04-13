@@ -46,3 +46,45 @@ Wrong:   `findItemIndex` matched any block children and used `1` as the recursiv
 Correct: `findItemIndex` now matches only `repeatableItem` siblings inside `repeatable` blocks, recurses deeper with `0` as the miss sentinel, and falls back to `1` only at the call site.
 Rule:    Recursive numbering helpers must scope sibling matching to the owning container type and use a distinct not-found sentinel during traversal.
 Layer:   application
+
+## Lesson 8 - Custom table blocks need a DOM-backed node view
+Date: 2026-04-13 | Trigger: correction
+Wrong:   `dataTable` replaced BlockNote's generated PM node with a custom `TiptapNode` but relied on `renderHTML`, which mounted table rows under a `<div>` and produced invalid table markup in-editor.
+Correct: Custom PM nodes that own table-like content must provide `addNodeView()` with a real table `contentDOM` so ProseMirror mounts `<tr>` children into valid table structure.
+Rule:    When a BlockNote block swaps in a custom ProseMirror node for structured content, it must also provide the DOM container that matches that content model instead of relying on fallback HTML rendering.
+Layer:   application
+
+## Lesson 9 - Structural table upgrades need neutral filler cells
+Date: 2026-04-13 | Trigger: correction
+Wrong:   The `fieldGroup -> table` import path filled an odd trailing slot in 2-column layouts with a bold header-style empty label cell and emitted value cells with `styles: undefined`.
+Correct: Adapter upgrades that synthesize table rows now emit neutral empty cells for missing positions and omit undefined style payloads so imported structure matches real user-editable table content.
+Rule:    When upgrading sparse structured content into native table cells, placeholders must be semantically empty rather than styled sentinel cells.
+Layer:   application
+
+## Lesson 10 - Native editor upgrades need reversible metadata on save
+Date: 2026-04-13 | Trigger: correction
+Wrong:   `fieldGroup` blocks were upgraded into native BlockNote `table` blocks on load, but the save path treated them as unsupported plain tables and lost the original structured `fieldGroup/field` model.
+Correct: Native editor upgrades that temporarily project structured MDDM blocks into BlockNote-native blocks must carry parseable metadata and a dedicated reverse adapter so save reconstructs the canonical storage shape.
+Rule:    Any adapter that maps canonical structured content into a native editor block type must implement an explicit reverse conversion before persistence.
+Layer:   application
+
+## Lesson 11 - Schema removals must update editor integration fixtures
+Date: 2026-04-13 | Trigger: correction
+Wrong:   `runtime-token-export.integration.test.tsx` still exported a `field` block after the BlockNote schema removed `field/fieldGroup`, causing BlockNote HTML serialization to read an undefined block spec.
+Correct: When a custom block type is removed from `mddmSchemaBlockSpecs`, editor integration tests and fixtures must be rewritten to use only the remaining registered block types.
+Rule:    Any schema-level block removal must be reflected immediately in editor integration fixtures so export/runtime tests only exercise registered block specs.
+Layer:   process
+
+## Lesson 12 - Native table adapters must accept both BlockNote cell encodings
+Date: 2026-04-13 | Trigger: correction
+Wrong:   The `fieldGroup -> table` upgrade assumed every table cell used BlockNote's simplified `InlineContent[]` encoding, so adding label-cell props broke reverse conversion and edit guards that compare table content.
+Correct: Native table adapters and guards must normalize both simplified array cells and full `{ type: "tableCell", props, content }` cells before reading or comparing structured table data.
+Rule:    Whenever a BlockNote table feature starts using cell-level props, all reverse adapters and block-level guards must handle both cell encodings explicitly.
+Layer:   application
+
+## Lesson 13 - Editor DOM guards must live at the active editing surface
+Date: 2026-04-13 | Trigger: correction
+Wrong:   `MDDMEditor` tried to reject label-cell edits via BlockNote `onBeforeChange`, after ProseMirror had already applied text mutations inside `<th>` cells.
+Correct: Header-cell edit locks now attach to the Tiptap view DOM and force `<th>` nodes to `contentEditable="false"` on mount and after DOM mutations.
+Rule:    When text editing happens in a lower editor layer, enforcement must be attached at that layer's live DOM or transaction surface rather than a higher-level block diff hook.
+Layer:   application

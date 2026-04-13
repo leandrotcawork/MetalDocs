@@ -53,7 +53,6 @@
    BlockNote wraps bn-block-content in a .react-renderer.node-X div, so that wrapper
    is the actual adjacent sibling of .bn-block-group — target it directly. */
 .bn-container .react-renderer.node-section + .bn-block-group,
-.bn-container .react-renderer.node-fieldGroup + .bn-block-group,
 .bn-container .react-renderer.node-repeatable + .bn-block-group,
 .bn-container .react-renderer.node-repeatableItem + .bn-block-group,
 .bn-container .react-renderer.node-richBlock + .bn-block-group,
@@ -68,8 +67,6 @@
 
 /* Force all structural blocks to fill the block-content flex container */
 .bn-container .bn-block-content[data-content-type="section"] > *,
-.bn-container .bn-block-content[data-content-type="fieldGroup"] > *,
-.bn-container .bn-block-content[data-content-type="field"] > *,
 .bn-container .bn-block-content[data-content-type="dataTable"] > *,
 .bn-container .bn-block-content[data-content-type="repeatable"] > *,
 .bn-container .bn-block-content[data-content-type="repeatableItem"] > *,
@@ -83,24 +80,40 @@
   font-size: var(--mddm-font-size-base);
 }
 
+.bn-container th {
+  user-select: none;
+  cursor: default;
+}
+
+/* Hide table add-row/column controls and column-resize handles on locked
+   fieldGroup tables. All native table blocks in the editor are fieldGroup-origin
+   (DataTable uses a custom PM node, not the native table block). */
+.bn-container .bn-extend-button {
+  display: none !important;
+}
+
+.bn-container .bn-table-drop-cursor {
+  display: none !important;
+}
+
+/* Force native tables to fill the full content width.
+   Also override BlockNote's inline width styles via the wrapper. */
+.bn-container .tableWrapper-inner {
+  width: 100% !important;
+}
+
+.bn-container .tableWrapper-inner > table {
+  width: 100% !important;
+  table-layout: fixed;
+}
+
 .bn-container [data-mddm-block]:focus-within {
   outline: 2px solid var(--mddm-accent-border);
   outline-offset: 1px;
   border-radius: var(--mddm-radius);
 }
 
-.bn-container .react-renderer.node-fieldGroup:has([data-columns]) + .bn-block-group {
-  display: grid;
-  gap: var(--mddm-spacing-sm);
-  grid-template-columns: 1fr;
-}
-
-.bn-container .react-renderer.node-fieldGroup:has([data-columns="2"]) + .bn-block-group {
-  grid-template-columns: 1fr 1fr;
-}
-
 .bn-container [data-content-type="section"] > .bn-block-outer > .bn-block > .bn-side-menu,
-.bn-container [data-content-type="fieldGroup"] > .bn-block-outer > .bn-block > .bn-side-menu,
 .bn-container [data-content-type="repeatable"] > .bn-block-outer > .bn-block > .bn-side-menu {
   display: none;
 }
@@ -140,6 +153,10 @@
   border-left: none;
 }
 
+.bn-container .bn-block-outer::before {
+  display: none !important;
+}
+
 /* Block spacing from tokens */
 .bn-container .bn-block {
   margin-bottom: var(--mddm-block-gap, 2px);
@@ -162,4 +179,66 @@
 
 [data-editable="false"] [data-mddm-block]:focus-within {
   outline: none;
+}
+
+/* DataTable node view chrome — addNodeView() bypasses BlockNote's
+   bn-block-content wrapper, so there is no data-content-type ancestor.
+   Target the mddm-block attribute directly, scoped under .bn-container. */
+.bn-container [data-mddm-block="dataTable"] {
+  margin: var(--mddm-spacing-md) 0;
+  border: 1px solid var(--mddm-table-border);
+  border-radius: calc(var(--mddm-radius) * 2);
+  overflow: hidden;
+  background: var(--mddm-raw-white);
+}
+
+.mddm-dt-header {
+  display: flex;
+  align-items: center;
+  gap: var(--mddm-spacing-sm);
+  padding: 0.75rem 1rem;
+  background: var(--mddm-table-header-bg);
+  border-bottom: 1px solid var(--mddm-table-border);
+}
+
+.mddm-dt-label {
+  color: var(--mddm-accent-dark);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.mddm-dt-container {
+  overflow-x: auto;
+}
+
+/* The actual table grid */
+.mddm-dt-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: var(--mddm-font-size-sm);
+}
+
+.mddm-dt-table th,
+.mddm-dt-table td {
+  border: 1px solid var(--mddm-table-border);
+  padding: var(--mddm-spacing-sm) 0.75rem;
+  vertical-align: top;
+  min-width: 80px;
+}
+
+.mddm-dt-table th {
+  background: var(--mddm-accent-light);
+  color: var(--mddm-accent-dark);
+  font-weight: 600;
+  text-align: left;
+}
+
+.mddm-dt-table tr:hover td {
+  background: var(--mddm-raw-gray-50);
+}
+
+/* tableParagraph inside cells */
+.mddm-dt-table p {
+  margin: 0;
+  min-height: 1.4rem;
 }

@@ -40,6 +40,52 @@ const _dataTablePMNode = TiptapNode.create({
   parseHTML() {
     return [{ tag: "div[data-content-type='dataTable']" }];
   },
+  addNodeView() {
+    return ({ node }) => {
+      let currentNode = node;
+
+      const dom = document.createElement("div");
+      dom.dataset.mddmBlock = "dataTable";
+
+      const header = document.createElement("div");
+      header.className = "mddm-dt-header";
+
+      const label = document.createElement("strong");
+      label.className = "mddm-dt-label";
+      header.appendChild(label);
+
+      const container = document.createElement("div");
+      container.className = "mddm-dt-container";
+
+      const table = document.createElement("table");
+      table.className = "mddm-dt-table";
+      container.appendChild(table);
+
+      dom.append(header, container);
+
+      const syncAttrs = (nextNode: typeof node) => {
+        dom.dataset.density = nextNode.attrs.density || "normal";
+        dom.dataset.locked = String(nextNode.attrs.locked);
+        label.textContent = nextNode.attrs.label || "Data Table";
+      };
+
+      syncAttrs(currentNode);
+
+      return {
+        dom,
+        contentDOM: table,
+        update(updatedNode) {
+          if (updatedNode.type !== currentNode.type) {
+            return false;
+          }
+
+          currentNode = updatedNode;
+          syncAttrs(currentNode);
+          return true;
+        },
+      };
+    };
+  },
   renderHTML({ HTMLAttributes }) {
     return [
       "div",

@@ -1,6 +1,6 @@
 /// <reference types="node" />
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -19,28 +19,34 @@ function normalizeWhitespace(value: string): string {
 }
 
 describe("MDDM styling contracts", () => {
-  it("keeps FieldGroup structural-only", () => {
-    const fieldGroupTsx = readRepoFile("blocks/FieldGroup.tsx");
+  it("removes deprecated field block specs and component files", () => {
+    const schema = readRepoFile("schema.ts");
+    const fieldTsxPath = resolve(mddmEditorDir, "blocks/Field.tsx");
+    const fieldCssPath = resolve(mddmEditorDir, "blocks/Field.module.css");
+    const fieldGroupTsxPath = resolve(mddmEditorDir, "blocks/FieldGroup.tsx");
+    const fieldGroupCssPath = resolve(mddmEditorDir, "blocks/FieldGroup.module.css");
 
-    expect(fieldGroupTsx).toMatch(
-      /render:\s*\(props\)\s*=>\s*\(\s*<div\b[^>]*\/>\s*\)/s,
-    );
-    expect(fieldGroupTsx).toContain('data-mddm-block="fieldGroup"');
-    expect(fieldGroupTsx).toContain("data-columns={props.block.props.columns}");
-    expect(fieldGroupTsx).toContain("data-locked={props.block.props.locked}");
-    expect(fieldGroupTsx).not.toContain("Field Group");
-    expect(fieldGroupTsx).not.toContain("coluna(s)");
+    expect(schema).not.toContain("./blocks/Field");
+    expect(schema).not.toContain("./blocks/FieldGroup");
+    expect(schema).not.toContain("field: Field()");
+    expect(schema).not.toContain("fieldGroup: FieldGroup()");
+    expect(existsSync(fieldTsxPath)).toBe(false);
+    expect(existsSync(fieldCssPath)).toBe(false);
+    expect(existsSync(fieldGroupTsxPath)).toBe(false);
+    expect(existsSync(fieldGroupCssPath)).toBe(false);
   });
 
-  it("keeps explicit side-menu hide selectors in the global bridge CSS", () => {
+  it("keeps the global bridge CSS free of removed field selectors", () => {
     const css = readRepoFile("mddm-editor-global.css");
     const normalizedCss = normalizeWhitespace(css);
 
+    expect(normalizedCss).not.toContain(".react-renderer.node-fieldGroup + .bn-block-group");
+    expect(normalizedCss).not.toContain('[data-content-type="fieldGroup"] > *');
+    expect(normalizedCss).not.toContain('[data-content-type="field"] > *');
+    expect(normalizedCss).not.toContain(".react-renderer.node-fieldGroup:has([data-columns]) + .bn-block-group");
+    expect(normalizedCss).not.toContain('[data-content-type="fieldGroup"] > .bn-block-outer > .bn-block > .bn-side-menu');
     expect(normalizedCss).toContain(
       '[data-content-type="section"] > .bn-block-outer > .bn-block > .bn-side-menu',
-    );
-    expect(normalizedCss).toContain(
-      '[data-content-type="fieldGroup"] > .bn-block-outer > .bn-block > .bn-side-menu',
     );
     expect(normalizedCss).toContain(
       '[data-content-type="repeatable"] > .bn-block-outer > .bn-block > .bn-side-menu',

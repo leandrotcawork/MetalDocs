@@ -1,13 +1,17 @@
 /// <reference types="node" />
 
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-const workspaceRoot = process.cwd();
+// Resolve paths relative to this test file so the tests work regardless of
+// which directory vitest is invoked from (app dir, repo root, or CI).
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const mddmEditorDir = resolve(__dirname, "..");
 
 function readRepoFile(relativePath: string): string {
-  return readFileSync(resolve(workspaceRoot, relativePath), "utf8");
+  return readFileSync(resolve(mddmEditorDir, relativePath), "utf8");
 }
 
 function normalizeWhitespace(value: string): string {
@@ -16,9 +20,7 @@ function normalizeWhitespace(value: string): string {
 
 describe("MDDM styling contracts", () => {
   it("keeps FieldGroup structural-only", () => {
-    const fieldGroupTsx = readRepoFile(
-      "src/features/documents/mddm-editor/blocks/FieldGroup.tsx",
-    );
+    const fieldGroupTsx = readRepoFile("blocks/FieldGroup.tsx");
 
     expect(fieldGroupTsx).toMatch(
       /render:\s*\(props\)\s*=>\s*\(\s*<div\b[^>]*\/>\s*\)/s,
@@ -31,9 +33,7 @@ describe("MDDM styling contracts", () => {
   });
 
   it("keeps explicit side-menu hide selectors in the global bridge CSS", () => {
-    const css = readRepoFile(
-      "src/features/documents/mddm-editor/mddm-editor-global.css",
-    );
+    const css = readRepoFile("mddm-editor-global.css");
     const normalizedCss = normalizeWhitespace(css);
 
     expect(normalizedCss).toContain(

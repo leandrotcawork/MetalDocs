@@ -7,6 +7,15 @@ export default defineConfig({
     include: ["src/**/*.test.{ts,tsx}"],
     environment: "jsdom",
     globals: false,
+    // "forks" isolates each test file in a child process. On Windows, forking
+    // many processes simultaneously causes STACK_TRACE_ERROR for some files
+    // because child_process.fork() fails under high concurrency. Capping at 4
+    // concurrent forks eliminates this without sacrificing isolation.
     pool: "forks",
+    poolOptions: {
+      forks: {
+        maxForks: 4,
+      },
+    },
   },
 });

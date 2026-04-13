@@ -131,3 +131,19 @@ rtk init --global       # Add RTK to ~/.claude/CLAUDE.md
 
 Overall average: **60-90% token reduction** on common development operations.
 <!-- /rtk-instructions -->
+
+## Project Test Commands
+
+Frontend tests MUST be run from the web app directory or via `make test`.
+Running `rtk vitest run` from the repo root uses the global npx vitest which
+cannot resolve the Vite plugin chain and causes non-deterministic failures.
+
+```bash
+# ✅ Correct — always use one of these
+make test                                                # from repo root
+cd frontend/apps/web && rtk vitest run                  # inline
+cd frontend/apps/web && rtk vitest run --reporter=verbose <path>  # single file
+
+# ❌ Wrong — global vitest, wrong transform pipeline
+rtk vitest run                                          # from repo root
+```

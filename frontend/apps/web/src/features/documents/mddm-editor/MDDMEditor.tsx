@@ -138,10 +138,10 @@ export function MDDMEditor({
     };
   }, [editor]);
 
-  // Prevent deletion of locked structural blocks (sections) via keyboard or
-  // programmatic transactions. The ProseMirror filterTransaction hook runs
-  // synchronously before every transaction is applied; if the number of locked
-  // nodes decreases the transaction is rejected outright.
+  // Prevent deletion of locked structural blocks (sections, repeatableItems) via
+  // keyboard or programmatic transactions. The ProseMirror filterTransaction hook
+  // runs synchronously before every transaction is applied; if the count of
+  // protected nodes decreases the transaction is rejected outright.
   useEffect(() => {
     const tiptap = (editor as any)?._tiptapEditor;
     if (!tiptap || typeof tiptap.registerPlugin !== "function") return;
@@ -153,7 +153,8 @@ export function MDDMEditor({
         if (!tr.docChanged) return true;
 
         const isLocked = (node: any): boolean =>
-          node.type.name === "section" && Boolean(node.attrs?.locked);
+          (node.type.name === "section" && Boolean(node.attrs?.locked)) ||
+          node.type.name === "repeatableItem";
 
         let before = 0;
         let after = 0;

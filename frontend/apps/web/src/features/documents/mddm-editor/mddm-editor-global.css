@@ -114,8 +114,9 @@
   border-radius: var(--mddm-radius);
 }
 
-/* Hide the side menu for locked section blocks themselves — they cannot be deleted */
-.bn-container .bn-block:has([data-locked="true"]) > .bn-side-menu {
+/* Hide the side menu for locked/structural blocks — they cannot be deleted */
+.bn-container .bn-block:has([data-locked="true"]) > .bn-side-menu,
+.bn-container .bn-block:has([data-mddm-block="repeatableItem"]) > .bn-side-menu {
   display: none !important;
 }
 

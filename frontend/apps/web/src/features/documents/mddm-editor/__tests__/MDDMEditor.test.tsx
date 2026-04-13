@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import React from "react";
 import { createRoot } from "react-dom/client";
 import { act } from "react-dom/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -33,13 +32,11 @@ vi.mock("@blocknote/react", () => ({
     config,
     ...spec,
   })),
-  FormattingToolbar: ({ children }: { children?: React.ReactNode }) => children ?? null,
-  BlockTypeSelect: () => null,
-  BlockNoteViewEditor: () => null,
+  FormattingToolbar: () => null,
 }));
 
 vi.mock("@blocknote/mantine", () => ({
-  BlockNoteView: ({ children }: { children?: React.ReactNode }) => children ?? null,
+  BlockNoteView: ({ children }: { children?: import("react").ReactNode }) => children ?? null,
 }));
 
 vi.mock("../schema", () => ({

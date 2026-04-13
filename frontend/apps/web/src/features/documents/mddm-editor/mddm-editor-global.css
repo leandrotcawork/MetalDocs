@@ -37,10 +37,21 @@
   --mddm-font-size-section: 0.85rem;
 }
 
-/* BlockNote container — context wrapper rendered by BlockNoteView */
-.bn-container {
+/* BlockNote container — context wrapper rendered by BlockNoteView.
+   Scoped under [data-mddm-editor-root="true"] to prevent leaking into
+   non-MDDM BlockNote instances on the same page. */
+[data-mddm-editor-root="true"] .bn-container {
   color: var(--mddm-raw-gray-700);
   font-family: var(--mddm-font-family);
+}
+
+/* Suppress structural table handles — MDDM manages table chrome via capabilities,
+   not BlockNote's native drag/resize handles. Scoped to the editor root so these
+   rules don't affect non-MDDM editors. */
+[data-mddm-editor-root="true"] .bn-table-handle,
+[data-mddm-editor-root="true"] .bn-table-handle-menu,
+[data-mddm-editor-root="true"] .bn-table-cell-handle {
+  display: none !important;
 }
 
 /* BlockNote's .bn-editor has 54px padding-left built-in for its drag-handle gutter.

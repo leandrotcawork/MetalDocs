@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
+import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { act } from "react-dom/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { defaultLayoutTokens } from "../engine/layout-ir";
 import { getEditorTokens } from "../engine/editor-tokens";
@@ -10,10 +10,12 @@ const {
   useCreateBlockNoteMock,
   uploadAttachmentMock,
   getAttachmentDownloadURLMock,
+  blockNoteViewPropsMock,
 } = vi.hoisted(() => ({
   useCreateBlockNoteMock: vi.fn(() => editor),
   uploadAttachmentMock: vi.fn(),
   getAttachmentDownloadURLMock: vi.fn(),
+  blockNoteViewPropsMock: vi.fn(),
 }));
 
 const editor = {
@@ -37,11 +39,23 @@ vi.mock("@blocknote/react", () => ({
   })),
   BlockNoteViewEditor: () => null,
   FormattingToolbar: () => null,
-  getFormattingToolbarItems: () => [],
+  BasicTextStyleButton: () => null,
+  BlockTypeSelect: () => null,
+  ColorStyleButton: () => null,
+  CreateLinkButton: () => null,
+  NestBlockButton: () => null,
+  UnnestBlockButton: () => null,
 }));
 
 vi.mock("@blocknote/mantine", () => ({
-  BlockNoteView: ({ children }: { children?: import("react").ReactNode }) => children ?? null,
+  BlockNoteView: ({ children, ...props }: { children?: import("react").ReactNode }) => {
+    blockNoteViewPropsMock(props);
+    return children ?? null;
+  },
+}));
+
+vi.mock("../toolbar/MddmTextAlignButton", () => ({
+  MddmTextAlignButton: () => null,
 }));
 
 vi.mock("../schema", () => ({
@@ -59,6 +73,63 @@ describe("MDDMEditor", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     tiptapDom = document.createElement("div");
+  });
+
+  it("mounts the formatting toolbar when the editor is editable", () => {
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const root = createRoot(host);
+
+    act(() => {
+      root.render(<MDDMEditor />);
+    });
+
+    const editorRoot = host.querySelector('[data-testid="mddm-editor-root"]');
+    const toolbar = host.querySelector('[data-testid="mddm-editor-toolbar"]');
+    const paper = host.querySelector('[data-testid="mddm-editor-paper"]');
+
+    expect(editorRoot).not.toBeNull();
+    expect(toolbar).not.toBeNull();
+    expect(paper).not.toBeNull();
+    expect(host.querySelector('[data-mddm-editor-root="true"]')).not.toBeNull();
+
+    const props = blockNoteViewPropsMock.mock.calls[0]?.[0] as
+      | { tableHandles?: boolean; editable?: boolean }
+      | undefined;
+    expect(props?.tableHandles).toBe(false);
+    expect(props?.editable).toBe(true);
+
+    act(() => {
+      root.unmount();
+    });
+
+    host.remove();
+  });
+
+  it("omits the toolbar band in readOnly mode", () => {
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const root = createRoot(host);
+
+    act(() => {
+      root.render(<MDDMEditor readOnly />);
+    });
+
+    expect(host.querySelector('[data-testid="mddm-editor-root"]')).not.toBeNull();
+    expect(host.querySelector('[data-testid="mddm-editor-toolbar"]')).toBeNull();
+    expect(host.querySelector('[data-testid="mddm-editor-paper"]')).not.toBeNull();
+
+    const props = blockNoteViewPropsMock.mock.calls[0]?.[0] as
+      | { tableHandles?: boolean; editable?: boolean }
+      | undefined;
+    expect(props?.tableHandles).toBe(false);
+    expect(props?.editable).toBe(false);
+
+    act(() => {
+      root.unmount();
+    });
+
+    host.remove();
   });
 
   it("attaches theme tokens before calling onEditorReady", () => {
@@ -138,10 +209,9 @@ describe("MDDMEditor", () => {
     host.remove();
   });
 
-  it("locks table cells that carry data-background-color (fieldGroup label cells)", async () => {
-    // fieldGroupToTable marks label cells with backgroundColor:"gray" which
-    // BlockNote renders as data-background-color="gray" in the DOM. The lock
-    // is driven by the template's explicit header marker, not column position.
+  it("keeps unmarked table cells editable and locks cells marked by data-background-color", async () => {
+    // This uses the closest stable DOM invariant exposed by BlockNote: template
+    // label cells carry data-background-color, while regular value cells do not.
     const host = document.createElement("div");
     document.body.appendChild(host);
     const root = createRoot(host);
@@ -167,11 +237,42 @@ describe("MDDMEditor", () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
-    expect(labelTd.contentEditable).toBe("false");  // td with background-color → locked
-    expect(valueTd.contentEditable).toBe("true");   // td without background-color → editable
-    expect(labelTh.contentEditable).toBe("false");  // th with background-color → locked
+    expect(labelTd.contentEditable).toBe("false");
+    expect(valueTd.contentEditable).toBe("true");
+    expect(labelTh.contentEditable).toBe("false");
 
     act(() => { root.unmount(); });
+    host.remove();
+  });
+
+  it("locks an existing cell when data-background-color is added after mount", async () => {
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const root = createRoot(host);
+
+    act(() => {
+      root.render(<MDDMEditor />);
+    });
+
+    const delayedLabelTd = document.createElement("td");
+    delayedLabelTd.contentEditable = "true";
+    tiptapDom.append(delayedLabelTd);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(delayedLabelTd.contentEditable).toBe("true");
+
+    delayedLabelTd.setAttribute("data-background-color", "gray");
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(delayedLabelTd.contentEditable).toBe("false");
+
+    act(() => {
+      root.unmount();
+    });
     host.remove();
   });
 
@@ -254,4 +355,5 @@ describe("MDDMEditor", () => {
 
     host.remove();
   });
+
 });

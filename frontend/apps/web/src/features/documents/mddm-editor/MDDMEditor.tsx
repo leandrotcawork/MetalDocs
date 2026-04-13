@@ -1,11 +1,17 @@
 import { type PartialBlock } from "@blocknote/core";
 import { BlockNoteView } from "@blocknote/mantine";
 import {
+  BasicTextStyleButton,
   BlockNoteViewEditor,
+  BlockTypeSelect,
+  ColorStyleButton,
+  CreateLinkButton,
   FormattingToolbar,
-  getFormattingToolbarItems,
+  NestBlockButton,
+  UnnestBlockButton,
   useCreateBlockNote,
 } from "@blocknote/react";
+import { MddmTextAlignButton } from "./toolbar/MddmTextAlignButton";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { useEffect, useMemo, type CSSProperties } from "react";
 import "@blocknote/core/fonts/inter.css";
@@ -141,7 +147,7 @@ export function MDDMEditor({
     const observer = new MutationObserver(() => {
       lockHeaders();
     });
-    observer.observe(root, { childList: true, subtree: true });
+    observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-background-color"] });
 
     return () => {
       observer.disconnect();
@@ -211,18 +217,42 @@ export function MDDMEditor({
   }, [editor, readOnly]);
 
   return (
-    <div className={styles.pageShell}>
+    <div className={styles.pageShell} data-testid="mddm-editor-root">
       <BlockNoteView
         editor={editor}
         editable={!readOnly}
         formattingToolbar={false}
+        tableHandles={false}
         renderEditor={false}
         onChange={(currentEditor) => onChange?.(currentEditor.document)}
       >
         {!readOnly && (
-          <div className={styles.toolbarWrapper}>
+          <div
+            className={styles.toolbarWrapper}
+            data-testid="mddm-editor-toolbar"
+            onMouseDown={(e) => {
+              // Prevent toolbar buttons from stealing DOM focus from the editor.
+              // Without this, clicking a button moves activeElement to the <button>,
+              // which causes the cursor to vanish from native table cells (nested
+              // contenteditable contexts) even though ProseMirror's internal
+              // selection is preserved. This is the standard contenteditable toolbar
+              // pattern — click events still fire normally.
+              e.preventDefault();
+            }}
+          >
             <FormattingToolbar>
-              {getFormattingToolbarItems()}
+              <BlockTypeSelect key="blockTypeSelect" />
+              <BasicTextStyleButton basicTextStyle="bold" key="boldStyleButton" />
+              <BasicTextStyleButton basicTextStyle="italic" key="italicStyleButton" />
+              <BasicTextStyleButton basicTextStyle="underline" key="underlineStyleButton" />
+              <BasicTextStyleButton basicTextStyle="strike" key="strikeStyleButton" />
+              <MddmTextAlignButton textAlignment="left" key="textAlignLeftButton" />
+              <MddmTextAlignButton textAlignment="center" key="textAlignCenterButton" />
+              <MddmTextAlignButton textAlignment="right" key="textAlignRightButton" />
+              <ColorStyleButton key="colorStyleButton" />
+              <NestBlockButton key="nestBlockButton" />
+              <UnnestBlockButton key="unnestBlockButton" />
+              <CreateLinkButton key="createLinkButton" />
             </FormattingToolbar>
           </div>
         )}
@@ -230,6 +260,8 @@ export function MDDMEditor({
           className={styles.editorRoot}
           style={cssVars as CSSProperties}
           data-editable={!readOnly}
+          data-mddm-editor-root="true"
+          data-testid="mddm-editor-paper"
         >
           <BlockNoteViewEditor />
         </div>

@@ -807,16 +807,40 @@
 .workspace-main.is-create-view,
 .workspace-main.is-content-builder-view {
   display: block;
-  /* Override the bidirectional overflow:auto from .is-toolbarless.
-     MAIN must be a strictly vertical scroller — overflow-x:auto on a two-axis
-     container triggers extra Windows 11 compositor scroll affordances (ghost
-     gray overlay bar) even when there is no actual horizontal overflow. */
+  /* Strictly vertical scroller — suppress overflow-x:auto inherited from .is-toolbarless */
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior-x: none;
   overscroll-behavior-y: contain;
+  /* color-scheme: light prevents Opera/Chrome forced dark mode from overriding scrollbar-color */
+  color-scheme: light;
+  /* Standard scrollbar model (Chrome 121+) */
   scrollbar-width: thin;
   scrollbar-color: rgba(139, 46, 58, 0.72) transparent;
+}
+
+/* Webkit scrollbar fallback — covers Chromium before Chrome 121 and ensures
+   wine gradient is used instead of the flat scrollbar-color in supporting browsers */
+.workspace-main.is-create-view::-webkit-scrollbar,
+.workspace-main.is-content-builder-view::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.workspace-main.is-create-view::-webkit-scrollbar-track,
+.workspace-main.is-content-builder-view::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.workspace-main.is-create-view::-webkit-scrollbar-thumb,
+.workspace-main.is-content-builder-view::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(176, 88, 102, 0.94), rgba(107, 31, 42, 0.98));
+  border-radius: 999px;
+}
+
+.workspace-main.is-create-view::-webkit-scrollbar-thumb:hover,
+.workspace-main.is-content-builder-view::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(198, 106, 120, 0.96), rgba(128, 35, 49, 1));
 }
 
 .workspace-main.is-create-view .create-doc-layout {

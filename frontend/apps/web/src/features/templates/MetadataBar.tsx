@@ -126,19 +126,28 @@ export function MetadataBar({
     }
   }
 
+  const compactActionButtonStyle: React.CSSProperties = {
+    fontSize: "12px",
+    lineHeight: 1.1,
+    padding: "0.45rem 0.8rem",
+    minHeight: "34px",
+    borderRadius: "10px",
+  };
+
   return (
     <div
       data-testid="metadata-bar"
+      data-density="compact"
       style={{
         display: "flex",
         alignItems: "center",
-        gap: "0.75rem",
-        padding: "0.5rem 1rem",
-        borderBottom: "1px solid rgba(255,255,255,0.1)",
-        background: "var(--color-surface, #1a1a2e)",
+        gap: "0.5rem",
+        padding: "0.375rem 0.75rem",
+        borderBottom: "1px solid rgba(255,255,255,0.08)",
+        background: "var(--color-surface, #1f2031)",
         flexShrink: 0,
         flexWrap: "wrap",
-        minHeight: "48px",
+        minHeight: "42px",
       }}
     >
       {/* Editable template name */}
@@ -251,7 +260,10 @@ export function MetadataBar({
           onClick={() => void handlePreviewDocx()}
           disabled={isPreviewingDocx}
           title="Baixar visualizacao DOCX do rascunho atual"
-          style={{ fontSize: "13px", opacity: isPreviewingDocx ? 0.6 : 1 }}
+          style={{
+            ...compactActionButtonStyle,
+            opacity: isPreviewingDocx ? 0.6 : 1,
+          }}
         >
           {isPreviewingDocx ? "Gerando DOCX..." : "Visualizar DOCX"}
         </button>
@@ -261,7 +273,7 @@ export function MetadataBar({
           className="ghost-button"
           onClick={handleDiscardClick}
           title="Descartar rascunho e voltar para a versao publicada"
-          style={{ fontSize: "13px" }}
+          style={compactActionButtonStyle}
         >
           Descartar rascunho
         </button>
@@ -272,7 +284,7 @@ export function MetadataBar({
           onClick={onSave}
           title={isDirty ? "Salvar alteracoes" : "Nenhuma alteracao pendente"}
           style={{
-            fontSize: "13px",
+            ...compactActionButtonStyle,
             opacity: isDirty ? 1 : 0.6,
           }}
         >
@@ -283,7 +295,7 @@ export function MetadataBar({
           type="button"
           onClick={onPublish}
           title="Publicar template (valida antes de enviar)"
-          style={{ fontSize: "13px" }}
+          style={compactActionButtonStyle}
         >
           Publicar
         </button>

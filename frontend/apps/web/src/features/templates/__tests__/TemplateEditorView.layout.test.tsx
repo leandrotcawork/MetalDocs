@@ -6,7 +6,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const {
   useTemplateDraftMock,
   useTemplatesStoreMock,
-  metadataBarMock,
   blockPaletteMock,
   propertySidebarMock,
   mddmEditorMock,
@@ -15,7 +14,6 @@ const {
 } = vi.hoisted(() => ({
   useTemplateDraftMock: vi.fn(),
   useTemplatesStoreMock: vi.fn(),
-  metadataBarMock: vi.fn(),
   blockPaletteMock: vi.fn(),
   propertySidebarMock: vi.fn(),
   mddmEditorMock: vi.fn(),
@@ -29,13 +27,6 @@ vi.mock("../useTemplateDraft", () => ({
 
 vi.mock("../../../store/templates.store", () => ({
   useTemplatesStore: useTemplatesStoreMock,
-}));
-
-vi.mock("../MetadataBar", () => ({
-  MetadataBar: (props: unknown) => {
-    metadataBarMock(props);
-    return <header data-testid="mock-metadata-bar" />;
-  },
 }));
 
 vi.mock("../BlockPalette", () => ({
@@ -139,5 +130,20 @@ describe("TemplateEditorView layout", () => {
     expect(documentPane?.querySelector('[data-testid="mock-mddm-editor"]')).not.toBeNull();
     expect(workspace?.querySelector('[data-testid="mock-block-palette"]')).not.toBeNull();
     expect(workspace?.querySelector('[data-testid="mock-property-sidebar"]')).not.toBeNull();
+  });
+
+  it("renders compact template actions instead of large workspace CTAs", () => {
+    act(() => {
+      root.render(<TemplateEditorView profileCode="po" templateKey="tpl-ux" />);
+    });
+
+    const bar = host.querySelector('[data-testid="metadata-bar"]');
+
+    expect(bar).not.toBeNull();
+    expect(bar?.getAttribute("data-density")).toBe("compact");
+    expect(bar?.querySelector('[data-testid="template-preview-docx-btn"]')).not.toBeNull();
+    expect(bar?.querySelector('[data-testid="template-discard-btn"]')).not.toBeNull();
+    expect(bar?.querySelector('[data-testid="template-save-btn"]')).not.toBeNull();
+    expect(bar?.querySelector('[data-testid="template-publish-btn"]')).not.toBeNull();
   });
 });

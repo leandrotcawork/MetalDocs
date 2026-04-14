@@ -327,3 +327,10 @@ Wrong:   The density test ran at default viewport (hitting responsive fallback) 
 Correct: The test now forces a desktop viewport and asserts maximum left inset while keeping inset symmetry checks.
 Rule:    When validating primary desktop layout behavior, browser tests must set a desktop viewport and assert both symmetry and absolute margin bounds.
 Layer:   process
+
+## Lesson 48 - UX layout tests must assert real controls, not marker attributes alone
+Date: 2026-04-14 | Trigger: correction
+Wrong:   The metadata compactness test only asserted `data-density=\"compact\"`, so CTA regressions could pass while the marker remained unchanged.
+Correct: The test now validates the real metadata action controls (preview/discard/save/publish) in addition to the compact density marker.
+Rule:    UI regression tests should anchor on real user-facing controls and contracts, not only synthetic marker attributes.
+Layer:   process

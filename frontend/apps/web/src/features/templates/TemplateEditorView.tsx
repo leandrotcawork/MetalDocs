@@ -3,8 +3,12 @@ import type { PartialBlock } from "@blocknote/core";
 import { MDDMEditor } from "../documents/mddm-editor/MDDMEditor";
 import { MetadataBar } from "./MetadataBar";
 import { PropertySidebar } from "./PropertySidebar";
+import { BlockPalette } from "./BlockPalette";
+import { ValidationPanel } from "./ValidationPanel";
+import { StrippedFieldsBanner } from "./StrippedFieldsBanner";
 import { useTemplateDraft } from "./useTemplateDraft";
 import { useTemplatesStore } from "../../store/templates.store";
+import type { TemplateDraftDTO } from "../../api/templates";
 
 type TemplateEditorViewProps = {
   profileCode: string;
@@ -17,7 +21,17 @@ export function TemplateEditorView({ profileCode, templateKey }: TemplateEditorV
 
   const { draft, isLoading, error, saveDraft, publish, discardDraft } = useTemplateDraft({ templateKey });
 
-  const { isDirty, markDirty, markClean, clearTemplate, validationErrors, selectedBlockId, setSelectedBlock } = useTemplatesStore();
+  const {
+    isDirty,
+    markDirty,
+    markClean,
+    clearTemplate,
+    validationErrors,
+    setValidationErrors,
+    selectedBlockId,
+    setSelectedBlock,
+    setDraft,
+  } = useTemplatesStore();
 
   // Cleanup store when the view unmounts
   useEffect(() => {
@@ -54,6 +68,30 @@ export function TemplateEditorView({ profileCode, templateKey }: TemplateEditorV
     // once that endpoint is available. For now it's a display-only update.
   }, []);
 
+  const handleValidationSelectBlock = useCallback((blockId: string) => {
+    setSelectedBlock(blockId);
+    // Scroll the editor to the selected block
+    try {
+      const editor = editorRef.current as any;
+      if (editor?.setTextCursorPosition) {
+        const block = editor.getBlock?.(blockId);
+        if (block) {
+          editor.setTextCursorPosition(block, "start");
+        }
+      }
+    } catch {
+      // Ignore scroll errors — selection is still set in the store
+    }
+  }, [setSelectedBlock]);
+
+  const handleValidationDismiss = useCallback(() => {
+    setValidationErrors([]);
+  }, [setValidationErrors]);
+
+  const handleStrippedAcknowledged = useCallback((updatedDraft: TemplateDraftDTO) => {
+    setDraft(updatedDraft);
+  }, [setDraft]);
+
   if (isLoading) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontSize: "14px", color: "rgba(255,255,255,0.5)" }}>
@@ -72,6 +110,7 @@ export function TemplateEditorView({ profileCode, templateKey }: TemplateEditorV
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden" }}>
+      {/* Top bar */}
       <MetadataBar
         templateName={draft.name}
         profileCode={profileCode}
@@ -85,35 +124,21 @@ export function TemplateEditorView({ profileCode, templateKey }: TemplateEditorV
         onNameChange={handleNameChange}
       />
 
-      {/* Validation errors panel (shown below MetadataBar when publish fails) */}
-      {validationErrors.length > 0 && (
-        <div
-          data-testid="validation-errors-panel"
-          style={{
-            padding: "0.5rem 1rem",
-            background: "rgba(239,68,68,0.1)",
-            borderBottom: "1px solid rgba(239,68,68,0.3)",
-            fontSize: "12px",
-            color: "#fca5a5",
-            flexShrink: 0,
-          }}
-        >
-          <strong>Erros de validacao ({validationErrors.length}):</strong>
-          <ul style={{ margin: "4px 0 0 0", paddingLeft: "1.25rem" }}>
-            {validationErrors.slice(0, 5).map((e, i) => (
-              <li key={i}>
-                [{e.blockType}] {e.field}: {e.reason}
-              </li>
-            ))}
-            {validationErrors.length > 5 && (
-              <li>...e mais {validationErrors.length - 5} erro(s)</li>
-            )}
-          </ul>
-        </div>
+      {/* Stripped-fields banner (below MetadataBar, above editor) */}
+      {draft.hasStrippedFields && (
+        <StrippedFieldsBanner
+          templateKey={templateKey}
+          lockVersion={draft.lockVersion}
+          onAcknowledged={handleStrippedAcknowledged}
+        />
       )}
 
-      {/* Editor + Sidebar row — fills remaining height */}
+      {/* Editor + Sidebar row — fills remaining height, position:relative for ValidationPanel */}
       <div style={{ flex: 1, overflow: "hidden", display: "flex", position: "relative" }}>
+        {/* Left: Block Palette */}
+        <BlockPalette editor={editorRef.current} />
+
+        {/* Center: MDDM Editor */}
         <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
           <MDDMEditor
             initialContent={Array.isArray(draft.blocks) ? (draft.blocks as PartialBlock[]) : undefined}
@@ -122,10 +147,21 @@ export function TemplateEditorView({ profileCode, templateKey }: TemplateEditorV
             onSelectionChange={setSelectedBlock}
           />
         </div>
+
+        {/* Right: Property Sidebar */}
         <PropertySidebar
           editor={editorRef.current}
           selectedBlockId={selectedBlockId}
         />
+
+        {/* Bottom: Validation panel (slides up from bottom, absolute within the row) */}
+        {validationErrors.length > 0 && (
+          <ValidationPanel
+            errors={validationErrors}
+            onSelectBlock={handleValidationSelectBlock}
+            onDismiss={handleValidationDismiss}
+          />
+        )}
       </div>
     </div>
   );

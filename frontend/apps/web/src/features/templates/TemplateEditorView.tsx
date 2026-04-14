@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from "react";
 import type { PartialBlock } from "@blocknote/core";
 import { MDDMEditor } from "../documents/mddm-editor/MDDMEditor";
 import { MetadataBar } from "./MetadataBar";
+import { PropertySidebar } from "./PropertySidebar";
 import { useTemplateDraft } from "./useTemplateDraft";
 import { useTemplatesStore } from "../../store/templates.store";
 
@@ -16,7 +17,7 @@ export function TemplateEditorView({ profileCode, templateKey }: TemplateEditorV
 
   const { draft, isLoading, error, saveDraft, publish, discardDraft } = useTemplateDraft({ templateKey });
 
-  const { isDirty, markDirty, markClean, clearTemplate, validationErrors } = useTemplatesStore();
+  const { isDirty, markDirty, markClean, clearTemplate, validationErrors, selectedBlockId, setSelectedBlock } = useTemplatesStore();
 
   // Cleanup store when the view unmounts
   useEffect(() => {
@@ -111,12 +112,19 @@ export function TemplateEditorView({ profileCode, templateKey }: TemplateEditorV
         </div>
       )}
 
-      {/* Editor surface — fills remaining height */}
-      <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
-        <MDDMEditor
-          initialContent={Array.isArray(draft.blocks) ? (draft.blocks as PartialBlock[]) : undefined}
-          onEditorReady={handleEditorReady}
-          onChange={handleChange}
+      {/* Editor + Sidebar row — fills remaining height */}
+      <div style={{ flex: 1, overflow: "hidden", display: "flex", position: "relative" }}>
+        <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
+          <MDDMEditor
+            initialContent={Array.isArray(draft.blocks) ? (draft.blocks as PartialBlock[]) : undefined}
+            onEditorReady={handleEditorReady}
+            onChange={handleChange}
+            onSelectionChange={setSelectedBlock}
+          />
+        </div>
+        <PropertySidebar
+          editor={editorRef.current}
+          selectedBlockId={selectedBlockId}
         />
       </div>
     </div>

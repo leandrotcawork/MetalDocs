@@ -36,6 +36,7 @@ export type MDDMEditorProps = {
   readOnly?: boolean;
   theme?: MDDMTheme;
   onEditorReady?: (editor: unknown) => void;
+  onSelectionChange?: (blockId: string | null) => void;
   documentId?: string;
 };
 
@@ -45,6 +46,7 @@ export function MDDMEditor({
   readOnly,
   theme,
   onEditorReady,
+  onSelectionChange,
   documentId,
 }: MDDMEditorProps) {
   const uploadFile = useMemo(() => {
@@ -187,6 +189,41 @@ export function MDDMEditor({
   useEffect(() => {
     onEditorReady?.(editor);
   }, [editor, onEditorReady]);
+
+  // Subscribe to Tiptap's selectionUpdate event and report the BlockNote block
+  // that contains the cursor. Fires onSelectionChange(blockId) on selection moves
+  // and onSelectionChange(null) when the editor loses its selection.
+  useEffect(() => {
+    if (!onSelectionChange) return undefined;
+
+    const tiptap = (editor as any)?._tiptapEditor;
+    if (!tiptap) return undefined;
+
+    const handler = () => {
+      const { from } = tiptap.state.selection;
+      // resolvePos lets us walk the ProseMirror node tree to find the BlockNote block id.
+      try {
+        const resolvedPos = tiptap.state.doc.resolve(from);
+        // Walk up to find a node with a blockId attribute (BlockNote block nodes carry `id`).
+        for (let depth = resolvedPos.depth; depth >= 0; depth--) {
+          const node = resolvedPos.node(depth);
+          const blockId: string | undefined = node.attrs?.id;
+          if (blockId) {
+            onSelectionChange(blockId);
+            return;
+          }
+        }
+      } catch {
+        // ignore resolve errors (e.g. out-of-range positions)
+      }
+      onSelectionChange(null);
+    };
+
+    tiptap.on("selectionUpdate", handler);
+    return () => {
+      tiptap.off("selectionUpdate", handler);
+    };
+  }, [editor, onSelectionChange]);
 
   // Place cursor in first inline-editable block on mount so toolbar items
   // have a ProseMirror selection and render immediately.

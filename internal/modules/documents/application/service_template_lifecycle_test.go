@@ -416,6 +416,88 @@ func TestDeprecateAuthorized_RBACDenied(t *testing.T) {
 	}
 }
 
+func TestGetLatestPublishedTemplate_IgnoresDeprecatedLatestVersion(t *testing.T) {
+	repo := documentmemory.NewRepository()
+	svc := NewService(repo, nil, nil)
+	ctx := ctxBypassed()
+
+	if err := repo.UpsertDocumentTemplateVersionForTest(ctx, domain.DocumentTemplateVersion{
+		TemplateKey: "po-template",
+		Version:     1,
+		ProfileCode: "po",
+		Name:        "Published v1",
+		Status:      string(domain.TemplateStatusPublished),
+	}); err != nil {
+		t.Fatalf("UpsertDocumentTemplateVersionForTest(v1): %v", err)
+	}
+	if err := repo.UpsertDocumentTemplateVersionForTest(ctx, domain.DocumentTemplateVersion{
+		TemplateKey: "po-template",
+		Version:     2,
+		ProfileCode: "po",
+		Name:        "Deprecated v2",
+		Status:      string(domain.TemplateStatusDeprecated),
+	}); err != nil {
+		t.Fatalf("UpsertDocumentTemplateVersionForTest(v2): %v", err)
+	}
+
+	got, err := svc.GetLatestPublishedTemplate(ctx, "po-template")
+	if err != nil {
+		t.Fatalf("GetLatestPublishedTemplate() error = %v", err)
+	}
+	if got.Version != 1 {
+		t.Fatalf("version = %d, want 1", got.Version)
+	}
+	if got.Status != string(domain.TemplateStatusPublished) {
+		t.Fatalf("status = %q, want %q", got.Status, string(domain.TemplateStatusPublished))
+	}
+}
+
+func TestEditPublishedAuthorized_IgnoresDeprecatedLatestVersion(t *testing.T) {
+	repo := documentmemory.NewRepository()
+	svc := NewService(repo, nil, nil)
+	ctx := ctxBypassed()
+
+	if err := repo.UpsertDocumentTemplateVersionForTest(ctx, domain.DocumentTemplateVersion{
+		TemplateKey: "po-edit-template",
+		Version:     1,
+		ProfileCode: "po",
+		Name:        "Published v1",
+		Definition: map[string]any{
+			"type": "page",
+		},
+		Status: string(domain.TemplateStatusPublished),
+	}); err != nil {
+		t.Fatalf("UpsertDocumentTemplateVersionForTest(v1): %v", err)
+	}
+	if err := repo.UpsertDocumentTemplateVersionForTest(ctx, domain.DocumentTemplateVersion{
+		TemplateKey: "po-edit-template",
+		Version:     2,
+		ProfileCode: "po",
+		Name:        "Deprecated v2",
+		Definition: map[string]any{
+			"type": "page",
+			"v":    2,
+		},
+		Status: string(domain.TemplateStatusDeprecated),
+	}); err != nil {
+		t.Fatalf("UpsertDocumentTemplateVersionForTest(v2): %v", err)
+	}
+
+	draft, err := svc.EditPublishedAuthorized(ctx, "po-edit-template", "actor-1")
+	if err != nil {
+		t.Fatalf("EditPublishedAuthorized() error = %v", err)
+	}
+	if draft == nil {
+		t.Fatal("expected non-nil draft")
+	}
+	if draft.BaseVersion != 1 {
+		t.Fatalf("BaseVersion = %d, want 1", draft.BaseVersion)
+	}
+	if draft.Name != "Published v1" {
+		t.Fatalf("Name = %q, want %q", draft.Name, "Published v1")
+	}
+}
+
 // --- Read-only methods ------------------------------------------------------
 
 func TestGetTemplateDraft_NotFound(t *testing.T) {

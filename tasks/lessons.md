@@ -144,3 +144,10 @@ Wrong:   Template RBAC denials returned `domain.ErrDocumentNotFound`, conflating
 Correct: Template RBAC denials now return `domain.ErrForbidden`, and delivery maps it to HTTP 404 with debug-only logging for security-through-obscurity.
 Rule:    Authorization denials must use a dedicated domain sentinel and only be masked at the delivery boundary.
 Layer:   application
+
+## Lesson 21 - Lifecycle selection must read and filter template status
+Date: 2026-04-14 | Trigger: correction
+Wrong:   `ListDocumentTemplateVersions` did not scan `status`, and lifecycle "latest published" selection used max version by key without `published` status filtering.
+Correct: `ListDocumentTemplateVersions` now selects/scans `status`, and lifecycle selectors accept only `published` (or empty legacy status) before choosing the max version.
+Rule:    Any lifecycle decision that depends on version state must load status from persistence and filter status explicitly before version ordering.
+Layer:   application

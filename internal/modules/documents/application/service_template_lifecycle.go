@@ -41,7 +41,7 @@ func (s *Service) GetLatestPublishedTemplate(ctx context.Context, key string) (d
 	var latest *domain.DocumentTemplateVersion
 	for i := range allVersions {
 		v := &allVersions[i]
-		if v.TemplateKey == key {
+		if v.TemplateKey == key && isPublishedStatus(v.Status) {
 			if latest == nil || v.Version > latest.Version {
 				latest = v
 			}
@@ -134,7 +134,7 @@ func (s *Service) EditPublishedAuthorized(ctx context.Context, key string, actor
 	var latestVersion *domain.DocumentTemplateVersion
 	for i := range allVersions {
 		v := &allVersions[i]
-		if v.TemplateKey == key {
+		if v.TemplateKey == key && isPublishedStatus(v.Status) {
 			if latestVersion == nil || v.Version > latestVersion.Version {
 				latestVersion = v
 			}
@@ -738,4 +738,9 @@ func collectLeafErrors(verr *jsonschema.ValidationError) []domain.PublishError {
 		out = append(out, collectLeafErrors(cause)...)
 	}
 	return out
+}
+
+func isPublishedStatus(status string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(status))
+	return normalized == "" || normalized == string(domain.TemplateStatusPublished)
 }

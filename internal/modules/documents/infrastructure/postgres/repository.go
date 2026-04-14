@@ -1243,7 +1243,7 @@ WHERE template_key = $1 AND version = $2
 
 func (r *Repository) ListDocumentTemplateVersions(ctx context.Context, profileCode string) ([]domain.DocumentTemplateVersion, error) {
 	const q = `
-SELECT template_key, version, profile_code, schema_version, name, editor, content_format, body_html, definition_json, created_at, export_config
+SELECT template_key, version, profile_code, schema_version, name, editor, content_format, body_html, definition_json, status, created_at, export_config
 FROM metaldocs.document_template_versions
 WHERE ($1 = '' OR profile_code = $1)
 ORDER BY profile_code ASC, template_key ASC, version DESC
@@ -1269,6 +1269,7 @@ ORDER BY profile_code ASC, template_key ASC, version DESC
 			&item.ContentFormat,
 			&item.Body,
 			&definitionJSON,
+			&item.Status,
 			&item.CreatedAt,
 			&exportConfigJSON,
 		); err != nil {

@@ -4,6 +4,7 @@ import type { DocumentProfileGovernanceItem, DocumentProfileItem, DocumentProfil
 import { WorkspaceDataState } from "./WorkspaceDataState";
 import { WorkspaceViewFrame } from "./WorkspaceViewFrame";
 import { FilterDropdown, type SelectMenuOption } from "./ui/FilterDropdown";
+import { TemplateListPanel } from "./templates/TemplateListPanel";
 import styles from "./RegistryExplorer.module.css";
 
 type LoadState = "idle" | "loading" | "ready" | "error";
@@ -437,6 +438,10 @@ export function RegistryExplorer(props: RegistryExplorerProps) {
                 </div>
               )}
             </div>
+
+            {selectedProfile && (
+              <TemplateListPanel profileCode={selectedProfile.code} />
+            )}
           </div>
         </aside>
       </div>

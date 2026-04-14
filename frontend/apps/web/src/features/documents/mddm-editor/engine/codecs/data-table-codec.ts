@@ -1,4 +1,15 @@
-import { safeParse, expectString, expectBoolean, expectNumber, stripUndefined } from "./codec-utils";
+import {
+  safeParse,
+  expectString,
+  expectBoolean,
+  expectNumber,
+  stripUndefined,
+  CodecStrictError,
+  assertNoUnknownFields,
+  expectStringStrict,
+  expectNumberStrict,
+  expectBooleanStrict,
+} from "./codec-utils";
 
 export type DataTableStyle = {
   headerBackground?: string;
@@ -84,3 +95,98 @@ export const DataTableCodec = {
     return JSON.stringify(caps);
   },
 };
+
+// ---------------------------------------------------------------------------
+// Strict parse functions
+// ---------------------------------------------------------------------------
+
+const DATA_TABLE_STYLE_KEYS = [
+  "headerBackground",
+  "headerColor",
+  "headerFontWeight",
+  "cellBorderColor",
+  "cellPadding",
+  "density",
+] as const;
+
+const DATA_TABLE_CAPS_KEYS = [
+  "locked",
+  "removable",
+  "mode",
+  "editableZones",
+  "addRows",
+  "removeRows",
+  "addColumns",
+  "removeColumns",
+  "resizeColumns",
+  "headerLocked",
+  "maxRows",
+] as const;
+
+export function parseDataTableStyleStrict(raw: Record<string, unknown>): DataTableStyle {
+  assertNoUnknownFields(raw, [...DATA_TABLE_STYLE_KEYS], "style");
+  const density = typeof raw.density === "string" ? raw.density : undefined;
+  if (density !== undefined && !VALID_DENSITIES.includes(density as "normal" | "compact")) {
+    throw new CodecStrictError("style.density", `invalid density value: ${density}`);
+  }
+  return {
+    headerBackground: typeof raw.headerBackground === "string" ? raw.headerBackground : undefined,
+    headerColor: typeof raw.headerColor === "string" ? raw.headerColor : undefined,
+    headerFontWeight: typeof raw.headerFontWeight === "string" ? raw.headerFontWeight : undefined,
+    cellBorderColor: typeof raw.cellBorderColor === "string" ? raw.cellBorderColor : undefined,
+    cellPadding: typeof raw.cellPadding === "string" ? raw.cellPadding : undefined,
+    density: density as "normal" | "compact" | undefined,
+  };
+}
+
+export function parseDataTableCapsStrict(raw: Record<string, unknown>): DataTableCapabilities {
+  assertNoUnknownFields(raw, [...DATA_TABLE_CAPS_KEYS], "caps");
+  const mode = expectStringStrict(raw, "mode");
+  if (!VALID_MODES.includes(mode as "fixed" | "dynamic")) {
+    throw new CodecStrictError("caps.mode", `invalid mode value: ${mode}`);
+  }
+  const editableZones = raw.editableZones;
+  if (!Array.isArray(editableZones) || !editableZones.every((z) => typeof z === "string")) {
+    throw new CodecStrictError("caps.editableZones", "expected string[]");
+  }
+  return {
+    locked: expectBooleanStrict(raw, "locked"),
+    removable: expectBooleanStrict(raw, "removable"),
+    mode: mode as "fixed" | "dynamic",
+    editableZones: editableZones as string[],
+    addRows: expectBooleanStrict(raw, "addRows"),
+    removeRows: expectBooleanStrict(raw, "removeRows"),
+    addColumns: expectBooleanStrict(raw, "addColumns"),
+    removeColumns: expectBooleanStrict(raw, "removeColumns"),
+    resizeColumns: expectBooleanStrict(raw, "resizeColumns"),
+    headerLocked: expectBooleanStrict(raw, "headerLocked"),
+    maxRows: expectNumberStrict(raw, "maxRows"),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Field schemas
+// ---------------------------------------------------------------------------
+
+export const dataTableStyleFieldSchema = [
+  { key: "headerBackground", label: "Fundo do cabeçalho", type: "color", default: "" },
+  { key: "headerColor", label: "Cor do texto do cabeçalho", type: "color", default: "" },
+  { key: "headerFontWeight", label: "Peso da fonte do cabeçalho", type: "string", default: "" },
+  { key: "cellBorderColor", label: "Cor da borda das células", type: "color", default: "" },
+  { key: "cellPadding", label: "Padding das células", type: "string", default: "" },
+  { key: "density", label: "Densidade", type: "select", options: ["normal", "compact"], default: "normal" },
+] as const;
+
+export const dataTableCapsFieldSchema = [
+  { key: "locked", label: "Bloqueado", type: "toggle", default: false },
+  { key: "removable", label: "Removível", type: "toggle", default: false },
+  { key: "mode", label: "Modo", type: "select", options: ["fixed", "dynamic"], default: "dynamic" },
+  { key: "editableZones", label: "Zonas editáveis", type: "string[]", default: ["cells"] },
+  { key: "addRows", label: "Permitir adicionar linhas", type: "toggle", default: true },
+  { key: "removeRows", label: "Permitir remover linhas", type: "toggle", default: true },
+  { key: "addColumns", label: "Permitir adicionar colunas", type: "toggle", default: false },
+  { key: "removeColumns", label: "Permitir remover colunas", type: "toggle", default: false },
+  { key: "resizeColumns", label: "Permitir redimensionar colunas", type: "toggle", default: false },
+  { key: "headerLocked", label: "Cabeçalho bloqueado", type: "toggle", default: true },
+  { key: "maxRows", label: "Máximo de linhas", type: "number", default: 100 },
+] as const;

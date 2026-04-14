@@ -33,6 +33,8 @@ type Repository struct {
 	collabPresence      map[string]map[string]domain.CollaborationPresence
 	editLocks           map[string]domain.DocumentEditLock
 	documentSequences   map[string]int
+	templateDrafts      map[string]domain.TemplateDraft
+	templateAuditLog    []domain.TemplateAuditEvent
 }
 
 func NewRepository() *Repository {
@@ -57,6 +59,8 @@ func NewRepository() *Repository {
 		collabPresence:      map[string]map[string]domain.CollaborationPresence{},
 		editLocks:           map[string]domain.DocumentEditLock{},
 		documentSequences:   map[string]int{},
+		templateDrafts:      map[string]domain.TemplateDraft{},
+		templateAuditLog:    nil,
 	}
 
 	for _, item := range domain.DefaultDocumentTemplateVersions() {

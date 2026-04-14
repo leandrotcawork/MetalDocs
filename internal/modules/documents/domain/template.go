@@ -24,6 +24,7 @@ type DocumentTemplateVersion struct {
 	Definition    map[string]any
 	CreatedAt     time.Time
 	ExportConfig  *TemplateExportConfig
+	Status        string
 }
 
 type DocumentTemplateAssignment struct {

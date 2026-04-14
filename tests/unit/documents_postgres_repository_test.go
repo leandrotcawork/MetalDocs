@@ -373,6 +373,7 @@ func versionColumns() []string {
 		"document_id", "version_number", "content", "content_hash", "change_summary",
 		"content_source", "native_content", "values_json", "body_blocks", "docx_storage_key", "pdf_storage_key",
 		"text_content", "file_size_bytes", "original_filename", "page_count", "template_key", "template_version", "created_at",
+		"renderer_pin",
 	}
 }
 
@@ -422,6 +423,7 @@ func versionRow(version storedVersion) []driver.Value {
 		version.templateKey,
 		version.templateVersion,
 		version.createdAt,
+		nil, // renderer_pin (nullable)
 	}
 }
 

@@ -5,6 +5,7 @@ import "errors"
 var (
 	ErrInvalidCommand                     = errors.New("invalid command")
 	ErrDocumentNotFound                   = errors.New("document not found")
+	ErrForbidden                          = errors.New("forbidden")
 	ErrDocumentAlreadyExists              = errors.New("document already exists")
 	ErrInvalidDocumentType                = errors.New("invalid document type")
 	ErrInvalidDocumentProfileAlias        = errors.New("invalid document profile alias")

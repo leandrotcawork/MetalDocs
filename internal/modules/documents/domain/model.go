@@ -290,6 +290,13 @@ const (
 )
 
 const (
+	CapabilityTemplateView    = "template.view"
+	CapabilityTemplateEdit    = "template.edit"
+	CapabilityTemplatePublish = "template.publish"
+	CapabilityTemplateExport  = "template.export"
+)
+
+const (
 	PolicyEffectAllow = "allow"
 	PolicyEffectDeny  = "deny"
 )

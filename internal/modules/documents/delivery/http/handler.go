@@ -494,6 +494,8 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/documents/", h.handleDocumentSubRoutes)
 	mux.HandleFunc("/api/v1/attachments/", h.handleAttachmentDownloads)
 	mux.HandleFunc("/api/v1/telemetry/mddm-shadow-diff", h.handleShadowDiffTelemetry)
+	mux.HandleFunc("/api/v1/templates", h.handleTemplatesCollection)
+	mux.HandleFunc("/api/v1/templates/", h.handleTemplatesSubRoutes)
 }
 
 func (h *Handler) handleDocuments(w http.ResponseWriter, r *http.Request) {
@@ -2029,6 +2031,16 @@ func (h *Handler) writeDomainError(w http.ResponseWriter, err error, traceID str
 		writeAPIError(w, http.StatusConflict, "EDIT_LOCK_ACTIVE", "Document is currently locked by another editor", traceID)
 	case errors.Is(err, domain.ErrEditLockNotFound):
 		writeAPIError(w, http.StatusNotFound, "EDIT_LOCK_NOT_FOUND", "No active lock found for document", traceID)
+	case errors.Is(err, domain.ErrTemplateDraftNotFound):
+		writeAPIError(w, http.StatusNotFound, "TEMPLATE_DRAFT_NOT_FOUND", err.Error(), traceID)
+	case errors.Is(err, domain.ErrTemplateNotFound):
+		writeAPIError(w, http.StatusNotFound, "TEMPLATE_NOT_FOUND", err.Error(), traceID)
+	case errors.Is(err, domain.ErrTemplateLockConflict):
+		writeAPIError(w, http.StatusConflict, "TEMPLATE_LOCK_CONFLICT", err.Error(), traceID)
+	case errors.Is(err, domain.ErrTemplateHasStrippedFields):
+		writeAPIError(w, http.StatusUnprocessableEntity, "TEMPLATE_HAS_STRIPPED_FIELDS", err.Error(), traceID)
+	case errors.Is(err, domain.ErrTemplatePublishValidation):
+		writeAPIError(w, http.StatusUnprocessableEntity, "TEMPLATE_PUBLISH_VALIDATION", err.Error(), traceID)
 	default:
 		writeAPIError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Internal server error", traceID)
 	}

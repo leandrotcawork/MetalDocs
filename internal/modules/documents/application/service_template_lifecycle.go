@@ -15,6 +15,360 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
+// ListTemplatesByProfile returns all template versions for a profile code.
+// No RBAC enforced at service layer; the HTTP handler enforces auth separately.
+func (s *Service) ListTemplatesByProfile(ctx context.Context, profileCode string) ([]domain.DocumentTemplateVersion, error) {
+	profileCode = strings.ToLower(strings.TrimSpace(profileCode))
+	if profileCode == "" {
+		return nil, domain.ErrInvalidCommand
+	}
+	return s.repo.ListDocumentTemplateVersions(ctx, profileCode)
+}
+
+// GetLatestPublishedTemplate returns the highest-versioned published template for the given key.
+// No RBAC enforced at service layer.
+func (s *Service) GetLatestPublishedTemplate(ctx context.Context, key string) (domain.DocumentTemplateVersion, error) {
+	key = strings.TrimSpace(key)
+	if key == "" {
+		return domain.DocumentTemplateVersion{}, domain.ErrInvalidCommand
+	}
+
+	allVersions, err := s.repo.ListDocumentTemplateVersions(ctx, "")
+	if err != nil {
+		return domain.DocumentTemplateVersion{}, err
+	}
+
+	var latest *domain.DocumentTemplateVersion
+	for i := range allVersions {
+		v := &allVersions[i]
+		if v.TemplateKey == key {
+			if latest == nil || v.Version > latest.Version {
+				latest = v
+			}
+		}
+	}
+
+	if latest == nil {
+		return domain.DocumentTemplateVersion{}, domain.ErrTemplateNotFound
+	}
+
+	return *latest, nil
+}
+
+// GetTemplateVersion returns a specific published template version.
+// Maps ErrDocumentTemplateNotFound to ErrTemplateNotFound.
+func (s *Service) GetTemplateVersion(ctx context.Context, key string, version int) (domain.DocumentTemplateVersion, error) {
+	key = strings.TrimSpace(key)
+	if key == "" || version <= 0 {
+		return domain.DocumentTemplateVersion{}, domain.ErrInvalidCommand
+	}
+	tv, err := s.repo.GetDocumentTemplateVersion(ctx, key, version)
+	if errors.Is(err, domain.ErrDocumentTemplateNotFound) {
+		return domain.DocumentTemplateVersion{}, domain.ErrTemplateNotFound
+	}
+	return tv, err
+}
+
+// AcknowledgeStrippedFieldsAuthorized clears the HasStrippedFields flag so publishing can proceed.
+// Requires CapabilityTemplateEdit.
+func (s *Service) AcknowledgeStrippedFieldsAuthorized(ctx context.Context, key string, lockVersion int, actorID string) (*domain.TemplateDraft, error) {
+	if err := s.isAllowedTemplate(ctx, domain.CapabilityTemplateEdit); err != nil {
+		return nil, err
+	}
+
+	key = strings.TrimSpace(key)
+	if key == "" {
+		return nil, domain.ErrInvalidCommand
+	}
+
+	draft, err := s.repo.GetTemplateDraft(ctx, key)
+	if err != nil {
+		return nil, err
+	}
+
+	if draft.LockVersion != lockVersion {
+		return nil, domain.ErrTemplateLockConflict
+	}
+
+	draft.HasStrippedFields = false
+	draft.StrippedFieldsJSON = nil
+
+	saved, err := s.repo.UpsertTemplateDraftCAS(ctx, draft, lockVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	s.writeTemplateAudit(ctx, key, "stripped_fields_acknowledged", actorID, nil)
+	return saved, nil
+}
+
+// EditPublishedAuthorized creates a draft from the latest published version (idempotent if draft exists).
+// Requires CapabilityTemplateEdit.
+func (s *Service) EditPublishedAuthorized(ctx context.Context, key string, actorID string) (*domain.TemplateDraft, error) {
+	if err := s.isAllowedTemplate(ctx, domain.CapabilityTemplateEdit); err != nil {
+		return nil, err
+	}
+
+	key = strings.TrimSpace(key)
+	if key == "" {
+		return nil, domain.ErrInvalidCommand
+	}
+
+	// Idempotent: return existing draft if one already exists.
+	existing, err := s.repo.GetTemplateDraft(ctx, key)
+	if err == nil {
+		return existing, nil
+	}
+	if !errors.Is(err, domain.ErrTemplateDraftNotFound) {
+		return nil, err
+	}
+
+	// Find the latest published version by listing all versions for the template key.
+	// ListDocumentTemplateVersions groups by profileCode so we pass "" to get all,
+	// then filter by key manually.
+	allVersions, err := s.repo.ListDocumentTemplateVersions(ctx, "")
+	if err != nil {
+		return nil, err
+	}
+
+	var latestVersion *domain.DocumentTemplateVersion
+	for i := range allVersions {
+		v := &allVersions[i]
+		if v.TemplateKey == key {
+			if latestVersion == nil || v.Version > latestVersion.Version {
+				latestVersion = v
+			}
+		}
+	}
+	if latestVersion == nil {
+		return nil, domain.ErrTemplateNotFound
+	}
+
+	// Marshal Definition back to JSON for BlocksJSON.
+	var blocksJSON json.RawMessage
+	if latestVersion.Definition != nil {
+		b, merr := json.Marshal(latestVersion.Definition)
+		if merr != nil {
+			return nil, merr
+		}
+		blocksJSON = json.RawMessage(b)
+	} else if latestVersion.Body != "" {
+		blocksJSON = json.RawMessage(latestVersion.Body)
+	}
+
+	now := time.Now().UTC()
+	draft := &domain.TemplateDraft{
+		TemplateKey: key,
+		ProfileCode: latestVersion.ProfileCode,
+		BaseVersion: latestVersion.Version,
+		Name:        latestVersion.Name,
+		BlocksJSON:  blocksJSON,
+		CreatedBy:   strings.TrimSpace(actorID),
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+
+	saved, err := s.repo.UpsertTemplateDraftCAS(ctx, draft, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	s.writeTemplateAudit(ctx, key, "edit_published_started", actorID, nil)
+	return saved, nil
+}
+
+// CloneAuthorized creates a new draft as a copy of an existing draft or published template.
+// Requires CapabilityTemplateEdit.
+func (s *Service) CloneAuthorized(ctx context.Context, sourceKey, newName string, actorID string) (*domain.TemplateDraft, error) {
+	if err := s.isAllowedTemplate(ctx, domain.CapabilityTemplateEdit); err != nil {
+		return nil, err
+	}
+
+	sourceKey = strings.TrimSpace(sourceKey)
+	newName = strings.TrimSpace(newName)
+	if sourceKey == "" {
+		return nil, domain.ErrInvalidCommand
+	}
+
+	// Try draft first, then fall back to latest published version.
+	var profileCode string
+	var blocksJSON json.RawMessage
+
+	srcDraft, draftErr := s.repo.GetTemplateDraft(ctx, sourceKey)
+	if draftErr == nil {
+		profileCode = srcDraft.ProfileCode
+		blocksJSON = srcDraft.BlocksJSON
+	} else {
+		// Fall back to latest published version.
+		allVersions, err := s.repo.ListDocumentTemplateVersions(ctx, "")
+		if err != nil {
+			return nil, err
+		}
+		var latestVersion *domain.DocumentTemplateVersion
+		for i := range allVersions {
+			v := &allVersions[i]
+			if v.TemplateKey == sourceKey {
+				if latestVersion == nil || v.Version > latestVersion.Version {
+					latestVersion = v
+				}
+			}
+		}
+		if latestVersion == nil {
+			return nil, domain.ErrTemplateNotFound
+		}
+		profileCode = latestVersion.ProfileCode
+		if latestVersion.Definition != nil {
+			b, merr := json.Marshal(latestVersion.Definition)
+			if merr != nil {
+				return nil, merr
+			}
+			blocksJSON = json.RawMessage(b)
+		} else if latestVersion.Body != "" {
+			blocksJSON = json.RawMessage(latestVersion.Body)
+		}
+	}
+
+	if newName == "" {
+		newName = sourceKey + " (copy)"
+	}
+
+	newKey := sourceKey + "-copy-" + mustNewID()[:6]
+	now := time.Now().UTC()
+	draft := &domain.TemplateDraft{
+		TemplateKey: newKey,
+		ProfileCode: profileCode,
+		BaseVersion: 0,
+		Name:        newName,
+		BlocksJSON:  blocksJSON,
+		CreatedBy:   strings.TrimSpace(actorID),
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+
+	saved, err := s.repo.UpsertTemplateDraftCAS(ctx, draft, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	s.writeTemplateAudit(ctx, newKey, "cloned", actorID, nil)
+	return saved, nil
+}
+
+// DeleteDraftAuthorized permanently deletes a draft without publishing.
+// Requires CapabilityTemplateEdit.
+func (s *Service) DeleteDraftAuthorized(ctx context.Context, key, actorID string) error {
+	if err := s.isAllowedTemplate(ctx, domain.CapabilityTemplateEdit); err != nil {
+		return err
+	}
+
+	key = strings.TrimSpace(key)
+	if key == "" {
+		return domain.ErrInvalidCommand
+	}
+
+	if _, err := s.repo.GetTemplateDraft(ctx, key); err != nil {
+		return err // propagates ErrTemplateDraftNotFound
+	}
+
+	if err := s.repo.DeleteTemplateDraft(ctx, key); err != nil {
+		return err
+	}
+
+	s.writeTemplateAudit(ctx, key, "draft_deleted", actorID, nil)
+	return nil
+}
+
+// ExportTemplate serializes a published template version for download/transfer.
+// Requires CapabilityTemplateExport.
+func (s *Service) ExportTemplate(ctx context.Context, key string, version int, actorID string) ([]byte, error) {
+	if err := s.isAllowedTemplate(ctx, domain.CapabilityTemplateExport); err != nil {
+		return nil, err
+	}
+
+	key = strings.TrimSpace(key)
+	if key == "" || version <= 0 {
+		return nil, domain.ErrInvalidCommand
+	}
+
+	tv, err := s.repo.GetDocumentTemplateVersion(ctx, key, version)
+	if errors.Is(err, domain.ErrDocumentTemplateNotFound) {
+		return nil, domain.ErrTemplateNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	export := map[string]any{
+		"templateKey": tv.TemplateKey,
+		"version":     tv.Version,
+		"profileCode": tv.ProfileCode,
+		"name":        tv.Name,
+		"definition":  tv.Definition,
+	}
+
+	data, err := json.Marshal(export)
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
+}
+
+// ImportTemplateAuthorized creates a draft from imported JSON template data.
+// Requires CapabilityTemplateEdit.
+func (s *Service) ImportTemplateAuthorized(ctx context.Context, profileCode string, data []byte, actorID string) (*domain.TemplateDraft, error) {
+	if err := s.isAllowedTemplate(ctx, domain.CapabilityTemplateEdit); err != nil {
+		return nil, err
+	}
+
+	profileCode = strings.ToLower(strings.TrimSpace(profileCode))
+	if profileCode == "" {
+		return nil, domain.ErrInvalidCommand
+	}
+
+	var payload map[string]json.RawMessage
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return nil, domain.ErrInvalidCommand
+	}
+
+	var blocksJSON json.RawMessage
+	if def, ok := payload["definition"]; ok {
+		blocksJSON = def
+	} else if blocks, ok := payload["blocks"]; ok {
+		blocksJSON = blocks
+	}
+
+	name := profileCode + " imported"
+	if rawName, ok := payload["name"]; ok {
+		var n string
+		if err := json.Unmarshal(rawName, &n); err == nil && n != "" {
+			name = n
+		}
+	}
+
+	templateKey := profileCode + "-" + mustNewID()[:8]
+	now := time.Now().UTC()
+	draft := &domain.TemplateDraft{
+		TemplateKey:       templateKey,
+		ProfileCode:       profileCode,
+		BaseVersion:       0,
+		Name:              name,
+		BlocksJSON:        blocksJSON,
+		HasStrippedFields: false,
+		CreatedBy:         strings.TrimSpace(actorID),
+		CreatedAt:         now,
+		UpdatedAt:         now,
+	}
+
+	saved, err := s.repo.UpsertTemplateDraftCAS(ctx, draft, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	s.writeTemplateAudit(ctx, templateKey, "imported", actorID, nil)
+	return saved, nil
+}
+
 // isAllowedTemplate performs global role-based RBAC for template capabilities.
 // Templates do not have per-resource DB policies; access is governed entirely by
 // the caller's IAM roles, matching the StaticAuthorizer policy defined in Phase 0.

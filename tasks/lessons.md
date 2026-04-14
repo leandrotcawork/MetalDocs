@@ -292,3 +292,10 @@ Wrong:   The initial `TemplateEditorView` layout test only checked that test IDs
 Correct: The layout test now asserts containment relationships and that mocked palette/sidebar/editor mount inside the expected layout containers.
 Rule:    UI composition regression tests should verify structural contracts, not just selector presence.
 Layer:   process
+
+## Lesson 43 - E2E assertions should avoid CSS-module class selectors
+Date: 2026-04-14 | Trigger: correction
+Wrong:   The scroll-ownership e2e check queried `main.workspace-main`, which is unstable under CSS modules and silently weakened the regression guard.
+Correct: The test now targets stable `data-testid` anchors and validates real scroll behavior on the intended scroll host.
+Rule:    Browser regression tests should anchor on stable test selectors and behavior signals, not generated CSS-module class names.
+Layer:   process

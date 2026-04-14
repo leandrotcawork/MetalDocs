@@ -1,8 +1,32 @@
 /* Gray background that simulates the "desk" behind the document page */
 .pageShell {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
   background: #ede9e4;
-  padding: 0 0 2rem;
-  min-height: 100%;
+}
+
+.pageShell :global(.bn-container) {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.scrollShell {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 /* Sticky toolbar band — sits in the gray desk area above the white paper */
@@ -12,15 +36,25 @@
   z-index: 20;
   display: flex;
   justify-content: center;
+  width: 100%;
   padding: 0.5rem 1rem;
   background: #ede9e4;
   border-bottom: 1px solid #d4cfc9;
-  margin-bottom: 1.5rem;
+}
+
+.pageStack {
+  display: grid;
+  justify-items: center;
+  gap: 1.5rem;
+  width: 100%;
+  min-height: 0;
+  padding: 1.25rem 1rem 2rem;
+  box-sizing: border-box;
 }
 
 /* The white "paper" page — mimics a Word document page */
 .editorRoot {
-  width: min(var(--mddm-page-width, 210mm), calc(100vw - 2rem));
+  width: min(var(--mddm-page-width, 210mm), calc(100% - 2rem));
   max-width: 100%;
   margin: 0 auto;
   background: var(--mddm-raw-white);
@@ -42,9 +76,17 @@
   .pageShell {
     background: none;
     padding: 0;
+    height: auto;
+    overflow: visible;
+  }
+  .scrollShell {
+    overflow: visible;
   }
   .toolbarWrapper {
     display: none;
+  }
+  .pageStack {
+    padding: 0;
   }
   .editorRoot {
     max-width: none;

@@ -39,6 +39,81 @@ test.beforeAll(() => {
   seedE2EWorkspace();
 });
 
+test("template editor keeps scroll inside the document pane", async ({ page }) => {
+  const templateKey = "tpl-scroll-owner";
+  const longSectionChildren = Array.from({ length: 26 }, (_, index) => ({
+    id: `scroll-rich-${index + 1}`,
+    type: "richBlock",
+    props: {
+      label: `Bloco ${index + 1}`,
+      styleJson: "{}",
+      capabilitiesJson: JSON.stringify({ locked: false, removable: true }),
+    },
+    children: [],
+  }));
+  const draft = makeDraft({
+    templateKey,
+    lockVersion: 2,
+    blocks: [
+      {
+        id: "scroll-section-1",
+        type: "section",
+        props: {
+          title: "Sessao longa",
+          styleJson: "{}",
+          capabilitiesJson: JSON.stringify({ locked: true, removable: false, reorderable: false }),
+        },
+        children: longSectionChildren,
+      },
+    ],
+  });
+
+  await page.route("**/api/v1/templates/**", async (route) => {
+    const url = new URL(route.request().url());
+    const method = route.request().method();
+
+    if (url.pathname === `/api/v1/templates/${templateKey}` && method === "GET") {
+      await fulfillJson(route, 200, draft);
+      return;
+    }
+
+    await route.continue();
+  });
+
+  await loginAsAdmin(page);
+  await openTemplateEditor(page, "po", templateKey);
+
+  const scrollShell = page.getByTestId("mddm-editor-scroll-shell");
+  await expect(scrollShell).toBeVisible();
+  await expect(page.getByTestId("mddm-editor-page-stack")).toBeVisible();
+  await expect(page.getByTestId("mddm-editor-paper")).toBeVisible();
+  await expect(scrollShell).toHaveCSS("overflow-y", "auto");
+
+  const scrollState = await page.evaluate(() => {
+    const shell = document.querySelector('[data-testid="mddm-editor-scroll-shell"]') as HTMLElement | null;
+    const layoutRoot = document.querySelector('[data-testid="template-editor-layout"]') as HTMLElement | null;
+    if (!shell) {
+      return null;
+    }
+
+    const before = shell.scrollTop;
+    shell.scrollTop = 320;
+    const after = shell.scrollTop;
+
+    return {
+      isScrollable: shell.scrollHeight > shell.clientHeight,
+      before,
+      after,
+      layoutScrollTop: layoutRoot?.scrollTop ?? 0,
+    };
+  });
+
+  expect(scrollState).toBeTruthy();
+  expect(scrollState?.isScrollable).toBe(true);
+  expect((scrollState?.after ?? 0) > (scrollState?.before ?? 0)).toBe(true);
+  expect(scrollState?.layoutScrollTop ?? 0).toBe(0);
+});
+
 test("template authoring saves, previews DOCX, blocks invalid client publish, then publishes successfully", async ({ page }) => {
   const templateKey = "tpl-authoring-flow";
   let draft: DraftDto = makeDraft({

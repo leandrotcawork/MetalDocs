@@ -263,44 +263,48 @@ export function MDDMEditor({
         renderEditor={false}
         onChange={(currentEditor) => onChange?.(currentEditor.document)}
       >
-        {!readOnly && (
-          <div
-            className={styles.toolbarWrapper}
-            data-testid="mddm-editor-toolbar"
-            onMouseDown={(e) => {
-              // Prevent toolbar buttons from stealing DOM focus from the editor.
-              // Without this, clicking a button moves activeElement to the <button>,
-              // which causes the cursor to vanish from native table cells (nested
-              // contenteditable contexts) even though ProseMirror's internal
-              // selection is preserved. This is the standard contenteditable toolbar
-              // pattern — click events still fire normally.
-              e.preventDefault();
-            }}
-          >
-            <FormattingToolbar>
-              <BlockTypeSelect key="blockTypeSelect" />
-              <BasicTextStyleButton basicTextStyle="bold" key="boldStyleButton" />
-              <BasicTextStyleButton basicTextStyle="italic" key="italicStyleButton" />
-              <BasicTextStyleButton basicTextStyle="underline" key="underlineStyleButton" />
-              <BasicTextStyleButton basicTextStyle="strike" key="strikeStyleButton" />
-              <MddmTextAlignButton textAlignment="left" key="textAlignLeftButton" />
-              <MddmTextAlignButton textAlignment="center" key="textAlignCenterButton" />
-              <MddmTextAlignButton textAlignment="right" key="textAlignRightButton" />
-              <ColorStyleButton key="colorStyleButton" />
-              <NestBlockButton key="nestBlockButton" />
-              <UnnestBlockButton key="unnestBlockButton" />
-              <CreateLinkButton key="createLinkButton" />
-            </FormattingToolbar>
+        <div className={styles.scrollShell} data-testid="mddm-editor-scroll-shell">
+          {!readOnly && (
+            <div
+              className={styles.toolbarWrapper}
+              data-testid="mddm-editor-toolbar"
+              onMouseDown={(e) => {
+                // Prevent toolbar buttons from stealing DOM focus from the editor.
+                // Without this, clicking a button moves activeElement to the <button>,
+                // which causes the cursor to vanish from native table cells (nested
+                // contenteditable contexts) even though ProseMirror's internal
+                // selection is preserved. This is the standard contenteditable toolbar
+                // pattern — click events still fire normally.
+                e.preventDefault();
+              }}
+            >
+              <FormattingToolbar>
+                <BlockTypeSelect key="blockTypeSelect" />
+                <BasicTextStyleButton basicTextStyle="bold" key="boldStyleButton" />
+                <BasicTextStyleButton basicTextStyle="italic" key="italicStyleButton" />
+                <BasicTextStyleButton basicTextStyle="underline" key="underlineStyleButton" />
+                <BasicTextStyleButton basicTextStyle="strike" key="strikeStyleButton" />
+                <MddmTextAlignButton textAlignment="left" key="textAlignLeftButton" />
+                <MddmTextAlignButton textAlignment="center" key="textAlignCenterButton" />
+                <MddmTextAlignButton textAlignment="right" key="textAlignRightButton" />
+                <ColorStyleButton key="colorStyleButton" />
+                <NestBlockButton key="nestBlockButton" />
+                <UnnestBlockButton key="unnestBlockButton" />
+                <CreateLinkButton key="createLinkButton" />
+              </FormattingToolbar>
+            </div>
+          )}
+          <div className={styles.pageStack} data-testid="mddm-editor-page-stack">
+            <div
+              className={styles.editorRoot}
+              style={cssVars as CSSProperties}
+              data-editable={!readOnly}
+              data-mddm-editor-root="true"
+              data-testid="mddm-editor-paper"
+            >
+              <BlockNoteViewEditor />
+            </div>
           </div>
-        )}
-        <div
-          className={styles.editorRoot}
-          style={cssVars as CSSProperties}
-          data-editable={!readOnly}
-          data-mddm-editor-root="true"
-          data-testid="mddm-editor-paper"
-        >
-          <BlockNoteViewEditor />
         </div>
       </BlockNoteView>
     </div>

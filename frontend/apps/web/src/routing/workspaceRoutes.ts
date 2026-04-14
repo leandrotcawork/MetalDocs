@@ -149,4 +149,42 @@ export function buildDocumentsPath(
   return `${basePath}/all`;
 }
 
+// ---------------------------------------------------------------------------
+// Template editor route helpers
+// ---------------------------------------------------------------------------
+
+export type TemplateEditorParams = {
+  profileCode: string;
+  templateKey: string;
+};
+
+/**
+ * Returns true when the current pathname targets the template editor.
+ * Pattern: /registry/profiles/:profileCode/templates/:templateKey/edit
+ */
+export function isTemplateEditorPath(pathname: string): boolean {
+  return parseTemplateEditorPath(pathname) !== null;
+}
+
+/**
+ * Parses `/registry/profiles/:profileCode/templates/:templateKey/edit`
+ * and returns the params, or null if the path does not match.
+ */
+export function parseTemplateEditorPath(pathname: string): TemplateEditorParams | null {
+  const path = normalizePath(pathname);
+  const match = /^\/registry\/profiles\/([^/]+)\/templates\/([^/]+)\/edit$/.exec(path);
+  if (!match) return null;
+  return {
+    profileCode: decodeURIComponent(match[1]),
+    templateKey: decodeURIComponent(match[2]),
+  };
+}
+
+/**
+ * Builds the template editor path from params.
+ */
+export function buildTemplateEditorPath(params: TemplateEditorParams): string {
+  return `/registry/profiles/${encodeURIComponent(params.profileCode)}/templates/${encodeURIComponent(params.templateKey)}/edit`;
+}
+
 export type { DocumentsRoute, DocumentsScopeView };

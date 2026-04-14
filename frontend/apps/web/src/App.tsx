@@ -19,7 +19,8 @@ import { statusOf } from "./features/shared/errors";
 import { DocumentsWorkspaceView } from "./features/documents/DocumentsWorkspaceView";
 import { RegistryExplorerView } from "./features/registry/RegistryExplorerView";
 import { WorkspaceShell } from "./features/shell/WorkspaceShell";
-import { isPathForView, pathFromView, viewFromPath } from "./routing/workspaceRoutes";
+import { isPathForView, parseTemplateEditorPath, pathFromView, viewFromPath } from "./routing/workspaceRoutes";
+import { TemplateEditorView } from "./features/templates/TemplateEditorView";
 
 type AppErrorBoundaryState = {
   hasError: boolean;
@@ -392,6 +393,16 @@ function AppContent() {
     }
 
     if (activeView === "registry") {
+      const templateEditorParams = parseTemplateEditorPath(location.pathname);
+      if (templateEditorParams) {
+        return (
+          <TemplateEditorView
+            profileCode={templateEditorParams.profileCode}
+            templateKey={templateEditorParams.templateKey}
+          />
+        );
+      }
+
       return (
         <RegistryExplorerView
           loadState={loadState}

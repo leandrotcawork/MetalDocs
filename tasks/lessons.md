@@ -355,3 +355,24 @@ Wrong:   A page-stack spacer pseudo-element used for editor workspace geometry r
 Correct: The print stylesheet now disables the pseudo-element (`content: none; width: 0; height: 0`) while keeping the screen layout hook intact.
 Rule:    Any screen-only layout spacer introduced in editor chrome must be explicitly disabled in print styles.
 Layer:   process
+
+## Lesson 52 - First section spacing must not add top gap on empty page
+Date: 2026-04-14 | Trigger: correction
+Wrong:   `.bn-block-content[data-content-type="section"]` applied `margin-top` to all section blocks, including the first inserted section.
+Correct: Section top spacing now applies only to `.bn-block-content[data-content-type="section"]:not(:first-child)`, keeping the first section flush to the page top.
+Rule:    In editor page flow, inter-section spacing must target subsequent blocks only and never push the first content block down.
+Layer:   delivery
+
+## Lesson 53 - Browser editor wrappers must not own scroll or page padding
+Date: 2026-04-14 | Trigger: correction
+Wrong:   `BrowserDocumentEditorView.module.css` applied inner wrapper padding (`.surface`, `.editorViewport`) and clipped viewport overflow, creating an extra scroll/padding layer around the MDDM editor.
+Correct: Browser editor wrappers now use zero inner padding and visible viewport overflow so scrolling stays owned by the page/main shell instead of an inner editor div.
+Rule:    Scroll ownership for the browser editor must remain on the outer workspace/page container, while editor wrappers stay size-bound and non-scrolling.
+Layer:   delivery
+
+## Lesson 54 - Error-state breathing room must be targeted, not global editor padding
+Date: 2026-04-14 | Trigger: correction
+Wrong:   Removing `.surface` padding to enforce scroll ownership left `.errorBanner` visually edge-crowded against the shell border.
+Correct: Keep zero padding/scroll ownership on `.surface` and `.editorViewport`, but add scoped `.errorBanner` margins to preserve alert spacing without restoring editor-wrapper padding.
+Rule:    When removing global layout padding for scroll correctness, reintroduce visual spacing only on the specific transient state component that needs it.
+Layer:   delivery

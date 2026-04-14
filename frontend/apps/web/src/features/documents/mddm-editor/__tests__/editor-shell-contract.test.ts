@@ -17,15 +17,32 @@ function normalize(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
 
+function ruleBody(css: string, selector: string): string {
+  const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = css.match(new RegExp(`${escapedSelector}\\s*\\{([^}]*)\\}`));
+  return normalize(match?.[1] ?? "");
+}
+
 describe("editor shell contracts", () => {
   it("keeps the browser editor viewport contract explicit", () => {
     const tsx = normalize(readUtf8(resolve(browserEditorDir, "BrowserDocumentEditorView.tsx")));
     const css = normalize(readUtf8(resolve(browserEditorDir, "BrowserDocumentEditorView.module.css")));
+    const surfaceCss = ruleBody(css, ".surface");
+    const viewportCss = ruleBody(css, ".editorViewport");
+    const errorBannerCss = ruleBody(css, ".errorBanner");
 
     expect(tsx).toContain('data-testid="browser-editor-viewport"');
     expect(css).toContain(".editorViewport");
-    expect(css).toContain("isolation: isolate");
-    expect(css).toContain("overflow: clip");
+    expect(surfaceCss).toContain("padding: 0");
+    expect(surfaceCss).not.toMatch(/overflow-[xy]\s*:/);
+    expect(surfaceCss).not.toMatch(/overflow\s*:\s*(auto|scroll)/);
+    expect(viewportCss).toContain("isolation: isolate");
+    expect(viewportCss).toContain("padding: 0");
+    expect(viewportCss).toContain("overflow: visible");
+    expect(viewportCss).not.toMatch(/overflow-[xy]\s*:/);
+    expect(viewportCss).not.toMatch(/overflow\s*:\s*(auto|scroll)/);
+    expect(viewportCss).not.toContain("overflow: clip");
+    expect(errorBannerCss).toContain("margin: 0.75rem 0.75rem 0");
   });
 
   it("keeps the editor root scoped and suppresses structural table handles", () => {

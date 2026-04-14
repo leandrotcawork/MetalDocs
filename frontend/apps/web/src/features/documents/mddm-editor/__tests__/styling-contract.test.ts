@@ -18,6 +18,13 @@ function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
 
+function findSectionGapSelector(css: string): string | null {
+  const match = css.match(
+    /(?:^|\n)\s*([^\n{]+)\{\s*margin-top:\s*var\(--mddm-section-gap,\s*1rem\);\s*\}/m,
+  );
+  return match?.[1]?.trim() ?? null;
+}
+
 describe("MDDM styling contracts", () => {
   it("removes deprecated field block specs and component files", () => {
     const schema = readRepoFile("schema.ts");
@@ -51,5 +58,32 @@ describe("MDDM styling contracts", () => {
     expect(normalizedCss).toContain(
       '[data-content-type="repeatable"] > .bn-block-outer > .bn-block > .bn-side-menu',
     );
+  });
+
+  it("applies section top gap only after the first section block", () => {
+    const css = readRepoFile("mddm-editor-global.css");
+    const selector = findSectionGapSelector(css);
+
+    expect(selector).toBe(
+      '.bn-container .bn-block-content[data-content-type="section"]:not(:first-child)',
+    );
+
+    const host = document.createElement("div");
+    host.className = "bn-container";
+    host.innerHTML = `
+      <div class="bn-block-content" data-content-type="section"></div>
+      <div class="bn-block-content" data-content-type="section"></div>
+    `;
+
+    const sections = Array.from(
+      host.querySelectorAll<HTMLDivElement>('.bn-block-content[data-content-type="section"]'),
+    );
+    const [firstSection, secondSection] = sections;
+    if (!firstSection || !secondSection) {
+      throw new Error("expected two section blocks for selector behavior validation");
+    }
+
+    expect(firstSection.matches(selector!)).toBe(false);
+    expect(secondSection.matches(selector!)).toBe(true);
   });
 });

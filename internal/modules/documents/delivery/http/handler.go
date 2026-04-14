@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -2011,6 +2012,9 @@ func (h *Handler) writeDomainError(w http.ResponseWriter, err error, traceID str
 		writeAPIError(w, http.StatusNotFound, "DOCUMENT_TEMPLATE_ASSIGNMENT_NOT_FOUND", "Document template assignment not found", traceID)
 	case errors.Is(err, domain.ErrDraftConflict):
 		writeAPIError(w, http.StatusConflict, "DRAFT_CONFLICT", "Draft token is stale or draft changed", traceID)
+	case errors.Is(err, domain.ErrForbidden):
+		slog.Debug("template access forbidden (returning 404)", "trace_id", traceID)
+		writeAPIError(w, http.StatusNotFound, "DOC_NOT_FOUND", "Document not found", traceID)
 	case errors.Is(err, domain.ErrDocumentNotFound):
 		writeAPIError(w, http.StatusNotFound, "DOC_NOT_FOUND", "Document not found", traceID)
 	case errors.Is(err, domain.ErrDocumentAlreadyExists):

@@ -379,7 +379,7 @@ func (s *Service) ImportTemplateAuthorized(ctx context.Context, profileCode stri
 //	editor   → template.view, template.export
 //	reviewer → template.view, template.export
 //
-// Returns nil if allowed, domain.ErrDocumentNotFound (masking as 404) if denied.
+// Returns nil if allowed, domain.ErrForbidden (mapped to 404 at delivery) if denied.
 func (s *Service) isAllowedTemplate(ctx context.Context, capability string) error {
 	if shouldBypassPolicy(ctx) {
 		return nil
@@ -387,7 +387,7 @@ func (s *Service) isAllowedTemplate(ctx context.Context, capability string) erro
 
 	roles := authn.RolesFromContext(ctx)
 	if len(roles) == 0 {
-		return domain.ErrDocumentNotFound
+		return domain.ErrForbidden
 	}
 
 	roleCapabilities := map[string]map[string]bool{
@@ -416,7 +416,7 @@ func (s *Service) isAllowedTemplate(ctx context.Context, capability string) erro
 		}
 	}
 
-	return domain.ErrDocumentNotFound
+	return domain.ErrForbidden
 }
 
 // writeTemplateAudit appends an audit event to the template audit log.
@@ -562,12 +562,12 @@ func (s *Service) PublishAuthorized(ctx context.Context, key string, lockVersion
 	newVersion := draft.BaseVersion + 1
 
 	tv := domain.DocumentTemplateVersion{
-		TemplateKey:   key,
-		Version:       newVersion,
-		ProfileCode:   draft.ProfileCode,
-		Name:          draft.Name,
-		Status:        string(domain.TemplateStatusPublished),
-		CreatedAt:     time.Now().UTC(),
+		TemplateKey: key,
+		Version:     newVersion,
+		ProfileCode: draft.ProfileCode,
+		Name:        draft.Name,
+		Status:      string(domain.TemplateStatusPublished),
+		CreatedAt:   time.Now().UTC(),
 	}
 
 	if err := s.repo.InsertTemplateVersion(ctx, tv); err != nil {

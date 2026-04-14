@@ -130,3 +130,17 @@ Wrong:   The lock guard used `pos:${pos}` as fallback identity for locked nodes 
 Correct: Lock guard now enforces stable `attrs.id` continuity for locked nodes and uses count-only fallback for legacy anonymous locked nodes to avoid false rejections.
 Rule:    Transaction guards must never use mutable position as identity when edits can reorder or reflow the same protected nodes.
 Layer:   application
+
+## Lesson 19 - PO template blocks must stay schema-compatible
+Date: 2026-04-13 | Trigger: correction
+Wrong:   `po_template.go` emitted unsupported block props (`field.layout`, `repeatableItem.locked`) and an invalid stage seed shape (empty Etapa item and invalid image placeholder), causing MDDM schema validation to fail.
+Correct: PO template builders now emit only schema-allowed props, include the required `Etapas` rich content seed, and keep optional diagram content in a schema-valid placeholder block.
+Rule:    Canonical template fixtures must be generated strictly from the active MDDM schema contract, including nested child block shapes.
+Layer:   domain
+
+## Lesson 20 - RBAC denials need a dedicated forbidden sentinel
+Date: 2026-04-14 | Trigger: correction
+Wrong:   Template RBAC denials returned `domain.ErrDocumentNotFound`, conflating authorization failures with real not-found conditions.
+Correct: Template RBAC denials now return `domain.ErrForbidden`, and delivery maps it to HTTP 404 with debug-only logging for security-through-obscurity.
+Rule:    Authorization denials must use a dedicated domain sentinel and only be masked at the delivery boundary.
+Layer:   application

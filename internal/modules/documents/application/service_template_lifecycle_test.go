@@ -72,8 +72,8 @@ func TestCreateDraftAuthorized_RBACDenied(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected RBAC denial, got nil error")
 	}
-	if !errors.Is(err, domain.ErrDocumentNotFound) {
-		t.Errorf("err = %v, want ErrDocumentNotFound (RBAC mask)", err)
+	if !errors.Is(err, domain.ErrForbidden) {
+		t.Errorf("err = %v, want ErrForbidden", err)
 	}
 }
 
@@ -151,8 +151,8 @@ func TestSaveDraftAuthorized_RBACDenied(t *testing.T) {
 	svc := NewService(repo, nil, nil)
 
 	_, err := svc.SaveDraftAuthorized(ctxWithRole(iamdomain.RoleViewer), "any-key", nil, nil, nil, 1, "actor-1")
-	if !errors.Is(err, domain.ErrDocumentNotFound) {
-		t.Errorf("err = %v, want ErrDocumentNotFound (RBAC mask)", err)
+	if !errors.Is(err, domain.ErrForbidden) {
+		t.Errorf("err = %v, want ErrForbidden", err)
 	}
 }
 
@@ -255,8 +255,8 @@ func TestPublishAuthorized_RBACDenied(t *testing.T) {
 
 	// Editor role has no template.publish capability.
 	_, err := svc.PublishAuthorized(ctxWithRole(iamdomain.RoleEditor), "any-key", 1, "actor-1")
-	if !errors.Is(err, domain.ErrDocumentNotFound) {
-		t.Errorf("err = %v, want ErrDocumentNotFound (RBAC mask)", err)
+	if !errors.Is(err, domain.ErrForbidden) {
+		t.Errorf("err = %v, want ErrForbidden", err)
 	}
 }
 
@@ -351,8 +351,8 @@ func TestDiscardDraftAuthorized_RBACDenied(t *testing.T) {
 	svc := NewService(repo, nil, nil)
 
 	err := svc.DiscardDraftAuthorized(ctxWithRole(iamdomain.RoleViewer), "any-key", "actor-1")
-	if !errors.Is(err, domain.ErrDocumentNotFound) {
-		t.Errorf("err = %v, want ErrDocumentNotFound (RBAC mask)", err)
+	if !errors.Is(err, domain.ErrForbidden) {
+		t.Errorf("err = %v, want ErrForbidden", err)
 	}
 }
 
@@ -411,8 +411,8 @@ func TestDeprecateAuthorized_RBACDenied(t *testing.T) {
 
 	// Editor role has no template.publish capability.
 	err := svc.DeprecateAuthorized(ctxWithRole(iamdomain.RoleEditor), "any-key", 1, "actor-1")
-	if !errors.Is(err, domain.ErrDocumentNotFound) {
-		t.Errorf("err = %v, want ErrDocumentNotFound (RBAC mask)", err)
+	if !errors.Is(err, domain.ErrForbidden) {
+		t.Errorf("err = %v, want ErrForbidden", err)
 	}
 }
 

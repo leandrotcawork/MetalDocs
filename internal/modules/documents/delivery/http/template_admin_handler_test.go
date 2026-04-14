@@ -382,6 +382,96 @@ func TestHandleClone_201(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// Export + Preview DOCX
+// ---------------------------------------------------------------------------
+
+func TestHandleExportTemplate_200(t *testing.T) {
+	h, _ := newTemplateTestHandler(t)
+
+	draft := createTestDraft(t, h, "po", "Export Test")
+	key := draft.TemplateKey
+
+	publishBody, _ := json.Marshal(publishRequest{LockVersion: draft.LockVersion})
+	publishReq := httptest.NewRequest(http.MethodPost, "/api/v1/templates/"+key+"/publish", bytes.NewReader(publishBody))
+	publishReq = withAdminCtx(publishReq)
+	publishRec := httptest.NewRecorder()
+	h.handlePublish(publishRec, publishReq, key)
+	if publishRec.Code != http.StatusOK {
+		t.Fatalf("publish setup failed: %d %s", publishRec.Code, publishRec.Body.String())
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/templates/"+key+"/export?version=1", nil)
+	req = withAdminCtx(req)
+	rec := httptest.NewRecorder()
+
+	h.handleExportTemplate(rec, req, key)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", rec.Code, rec.Body.String())
+	}
+	if got := rec.Header().Get("Content-Type"); got != "application/json" {
+		t.Fatalf("content-type = %q, want %q", got, "application/json")
+	}
+	if got := rec.Header().Get("Content-Disposition"); !strings.Contains(got, "attachment") {
+		t.Fatalf("content-disposition = %q, want it to contain %q", got, "attachment")
+	}
+	if !json.Valid(rec.Body.Bytes()) {
+		t.Fatalf("export body is not valid json: %s", rec.Body.String())
+	}
+
+	var exported map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &exported); err != nil {
+		t.Fatalf("decode export body: %v", err)
+	}
+	if got, _ := exported["templateKey"].(string); got != key {
+		t.Fatalf("templateKey = %q, want %q", got, key)
+	}
+	if got, _ := exported["version"].(float64); int(got) != 1 {
+		t.Fatalf("version = %v, want 1", exported["version"])
+	}
+	if _, ok := exported["definition"]; !ok {
+		t.Fatalf("expected export to include definition field")
+	}
+}
+
+func TestHandleTemplatePreviewDocx_503_RenderUnavailable(t *testing.T) {
+	h, _ := newTemplateTestHandler(t)
+
+	draft := createTestDraft(t, h, "po", "Preview Test")
+	key := draft.TemplateKey
+
+	saveBody, _ := json.Marshal(saveDraftRequest{
+		Blocks:      json.RawMessage(`{"blocks":[{"id":"p1","type":"paragraph","children":[{"text":"Preview body"}]}]}`),
+		LockVersion: draft.LockVersion,
+	})
+	saveReq := httptest.NewRequest(http.MethodPut, "/api/v1/templates/"+key+"/draft", bytes.NewReader(saveBody))
+	saveReq = withAdminCtx(saveReq)
+	saveRec := httptest.NewRecorder()
+	h.handleSaveDraft(saveRec, saveReq, key)
+	if saveRec.Code != http.StatusOK {
+		t.Fatalf("save setup failed: %d %s", saveRec.Code, saveRec.Body.String())
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/templates/"+key+"/preview-docx", nil)
+	req = withAdminCtx(req)
+	rec := httptest.NewRecorder()
+
+	h.handleTemplatePreviewDocx(rec, req, key)
+
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503; body: %s", rec.Code, rec.Body.String())
+	}
+
+	var envelope apiErrorEnvelope
+	if err := json.NewDecoder(rec.Body).Decode(&envelope); err != nil {
+		t.Fatalf("decode error envelope: %v", err)
+	}
+	if envelope.Error.Code != "RENDER_UNAVAILABLE" {
+		t.Fatalf("error.code = %q, want %q", envelope.Error.Code, "RENDER_UNAVAILABLE")
+	}
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 

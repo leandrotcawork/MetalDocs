@@ -9,6 +9,7 @@ import { StrippedFieldsBanner } from "./StrippedFieldsBanner";
 import { useTemplateDraft } from "./useTemplateDraft";
 import { useTemplatesStore } from "../../store/templates.store";
 import type { TemplateDraftDTO } from "../../api/templates";
+import styles from "./TemplateEditorView.module.css";
 
 type TemplateEditorViewProps = {
   profileCode: string;
@@ -96,7 +97,7 @@ export function TemplateEditorView({ profileCode, templateKey }: TemplateEditorV
 
   if (isLoading) {
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontSize: "14px", color: "rgba(255,255,255,0.5)" }}>
+      <div className={styles.loadingState}>
         Carregando template...
       </div>
     );
@@ -104,14 +105,14 @@ export function TemplateEditorView({ profileCode, templateKey }: TemplateEditorV
 
   if (error || !draft) {
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontSize: "14px", color: "var(--color-error, #f87171)" }}>
+      <div className={styles.errorState}>
         {error ?? "Template nao encontrado."}
       </div>
     );
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden" }}>
+    <div className={styles.layout} data-testid="template-editor-layout">
       {/* Top bar */}
       <MetadataBar
         templateKey={templateKey}
@@ -137,12 +138,12 @@ export function TemplateEditorView({ profileCode, templateKey }: TemplateEditorV
       )}
 
       {/* Editor + Sidebar row — fills remaining height, position:relative for ValidationPanel */}
-      <div style={{ flex: 1, overflow: "hidden", display: "flex", position: "relative" }}>
+      <div className={styles.workspaceRow} data-testid="template-editor-sidebars">
         {/* Left: Block Palette */}
         <BlockPalette editor={editorInstance} />
 
         {/* Center: MDDM Editor */}
-        <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
+        <div className={styles.documentPane} data-testid="template-editor-document-pane">
           <MDDMEditor
             initialContent={Array.isArray(draft.blocks) ? (draft.blocks as PartialBlock[]) : undefined}
             onEditorReady={handleEditorReady}

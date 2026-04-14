@@ -285,3 +285,10 @@ Wrong:   The template palette inserted `dataTable` with `children: []`, but the 
 Correct: New `dataTable` inserts now seed minimal valid `tableContent` with one empty cell row.
 Rule:    Any block backed by non-inline ProseMirror content constraints must be inserted with schema-valid initial content, not generic empty children.
 Layer:   application
+
+## Lesson 42 - Layout guard tests must assert composition, not only element existence
+Date: 2026-04-14 | Trigger: correction
+Wrong:   The initial `TemplateEditorView` layout test only checked that test IDs existed, allowing structure regressions (wrong nesting/placement) to pass.
+Correct: The layout test now asserts containment relationships and that mocked palette/sidebar/editor mount inside the expected layout containers.
+Rule:    UI composition regression tests should verify structural contracts, not just selector presence.
+Layer:   process

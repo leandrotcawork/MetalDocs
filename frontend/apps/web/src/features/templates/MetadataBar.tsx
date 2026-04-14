@@ -245,6 +245,7 @@ export function MetadataBar({
       {/* Action buttons */}
       <div style={{ display: "inline-flex", gap: "0.5rem", flexShrink: 0 }}>
         <button
+          data-testid="template-preview-docx-btn"
           type="button"
           className="ghost-button"
           onClick={() => void handlePreviewDocx()}
@@ -255,6 +256,7 @@ export function MetadataBar({
           {isPreviewingDocx ? "Gerando DOCX..." : "Visualizar DOCX"}
         </button>
         <button
+          data-testid="template-discard-btn"
           type="button"
           className="ghost-button"
           onClick={handleDiscardClick}
@@ -264,6 +266,7 @@ export function MetadataBar({
           Descartar rascunho
         </button>
         <button
+          data-testid="template-save-btn"
           type="button"
           className="ghost-button"
           onClick={onSave}
@@ -276,6 +279,7 @@ export function MetadataBar({
           {isDirty ? "Salvar rascunho *" : "Salvar rascunho"}
         </button>
         <button
+          data-testid="template-publish-btn"
           type="button"
           onClick={onPublish}
           title="Publicar template (valida antes de enviar)"

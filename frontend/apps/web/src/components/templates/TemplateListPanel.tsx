@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   listTemplates,
   createTemplate,
+  editPublished,
   cloneTemplate,
   deleteDraft,
   discardDraft,
@@ -58,7 +59,7 @@ export function TemplateListPanel({ profileCode }: TemplateListPanelProps) {
     setError(null);
     try {
       const items = await listTemplates(profileCode);
-      setTemplates(items);
+      setTemplates(Array.isArray(items) ? items : []);
       setLoadState("ready");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao carregar templates.");
@@ -86,12 +87,17 @@ export function TemplateListPanel({ profileCode }: TemplateListPanelProps) {
   async function handleAction(template: TemplateListItemDTO, action: string) {
     try {
       if (action === "edit") {
+        if (template.status === "published") {
+          const draft = await editPublished(template.templateKey);
+          navigate(buildTemplateEditorPath({ profileCode, templateKey: draft.templateKey }));
+          return;
+        }
         navigate(buildTemplateEditorPath({ profileCode, templateKey: template.templateKey }));
         return;
       }
       if (action === "clone") {
-        await cloneTemplate(template.templateKey, `${template.name} (copia)`);
-        await fetchTemplates();
+        const draft = await cloneTemplate(template.templateKey, `${template.name} (copia)`);
+        navigate(buildTemplateEditorPath({ profileCode, templateKey: draft.templateKey }));
         return;
       }
       if (action === "delete") {
@@ -126,21 +132,18 @@ export function TemplateListPanel({ profileCode }: TemplateListPanelProps) {
 
   function handleImportSuccess(result: ImportResultDTO) {
     setShowImport(false);
-    void fetchTemplates();
-    if (result.hasStrippedFields) {
-      navigate(buildTemplateEditorPath({ profileCode, templateKey: result.templateKey }));
-    }
+    navigate(buildTemplateEditorPath({ profileCode, templateKey: result.templateKey }));
   }
 
   return (
-    <div className="catalog-card">
+    <div className="catalog-card" data-testid="template-list-panel">
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem", flexWrap: "wrap", marginBottom: "0.75rem" }}>
         <h3 style={{ margin: 0 }}>Templates</h3>
         <span style={{ display: "inline-flex", gap: "0.5rem" }}>
-          <button type="button" className="ghost-button" onClick={() => setShowImport(true)}>
+          <button data-testid="template-import-open-btn" type="button" className="ghost-button" onClick={() => setShowImport(true)}>
             Importar
           </button>
-          <button type="button" onClick={() => void handleCreate()} disabled={creating}>
+          <button data-testid="template-create-btn" type="button" onClick={() => void handleCreate()} disabled={creating}>
             {creating ? "Criando..." : "Novo template"}
           </button>
         </span>
@@ -175,7 +178,7 @@ export function TemplateListPanel({ profileCode }: TemplateListPanelProps) {
           </thead>
           <tbody>
             {templates.map((tpl) => (
-              <tr key={tpl.templateKey} style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              <tr data-testid={`template-row-${tpl.templateKey}`} key={tpl.templateKey} style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
                 <td style={{ padding: "6px 8px" }}>{tpl.name}</td>
                 <td style={{ padding: "6px 8px" }}>
                   <StatusBadge status={tpl.status} />

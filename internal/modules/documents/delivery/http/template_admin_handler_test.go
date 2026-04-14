@@ -257,6 +257,41 @@ func TestHandlePublish_422_HasStrippedFields(t *testing.T) {
 	}
 }
 
+func TestHandlePublish_422_ReturnsStructuredValidationErrors(t *testing.T) {
+	h, _ := newTemplateTestHandler(t)
+
+	draft := createTestDraft(t, h, "po", "Invalid Publish Test")
+	key := draft.TemplateKey
+
+	invalidBlocks := json.RawMessage(`[{"id":"b1","type":"UNKNOWN_BLOCK_TYPE","props":{},"content":[],"children":[]}]`)
+	saved, err := h.service.SaveDraftAuthorized(ctxAdmin().Context(), key, invalidBlocks, nil, nil, draft.LockVersion, "actor-admin")
+	if err != nil {
+		t.Fatalf("SaveDraftAuthorized() error = %v", err)
+	}
+
+	body, _ := json.Marshal(publishRequest{LockVersion: saved.LockVersion})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/templates/"+key+"/publish", bytes.NewReader(body))
+	req = withAdminCtx(req)
+	rec := httptest.NewRecorder()
+
+	h.handlePublish(rec, req, key)
+
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422; body: %s", rec.Code, rec.Body.String())
+	}
+
+	var resp publishValidationErrorResponse
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if len(resp.Errors) == 0 {
+		t.Fatalf("expected structured publish errors, got none: %+v", resp)
+	}
+	if resp.Error.Code != "TEMPLATE_PUBLISH_VALIDATION" {
+		t.Fatalf("error code = %q, want TEMPLATE_PUBLISH_VALIDATION", resp.Error.Code)
+	}
+}
+
 // ---------------------------------------------------------------------------
 // POST /api/v1/templates/{key}/discard-draft — DiscardDraft
 // ---------------------------------------------------------------------------

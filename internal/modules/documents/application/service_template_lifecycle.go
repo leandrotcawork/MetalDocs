@@ -555,7 +555,7 @@ func (s *Service) PublishAuthorized(ctx context.Context, key string, lockVersion
 	}
 
 	if errs := validateTemplateStrict(draft.BlocksJSON); len(errs) > 0 {
-		return nil, domain.ErrTemplatePublishValidation
+		return nil, &domain.TemplatePublishValidationError{Errors: errs}
 	}
 
 	newVersion := draft.BaseVersion + 1

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   getTemplate,
+  editPublished,
   saveDraft as apiSaveDraft,
   publishTemplate,
   discardDraft as apiDiscardDraft,
@@ -27,6 +28,7 @@ interface UseTemplateDraftResult {
   saveDraft: (blocks: unknown) => Promise<void>;
   publish: (blocks: unknown) => Promise<void>;
   discardDraft: () => Promise<void>;
+  replaceDraft: (draft: TemplateDraftDTO) => void;
 }
 
 export function useTemplateDraft({ templateKey }: UseTemplateDraftOptions): UseTemplateDraftResult {
@@ -48,10 +50,11 @@ export function useTemplateDraft({ templateKey }: UseTemplateDraftOptions): UseT
         const result = await getTemplate(templateKey);
         if (cancelled) return;
 
-        // The API returns either TemplateDraftDTO or TemplateVersionDTO.
-        // We only support drafts in the editor; if the template is a published
-        // version without a draft, we surface the data as-is but note its status.
-        const draft = result as TemplateDraftDTO;
+        const draft = (result as TemplateDraftDTO).status === "draft" && "lockVersion" in (result as TemplateDraftDTO)
+          ? (result as TemplateDraftDTO)
+          : await editPublished(templateKey);
+
+        if (cancelled) return;
         setLocalDraft(draft);
         setDraft(draft);
         setActiveTemplate(templateKey);
@@ -110,7 +113,15 @@ export function useTemplateDraft({ templateKey }: UseTemplateDraftOptions): UseT
       }
 
       try {
-        await publishTemplate(templateKey, current.lockVersion);
+        const savedDraft = await apiSaveDraft(templateKey, {
+          blocks,
+          lockVersion: current.lockVersion,
+        });
+        setLocalDraft(savedDraft);
+        setDraft(savedDraft);
+        markClean();
+
+        await publishTemplate(templateKey, savedDraft.lockVersion);
         // On success, clear validation errors and navigate back to profile list
         setValidationErrors([]);
         navigate(-1);
@@ -143,6 +154,12 @@ export function useTemplateDraft({ templateKey }: UseTemplateDraftOptions): UseT
     }
   }, [templateKey, navigate]);
 
+  const replaceDraft = useCallback((nextDraft: TemplateDraftDTO) => {
+    setLocalDraft(nextDraft);
+    setDraft(nextDraft);
+    markClean();
+  }, [setDraft, markClean]);
+
   return {
     draft: localDraft,
     isLoading,
@@ -150,5 +167,6 @@ export function useTemplateDraft({ templateKey }: UseTemplateDraftOptions): UseT
     saveDraft,
     publish,
     discardDraft,
+    replaceDraft,
   };
 }

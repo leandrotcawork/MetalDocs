@@ -19,7 +19,7 @@ export function TemplateEditorView({ profileCode, templateKey }: TemplateEditorV
   // editorRef holds the BlockNote editor instance surfaced by onEditorReady
   const editorRef = useRef<{ document: unknown[] } | null>(null);
 
-  const { draft, isLoading, error, saveDraft, publish, discardDraft } = useTemplateDraft({ templateKey });
+  const { draft, isLoading, error, saveDraft, publish, discardDraft, replaceDraft } = useTemplateDraft({ templateKey });
 
   const {
     isDirty,
@@ -30,7 +30,6 @@ export function TemplateEditorView({ profileCode, templateKey }: TemplateEditorV
     setValidationErrors,
     selectedBlockId,
     setSelectedBlock,
-    setDraft,
   } = useTemplatesStore();
 
   // Cleanup store when the view unmounts
@@ -89,8 +88,8 @@ export function TemplateEditorView({ profileCode, templateKey }: TemplateEditorV
   }, [setValidationErrors]);
 
   const handleStrippedAcknowledged = useCallback((updatedDraft: TemplateDraftDTO) => {
-    setDraft(updatedDraft);
-  }, [setDraft]);
+    replaceDraft(updatedDraft);
+  }, [replaceDraft]);
 
   if (isLoading) {
     return (

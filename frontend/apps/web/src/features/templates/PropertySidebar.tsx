@@ -48,9 +48,10 @@ interface SchemaFieldRendererProps {
   schema: StyleSchema | CapsSchema;
   values: Record<string, unknown>;
   onChange: (key: string, value: unknown) => void;
+  testIdPrefix: string;
 }
 
-function SchemaFieldRenderer({ schema, values, onChange }: SchemaFieldRendererProps) {
+function SchemaFieldRenderer({ schema, values, onChange, testIdPrefix }: SchemaFieldRendererProps) {
   return (
     <div>
       {schema.map((field) => {
@@ -63,6 +64,7 @@ function SchemaFieldRenderer({ schema, values, onChange }: SchemaFieldRendererPr
               key={field.key}
               label={field.label}
               value={val}
+              testId={`${testIdPrefix}-${field.key}`}
               onChange={(v) => onChange(field.key, v)}
             />
           );
@@ -75,6 +77,7 @@ function SchemaFieldRenderer({ schema, values, onChange }: SchemaFieldRendererPr
               key={field.key}
               label={field.label}
               value={val}
+              testId={`${testIdPrefix}-${field.key}`}
               onChange={(v) => onChange(field.key, v)}
             />
           );
@@ -88,6 +91,7 @@ function SchemaFieldRenderer({ schema, values, onChange }: SchemaFieldRendererPr
               label={field.label}
               value={val}
               options={(field as any).options as readonly string[]}
+              testId={`${testIdPrefix}-${field.key}`}
               onChange={(v) => onChange(field.key, v)}
             />
           );
@@ -101,6 +105,7 @@ function SchemaFieldRenderer({ schema, values, onChange }: SchemaFieldRendererPr
                 {field.label}
               </label>
               <input
+                data-testid={`${testIdPrefix}-${field.key}`}
                 type="number"
                 value={val}
                 onChange={(e) => onChange(field.key, Number(e.target.value))}
@@ -128,6 +133,7 @@ function SchemaFieldRenderer({ schema, values, onChange }: SchemaFieldRendererPr
                 {field.label}
               </label>
               <input
+                data-testid={`${testIdPrefix}-${field.key}`}
                 type="text"
                 value={val}
                 onChange={(e) => onChange(field.key, e.target.value)}
@@ -175,7 +181,7 @@ function EstiloTab({ block, editor, schema }: EstiloTabProps) {
     editor.updateBlock(blockId, { props: { styleJson: JSON.stringify(updated) } });
   };
 
-  return <SchemaFieldRenderer schema={schema} values={currentStyle} onChange={handleChange} />;
+  return <SchemaFieldRenderer schema={schema} values={currentStyle} onChange={handleChange} testIdPrefix="template-style" />;
 }
 
 // ---------------------------------------------------------------------------
@@ -200,7 +206,7 @@ function CapacidadesTab({ block, editor, schema }: CapacidadesTabProps) {
     editor.updateBlock(blockId, { props: { capabilitiesJson: JSON.stringify(updated) } });
   };
 
-  return <SchemaFieldRenderer schema={schema} values={currentCaps} onChange={handleChange} />;
+  return <SchemaFieldRenderer schema={schema} values={currentCaps} onChange={handleChange} testIdPrefix="template-caps" />;
 }
 
 // ---------------------------------------------------------------------------
@@ -274,7 +280,7 @@ export function PropertySidebar({ editor, selectedBlockId }: Props) {
       <div style={sidebarStyle} data-testid="property-sidebar">
         <div style={tabBarStyle}>
           {TABS.map((tab) => (
-            <button key={tab.id} style={tabButtonStyle(tab.id)} onClick={() => setActiveTab(tab.id)}>
+            <button data-testid={`property-tab-${tab.id}`} key={tab.id} style={tabButtonStyle(tab.id)} onClick={() => setActiveTab(tab.id)}>
               {tab.label}
             </button>
           ))}
@@ -292,14 +298,14 @@ export function PropertySidebar({ editor, selectedBlockId }: Props) {
     <div style={sidebarStyle} data-testid="property-sidebar">
       <div style={tabBarStyle}>
         {TABS.map((tab) => (
-          <button key={tab.id} style={tabButtonStyle(tab.id)} onClick={() => setActiveTab(tab.id)}>
+          <button data-testid={`property-tab-${tab.id}`} key={tab.id} style={tabButtonStyle(tab.id)} onClick={() => setActiveTab(tab.id)}>
             {tab.label}
           </button>
         ))}
       </div>
 
       {/* Block type badge */}
-      <div style={{ padding: "8px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)", fontSize: "11px", color: "rgba(255,255,255,0.4)" }}>
+      <div data-testid="property-sidebar-block-type" style={{ padding: "8px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)", fontSize: "11px", color: "rgba(255,255,255,0.4)" }}>
         Tipo: <span style={{ color: "rgba(255,255,255,0.65)", fontFamily: "monospace" }}>{block.type}</span>
       </div>
 

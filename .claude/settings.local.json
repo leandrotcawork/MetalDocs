@@ -1,6 +1,5 @@
 {
   "permissions": {
-    "defaultMode": "bypassPermissions",
     "allow": [
       "Bash(cp \"C:/Users/leandro.theodoro.MN-NTB-LEANDROT/.claude/plugins/marketplaces/forgeflow-plugins/templates/brain/working-memory/brain-state.json\" \"c:/Users/leandro.theodoro.MN-NTB-LEANDROT/Documents/MetalDocs/.brain/working-memory/brain-state.json\")",
       "Bash(cp \"C:/Users/leandro.theodoro.MN-NTB-LEANDROT/.claude/plugins/marketplaces/forgeflow-plugins/templates/brain/progress/brain-project-state.json\" \"c:/Users/leandro.theodoro.MN-NTB-LEANDROT/Documents/MetalDocs/.brain/progress/brain-project-state.json\")",
@@ -57,7 +56,9 @@
       "Bash(grep -n \"type Document struct\\\\|type Version struct\" internal/modules/documents/domain/*.go)",
       "Bash(git:*)",
       "Bash(go vet:*)",
-      "Bash(grep -n \"GetBrowserEditorBundle\\\\|BrowserEditorBundle\\\\|browser_editor_bundle\\\\|browserEditorBundle\" /c/Users/leandro.theodoro.MN-NTB-LEANDROT/Documents/MetalDocs/internal/modules/documents/application/*.go)"
+      "Bash(grep -n \"GetBrowserEditorBundle\\\\|BrowserEditorBundle\\\\|browser_editor_bundle\\\\|browserEditorBundle\" /c/Users/leandro.theodoro.MN-NTB-LEANDROT/Documents/MetalDocs/internal/modules/documents/application/*.go)",
+      "Bash(rtk git:*)",
+      "Bash(rtk git commit -m ':*)"
     ],
     "defaultMode": "bypassPermissions",
     "additionalDirectories": [

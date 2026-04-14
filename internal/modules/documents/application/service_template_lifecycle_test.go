@@ -316,6 +316,16 @@ func TestPublishAuthorized_StrictValidation(t *testing.T) {
 	if !errors.Is(err, domain.ErrTemplatePublishValidation) {
 		t.Errorf("err = %v, want ErrTemplatePublishValidation", err)
 	}
+	var validationErr *domain.TemplatePublishValidationError
+	if !errors.As(err, &validationErr) {
+		t.Fatalf("err = %T, want *domain.TemplatePublishValidationError", err)
+	}
+	if len(validationErr.Errors) == 0 {
+		t.Fatal("expected structured publish errors, got none")
+	}
+	if validationErr.Errors[0].Reason == "" {
+		t.Fatal("expected publish error reason to be populated")
+	}
 }
 
 // --- DiscardDraftAuthorized -------------------------------------------------

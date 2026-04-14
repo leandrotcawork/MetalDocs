@@ -9,6 +9,7 @@ import {
   expectStringStrict,
   expectNumberStrict,
   expectBooleanStrict,
+  expectOptionalStringStrict,
 } from "./codec-utils";
 
 export type DataTableStyle = {
@@ -125,16 +126,16 @@ const DATA_TABLE_CAPS_KEYS = [
 
 export function parseDataTableStyleStrict(raw: Record<string, unknown>): DataTableStyle {
   assertNoUnknownFields(raw, [...DATA_TABLE_STYLE_KEYS], "style");
-  const density = typeof raw.density === "string" ? raw.density : undefined;
+  const density = expectOptionalStringStrict(raw, "density");
   if (density !== undefined && !VALID_DENSITIES.includes(density as "normal" | "compact")) {
     throw new CodecStrictError("style.density", `invalid density value: ${density}`);
   }
   return {
-    headerBackground: typeof raw.headerBackground === "string" ? raw.headerBackground : undefined,
-    headerColor: typeof raw.headerColor === "string" ? raw.headerColor : undefined,
-    headerFontWeight: typeof raw.headerFontWeight === "string" ? raw.headerFontWeight : undefined,
-    cellBorderColor: typeof raw.cellBorderColor === "string" ? raw.cellBorderColor : undefined,
-    cellPadding: typeof raw.cellPadding === "string" ? raw.cellPadding : undefined,
+    headerBackground: expectOptionalStringStrict(raw, "headerBackground"),
+    headerColor: expectOptionalStringStrict(raw, "headerColor"),
+    headerFontWeight: expectOptionalStringStrict(raw, "headerFontWeight"),
+    cellBorderColor: expectOptionalStringStrict(raw, "cellBorderColor"),
+    cellPadding: expectOptionalStringStrict(raw, "cellPadding"),
     density: density as "normal" | "compact" | undefined,
   };
 }

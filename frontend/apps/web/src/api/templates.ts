@@ -220,7 +220,7 @@ export function deprecateTemplate(key: string, version: number): Promise<void> {
 export function cloneTemplate(key: string, newName: string): Promise<TemplateDraftDTO> {
   return request<TemplateDraftDTO>(`/templates/${encodeKey(key)}/clone`, {
     method: "POST",
-    body: JSON.stringify({ name: newName }),
+    body: JSON.stringify({ newName }),
   });
 }
 
@@ -229,7 +229,7 @@ export function cloneTemplate(key: string, newName: string): Promise<TemplateDra
  * Permanently delete a draft (no published version exists).
  */
 export function deleteDraft(key: string): Promise<void> {
-  return request<void>(`/templates/${encodeKey(key)}/draft`, {
+  return request<void>(`/templates/${encodeKey(key)}`, {
     method: "DELETE",
   });
 }
@@ -239,9 +239,8 @@ export function deleteDraft(key: string): Promise<void> {
  * Discard an in-progress draft, reverting to the last published version.
  */
 export function discardDraft(key: string): Promise<void> {
-  return request<void>(`/templates/${encodeKey(key)}/discard`, {
+  return request<void>(`/templates/${encodeKey(key)}/discard-draft`, {
     method: "POST",
-    body: JSON.stringify({}),
   });
 }
 
@@ -279,13 +278,11 @@ export function previewTemplateDocx(key: string): Promise<Blob> {
  * Import a template from an uploaded file (multipart/form-data).
  */
 export function importTemplate(profileCode: string, file: File): Promise<ImportResultDTO> {
-  const form = new FormData();
-  form.append("file", file);
   return request<ImportResultDTO>(`/templates/import?profileCode=${encodeURIComponent(profileCode)}`, {
     method: "POST",
-    body: form,
-    // Content-Type is intentionally omitted so the browser sets the correct
-    // multipart boundary. The request() helper already handles FormData by
-    // skipping the application/json header.
+    body: file,
+    headers: {
+      "Content-Type": file.type || "application/json",
+    },
   });
 }

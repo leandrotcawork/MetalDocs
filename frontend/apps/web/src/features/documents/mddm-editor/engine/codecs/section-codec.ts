@@ -6,6 +6,7 @@ import {
   CodecStrictError,
   assertNoUnknownFields,
   expectBooleanStrict,
+  expectOptionalStringStrict,
 } from "./codec-utils";
 
 export type SectionStyle = {
@@ -77,11 +78,11 @@ const SECTION_CAPS_KEYS = ["locked", "removable", "reorderable"] as const;
 export function parseSectionStyleStrict(raw: Record<string, unknown>): SectionStyle {
   assertNoUnknownFields(raw, [...SECTION_STYLE_KEYS], "style");
   return {
-    headerHeight: typeof raw.headerHeight === "string" ? raw.headerHeight : undefined,
-    headerBackground: typeof raw.headerBackground === "string" ? raw.headerBackground : undefined,
-    headerColor: typeof raw.headerColor === "string" ? raw.headerColor : undefined,
-    headerFontSize: typeof raw.headerFontSize === "string" ? raw.headerFontSize : undefined,
-    headerFontWeight: typeof raw.headerFontWeight === "string" ? raw.headerFontWeight : undefined,
+    headerHeight: expectOptionalStringStrict(raw, "headerHeight"),
+    headerBackground: expectOptionalStringStrict(raw, "headerBackground"),
+    headerColor: expectOptionalStringStrict(raw, "headerColor"),
+    headerFontSize: expectOptionalStringStrict(raw, "headerFontSize"),
+    headerFontWeight: expectOptionalStringStrict(raw, "headerFontWeight"),
   };
 }
 

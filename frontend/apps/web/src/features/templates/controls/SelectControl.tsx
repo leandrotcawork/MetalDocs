@@ -5,6 +5,7 @@ interface Option {
 
 interface Props {
   label: string;
+  testId?: string;
   value: string;
   options: readonly string[] | readonly Option[];
   onChange: (value: string) => void;
@@ -14,13 +15,14 @@ function toOption(opt: string | Option): Option {
   return typeof opt === "string" ? { value: opt, label: opt } : opt;
 }
 
-export function SelectControl({ label, value, options, onChange }: Props) {
+export function SelectControl({ label, testId, value, options, onChange }: Props) {
   return (
     <div style={{ marginBottom: "8px" }}>
       <label style={{ display: "block", fontSize: "12px", color: "rgba(255,255,255,0.7)", marginBottom: "4px" }}>
         {label}
       </label>
       <select
+        data-testid={testId}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         style={{

@@ -45,6 +45,10 @@ describe("parseSectionStyleStrict", () => {
   it("throws CodecStrictError for an unknown field", () => {
     expectStrictError(() => parseSectionStyleStrict({ unknownField: "x" }), "unknownField");
   });
+
+  it("throws CodecStrictError when a style field has the wrong type", () => {
+    expectStrictError(() => parseSectionStyleStrict({ headerHeight: 48 }), "headerHeight");
+  });
 });
 
 describe("parseSectionCapsStrict", () => {
@@ -207,6 +211,10 @@ describe("parseRichBlockStyleStrict", () => {
   it("throws for unknown field", () => {
     expectStrictError(() => parseRichBlockStyleStrict({ ghost: "true" }), "ghost");
   });
+
+  it("throws for wrong style field type", () => {
+    expectStrictError(() => parseRichBlockStyleStrict({ labelFontSize: 12 }), "labelFontSize");
+  });
 });
 
 describe("parseRichBlockCapsStrict", () => {
@@ -227,6 +235,20 @@ describe("parseRichBlockCapsStrict", () => {
 // ---------------------------------------------------------------------------
 
 describe("validateTemplate", () => {
+  it("accepts editor blocks that store strict data in styleJson and capabilitiesJson", () => {
+    const blocks = [
+      {
+        id: "block-json",
+        type: "section",
+        props: {
+          styleJson: JSON.stringify({ headerHeight: "48px" }),
+          capabilitiesJson: JSON.stringify({ locked: true, removable: false, reorderable: false }),
+        },
+      },
+    ];
+    expect(validateTemplate(blocks)).toEqual([]);
+  });
+
   it("returns [] for a valid section block", () => {
     const blocks = [
       {
@@ -263,6 +285,22 @@ describe("validateTemplate", () => {
     const errors = validateTemplate(blocks);
     expect(errors).toHaveLength(1);
     expect(errors[0].field).toContain("rogueField");
+  });
+
+  it("returns error for invalid styleJson field types in editor blocks", () => {
+    const blocks = [
+      {
+        id: "b3",
+        type: "richBlock",
+        props: {
+          styleJson: JSON.stringify({ labelFontSize: 12 }),
+          capabilitiesJson: JSON.stringify({ locked: true, removable: false, editableZones: ["content"] }),
+        },
+      },
+    ];
+    const errors = validateTemplate(blocks);
+    expect(errors).toHaveLength(1);
+    expect(errors[0].field).toContain("labelFontSize");
   });
 
   it("recurses into children and collects errors", () => {
@@ -318,6 +356,18 @@ describe("validateTemplate", () => {
           style: {},
           caps: { locked: true, removable: false, addItems: true, removeItems: true, maxItems: 10, minItems: 1 },
         },
+      },
+    ];
+    expect(validateTemplate(blocks)).toEqual([]);
+  });
+
+  it("allows built-in paragraph blocks emitted by the editor schema", () => {
+    const blocks = [
+      {
+        id: "p-1",
+        type: "paragraph",
+        props: {},
+        children: [{ type: "text", text: "helper copy" }],
       },
     ];
     expect(validateTemplate(blocks)).toEqual([]);

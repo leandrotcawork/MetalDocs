@@ -158,3 +158,109 @@ Wrong:   `PublishAuthorized` called `InsertTemplateVersion` then `DeleteTemplate
 Correct: Template publish now uses `PublishTemplateAtomic` in the repository to insert the published version and delete the draft in one transaction/critical section.
 Rule:    Lifecycle transitions that move state across tables must be atomic and must never swallow cleanup failures.
 Layer:   infrastructure
+
+## Lesson 23 - Template admin clients must follow handler contracts exactly
+Date: 2026-04-14 | Trigger: correction
+Wrong:   The frontend template client used stale routes and payloads (`DELETE /draft`, `POST /discard`, clone body `{name}`, multipart import) that no longer matched `template_admin_handler.go`.
+Correct: Template admin clients now call the exact handler contract for path, method, payload, and body shape before any browser-level validation is trusted.
+Rule:    Admin workflow verification is meaningless until the UI client is aligned byte-for-byte with the active backend contract.
+Layer:   delivery
+
+## Lesson 24 - Publish must persist live editor state before lifecycle transition
+Date: 2026-04-14 | Trigger: correction
+Wrong:   The template editor publish action validated the current BlockNote document but published the last saved draft, allowing stale content to be promoted.
+Correct: Template publish now saves the current editor blocks first, advances `lockVersion`, and only then calls the publish endpoint.
+Rule:    Any lifecycle action that promotes editable state must persist the in-memory editor document before the transition request is sent.
+Layer:   application
+
+## Lesson 25 - Client strict validation must normalize sparse codec storage
+Date: 2026-04-14 | Trigger: correction
+Wrong:   `validate-template.ts` validated only legacy `props.style` / `props.caps` objects and treated missing capability fields as errors, even though the editor persists sparse `styleJson` / `capabilitiesJson` with codec defaults implied.
+Correct: The client publish validator now reads persisted JSON fields, preserves unknown-field checks, and merges codec defaults before strict capability validation.
+Rule:    Strict client validation must validate the effective codec state, not reject valid sparse editor storage that relies on explicit defaults.
+Layer:   application
+
+## Lesson 26 - Browser validation needs stable selectors at workflow boundaries
+Date: 2026-04-14 | Trigger: correction
+Wrong:   The template authoring sidebar exposed critical controls only through unlabeled sibling inputs and tab text, forcing brittle browser tests to depend on DOM order.
+Correct: Template authoring controls now expose stable `data-testid` hooks for tabs and editable property/style/capability fields used by the validation workflow.
+Rule:    Any user-critical workflow that must be browser-verified needs stable selectors on its actionable controls before the e2e suite can be trusted.
+Layer:   process
+
+## Lesson 27 - Strict codecs must reject present optional fields with wrong types
+Date: 2026-04-14 | Trigger: correction
+Wrong:   The React strict codecs only rejected unknown style keys, but silently accepted present style fields with the wrong type by coercing them to `undefined`.
+Correct: Optional style fields now remain optional, but any present non-string value raises `CodecStrictError` so the client publish gate matches the intended strict contract.
+Rule:    In a strict validator, optional means omit-or-valid; it never means accept an invalid present value by dropping it.
+Layer:   domain
+
+## Lesson 28 - Duplicated draft state must update both local and shared stores
+Date: 2026-04-14 | Trigger: correction
+Wrong:   The stripped-fields acknowledgement flow updated the shared template store but left `useTemplateDraft`'s local draft stale, so the banner and lockVersion could remain outdated.
+Correct: Server-returned draft replacements now update both local hook state and the shared store through a single `replaceDraft` path.
+Rule:    When a feature keeps mirrored local and global state, every server-authoritative replacement must flow through one shared updater or the UI will drift.
+Layer:   application
+
+## Lesson 29 - Client validators must track the actual editor schema, not a subset guess
+Date: 2026-04-14 | Trigger: correction
+Wrong:   The template publish validator only recognized custom template blocks, so valid built-in BlockNote blocks like `paragraph` were flagged as unknown during real authoring flows.
+Correct: The client validator now passes through built-in schema block types and keeps strict codec checks only for custom MDDM blocks.
+Rule:    Any validator attached to editor output must be derived from the editor schema surface, or browser workflows will fail on valid runtime-generated blocks.
+Layer:   domain
+
+## Lesson 30 - Block-tree validation must distinguish child blocks from inline runs
+Date: 2026-04-14 | Trigger: correction
+Wrong:   The template block validator recursively treated every `children` entry as another block, so inline text runs under built-in blocks like `paragraph` were reported as unknown block types.
+Correct: Recursive validation now descends only into real block nodes and ignores inline text children.
+Rule:    Any traversal over BlockNote/MDDM trees must separate block children from inline content nodes before applying block-level rules.
+Layer:   domain
+
+## Lesson 31 - Playwright route globs must cover nested REST action paths
+Date: 2026-04-14 | Trigger: correction
+Wrong:   The template admin browser stub matched only `/templates/:key`, so nested action routes like `/templates/:key/clone` and `/deprecate` leaked past the harness.
+Correct: Browser route interception now uses nested path globs that explicitly cover action endpoints under `/templates/**`.
+Rule:    When stubbing REST endpoints in Playwright, match the full action path depth or the harness will silently test the wrong backend surface.
+Layer:   process
+## Lesson 32 - Publish validation must preserve structured failure details
+Date: 2026-04-14 | Trigger: correction
+Wrong:   Template publish failures collapsed to the sentinel `ErrTemplatePublishValidation`, so the HTTP layer returned a generic 422 without the field-level `errors[]` payload the admin client expects.
+Correct: Template publish now returns a wrapped validation error carrying structured `PublishError[]`, and the handler serializes that exact payload in the 422 response.
+Rule:    When the UI depends on structured validation feedback, domain errors must preserve the machine-readable details all the way through the delivery response.
+Layer:   delivery
+## Lesson 33 - E2E login checks must target stable shell indicators
+Date: 2026-04-14 | Trigger: correction
+Wrong:   The template-admin Playwright helper treated post-login success as a specific `button` role named "Todos Documentos", which broke when the shell rendered the same destination as navigation text instead of that exact role.
+Correct: The login helper now waits for stable authenticated shell text (`Todos Documentos` or `Painel documental`) rather than a brittle role-specific widget.
+Rule:    Browser helpers should assert authentication against stable app-shell landmarks, not transient component roles.
+Layer:   process
+## Lesson 34 - Shared seeded e2e suites need an explicit single-worker entrypoint
+Date: 2026-04-14 | Trigger: correction
+Wrong:   The new template-admin Playwright specs were valid but relied on operators to remember a single-worker invocation, so the default parallel run introduced cross-test interference against the shared seeded workspace.
+Correct: The frontend package now exposes a dedicated `e2e:template-admin` script that runs the admin validation suite with `--workers=1`.
+Rule:    If an e2e suite depends on shared seeded state, its canonical command must encode the required execution mode instead of leaving it implicit.
+Layer:   process
+## Lesson 35 - Browser smoke specs must assert stable contracts, not volatile renderer internals
+Date: 2026-04-14 | Trigger: correction
+Wrong:   Legacy smoke tests hard-coded assumptions about immediate repeatable-item DOM rendering and inline editor-save state transitions that no longer hold in the current browser editor flow.
+Correct: The specs now validate stable user-visible scaffolding and deterministic API-level save rejection semantics, with bundle parsing that tolerates empty draft bodies by falling back to template snapshot blocks.
+Rule:    E2E smoke tests should anchor on stable product contracts and deterministic state transitions, not incidental editor implementation details.
+Layer:   process
+## Lesson 36 - Harness temp files must use platform temp-path APIs
+Date: 2026-04-14 | Trigger: correction
+Wrong:   The DOCX harness used `$env:TEMP` directly, which resolved to an invalid short path in this Windows profile and caused false failures when checking output file existence.
+Correct: The harness now resolves temp storage via `[System.IO.Path]::GetTempPath()` before writing/reading `docgen-harness.docx`.
+Rule:    Verification scripts must use runtime platform path APIs for temp files instead of raw env-path assumptions.
+Layer:   process
+## Lesson 37 - Gotenberg Chromium in Docker needs explicit shared memory sizing
+Date: 2026-04-14 | Trigger: correction
+Wrong:   The compose `gotenberg` service ran with default shared memory, causing Chromium startup timeouts (`websocket url timeout reached`) and 500s on `/forms/chromium/convert/html`.
+Correct: `deploy/compose/docker-compose.yml` now sets `shm_size: 1gb` for `gotenberg`, restoring stable HTML->PDF conversion.
+Rule:    Any Chromium-based render service in Docker must reserve adequate `/dev/shm` or parity and conversion tests will fail nondeterministically.
+Layer:   infrastructure
+
+## Lesson 38 - E2E smoke commands over shared seeded state must encode worker constraints
+Date: 2026-04-14 | Trigger: correction
+Wrong:   The default `e2e:smoke` script allowed parallel workers, producing intermittent timeouts and navigation race failures in shared seeded MDDM scenarios.
+Correct: `frontend/apps/web/package.json` now defines `e2e:smoke` with `--workers=1`.
+Rule:    If e2e scenarios share seeded backend state, enforce serial execution in the canonical command rather than relying on caller discipline.
+Layer:   process

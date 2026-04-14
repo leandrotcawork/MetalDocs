@@ -107,3 +107,15 @@ export function expectBooleanStrict(obj: Record<string, unknown>, key: string): 
   }
   return val;
 }
+
+/** Optional string field: missing is allowed, but present non-strings are rejected. */
+export function expectOptionalStringStrict(obj: Record<string, unknown>, key: string): string | undefined {
+  const val = obj[key];
+  if (val === undefined || val === null) {
+    return undefined;
+  }
+  if (typeof val !== "string") {
+    throw new CodecStrictError(key, `expected string, got ${typeof val}`);
+  }
+  return val;
+}

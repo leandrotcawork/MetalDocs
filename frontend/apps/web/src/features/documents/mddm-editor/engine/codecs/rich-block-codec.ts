@@ -6,6 +6,7 @@ import {
   CodecStrictError,
   assertNoUnknownFields,
   expectBooleanStrict,
+  expectOptionalStringStrict,
 } from "./codec-utils";
 
 export type RichBlockStyle = {
@@ -57,10 +58,10 @@ const RICH_BLOCK_CAPS_KEYS = ["locked", "removable", "editableZones"] as const;
 export function parseRichBlockStyleStrict(raw: Record<string, unknown>): RichBlockStyle {
   assertNoUnknownFields(raw, [...RICH_BLOCK_STYLE_KEYS], "style");
   return {
-    labelBackground: typeof raw.labelBackground === "string" ? raw.labelBackground : undefined,
-    labelFontSize: typeof raw.labelFontSize === "string" ? raw.labelFontSize : undefined,
-    labelColor: typeof raw.labelColor === "string" ? raw.labelColor : undefined,
-    borderColor: typeof raw.borderColor === "string" ? raw.borderColor : undefined,
+    labelBackground: expectOptionalStringStrict(raw, "labelBackground"),
+    labelFontSize: expectOptionalStringStrict(raw, "labelFontSize"),
+    labelColor: expectOptionalStringStrict(raw, "labelColor"),
+    borderColor: expectOptionalStringStrict(raw, "borderColor"),
   };
 }
 

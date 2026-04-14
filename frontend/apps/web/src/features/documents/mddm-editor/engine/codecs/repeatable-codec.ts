@@ -7,6 +7,7 @@ import {
   assertNoUnknownFields,
   expectNumberStrict,
   expectBooleanStrict,
+  expectOptionalStringStrict,
 } from "./codec-utils";
 
 export type RepeatableStyle = {
@@ -62,9 +63,9 @@ const REPEATABLE_CAPS_KEYS = ["locked", "removable", "addItems", "removeItems", 
 export function parseRepeatableStyleStrict(raw: Record<string, unknown>): RepeatableStyle {
   assertNoUnknownFields(raw, [...REPEATABLE_STYLE_KEYS], "style");
   return {
-    borderColor: typeof raw.borderColor === "string" ? raw.borderColor : undefined,
-    itemAccentBorder: typeof raw.itemAccentBorder === "string" ? raw.itemAccentBorder : undefined,
-    itemAccentWidth: typeof raw.itemAccentWidth === "string" ? raw.itemAccentWidth : undefined,
+    borderColor: expectOptionalStringStrict(raw, "borderColor"),
+    itemAccentBorder: expectOptionalStringStrict(raw, "itemAccentBorder"),
+    itemAccentWidth: expectOptionalStringStrict(raw, "itemAccentWidth"),
   };
 }
 

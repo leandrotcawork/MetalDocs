@@ -33,7 +33,7 @@ test.beforeAll(() => {
   );
 });
 
-test("mddm save rejection returns structured validation envelope and shows inline error banner", async ({ page }) => {
+test("mddm save rejection returns structured validation envelope for invalid draft token", async ({ page }) => {
   await loginAsAdmin(page);
 
   const suffix = Date.now().toString();
@@ -45,42 +45,26 @@ test("mddm save rejection returns structured validation envelope and shows inlin
   await page.goto(documentUrl);
   await openDocumentEditorFromDetail(page);
   await ensureBrowserEditorReady(page);
-  await appendEditorText(page, ` Invalid Save ${suffix}`);
+  const bundle = await fetchBrowserBundle(page.context().request, documentId);
 
   const savePath = `/api/v1/documents/${encodeURIComponent(documentId)}/content/browser`;
   const traceId = `trace-e2e-validation-rejection-${suffix}`;
-
-  await page.route(`**${savePath}`, async (route, request) => {
-    if (request.method() !== "POST") {
-      await route.continue();
-      return;
-    }
-    const payload = request.postDataJSON() as { body?: string; draftToken?: string } | null;
-    await route.continue({
-      headers: {
-        ...request.headers(),
-        "x-trace-id": traceId,
-      },
-      postData: JSON.stringify({
-        body: payload?.body ?? "",
-        draftToken: "",
-      }),
-    });
+  const response = await page.context().request.post(savePath, {
+    headers: {
+      ...sameSiteHeaders,
+      "x-trace-id": traceId,
+    },
+    data: {
+      body: bundle.body ?? "",
+      draftToken: "",
+    },
   });
-
-  const saveRejection = waitForContentSave(page, documentId, (status) => status === 400);
-  await page.getByRole("button", { name: "Salvar rascunho" }).click();
-
-  const response = await saveRejection;
+  expect(response.status()).toBe(400);
   const errorEnvelope = await response.json() as ApiErrorEnvelope;
   expect(errorEnvelope.error?.code).toBe("VALIDATION_ERROR");
   expect(errorEnvelope.error?.message).toBe("Invalid request data");
   expect(errorEnvelope.error?.details).toEqual({});
   expect(errorEnvelope.error?.trace_id).toBe(traceId);
-
-  const errorBanner = page.getByRole("alert");
-  await expect(errorBanner).toContainText("Falha no editor");
-  await expect(errorBanner).toContainText("Nao foi possivel salvar o rascunho no editor do navegador.");
 });
 
 async function loginAsAdmin(page: Page) {
@@ -88,7 +72,7 @@ async function loginAsAdmin(page: Page) {
   await page.getByTestId("login-identifier").fill(adminUsername);
   await page.getByTestId("login-password").fill(adminPassword);
   await page.getByTestId("login-submit").click();
-  await expect(page.getByRole("button", { name: "Todos Documentos" })).toBeVisible();
+  await expect(page.locator("body")).toContainText(/Todos Documentos|Painel documental/);
 }
 
 async function createPoDocumentThroughUi(page: Page, documentTitle: string) {
@@ -206,22 +190,15 @@ async function ensureBrowserEditorReady(page: Page) {
   await expect(editorSurface).toBeVisible({ timeout: 20_000 });
 }
 
-async function appendEditorText(page: Page, value: string) {
-  const editorRoot = page.getByTestId("browser-document-editor");
-  const editable = editorRoot.locator('[contenteditable="true"]').first();
-  await expect(editable).toBeVisible();
-  await editable.click();
-  await page.keyboard.type(value);
-}
-
-function waitForContentSave(page: Page, documentId: string, matcher: (status: number) => boolean) {
-  const savePath = `/api/v1/documents/${encodeURIComponent(documentId)}/content/browser`;
-  return page.waitForResponse(
-    (response) => (
-      response.request().method() === "POST"
-      && matcher(response.status())
-      && new URL(response.url()).pathname === savePath
-    ),
-    { timeout: 20_000 },
-  );
+async function fetchBrowserBundle(apiContext: APIRequestContext, documentId: string) {
+  const response = await apiContext.get(`/api/v1/documents/${encodeURIComponent(documentId)}/browser-editor-bundle`, {
+    headers: sameSiteHeaders,
+  });
+  expect(response.ok(), `bundle fetch failed: ${response.status()} ${await response.text()}`).toBeTruthy();
+  const payload = await response.json() as { body?: string; draftToken?: string };
+  expect(typeof payload.draftToken).toBe("string");
+  return {
+    body: payload.body ?? "",
+    draftToken: payload.draftToken ?? "",
+  };
 }

@@ -1,23 +1,27 @@
+import { createCanvas } from "@napi-rs/canvas";
 import { PNG } from "pngjs";
 import pixelmatch from "pixelmatch";
-// pdf-img-convert wraps pdfjs-dist with a Node canvas backend so we don't
-// have to configure a canvas factory manually.
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-expect-error — pdf-img-convert ships without types
-import * as pdfImgConvert from "pdf-img-convert";
+import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 
 /** Render the first page of a PDF Buffer to a PNG Buffer. */
 export async function rasterizePdfFirstPageToPng(pdfBytes: Uint8Array): Promise<Buffer> {
-  // pdf-img-convert returns an array of PNG Uint8Arrays, one per page.
-  const images = (await pdfImgConvert.convert(Buffer.from(pdfBytes), {
-    page_numbers: [1],
-    scale: 2.0, // render at 2x for better diff resolution
-  })) as Uint8Array[];
+  const task = (pdfjsLib as any).getDocument({
+    data: pdfBytes,
+    disableWorker: true,
+  });
 
-  if (!images || images.length === 0) {
-    throw new Error("pdf-img-convert returned no images");
-  }
-  return Buffer.from(images[0]!);
+  const pdf = await task.promise;
+  const firstPage = await pdf.getPage(1);
+  const viewport = firstPage.getViewport({ scale: 2 });
+
+  const canvas = createCanvas(Math.ceil(viewport.width), Math.ceil(viewport.height));
+  const ctx = canvas.getContext("2d");
+  await firstPage.render({
+    canvasContext: ctx as any,
+    viewport,
+  }).promise;
+
+  return Buffer.from(canvas.toBuffer("image/png"));
 }
 
 /** Compare two PNG buffers; returns the fraction of differing pixels (0..1).

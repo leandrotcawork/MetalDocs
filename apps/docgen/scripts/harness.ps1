@@ -3,7 +3,8 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 Push-Location $root
 
-$docxOut = Join-Path $env:TEMP "docgen-harness.docx"
+$tempDir = [System.IO.Path]::GetTempPath()
+$docxOut = Join-Path $tempDir "docgen-harness.docx"
 
 try {
   Write-Host "==> Typecheck (tsc --noEmit)"

@@ -2044,6 +2044,11 @@ func (h *Handler) writeDomainError(w http.ResponseWriter, err error, traceID str
 	case errors.Is(err, domain.ErrTemplateHasStrippedFields):
 		writeAPIError(w, http.StatusUnprocessableEntity, "TEMPLATE_HAS_STRIPPED_FIELDS", err.Error(), traceID)
 	case errors.Is(err, domain.ErrTemplatePublishValidation):
+		var publishErr *domain.TemplatePublishValidationError
+		if errors.As(err, &publishErr) {
+			writeTemplatePublishValidationError(w, publishErr.Errors, traceID)
+			return
+		}
 		writeAPIError(w, http.StatusUnprocessableEntity, "TEMPLATE_PUBLISH_VALIDATION", err.Error(), traceID)
 	default:
 		writeAPIError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Internal server error", traceID)
@@ -2070,6 +2075,28 @@ func writeAPIError(w http.ResponseWriter, status int, code, message, traceID str
 		Error: apiError{
 			Code:    code,
 			Message: message,
+			Details: map[string]any{},
+			TraceID: traceID,
+		},
+	})
+}
+
+func writeTemplatePublishValidationError(w http.ResponseWriter, publishErrors []domain.PublishError, traceID string) {
+	items := make([]publishErrorItem, 0, len(publishErrors))
+	for _, publishErr := range publishErrors {
+		items = append(items, publishErrorItem{
+			BlockID:   publishErr.BlockID,
+			BlockType: publishErr.BlockType,
+			Field:     publishErr.Field,
+			Reason:    publishErr.Reason,
+		})
+	}
+
+	writeJSON(w, http.StatusUnprocessableEntity, publishValidationErrorResponse{
+		Errors: items,
+		Error: apiError{
+			Code:    "TEMPLATE_PUBLISH_VALIDATION",
+			Message: domain.ErrTemplatePublishValidation.Error(),
 			Details: map[string]any{},
 			TraceID: traceID,
 		},

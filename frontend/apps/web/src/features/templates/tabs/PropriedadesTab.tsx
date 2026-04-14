@@ -1,4 +1,4 @@
-const inputStyle: React.CSSProperties = {
+﻿const inputStyle: React.CSSProperties = {
   width: "100%",
   background: "rgba(255,255,255,0.08)",
   border: "1px solid rgba(255,255,255,0.12)",
@@ -20,16 +20,18 @@ const fieldStyle: React.CSSProperties = { marginBottom: "12px" };
 
 interface FieldRowProps {
   label: string;
+  testId?: string;
   value: string | number;
   type?: "text" | "number";
   onChange: (val: string) => void;
 }
 
-function FieldRow({ label, value, type = "text", onChange }: FieldRowProps) {
+function FieldRow({ label, testId, value, type = "text", onChange }: FieldRowProps) {
   return (
     <div style={fieldStyle}>
       <label style={labelStyle}>{label}</label>
       <input
+        data-testid={testId}
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -58,6 +60,7 @@ export function PropriedadesTab({ block, editor }: Props) {
         <div>
           <FieldRow
             label="Título da seção"
+            testId="template-prop-title"
             value={props.title ?? ""}
             onChange={(val) => update({ title: val })}
           />
@@ -69,6 +72,7 @@ export function PropriedadesTab({ block, editor }: Props) {
         <div>
           <FieldRow
             label="Rótulo"
+            testId="template-prop-label"
             value={props.label ?? ""}
             onChange={(val) => update({ label: val })}
           />
@@ -104,19 +108,24 @@ export function PropriedadesTab({ block, editor }: Props) {
 
     case "repeatable": {
       const caps = (() => {
-        try { return props.capabilitiesJson ? JSON.parse(props.capabilitiesJson) : {}; }
-        catch { return {}; }
+        try {
+          return props.capabilitiesJson ? JSON.parse(props.capabilitiesJson) : {};
+        } catch {
+          return {};
+        }
       })();
       return (
         <div>
           <FieldRow
             label="Mín. itens"
+            testId="template-prop-minItems"
             value={caps.minItems ?? 0}
             type="number"
             onChange={(val) => update({ capabilitiesJson: JSON.stringify({ ...caps, minItems: Number(val) }) })}
           />
           <FieldRow
             label="Máx. itens"
+            testId="template-prop-maxItems"
             value={caps.maxItems ?? 100}
             type="number"
             onChange={(val) => update({ capabilitiesJson: JSON.stringify({ ...caps, maxItems: Number(val) }) })}
@@ -130,6 +139,7 @@ export function PropriedadesTab({ block, editor }: Props) {
         <div>
           <FieldRow
             label="Rótulo"
+            testId="template-prop-label"
             value={props.label ?? ""}
             onChange={(val) => update({ label: val })}
           />

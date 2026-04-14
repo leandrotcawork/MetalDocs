@@ -62,7 +62,7 @@ describe("listTemplates", () => {
     const items: TemplateListItemDTO[] = [
       { templateKey: "tmpl-1", version: 2, profileCode: "MDDM", name: "Safety Manual", status: "published" },
     ];
-    fetchMock().mockResolvedValueOnce(makeResponse(items));
+    fetchMock().mockResolvedValueOnce(makeResponse({ items }));
 
     const result = await listTemplates("MDDM");
 
@@ -111,6 +111,35 @@ describe("createTemplate", () => {
     expect(JSON.parse(init?.body as string)).toEqual({ profileCode: "MDDM", name: "New Template" });
 
     expect(result).toEqual(draft);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 2b. cloneTemplate
+// ---------------------------------------------------------------------------
+
+describe("cloneTemplate", () => {
+  it("sends POST with newName in JSON body", async () => {
+    const { cloneTemplate } = await import("../templates");
+    const draft: TemplateDraftDTO = {
+      templateKey: "tmpl-clone",
+      profileCode: "MDDM",
+      name: "Clone",
+      status: "draft",
+      lockVersion: 1,
+      hasStrippedFields: false,
+      blocks: [],
+      updatedAt: "2026-04-13T00:00:00Z",
+    };
+    fetchMock().mockResolvedValueOnce(makeResponse(draft, 201));
+
+    const result = await cloneTemplate("tmpl-1", "Clone");
+
+    expect(result).toEqual(draft);
+    const [url, init] = fetchMock().mock.calls[0] as [string, RequestInit?];
+    expect(url).toContain("/templates/tmpl-1/clone");
+    expect(init?.method).toBe("POST");
+    expect(JSON.parse(init?.body as string)).toEqual({ newName: "Clone" });
   });
 });
 
@@ -275,11 +304,40 @@ describe("exportTemplate", () => {
 });
 
 // ---------------------------------------------------------------------------
+// 6. deleteDraft + discardDraft
+// ---------------------------------------------------------------------------
+
+describe("draft lifecycle routes", () => {
+  it("deleteDraft targets DELETE /api/v1/templates/:key", async () => {
+    const { deleteDraft } = await import("../templates");
+    fetchMock().mockResolvedValueOnce(makeResponse(undefined, 204));
+
+    await deleteDraft("tmpl-1");
+
+    const [url, init] = fetchMock().mock.calls[0] as [string, RequestInit?];
+    expect(url).toContain("/templates/tmpl-1");
+    expect(url).not.toContain("/draft");
+    expect(init?.method).toBe("DELETE");
+  });
+
+  it("discardDraft targets POST /api/v1/templates/:key/discard-draft", async () => {
+    const { discardDraft } = await import("../templates");
+    fetchMock().mockResolvedValueOnce(makeResponse(undefined, 204));
+
+    await discardDraft("tmpl-1");
+
+    const [url, init] = fetchMock().mock.calls[0] as [string, RequestInit?];
+    expect(url).toContain("/templates/tmpl-1/discard-draft");
+    expect(init?.method).toBe("POST");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // 6. importTemplate — uses FormData
 // ---------------------------------------------------------------------------
 
 describe("importTemplate", () => {
-  it("sends POST with FormData body (not JSON)", async () => {
+  it("sends POST with the raw file body and profileCode query param", async () => {
     const importResult = {
       templateKey: "tmpl-imported",
       hasStrippedFields: false,
@@ -296,14 +354,10 @@ describe("importTemplate", () => {
     expect(url).toContain("/templates/import");
     expect(url).toContain("profileCode=MDDM");
     expect(init?.method).toBe("POST");
-    // Body must be FormData, not a JSON string
-    expect(init?.body).toBeInstanceOf(FormData);
-    const form = init?.body as FormData;
-    expect(form.get("file")).toBeInstanceOf(File);
-    expect((form.get("file") as File).name).toBe("template.json");
+    expect(init?.body).toBe(file);
   });
 
-  it("does NOT set Content-Type application/json header when using FormData", async () => {
+  it("sends Content-Type application/json for raw JSON imports", async () => {
     const importResult = { templateKey: "t", hasStrippedFields: false, strippedFields: [] };
     fetchMock().mockResolvedValueOnce(makeResponse(importResult));
 
@@ -312,7 +366,6 @@ describe("importTemplate", () => {
 
     const [, init] = fetchMock().mock.calls[0] as [string, RequestInit?];
     const headers = init?.headers as Record<string, string> | undefined;
-    // The client.ts request() helper skips Content-Type when body is FormData
-    expect(headers?.["Content-Type"]).toBeUndefined();
+    expect(headers?.["Content-Type"]).toBe("application/json");
   });
 });

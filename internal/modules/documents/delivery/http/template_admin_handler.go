@@ -546,8 +546,9 @@ type templateVersionResponse struct {
 	Status      string `json:"status"`
 }
 
-type publishErrorResponse struct {
+type publishValidationErrorResponse struct {
 	Errors []publishErrorItem `json:"errors"`
+	Error  apiError           `json:"error"`
 }
 
 type publishErrorItem struct {

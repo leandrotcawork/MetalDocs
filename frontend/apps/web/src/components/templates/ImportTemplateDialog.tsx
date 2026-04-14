@@ -65,6 +65,7 @@ export function ImportTemplateDialog({ profileCode, onClose, onSuccess }: Import
           Selecione um arquivo <code>.json</code> exportado anteriormente.
         </p>
         <input
+          data-testid="template-import-file-input"
           ref={fileRef}
           type="file"
           accept=".json"
@@ -77,10 +78,10 @@ export function ImportTemplateDialog({ profileCode, onClose, onSuccess }: Import
           </p>
         )}
         <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
-          <button type="button" className="ghost-button" onClick={onClose} disabled={loading}>
+          <button data-testid="template-import-cancel-btn" type="button" className="ghost-button" onClick={onClose} disabled={loading}>
             Cancelar
           </button>
-          <button type="button" onClick={() => void handleImport()} disabled={loading}>
+          <button data-testid="template-import-submit-btn" type="button" onClick={() => void handleImport()} disabled={loading}>
             {loading ? "Importando..." : "Importar"}
           </button>
         </div>

@@ -49,18 +49,32 @@ type TemplateAuditEvent struct {
 // StrippedField describes a block field removed from the draft because it violated
 // schema rules. The editor must acknowledge all stripped fields before publishing.
 type StrippedField struct {
-	BlockID   string
-	BlockType string
-	Field     string
-	Reason    string
+	BlockID   string `json:"blockId"`
+	BlockType string `json:"blockType"`
+	Field     string `json:"field"`
+	Reason    string `json:"reason"`
 }
 
 // PublishError describes a validation failure that prevents publishing a draft.
 type PublishError struct {
-	BlockID   string
-	BlockType string
-	Field     string
-	Reason    string
+	BlockID   string `json:"blockId"`
+	BlockType string `json:"blockType"`
+	Field     string `json:"field"`
+	Reason    string `json:"reason"`
+}
+
+// TemplatePublishValidationError carries structured validation failures while
+// still matching ErrTemplatePublishValidation via errors.Is/errors.As.
+type TemplatePublishValidationError struct {
+	Errors []PublishError
+}
+
+func (e *TemplatePublishValidationError) Error() string {
+	return ErrTemplatePublishValidation.Error()
+}
+
+func (e *TemplatePublishValidationError) Unwrap() error {
+	return ErrTemplatePublishValidation
 }
 
 var (

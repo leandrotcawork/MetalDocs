@@ -1,10 +1,10 @@
 import type { PublishErrorDTO } from "../../../../../api/templates";
-import { CodecStrictError } from "./codec-utils";
-import { parseSectionStyleStrict, parseSectionCapsStrict } from "./section-codec";
-import { parseDataTableStyleStrict, parseDataTableCapsStrict } from "./data-table-codec";
-import { parseRepeatableStyleStrict, parseRepeatableCapsStrict } from "./repeatable-codec";
-import { parseRepeatableItemStyleStrict, parseRepeatableItemCapsStrict } from "./repeatable-item-codec";
-import { parseRichBlockStyleStrict, parseRichBlockCapsStrict } from "./rich-block-codec";
+import { CodecStrictError, safeParse } from "./codec-utils";
+import { SectionCodec, parseSectionStyleStrict, parseSectionCapsStrict } from "./section-codec";
+import { DataTableCodec, parseDataTableStyleStrict, parseDataTableCapsStrict } from "./data-table-codec";
+import { RepeatableCodec, parseRepeatableStyleStrict, parseRepeatableCapsStrict } from "./repeatable-codec";
+import { RepeatableItemCodec, parseRepeatableItemStyleStrict, parseRepeatableItemCapsStrict } from "./repeatable-item-codec";
+import { RichBlockCodec, parseRichBlockStyleStrict, parseRichBlockCapsStrict } from "./rich-block-codec";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -15,6 +15,56 @@ type RawBlock = {
   type?: string;
   props?: Record<string, unknown>;
   children?: unknown[];
+};
+
+type StrictCodec = {
+  defaultStyle: () => Record<string, unknown>;
+  defaultCaps: () => Record<string, unknown>;
+  parseStyleStrict: (raw: Record<string, unknown>) => unknown;
+  parseCapsStrict: (raw: Record<string, unknown>) => unknown;
+};
+
+const PASS_THROUGH_BLOCK_TYPES = new Set([
+  "paragraph",
+  "heading",
+  "bulletListItem",
+  "numberedListItem",
+  "image",
+  "quote",
+  "divider",
+]);
+
+const STRICT_CODECS: Record<string, StrictCodec> = {
+  section: {
+    defaultStyle: () => SectionCodec.defaultStyle() as Record<string, unknown>,
+    defaultCaps: () => SectionCodec.defaultCaps() as Record<string, unknown>,
+    parseStyleStrict: parseSectionStyleStrict,
+    parseCapsStrict: parseSectionCapsStrict,
+  },
+  dataTable: {
+    defaultStyle: () => DataTableCodec.defaultStyle() as Record<string, unknown>,
+    defaultCaps: () => DataTableCodec.defaultCaps() as Record<string, unknown>,
+    parseStyleStrict: parseDataTableStyleStrict,
+    parseCapsStrict: parseDataTableCapsStrict,
+  },
+  repeatable: {
+    defaultStyle: () => RepeatableCodec.defaultStyle() as Record<string, unknown>,
+    defaultCaps: () => RepeatableCodec.defaultCaps() as Record<string, unknown>,
+    parseStyleStrict: parseRepeatableStyleStrict,
+    parseCapsStrict: parseRepeatableCapsStrict,
+  },
+  repeatableItem: {
+    defaultStyle: () => RepeatableItemCodec.defaultStyle() as Record<string, unknown>,
+    defaultCaps: () => RepeatableItemCodec.defaultCaps() as Record<string, unknown>,
+    parseStyleStrict: parseRepeatableItemStyleStrict,
+    parseCapsStrict: parseRepeatableItemCapsStrict,
+  },
+  richBlock: {
+    defaultStyle: () => RichBlockCodec.defaultStyle() as Record<string, unknown>,
+    defaultCaps: () => RichBlockCodec.defaultCaps() as Record<string, unknown>,
+    parseStyleStrict: parseRichBlockStyleStrict,
+    parseCapsStrict: parseRichBlockCapsStrict,
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -45,7 +95,7 @@ export function validateTemplate(blocks: unknown[]): PublishErrorDTO[] {
 
     // Recurse into children
     if (Array.isArray(b.children)) {
-      errors.push(...validateTemplate(b.children));
+      errors.push(...validateTemplate(b.children.filter(isBlockNode)));
     }
   }
 
@@ -58,36 +108,45 @@ export function validateTemplate(blocks: unknown[]): PublishErrorDTO[] {
 
 function validateBlock(block: RawBlock): void {
   const props = block.props ?? {};
-  const style = (props.style ?? {}) as Record<string, unknown>;
-  const caps = (props.caps ?? {}) as Record<string, unknown>;
+  const codec = block.type ? STRICT_CODECS[block.type] : undefined;
 
-  switch (block.type) {
-    case "section":
-      parseSectionStyleStrict(style);
-      parseSectionCapsStrict(caps);
-      break;
-
-    case "dataTable":
-      parseDataTableStyleStrict(style);
-      parseDataTableCapsStrict(caps);
-      break;
-
-    case "repeatable":
-      parseRepeatableStyleStrict(style);
-      parseRepeatableCapsStrict(caps);
-      break;
-
-    case "repeatableItem":
-      parseRepeatableItemStyleStrict(style);
-      parseRepeatableItemCapsStrict(caps);
-      break;
-
-    case "richBlock":
-      parseRichBlockStyleStrict(style);
-      parseRichBlockCapsStrict(caps);
-      break;
-
-    default:
-      throw new CodecStrictError("type", `unknown block type: ${block.type}`);
+  if (block.type && PASS_THROUGH_BLOCK_TYPES.has(block.type)) {
+    return;
   }
+
+  if (!codec) {
+    throw new CodecStrictError("type", `unknown block type: ${block.type}`);
+  }
+
+  const rawStyle = readStoredRecord(props, "styleJson", "style");
+  const rawCaps = readStoredRecord(props, "capabilitiesJson", "caps");
+
+  codec.parseStyleStrict({ ...codec.defaultStyle(), ...rawStyle });
+  codec.parseCapsStrict({ ...codec.defaultCaps(), ...rawCaps });
+}
+
+function readStoredRecord(
+  props: Record<string, unknown>,
+  jsonKey: "styleJson" | "capabilitiesJson",
+  legacyKey: "style" | "caps",
+): Record<string, unknown> {
+  const jsonValue = props[jsonKey];
+  if (typeof jsonValue === "string") {
+    return safeParse(jsonValue, {});
+  }
+
+  const legacyValue = props[legacyKey];
+  if (isRecord(legacyValue)) {
+    return legacyValue;
+  }
+
+  return {};
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isBlockNode(value: unknown): value is RawBlock {
+  return isRecord(value) && typeof value.type === "string" && !("text" in value);
 }

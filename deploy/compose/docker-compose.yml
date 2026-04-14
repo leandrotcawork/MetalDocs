@@ -53,6 +53,7 @@ services:
     image: gotenberg/gotenberg:8
     container_name: metaldocs-gotenberg
     restart: unless-stopped
+    shm_size: 1gb
     ports:
       - "3000:3000"
     healthcheck:

@@ -141,8 +141,9 @@ async function requestWithStructuredErrors<T>(path: string, init?: RequestInit):
  * GET /templates?profileCode=<code>
  * List all templates for a given profile.
  */
-export function listTemplates(profileCode: string): Promise<TemplateListItemDTO[]> {
-  return request<TemplateListItemDTO[]>(`/templates?profileCode=${encodeURIComponent(profileCode)}`);
+export async function listTemplates(profileCode: string): Promise<TemplateListItemDTO[]> {
+  const body = await request<{ items: TemplateListItemDTO[] }>(`/templates?profileCode=${encodeURIComponent(profileCode)}`);
+  return body.items ?? [];
 }
 
 /**

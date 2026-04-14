@@ -4,11 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
 	"metaldocs/internal/modules/documents/domain"
+	"metaldocs/internal/modules/documents/domain/mddm"
 	"metaldocs/internal/platform/authn"
+
+	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
 // isAllowedTemplate performs global role-based RBAC for template capabilities.
@@ -270,8 +274,69 @@ func (s *Service) DeprecateAuthorized(ctx context.Context, key string, version i
 	return nil
 }
 
-// validateTemplateStrict is a placeholder strict validation gate.
-// Phase 4 will replace this with real JSON Schema codec validation.
-func validateTemplateStrict(_ json.RawMessage) []domain.PublishError {
+// validateTemplateStrict runs JSON Schema + Layer 2 business-rule validation
+// against a blocks-only JSON array (as stored in TemplateDraft.BlocksJSON).
+// It synthesizes a minimal envelope so ValidateMDDMBytes can validate the full document.
+func validateTemplateStrict(blocksJSON json.RawMessage) []domain.PublishError {
+	// Treat nil/empty blocks as an empty array — an empty template is schema-valid.
+	blocks := blocksJSON
+	if len(blocks) == 0 {
+		blocks = json.RawMessage(`[]`)
+	}
+
+	// 1. Synthesize a minimal full envelope (schema requires mddm_version + template_ref + blocks).
+	envelope := fmt.Sprintf(`{"mddm_version":1,"template_ref":null,"blocks":%s}`, string(blocks))
+
+	// 2. JSON Schema validation.
+	if err := mddm.ValidateMDDMBytes([]byte(envelope)); err != nil {
+		var verr *jsonschema.ValidationError
+		if errors.As(err, &verr) {
+			// Walk all leaf causes for field-level detail.
+			leaves := collectLeafErrors(verr)
+			if len(leaves) == 0 {
+				leaves = []domain.PublishError{{Reason: verr.Error()}}
+			}
+			return leaves
+		}
+		// JSON parse or other error.
+		return []domain.PublishError{{Reason: err.Error()}}
+	}
+
+	// 3. Business-rule (Layer 2) validation.
+	// Parse the envelope into map[string]any for EnforceLayer2.
+	var envelopeMap map[string]any
+	if err := json.Unmarshal([]byte(envelope), &envelopeMap); err != nil {
+		return []domain.PublishError{{Reason: fmt.Sprintf("envelope parse: %s", err.Error())}}
+	}
+
+	// Minimal RulesContext: no DB checkers needed for template validation
+	// (image auth + cross-doc refs are skipped when checkers are nil).
+	rctx := mddm.RulesContext{}
+	if err := mddm.EnforceLayer2(rctx, envelopeMap); err != nil {
+		var rv *mddm.RuleViolation
+		if errors.As(err, &rv) {
+			return []domain.PublishError{{
+				BlockID: rv.BlockID,
+				Reason:  fmt.Sprintf("[%s] %s", rv.Code, rv.Message),
+			}}
+		}
+		return []domain.PublishError{{Reason: err.Error()}}
+	}
+
 	return nil
+}
+
+// collectLeafErrors recursively walks a ValidationError tree and returns
+// PublishError entries for each leaf node (errors with no further Causes).
+func collectLeafErrors(verr *jsonschema.ValidationError) []domain.PublishError {
+	if len(verr.Causes) == 0 {
+		loc := strings.Join(verr.InstanceLocation, "/")
+		reason := verr.Error()
+		return []domain.PublishError{{Field: loc, Reason: reason}}
+	}
+	var out []domain.PublishError
+	for _, cause := range verr.Causes {
+		out = append(out, collectLeafErrors(cause)...)
+	}
+	return out
 }

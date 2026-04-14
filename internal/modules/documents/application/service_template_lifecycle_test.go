@@ -277,7 +277,26 @@ func TestPublishAuthorized_LockConflict(t *testing.T) {
 }
 
 func TestPublishAuthorized_StrictValidation(t *testing.T) {
-	t.Skip("phase 4 — strict codec not yet wired")
+	repo := documentmemory.NewRepository()
+	svc := NewService(repo, nil, nil)
+
+	draft, err := svc.CreateDraftAuthorized(ctxBypassed(), "po", "Invalid Blocks", "actor-1")
+	if err != nil {
+		t.Fatalf("CreateDraftAuthorized() error = %v", err)
+	}
+
+	// Save a blocks array with an unknown block type — schema uses oneOf on Block
+	// and will reject any type not in the defined set.
+	invalidBlocks := json.RawMessage(`[{"id":"b1","type":"UNKNOWN_BLOCK_TYPE","props":{},"content":[],"children":[]}]`)
+	saved, err := svc.SaveDraftAuthorized(ctxBypassed(), draft.TemplateKey, invalidBlocks, nil, nil, draft.LockVersion, "actor-1")
+	if err != nil {
+		t.Fatalf("SaveDraftAuthorized() error = %v", err)
+	}
+
+	_, err = svc.PublishAuthorized(ctxBypassed(), draft.TemplateKey, saved.LockVersion, "actor-1")
+	if !errors.Is(err, domain.ErrTemplatePublishValidation) {
+		t.Errorf("err = %v, want ErrTemplatePublishValidation", err)
+	}
 }
 
 // --- DiscardDraftAuthorized -------------------------------------------------

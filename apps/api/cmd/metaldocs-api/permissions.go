@@ -113,6 +113,15 @@ func newPermissionResolver() iamdelivery.PermissionResolver {
 			return iamdomain.PermDocumentRead, true
 		}
 
+		// Template admin (Phase 2). Fine-grained RBAC is enforced inside the
+		// service layer via isAllowedTemplate; at the HTTP boundary we only
+		// need to require an authenticated session. PermTemplateView is the
+		// least-privileged template permission and is granted to every role
+		// that can access any template endpoint.
+		if path == "/api/v1/templates" || strings.HasPrefix(path, "/api/v1/templates/") {
+			return iamdomain.PermTemplateView, true
+		}
+
 		return "", false
 	}
 }

@@ -35,6 +35,12 @@ func TestPermissionResolver(t *testing.T) {
 		// This must remain unguarded so initFeatureFlags() can call it before login.
 		{name: "feature flags unguarded", method: http.MethodGet, path: "/api/v1/feature-flags", wantPerm: "", wantGuard: false},
 		{name: "unknown endpoint unguarded", method: http.MethodGet, path: "/api/v1/unknown", wantPerm: "", wantGuard: false},
+		// Template admin (Phase 2) — all HTTP methods on /api/v1/templates[/...] require
+		// an authenticated session; fine-grained RBAC is enforced inside the service layer.
+		{name: "template list", method: http.MethodGet, path: "/api/v1/templates", wantPerm: iamdomain.PermTemplateView, wantGuard: true},
+		{name: "template create", method: http.MethodPost, path: "/api/v1/templates", wantPerm: iamdomain.PermTemplateView, wantGuard: true},
+		{name: "template draft sub-route", method: http.MethodGet, path: "/api/v1/templates/my-key/draft", wantPerm: iamdomain.PermTemplateView, wantGuard: true},
+		{name: "template publish sub-route", method: http.MethodPost, path: "/api/v1/templates/my-key/publish", wantPerm: iamdomain.PermTemplateView, wantGuard: true},
 	}
 
 	for _, tc := range testCases {

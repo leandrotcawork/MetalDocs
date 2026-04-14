@@ -299,3 +299,10 @@ Wrong:   The scroll-ownership e2e check queried `main.workspace-main`, which is 
 Correct: The test now targets stable `data-testid` anchors and validates real scroll behavior on the intended scroll host.
 Rule:    Browser regression tests should anchor on stable test selectors and behavior signals, not generated CSS-module class names.
 Layer:   process
+
+## Lesson 44 - Layout density browser checks need a seeded editor response
+Date: 2026-04-14 | Trigger: correction
+Wrong:   The new paper-density e2e check navigated to a template key without stubbing the template GET response, so the editor never mounted and the assertion failed on missing chrome.
+Correct: The density test now seeds the template draft response before opening the editor, then measures the rendered paper stack metrics.
+Rule:    Browser layout assertions must first establish the editor state they are measuring, or they will fail for setup reasons instead of real regressions.
+Layer:   process

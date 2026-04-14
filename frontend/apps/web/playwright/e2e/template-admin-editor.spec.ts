@@ -114,6 +114,63 @@ test("template editor keeps scroll inside the document pane", async ({ page }) =
   expect(scrollState?.layoutScrollTop ?? 0).toBe(0);
 });
 
+test("template editor uses a centered paper stack without oversized outer margins", async ({ page }) => {
+  const templateKey = "tpl-paper-density";
+  const draft = makeDraft({
+    templateKey,
+    lockVersion: 4,
+    blocks: [
+      {
+        id: "density-section-1",
+        type: "section",
+        props: {
+          title: "Secao de densidade",
+          styleJson: "{}",
+          capabilitiesJson: JSON.stringify({ locked: true, removable: false, reorderable: false }),
+        },
+        children: [],
+      },
+    ],
+  });
+
+  await page.route("**/api/v1/templates/**", async (route) => {
+    const url = new URL(route.request().url());
+    const method = route.request().method();
+
+    if (url.pathname === `/api/v1/templates/${templateKey}` && method === "GET") {
+      await fulfillJson(route, 200, draft);
+      return;
+    }
+
+    await route.continue();
+  });
+
+  await loginAsAdmin(page);
+  await openTemplateEditor(page, "po", templateKey);
+
+  const metrics = await page.evaluate(() => {
+    const pageStack = document.querySelector('[data-testid="mddm-editor-page-stack"]') as HTMLElement | null;
+    const paper = document.querySelector('[data-testid="mddm-editor-paper"]') as HTMLElement | null;
+    if (!pageStack || !paper) return null;
+
+    const stackBox = pageStack.getBoundingClientRect();
+    const paperBox = paper.getBoundingClientRect();
+    const stackStyles = getComputedStyle(pageStack);
+
+    return {
+      leftInset: paperBox.left - stackBox.left,
+      stackPaddingTop: parseFloat(stackStyles.paddingTop),
+      stackPaddingBottom: parseFloat(stackStyles.paddingBottom),
+      stackGap: parseFloat(stackStyles.rowGap || stackStyles.gap || "0"),
+    };
+  });
+
+  expect(metrics).not.toBeNull();
+  expect(metrics!.stackPaddingTop).toBeLessThanOrEqual(16);
+  expect(metrics!.stackPaddingBottom).toBeLessThanOrEqual(24);
+  expect(metrics!.stackGap).toBeLessThanOrEqual(20);
+});
+
 test("template authoring saves, previews DOCX, blocks invalid client publish, then publishes successfully", async ({ page }) => {
   const templateKey = "tpl-authoring-flow";
   let draft: DraftDto = makeDraft({

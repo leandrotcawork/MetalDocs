@@ -66,3 +66,20 @@ func TestStaticAuthorizerReviewerCannotEditOrPublishTemplates(t *testing.T) {
 		t.Errorf("expected reviewer NOT to have permission %q, but got true", domain.PermTemplatePublish)
 	}
 }
+
+func TestStaticAuthorizerViewerCannotAccessTemplates(t *testing.T) {
+	a := NewStaticAuthorizer()
+
+	if a.Can(domain.RoleViewer, domain.PermTemplateView) {
+		t.Errorf("expected viewer NOT to have permission %q, but got true", domain.PermTemplateView)
+	}
+	if a.Can(domain.RoleViewer, domain.PermTemplateEdit) {
+		t.Errorf("expected viewer NOT to have permission %q, but got true", domain.PermTemplateEdit)
+	}
+	if a.Can(domain.RoleViewer, domain.PermTemplatePublish) {
+		t.Errorf("expected viewer NOT to have permission %q, but got true", domain.PermTemplatePublish)
+	}
+	if a.Can(domain.RoleViewer, domain.PermTemplateExport) {
+		t.Errorf("expected viewer NOT to have permission %q, but got true", domain.PermTemplateExport)
+	}
+}

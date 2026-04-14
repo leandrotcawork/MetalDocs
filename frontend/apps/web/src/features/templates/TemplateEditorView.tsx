@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { PartialBlock } from "@blocknote/core";
 import { MDDMEditor } from "../documents/mddm-editor/MDDMEditor";
 import { MetadataBar } from "./MetadataBar";
@@ -18,6 +18,7 @@ type TemplateEditorViewProps = {
 export function TemplateEditorView({ profileCode, templateKey }: TemplateEditorViewProps) {
   // editorRef holds the BlockNote editor instance surfaced by onEditorReady
   const editorRef = useRef<{ document: unknown[] } | null>(null);
+  const [editorInstance, setEditorInstance] = useState<{ document: unknown[] } | null>(null);
 
   const { draft, isLoading, error, saveDraft, publish, discardDraft, replaceDraft } = useTemplateDraft({ templateKey });
 
@@ -40,7 +41,9 @@ export function TemplateEditorView({ profileCode, templateKey }: TemplateEditorV
   }, [clearTemplate]);
 
   const handleEditorReady = useCallback((editor: unknown) => {
-    editorRef.current = editor as { document: unknown[] };
+    const resolved = editor as { document: unknown[] };
+    editorRef.current = resolved;
+    setEditorInstance(resolved);
   }, []);
 
   const handleChange = useCallback((_blocks: unknown[]) => {
@@ -136,7 +139,7 @@ export function TemplateEditorView({ profileCode, templateKey }: TemplateEditorV
       {/* Editor + Sidebar row — fills remaining height, position:relative for ValidationPanel */}
       <div style={{ flex: 1, overflow: "hidden", display: "flex", position: "relative" }}>
         {/* Left: Block Palette */}
-        <BlockPalette editor={editorRef.current} />
+        <BlockPalette editor={editorInstance} />
 
         {/* Center: MDDM Editor */}
         <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
@@ -150,7 +153,7 @@ export function TemplateEditorView({ profileCode, templateKey }: TemplateEditorV
 
         {/* Right: Property Sidebar */}
         <PropertySidebar
-          editor={editorRef.current}
+          editor={editorInstance}
           selectedBlockId={selectedBlockId}
         />
 

@@ -410,6 +410,68 @@ test("template draft save conflicts surface an alert and do not advance publish 
   await expect(page.getByTestId("metadata-bar")).toContainText("Edicao #9");
 });
 
+test("blank draft supports section-first authoring, allows all palette blocks, and keeps A4-like canvas", async ({ page }) => {
+  const templateKey = "tpl-blank-authoring";
+  let draft = makeDraft({
+    templateKey,
+    lockVersion: 1,
+    blocks: [],
+  });
+
+  await page.route("**/api/v1/templates/**", async (route) => {
+    const url = new URL(route.request().url());
+    const method = route.request().method();
+
+    if (url.pathname === `/api/v1/templates/${templateKey}` && method === "GET") {
+      await fulfillJson(route, 200, draft);
+      return;
+    }
+
+    if (url.pathname === `/api/v1/templates/${templateKey}/draft` && method === "PUT") {
+      const payload = route.request().postDataJSON() as { blocks: unknown[]; lockVersion: number };
+      draft = {
+        ...draft,
+        blocks: payload.blocks,
+        lockVersion: payload.lockVersion + 1,
+      };
+      await fulfillJson(route, 200, draft);
+      return;
+    }
+
+    await route.continue();
+  });
+
+  await loginAsAdmin(page);
+  await openTemplateEditor(page, "po", templateKey);
+
+  // 1) Section insertion must work on a blank draft (no prior typing required).
+  await page.getByTestId("palette-insert-section").click();
+  await expect.poll(async () => countBlocksByType(page, "section")).toBe(1);
+
+  const sectionId = await findNthBlockIdByType(page, "section", 0);
+  expect(sectionId).toBeTruthy();
+  await selectBlock(page, sectionId!);
+
+  // 2) All non-section palette blocks must insert from a section context.
+  await page.getByTestId("palette-insert-dataTable").click();
+  await expect.poll(async () => countBlocksByType(page, "dataTable")).toBe(1);
+
+  await selectBlock(page, sectionId!);
+  await page.getByTestId("palette-insert-repeatable").click();
+  await expect.poll(async () => countBlocksByType(page, "repeatable")).toBe(1);
+
+  await selectBlock(page, sectionId!);
+  await page.getByTestId("palette-insert-richBlock").click();
+  await expect.poll(async () => countBlocksByType(page, "richBlock")).toBe(1);
+
+  // 3) Canvas should be portrait-like (A4-ish), not a square card.
+  const paper = page.getByTestId("mddm-editor-paper");
+  const box = await paper.boundingBox();
+  expect(box).toBeTruthy();
+  const ratio = (box?.height ?? 0) / Math.max(box?.width ?? 1, 1);
+  expect(ratio).toBeGreaterThan(1.2);
+});
+
 function makeDraft(overrides: Partial<DraftDto> = {}): DraftDto {
   return {
     templateKey: overrides.templateKey ?? "tpl-draft",

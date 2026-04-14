@@ -6,6 +6,7 @@ export function tokensToCssVars(tokens: LayoutTokens): Record<string, string> {
   return {
     // Page dimensions
     "--mddm-page-width": `${tokens.page.widthMm}mm`,
+    "--mddm-page-height": `${tokens.page.heightMm}mm`,
     "--mddm-page-content-width": `${tokens.page.contentWidthMm}mm`,
     "--mddm-margin-top": `${tokens.page.marginTopMm}mm`,
     "--mddm-margin-right": `${tokens.page.marginRightMm}mm`,

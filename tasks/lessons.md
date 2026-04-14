@@ -264,3 +264,24 @@ Wrong:   The default `e2e:smoke` script allowed parallel workers, producing inte
 Correct: `frontend/apps/web/package.json` now defines `e2e:smoke` with `--workers=1`.
 Rule:    If e2e scenarios share seeded backend state, enforce serial execution in the canonical command rather than relying on caller discipline.
 Layer:   process
+
+## Lesson 39 - Editor-ready state must be reactive for dependent template controls
+Date: 2026-04-14 | Trigger: correction
+Wrong:   `TemplateEditorView` stored the BlockNote instance only in a ref, so `BlockPalette`/`PropertySidebar` could keep receiving `null` until an unrelated rerender, breaking blank-draft insertion with `Editor nao esta pronto`.
+Correct: `TemplateEditorView` now mirrors `onEditorReady` into component state and passes that reactive instance to template controls.
+Rule:    Any UI control that depends on async editor initialization must consume reactive ready-state, not a non-rendering ref-only value.
+Layer:   application
+
+## Lesson 40 - Template palette must only expose block types registered in editor schema
+Date: 2026-04-14 | Trigger: correction
+Wrong:   The template palette exposed `field`, but the MDDM BlockNote schema no longer registers a `field` block, causing runtime insertion errors (`Cannot read properties of undefined (reading 'isInGroup')`).
+Correct: Palette block rules now include only schema-registered template blocks and insertion context resolves from selected block state.
+Rule:    Any authoring palette must be derived from the active editor schema; exposing non-registered block types turns basic insert actions into runtime failures.
+Layer:   application
+
+## Lesson 41 - DataTable insertion must seed valid tableContent
+Date: 2026-04-14 | Trigger: correction
+Wrong:   The template palette inserted `dataTable` with `children: []`, but the registered ProseMirror node requires `tableRow+` content, causing runtime rejection (`Invalid content for node dataTable: <>`).
+Correct: New `dataTable` inserts now seed minimal valid `tableContent` with one empty cell row.
+Rule:    Any block backed by non-inline ProseMirror content constraints must be inserted with schema-valid initial content, not generic empty children.
+Layer:   application

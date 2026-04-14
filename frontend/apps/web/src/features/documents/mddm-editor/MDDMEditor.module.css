@@ -20,12 +20,13 @@
 
 /* The white "paper" page — mimics a Word document page */
 .editorRoot {
-  max-width: var(--mddm-content-max-width);
+  width: min(var(--mddm-page-width, 210mm), calc(100vw - 2rem));
+  max-width: 100%;
   margin: 0 auto;
   background: var(--mddm-raw-white);
   /* Word-like page margins: ~2.5cm top/bottom, ~3cm left/right */
   padding: 2.5rem 3rem;
-  min-height: min(842px, calc(100dvh - 16rem)); /* A4 at 96dpi, capped to viewport on short screens */
+  min-height: var(--mddm-page-height, 297mm);
   font-family: var(--mddm-font-family);
   font-size: var(--mddm-font-size-base);
   color: var(--mddm-raw-gray-700);

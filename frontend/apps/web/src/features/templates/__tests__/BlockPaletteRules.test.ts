@@ -1,18 +1,25 @@
 import { describe, test, expect } from "vitest";
-import { canInsertBlock } from '../block-palette-rules';
+import { canInsertBlock } from "../block-palette-rules";
 
-describe('canInsertBlock', () => {
-  test('section can insert at root level', () => {
-    expect(canInsertBlock('section', null)).toBeNull();
+describe("canInsertBlock", () => {
+  test("section can insert at root level", () => {
+    expect(canInsertBlock("section", null)).toBeNull();
   });
-  test('section cannot insert inside section', () => {
-    expect(canInsertBlock('section', 'section')).not.toBeNull();
+
+  test("section can insert from nested context (palette inserts it at root)", () => {
+    expect(canInsertBlock("section", "section", "richBlock")).toBeNull();
   });
-  test('field must be inside section', () => {
-    expect(canInsertBlock('field', null)).not.toBeNull();
-    expect(canInsertBlock('field', 'section')).toBeNull();
+
+  test("richBlock needs section context", () => {
+    expect(canInsertBlock("richBlock", null, null)).not.toBeNull();
+    expect(canInsertBlock("richBlock", "section", "paragraph")).toBeNull();
   });
-  test('unknown block type is rejected', () => {
-    expect(canInsertBlock('UNKNOWN', null)).not.toBeNull();
+
+  test("dataTable can insert when section itself is selected", () => {
+    expect(canInsertBlock("dataTable", null, "section")).toBeNull();
+  });
+
+  test("unknown block type is rejected", () => {
+    expect(canInsertBlock("UNKNOWN", null)).not.toBeNull();
   });
 });

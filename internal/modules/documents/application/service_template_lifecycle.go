@@ -680,6 +680,51 @@ func validateTemplateStrict(blocksJSON json.RawMessage) []domain.PublishError {
 	return nil
 }
 
+// PreviewDocxAuthorized renders a .docx preview from the current draft's blocks
+// without persisting anything. Requires CapabilityTemplateView.
+// Returns raw DOCX bytes on success or an error.
+func (s *Service) PreviewDocxAuthorized(ctx context.Context, key, actorID string) ([]byte, error) {
+	if err := s.isAllowedTemplate(ctx, domain.CapabilityTemplateView); err != nil {
+		return nil, err
+	}
+
+	key = strings.TrimSpace(key)
+	if key == "" {
+		return nil, domain.ErrInvalidCommand
+	}
+
+	draft, err := s.repo.GetTemplateDraft(ctx, key)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(draft.BlocksJSON) == 0 {
+		return nil, fmt.Errorf("preview docx: draft has no blocks")
+	}
+
+	// Build synthetic document and version so the existing MDDM DOCX pipeline
+	// can render the template blocks as if they were a filled document body.
+	// The Envelope the docgen service expects is exactly the BlocksJSON stored
+	// in the draft (same {blocks:[...]} format used by document versions).
+	syntheticDoc := domain.Document{
+		DocumentCode:    key,
+		Title:           draft.Name,
+		DocumentProfile: draft.ProfileCode,
+		Status:          "preview",
+	}
+	syntheticVersion := domain.Version{
+		Number:  0,
+		Content: string(draft.BlocksJSON),
+	}
+
+	docxBytes, err := s.generateBrowserDocxBytesWithTemplate(ctx, syntheticDoc, syntheticVersion, nil, nil, actorID)
+	if err != nil {
+		return nil, fmt.Errorf("preview docx: %w", err)
+	}
+
+	return docxBytes, nil
+}
+
 // collectLeafErrors recursively walks a ValidationError tree and returns
 // PublishError entries for each leaf node (errors with no further Causes).
 func collectLeafErrors(verr *jsonschema.ValidationError) []domain.PublishError {

@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { previewTemplateDocx } from "../../api/templates";
 
 // ---------------------------------------------------------------------------
 // Status badge — same color scheme as TemplateListPanel
@@ -35,6 +36,7 @@ function StatusBadge({ status }: { status: string }) {
 // ---------------------------------------------------------------------------
 
 export interface MetadataBarProps {
+  templateKey: string;
   templateName: string;
   profileCode: string;
   status: string;
@@ -52,6 +54,7 @@ export interface MetadataBarProps {
 // ---------------------------------------------------------------------------
 
 export function MetadataBar({
+  templateKey,
   templateName,
   profileCode,
   status,
@@ -65,6 +68,7 @@ export function MetadataBar({
 }: MetadataBarProps) {
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(templateName);
+  const [isPreviewingDocx, setIsPreviewingDocx] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Keep local name in sync when templateName prop changes (e.g. after save)
@@ -100,6 +104,25 @@ export function MetadataBar({
     );
     if (confirmed) {
       onDiscard();
+    }
+  }
+
+  async function handlePreviewDocx() {
+    setIsPreviewingDocx(true);
+    try {
+      const blob = await previewTemplateDocx(templateKey);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${templateKey}-preview.docx`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      window.alert("Erro ao gerar DOCX. Verifique se o docgen esta disponivel.");
+    } finally {
+      setIsPreviewingDocx(false);
     }
   }
 
@@ -221,6 +244,16 @@ export function MetadataBar({
 
       {/* Action buttons */}
       <div style={{ display: "inline-flex", gap: "0.5rem", flexShrink: 0 }}>
+        <button
+          type="button"
+          className="ghost-button"
+          onClick={() => void handlePreviewDocx()}
+          disabled={isPreviewingDocx}
+          title="Baixar visualizacao DOCX do rascunho atual"
+          style={{ fontSize: "13px", opacity: isPreviewingDocx ? 0.6 : 1 }}
+        >
+          {isPreviewingDocx ? "Gerando DOCX..." : "Visualizar DOCX"}
+        </button>
         <button
           type="button"
           className="ghost-button"

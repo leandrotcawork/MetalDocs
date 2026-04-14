@@ -3,6 +3,7 @@ package httpdelivery
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -103,6 +104,12 @@ func (h *Handler) handleTemplatesSubRoutes(w http.ResponseWriter, r *http.Reques
 		case "export":
 			if r.Method == http.MethodGet {
 				h.handleExportTemplate(w, r, key)
+			} else {
+				w.WriteHeader(http.StatusMethodNotAllowed)
+			}
+		case "preview-docx":
+			if r.Method == http.MethodPost {
+				h.handleTemplatePreviewDocx(w, r, key)
 			} else {
 				w.WriteHeader(http.StatusMethodNotAllowed)
 			}
@@ -428,6 +435,28 @@ func (h *Handler) handleExportTemplate(w http.ResponseWriter, r *http.Request, k
 	w.Header().Set("Content-Disposition", `attachment; filename="template-`+key+`-v`+versionStr+`.json"`)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(data)
+}
+
+// handleTemplatePreviewDocx handles POST /api/v1/templates/{key}/preview-docx.
+// Renders a .docx from the current draft's blocks and returns the file for download.
+func (h *Handler) handleTemplatePreviewDocx(w http.ResponseWriter, r *http.Request, key string) {
+	traceID := requestTraceID(r)
+	userID := strings.TrimSpace(authn.UserIDFromContext(r.Context()))
+	if userID == "" {
+		writeAPIError(w, http.StatusUnauthorized, "AUTH_UNAUTHORIZED", "Authentication required", traceID)
+		return
+	}
+
+	docxBytes, err := h.service.PreviewDocxAuthorized(r.Context(), key, userID)
+	if err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s-preview.docx"`, key))
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(docxBytes)
 }
 
 // handleImportTemplate handles POST /api/v1/templates/import

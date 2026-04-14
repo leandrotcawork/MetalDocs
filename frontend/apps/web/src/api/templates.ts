@@ -265,6 +265,15 @@ export function exportTemplate(key: string, version: number): Promise<Blob> {
 }
 
 /**
+ * POST /templates/:key/preview-docx
+ * Render a .docx preview from the current draft's blocks.
+ * Returns a Blob for browser download.
+ */
+export function previewTemplateDocx(key: string): Promise<Blob> {
+  return requestBlob(`/templates/${encodeKey(key)}/preview-docx`, { method: "POST" });
+}
+
+/**
  * POST /templates/import?profileCode=<code>
  * Import a template from an uploaded file (multipart/form-data).
  */

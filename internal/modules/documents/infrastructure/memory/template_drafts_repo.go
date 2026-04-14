@@ -76,6 +76,17 @@ func (r *Repository) DeleteTemplateDraft(_ context.Context, templateKey string) 
 	return nil
 }
 
+// InsertTemplateVersion inserts a new version into the in-memory store.
+func (r *Repository) InsertTemplateVersion(_ context.Context, version domain.DocumentTemplateVersion) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if _, ok := r.templateVersions[version.TemplateKey]; !ok {
+		r.templateVersions[version.TemplateKey] = make(map[int]domain.DocumentTemplateVersion)
+	}
+	r.templateVersions[version.TemplateKey][version.Version] = cloneDocumentTemplateVersion(version)
+	return nil
+}
+
 // UpdateTemplateVersionStatus updates the status of a published template version.
 func (r *Repository) UpdateTemplateVersionStatus(_ context.Context, templateKey string, version int, status domain.TemplateStatus) error {
 	r.mu.Lock()
@@ -83,19 +94,13 @@ func (r *Repository) UpdateTemplateVersionStatus(_ context.Context, templateKey 
 
 	versions, ok := r.templateVersions[templateKey]
 	if !ok {
-		return domain.ErrDocumentTemplateNotFound
+		return domain.ErrTemplateNotFound
 	}
 	tv, ok := versions[version]
 	if !ok {
-		return domain.ErrDocumentTemplateNotFound
+		return domain.ErrTemplateNotFound
 	}
-	// Store status in the template version's Definition map under a reserved key.
-	// This avoids changing the DocumentTemplateVersion struct while keeping
-	// the in-memory store consistent for tests.
-	if tv.Definition == nil {
-		tv.Definition = map[string]any{}
-	}
-	tv.Definition["__status"] = string(status)
+	tv.Status = string(status)
 	versions[version] = tv
 	return nil
 }

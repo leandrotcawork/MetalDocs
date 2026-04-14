@@ -6,7 +6,3 @@
 
 ALTER TABLE metaldocs.document_template_versions
     ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'published';
-
-UPDATE metaldocs.document_template_versions
-SET status = 'published'
-WHERE status = 'published'; -- no-op update, ensures constraint awareness

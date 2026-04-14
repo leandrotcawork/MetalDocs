@@ -73,6 +73,7 @@ type Repository interface {
 
 	// Template version operations
 
+	InsertTemplateVersion(ctx context.Context, version DocumentTemplateVersion) error
 	UpdateTemplateVersionStatus(ctx context.Context, templateKey string, version int, status TemplateStatus) error
 
 	// Audit

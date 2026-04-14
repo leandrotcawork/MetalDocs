@@ -3,9 +3,11 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strings"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"metaldocs/internal/modules/documents/domain"
 )
 
@@ -92,6 +94,9 @@ RETURNING lock_version, created_at, updated_at
 			strippedParam,
 			strings.TrimSpace(draft.CreatedBy),
 		).Scan(&lockVer, &draft.CreatedAt, &draft.UpdatedAt); err != nil {
+			if pgErr, ok := err.(*pgconn.PgError); ok && pgErr.Code == "23505" {
+				return nil, domain.ErrTemplateLockConflict
+			}
 			return nil, fmt.Errorf("insert template draft: %w", err)
 		}
 		out := *draft
@@ -189,7 +194,7 @@ WHERE template_key = $2 AND version = $3
 	}
 	affected, _ := result.RowsAffected()
 	if affected == 0 {
-		return domain.ErrDocumentTemplateNotFound
+		return domain.ErrTemplateNotFound
 	}
 	return nil
 }
@@ -260,6 +265,27 @@ ORDER BY created_at ASC
 		return nil, fmt.Errorf("list template audit events rows: %w", err)
 	}
 	return events, nil
+}
+
+// InsertTemplateVersion inserts a new version row into document_template_versions.
+func (r *Repository) InsertTemplateVersion(ctx context.Context, version domain.DocumentTemplateVersion) error {
+	const q = `
+		INSERT INTO metaldocs.document_template_versions
+			(template_key, version, profile_code, schema_version, name, editor, content_format, body, definition, status, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, NOW())`
+	def, err := json.Marshal(version.Definition)
+	if err != nil {
+		return fmt.Errorf("marshal definition: %w", err)
+	}
+	_, err = r.db.ExecContext(ctx, q,
+		version.TemplateKey, version.Version, version.ProfileCode,
+		version.SchemaVersion, version.Name, version.Editor,
+		version.ContentFormat, version.Body, def, version.Status,
+	)
+	if err != nil {
+		return fmt.Errorf("insert template version: %w", err)
+	}
+	return nil
 }
 
 // nullableJSON returns nil if the slice is empty, or the raw JSON string otherwise.

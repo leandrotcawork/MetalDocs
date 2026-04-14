@@ -153,3 +153,43 @@ func TestTemplateAuditEvents(t *testing.T) {
 		t.Fatalf("expected version 1 on second event")
 	}
 }
+
+func TestUpdateTemplateVersionStatus_HappyPath(t *testing.T) {
+	repo := NewRepository()
+	ctx := context.Background()
+
+	// seed a version
+	v := domain.DocumentTemplateVersion{
+		TemplateKey: "tpl-1",
+		Version:     1,
+		ProfileCode: "default",
+		Status:      "published",
+	}
+	if err := repo.InsertTemplateVersion(ctx, v); err != nil {
+		t.Fatalf("insert template version: %v", err)
+	}
+
+	// update status
+	if err := repo.UpdateTemplateVersionStatus(ctx, "tpl-1", 1, domain.TemplateStatusDeprecated); err != nil {
+		t.Fatalf("update template version status: %v", err)
+	}
+
+	// verify
+	got, err := repo.GetDocumentTemplateVersion(ctx, "tpl-1", 1)
+	if err != nil {
+		t.Fatalf("get document template version: %v", err)
+	}
+	if got.Status != "deprecated" {
+		t.Fatalf("expected status 'deprecated', got %q", got.Status)
+	}
+}
+
+func TestUpdateTemplateVersionStatus_NotFound(t *testing.T) {
+	repo := NewRepository()
+	ctx := context.Background()
+
+	err := repo.UpdateTemplateVersionStatus(ctx, "nonexistent", 1, domain.TemplateStatusDeprecated)
+	if !errors.Is(err, domain.ErrTemplateNotFound) {
+		t.Fatalf("expected ErrTemplateNotFound, got %v", err)
+	}
+}

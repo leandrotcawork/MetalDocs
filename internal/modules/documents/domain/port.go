@@ -61,6 +61,24 @@ type Repository interface {
 	AcquireDocumentEditLock(ctx context.Context, item DocumentEditLock, now time.Time) (DocumentEditLock, error)
 	GetDocumentEditLock(ctx context.Context, documentID string, now time.Time) (DocumentEditLock, error)
 	ReleaseDocumentEditLock(ctx context.Context, documentID, lockedBy string) error
+
+	// Template draft operations
+
+	GetTemplateDraft(ctx context.Context, templateKey string) (*TemplateDraft, error)
+	// UpsertTemplateDraftCAS saves the draft only if the current lock_version matches expectedLockVersion.
+	// Returns ErrTemplateLockConflict if the version does not match.
+	// Returns ErrTemplateDraftNotFound if no draft exists and expectedLockVersion > 0.
+	UpsertTemplateDraftCAS(ctx context.Context, draft *TemplateDraft, expectedLockVersion int) (*TemplateDraft, error)
+	DeleteTemplateDraft(ctx context.Context, templateKey string) error
+
+	// Template version operations
+
+	UpdateTemplateVersionStatus(ctx context.Context, templateKey string, version int, status TemplateStatus) error
+
+	// Audit
+
+	WriteTemplateAuditEvent(ctx context.Context, event TemplateAuditEvent) error
+	ListTemplateAuditEvents(ctx context.Context, templateKey string) ([]TemplateAuditEvent, error)
 }
 
 // AtomicCreateRepository is an optional capability for strong consistency on create flow.

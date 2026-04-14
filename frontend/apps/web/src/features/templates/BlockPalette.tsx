@@ -363,16 +363,16 @@ const paletteItemStyle: React.CSSProperties = {
 function blockIcon(type: string): string {
   switch (type) {
     case "section":
-      return "S";
+      return "▦";
     case "field":
-      return "F";
+      return "⊞";
     case "dataTable":
-      return "T";
+      return "⊟";
     case "repeatable":
-      return "R";
+      return "↻";
     case "richBlock":
-      return "B";
+      return "✎";
     default:
-      return "?";
+      return "□";
   }
 }

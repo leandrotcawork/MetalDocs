@@ -1,6 +1,0 @@
-interface:
-  display_name: "MetalDocs ADR"
-  short_description: "Full ADR lifecycle: write with acceptance test, verify passes, commit. Required for arch/boundary/security/schema changes."
-  default_prompt: "Use $metaldocs-adr to create or close an ADR."
-policy:
-  allow_implicit_invocation: true

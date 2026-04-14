@@ -1,6 +1,0 @@
-interface:
-  display_name: "MetalDocs Module"
-  short_description: "Implement Go module layers: domain, infrastructure (postgres + memory), application service, delivery handler. Called by $md for T2-T6."
-  default_prompt: "Use $metaldocs-module to implement the current module layer."
-policy:
-  allow_implicit_invocation: true

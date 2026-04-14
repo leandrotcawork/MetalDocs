@@ -1,6 +1,0 @@
-interface:
-  display_name: "MetalDocs Review"
-  short_description: "Architecture review: request flow, boundaries, auth, events, immutability, OpenAPI, tests. Produces Go/No-Go verdict."
-  default_prompt: "Use $metaldocs-review to review the current implementation."
-policy:
-  allow_implicit_invocation: true

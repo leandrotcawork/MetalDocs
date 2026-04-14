@@ -1,6 +1,0 @@
-interface:
-  display_name: "MetalDocs OpenAPI"
-  short_description: "Create or update api/openapi/v1/openapi.yaml. Source of truth for all endpoints. No endpoint without OpenAPI entry."
-  default_prompt: "Use $metaldocs-openapi to add or update the OpenAPI contract."
-policy:
-  allow_implicit_invocation: true

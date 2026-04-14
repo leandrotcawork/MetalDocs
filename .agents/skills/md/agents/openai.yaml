@@ -1,6 +1,0 @@
-interface:
-  display_name: "MetalDocs"
-  short_description: "Master orchestrator. Plan + implement + review any feature. Enters plan mode, validates module architecture, orchestrates all skills. Usage: 'use $md to implement X'."
-  default_prompt: "Use $md to implement the requested feature."
-policy:
-  allow_implicit_invocation: true

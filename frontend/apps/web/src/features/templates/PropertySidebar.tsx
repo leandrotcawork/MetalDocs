@@ -101,7 +101,7 @@ function SchemaFieldRenderer({ schema, values, onChange, testIdPrefix }: SchemaF
           const val = typeof rawVal === "number" ? rawVal : (field.default as number);
           return (
             <div key={field.key} style={{ marginBottom: "8px" }}>
-              <label style={{ display: "block", fontSize: "12px", color: "rgba(255,255,255,0.7)", marginBottom: "4px" }}>
+              <label style={{ display: "block", fontSize: "12px", color: "#43322d", marginBottom: "4px" }}>
                 {field.label}
               </label>
               <input
@@ -111,10 +111,10 @@ function SchemaFieldRenderer({ schema, values, onChange, testIdPrefix }: SchemaF
                 onChange={(e) => onChange(field.key, Number(e.target.value))}
                 style={{
                   width: "100%",
-                  background: "rgba(255,255,255,0.08)",
-                  border: "1px solid rgba(255,255,255,0.12)",
+                  background: "#ffffff",
+                  border: "1px solid #c4b8b0",
                   borderRadius: "4px",
-                  color: "rgba(255,255,255,0.9)",
+                  color: "#2b211d",
                   fontSize: "12px",
                   padding: "4px 6px",
                   boxSizing: "border-box",
@@ -129,7 +129,7 @@ function SchemaFieldRenderer({ schema, values, onChange, testIdPrefix }: SchemaF
           const val = typeof rawVal === "string" ? rawVal : (field.default as string);
           return (
             <div key={field.key} style={{ marginBottom: "8px" }}>
-              <label style={{ display: "block", fontSize: "12px", color: "rgba(255,255,255,0.7)", marginBottom: "4px" }}>
+              <label style={{ display: "block", fontSize: "12px", color: "#43322d", marginBottom: "4px" }}>
                 {field.label}
               </label>
               <input
@@ -139,10 +139,10 @@ function SchemaFieldRenderer({ schema, values, onChange, testIdPrefix }: SchemaF
                 onChange={(e) => onChange(field.key, e.target.value)}
                 style={{
                   width: "100%",
-                  background: "rgba(255,255,255,0.08)",
-                  border: "1px solid rgba(255,255,255,0.12)",
+                  background: "#ffffff",
+                  border: "1px solid #c4b8b0",
                   borderRadius: "4px",
-                  color: "rgba(255,255,255,0.9)",
+                  color: "#2b211d",
                   fontSize: "12px",
                   padding: "4px 6px",
                   boxSizing: "border-box",
@@ -232,10 +232,11 @@ export function PropertySidebar({ editor, selectedBlockId }: Props) {
   const block = selectedBlockId && editor ? editor.getBlock(selectedBlockId) : null;
 
   const sidebarStyle: React.CSSProperties = {
-    width: "280px",
-    minWidth: "280px",
-    borderLeft: "1px solid rgba(255,255,255,0.1)",
-    background: "rgba(0,0,0,0.2)",
+    width: "320px",
+    minWidth: "320px",
+    borderLeft: "1px solid rgba(255,255,255,0.08)",
+    background: "#d8d1cb",
+    color: "#2b211d",
     display: "flex",
     flexDirection: "column",
     overflow: "hidden",
@@ -243,7 +244,7 @@ export function PropertySidebar({ editor, selectedBlockId }: Props) {
 
   const tabBarStyle: React.CSSProperties = {
     display: "flex",
-    borderBottom: "1px solid rgba(255,255,255,0.1)",
+    borderBottom: "1px solid rgba(43,33,29,0.14)",
     flexShrink: 0,
   };
 
@@ -252,10 +253,10 @@ export function PropertySidebar({ editor, selectedBlockId }: Props) {
     padding: "8px 4px",
     fontSize: "11px",
     fontWeight: activeTab === id ? 600 : 400,
-    color: activeTab === id ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.45)",
-    background: activeTab === id ? "rgba(255,255,255,0.05)" : "transparent",
+    color: activeTab === id ? "#2b211d" : "#6e605a",
+    background: activeTab === id ? "rgba(255,255,255,0.45)" : "transparent",
     border: "none",
-    borderBottom: activeTab === id ? "2px solid #6366f1" : "2px solid transparent",
+    borderBottom: activeTab === id ? "2px solid #3b82f6" : "2px solid transparent",
     cursor: "pointer",
     transition: "color 0.15s",
   });
@@ -268,7 +269,7 @@ export function PropertySidebar({ editor, selectedBlockId }: Props) {
 
   const placeholderStyle: React.CSSProperties = {
     fontSize: "12px",
-    color: "rgba(255,255,255,0.35)",
+    color: "#6e605a",
     textAlign: "center",
     marginTop: "32px",
     padding: "0 16px",
@@ -277,7 +278,7 @@ export function PropertySidebar({ editor, selectedBlockId }: Props) {
 
   if (!block) {
     return (
-      <div style={sidebarStyle} data-testid="property-sidebar">
+      <div style={sidebarStyle} data-testid="property-sidebar" data-contrast="high">
         <div style={tabBarStyle}>
           {TABS.map((tab) => (
             <button data-testid={`property-tab-${tab.id}`} key={tab.id} style={tabButtonStyle(tab.id)} onClick={() => setActiveTab(tab.id)}>
@@ -295,7 +296,7 @@ export function PropertySidebar({ editor, selectedBlockId }: Props) {
   const schemas = getSchemas(block.type);
 
   return (
-    <div style={sidebarStyle} data-testid="property-sidebar">
+    <div style={sidebarStyle} data-testid="property-sidebar" data-contrast="high">
       <div style={tabBarStyle}>
         {TABS.map((tab) => (
           <button data-testid={`property-tab-${tab.id}`} key={tab.id} style={tabButtonStyle(tab.id)} onClick={() => setActiveTab(tab.id)}>
@@ -305,8 +306,8 @@ export function PropertySidebar({ editor, selectedBlockId }: Props) {
       </div>
 
       {/* Block type badge */}
-      <div data-testid="property-sidebar-block-type" style={{ padding: "8px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)", fontSize: "11px", color: "rgba(255,255,255,0.4)" }}>
-        Tipo: <span style={{ color: "rgba(255,255,255,0.65)", fontFamily: "monospace" }}>{block.type}</span>
+      <div data-testid="property-sidebar-block-type" style={{ padding: "8px 12px", borderBottom: "1px solid rgba(43,33,29,0.12)", fontSize: "11px", color: "#6e605a" }}>
+        Tipo: <span style={{ color: "#2b211d", fontFamily: "monospace" }}>{block.type}</span>
       </div>
 
       <div style={contentStyle}>

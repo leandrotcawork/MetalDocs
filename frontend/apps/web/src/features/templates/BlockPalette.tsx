@@ -177,8 +177,7 @@ export function BlockPalette({ editor }: BlockPaletteProps) {
     const activeBlock = selectedBlock ?? cursorBlock;
     const activeBlockId = activeBlock?.id ? String(activeBlock.id) : null;
     const parentBlockType = activeBlockId ? getParentBlockType(activeBlockId) : null;
-    const currentBlockType =
-      typeof activeBlock?.type === "string" ? activeBlock.type : null;
+    const currentBlockType = typeof activeBlock?.type === "string" ? activeBlock.type : null;
 
     const error = canInsertBlock(type, parentBlockType, currentBlockType);
     if (error) {
@@ -212,22 +211,20 @@ export function BlockPalette({ editor }: BlockPaletteProps) {
   if (collapsed) {
     return (
       <div
+        data-testid="block-palette"
+        data-contrast="high"
         style={{
           width: "32px",
           flexShrink: 0,
-          background: "var(--color-surface-2, #1e2028)",
-          borderRight: "1px solid var(--color-border, rgba(255,255,255,0.08))",
+          background: "#20222c",
+          borderRight: "1px solid rgba(255,255,255,0.08)",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           paddingTop: "8px",
         }}
       >
-        <button
-          title="Expandir paleta"
-          onClick={() => setCollapsed(false)}
-          style={toggleBtnStyle}
-        >
+        <button title="Expandir paleta" onClick={() => setCollapsed(false)} style={toggleBtnStyle}>
           {">"}
         </button>
       </div>
@@ -237,11 +234,13 @@ export function BlockPalette({ editor }: BlockPaletteProps) {
   return (
     <div
       data-testid="block-palette"
+      data-contrast="high"
       style={{
-        width: "200px",
+        width: "220px",
         flexShrink: 0,
-        background: "var(--color-surface-2, #1e2028)",
-        borderRight: "1px solid var(--color-border, rgba(255,255,255,0.08))",
+        background: "#20222c",
+        color: "rgba(255,255,255,0.92)",
+        borderRight: "1px solid rgba(255,255,255,0.08)",
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
@@ -253,18 +252,22 @@ export function BlockPalette({ editor }: BlockPaletteProps) {
           alignItems: "center",
           justifyContent: "space-between",
           padding: "8px 10px",
-          borderBottom: "1px solid var(--color-border, rgba(255,255,255,0.08))",
+          borderBottom: "1px solid rgba(255,255,255,0.08)",
           flexShrink: 0,
         }}
       >
-        <span style={{ fontSize: "11px", fontWeight: 600, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+        <span
+          style={{
+            fontSize: "11px",
+            fontWeight: 600,
+            color: "rgba(255,255,255,0.55)",
+            textTransform: "uppercase",
+            letterSpacing: "0.06em",
+          }}
+        >
           Blocos
         </span>
-        <button
-          title="Colapsar paleta"
-          onClick={() => setCollapsed(true)}
-          style={toggleBtnStyle}
-        >
+        <button title="Colapsar paleta" onClick={() => setCollapsed(true)} style={toggleBtnStyle}>
           {"<"}
         </button>
       </div>
@@ -286,7 +289,15 @@ export function BlockPalette({ editor }: BlockPaletteProps) {
           {insertError}
           <button
             onClick={() => setInsertError(null)}
-            style={{ float: "right", background: "none", border: "none", color: "#fca5a5", cursor: "pointer", padding: "0", lineHeight: 1 }}
+            style={{
+              float: "right",
+              background: "none",
+              border: "none",
+              color: "#fca5a5",
+              cursor: "pointer",
+              padding: "0",
+              lineHeight: 1,
+            }}
             aria-label="Fechar erro"
           >
             x
@@ -304,7 +315,7 @@ export function BlockPalette({ editor }: BlockPaletteProps) {
                   padding: "6px 10px 3px",
                   fontSize: "10px",
                   fontWeight: 600,
-                  color: "rgba(255,255,255,0.3)",
+                  color: "rgba(255,255,255,0.55)",
                   textTransform: "uppercase",
                   letterSpacing: "0.07em",
                 }}
@@ -325,7 +336,7 @@ export function BlockPalette({ editor }: BlockPaletteProps) {
                   }}
                 >
                   <span style={{ fontSize: "13px", lineHeight: 1 }}>{blockIcon(block.type)}</span>
-                  <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.75)" }}>{block.label}</span>
+                  <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.92)" }}>{block.label}</span>
                 </button>
               ))}
             </div>
@@ -339,7 +350,7 @@ export function BlockPalette({ editor }: BlockPaletteProps) {
 const toggleBtnStyle: React.CSSProperties = {
   background: "none",
   border: "none",
-  color: "rgba(255,255,255,0.4)",
+  color: "rgba(255,255,255,0.78)",
   cursor: "pointer",
   fontSize: "16px",
   lineHeight: 1,
@@ -363,16 +374,16 @@ const paletteItemStyle: React.CSSProperties = {
 function blockIcon(type: string): string {
   switch (type) {
     case "section":
-      return "▦";
+      return "S";
     case "field":
-      return "⊞";
+      return "F";
     case "dataTable":
-      return "⊟";
+      return "T";
     case "repeatable":
-      return "↻";
+      return "R";
     case "richBlock":
-      return "✎";
+      return "B";
     default:
-      return "□";
+      return "?";
   }
 }

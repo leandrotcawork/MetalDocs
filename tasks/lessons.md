@@ -334,3 +334,10 @@ Wrong:   The metadata compactness test only asserted `data-density=\"compact\"`,
 Correct: The test now validates the real metadata action controls (preview/discard/save/publish) in addition to the compact density marker.
 Rule:    UI regression tests should anchor on real user-facing controls and contracts, not only synthetic marker attributes.
 Layer:   process
+
+## Lesson 49 - Contrast checks must mount real side panels, not mocks
+Date: 2026-04-14 | Trigger: correction
+Wrong:   The template editor layout test mocked `BlockPalette` and `PropertySidebar`, which prevented asserting real contrast attributes and panel wiring.
+Correct: The test now mounts real side panels and verifies `data-contrast=\"high\"` on both palette and sidebar.
+Rule:    UI contrast regressions should be validated against real rendered panels whenever the component contract is visual and attribute-based.
+Layer:   process

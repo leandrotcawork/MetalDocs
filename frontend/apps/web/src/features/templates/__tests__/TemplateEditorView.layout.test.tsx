@@ -6,16 +6,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const {
   useTemplateDraftMock,
   useTemplatesStoreMock,
-  blockPaletteMock,
-  propertySidebarMock,
   mddmEditorMock,
   validationPanelMock,
   strippedFieldsBannerMock,
 } = vi.hoisted(() => ({
   useTemplateDraftMock: vi.fn(),
   useTemplatesStoreMock: vi.fn(),
-  blockPaletteMock: vi.fn(),
-  propertySidebarMock: vi.fn(),
   mddmEditorMock: vi.fn(),
   validationPanelMock: vi.fn(),
   strippedFieldsBannerMock: vi.fn(),
@@ -27,20 +23,6 @@ vi.mock("../useTemplateDraft", () => ({
 
 vi.mock("../../../store/templates.store", () => ({
   useTemplatesStore: useTemplatesStoreMock,
-}));
-
-vi.mock("../BlockPalette", () => ({
-  BlockPalette: (props: unknown) => {
-    blockPaletteMock(props);
-    return <aside data-testid="mock-block-palette" />;
-  },
-}));
-
-vi.mock("../PropertySidebar", () => ({
-  PropertySidebar: (props: unknown) => {
-    propertySidebarMock(props);
-    return <aside data-testid="mock-property-sidebar" />;
-  },
 }));
 
 vi.mock("../../documents/mddm-editor/MDDMEditor", () => ({
@@ -128,8 +110,8 @@ describe("TemplateEditorView layout", () => {
     expect(layout?.contains(workspace as Node)).toBe(true);
     expect(workspace?.contains(documentPane as Node)).toBe(true);
     expect(documentPane?.querySelector('[data-testid="mock-mddm-editor"]')).not.toBeNull();
-    expect(workspace?.querySelector('[data-testid="mock-block-palette"]')).not.toBeNull();
-    expect(workspace?.querySelector('[data-testid="mock-property-sidebar"]')).not.toBeNull();
+    expect(workspace?.querySelector('[data-testid="block-palette"]')).not.toBeNull();
+    expect(workspace?.querySelector('[data-testid="property-sidebar"]')).not.toBeNull();
   });
 
   it("renders compact template actions instead of large workspace CTAs", () => {
@@ -145,5 +127,19 @@ describe("TemplateEditorView layout", () => {
     expect(bar?.querySelector('[data-testid="template-discard-btn"]')).not.toBeNull();
     expect(bar?.querySelector('[data-testid="template-save-btn"]')).not.toBeNull();
     expect(bar?.querySelector('[data-testid="template-publish-btn"]')).not.toBeNull();
+  });
+
+  it("renders readable editing side panels", () => {
+    act(() => {
+      root.render(<TemplateEditorView profileCode="po" templateKey="tpl-ux" />);
+    });
+
+    const palette = host.querySelector('[data-testid="block-palette"]');
+    const sidebar = host.querySelector('[data-testid="property-sidebar"]');
+
+    expect(palette).not.toBeNull();
+    expect(sidebar).not.toBeNull();
+    expect(palette?.getAttribute("data-contrast")).toBe("high");
+    expect(sidebar?.getAttribute("data-contrast")).toBe("high");
   });
 });

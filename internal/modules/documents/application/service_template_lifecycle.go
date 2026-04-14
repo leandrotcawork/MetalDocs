@@ -527,8 +527,7 @@ func (s *Service) SaveDraftAuthorized(ctx context.Context, key string, blocks, t
 // PublishAuthorized promotes a draft to a published DocumentTemplateVersion.
 // Requires CapabilityTemplatePublish.
 //
-// Sequence: InsertTemplateVersion → DeleteTemplateDraft → audit.
-// No transaction boundary is enforced at this layer (Phase 5 can add one).
+// Sequence: PublishTemplateAtomic → audit.
 func (s *Service) PublishAuthorized(ctx context.Context, key string, lockVersion int, actorID string) (*domain.DocumentTemplateVersion, error) {
 	if err := s.isAllowedTemplate(ctx, domain.CapabilityTemplatePublish); err != nil {
 		return nil, err
@@ -570,14 +569,8 @@ func (s *Service) PublishAuthorized(ctx context.Context, key string, lockVersion
 		CreatedAt:   time.Now().UTC(),
 	}
 
-	if err := s.repo.InsertTemplateVersion(ctx, tv); err != nil {
+	if err := s.repo.PublishTemplateAtomic(ctx, &tv, domain.TemplateDraftKey(key)); err != nil {
 		return nil, err
-	}
-
-	if err := s.repo.DeleteTemplateDraft(ctx, key); err != nil {
-		// Draft delete failure is logged but does not roll back the published version.
-		// A future tx wrapper in Phase 5 can make this atomic.
-		_ = err
 	}
 
 	s.writeTemplateAudit(ctx, key, "published", actorID, &newVersion)

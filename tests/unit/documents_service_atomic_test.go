@@ -267,6 +267,9 @@ func (r *atomicRepoSpy) DeleteTemplateDraft(context.Context, string) error { ret
 func (r *atomicRepoSpy) InsertTemplateVersion(context.Context, domain.DocumentTemplateVersion) error {
 	return nil
 }
+func (r *atomicRepoSpy) PublishTemplateAtomic(context.Context, *domain.DocumentTemplateVersion, domain.TemplateDraftKey) error {
+	return nil
+}
 func (r *atomicRepoSpy) UpdateTemplateVersionStatus(context.Context, string, int, domain.TemplateStatus) error {
 	return nil
 }

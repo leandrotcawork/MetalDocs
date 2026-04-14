@@ -87,6 +87,23 @@ func (r *Repository) InsertTemplateVersion(_ context.Context, version domain.Doc
 	return nil
 }
 
+// PublishTemplateAtomic publishes a version and removes its draft under one lock.
+func (r *Repository) PublishTemplateAtomic(_ context.Context, version *domain.DocumentTemplateVersion, draftKey domain.TemplateDraftKey) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	key := string(draftKey)
+	if _, ok := r.templateDrafts[key]; !ok {
+		return domain.ErrTemplateDraftNotFound
+	}
+	if _, ok := r.templateVersions[version.TemplateKey]; !ok {
+		r.templateVersions[version.TemplateKey] = make(map[int]domain.DocumentTemplateVersion)
+	}
+	r.templateVersions[version.TemplateKey][version.Version] = cloneDocumentTemplateVersion(*version)
+	delete(r.templateDrafts, key)
+	return nil
+}
+
 // UpdateTemplateVersionStatus updates the status of a published template version.
 func (r *Repository) UpdateTemplateVersionStatus(_ context.Context, templateKey string, version int, status domain.TemplateStatus) error {
 	r.mu.Lock()

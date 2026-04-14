@@ -117,7 +117,7 @@ SET blocks_json          = $1::jsonb,
     stripped_fields_json = $6::jsonb,
     updated_at           = now()
 WHERE template_key = $7 AND lock_version = $8
-RETURNING lock_version, updated_at
+RETURNING lock_version, created_at, updated_at
 `
 	strippedParam := nullableJSON(draft.StrippedFieldsJSON)
 
@@ -131,7 +131,7 @@ RETURNING lock_version, updated_at
 		strippedParam,
 		key,
 		expectedLockVersion,
-	).Scan(&newLockVer, &draft.UpdatedAt)
+	).Scan(&newLockVer, &draft.CreatedAt, &draft.UpdatedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			// Either key doesn't exist or lock_version mismatch.
@@ -284,6 +284,51 @@ func (r *Repository) InsertTemplateVersion(ctx context.Context, version domain.D
 	)
 	if err != nil {
 		return fmt.Errorf("insert template version: %w", err)
+	}
+	return nil
+}
+
+// PublishTemplateAtomic inserts a published template version and deletes its draft in one transaction.
+func (r *Repository) PublishTemplateAtomic(ctx context.Context, version *domain.DocumentTemplateVersion, draftKey domain.TemplateDraftKey) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx publish template: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	const insertVersionQ = `
+		INSERT INTO metaldocs.document_template_versions
+			(template_key, version, profile_code, schema_version, name, editor, content_format, body, definition, status, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, NOW())`
+	def, err := json.Marshal(version.Definition)
+	if err != nil {
+		return fmt.Errorf("marshal definition: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, insertVersionQ,
+		version.TemplateKey, version.Version, version.ProfileCode,
+		version.SchemaVersion, version.Name, version.Editor,
+		version.ContentFormat, version.Body, def, version.Status,
+	); err != nil {
+		if pgErr, ok := err.(*pgconn.PgError); ok && pgErr.Code == "23505" {
+			return fmt.Errorf("insert template version: %w", err)
+		}
+		return fmt.Errorf("insert template version: %w", err)
+	}
+
+	const deleteDraftQ = `DELETE FROM metaldocs.template_drafts WHERE template_key = $1`
+	result, err := tx.ExecContext(ctx, deleteDraftQ, strings.TrimSpace(string(draftKey)))
+	if err != nil {
+		return fmt.Errorf("delete template draft: %w", err)
+	}
+	affected, _ := result.RowsAffected()
+	if affected == 0 {
+		return domain.ErrTemplateDraftNotFound
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit tx publish template: %w", err)
 	}
 	return nil
 }

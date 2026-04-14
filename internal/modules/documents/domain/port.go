@@ -74,6 +74,7 @@ type Repository interface {
 	// Template version operations
 
 	InsertTemplateVersion(ctx context.Context, version DocumentTemplateVersion) error
+	PublishTemplateAtomic(ctx context.Context, version *DocumentTemplateVersion, draftKey TemplateDraftKey) error
 	UpdateTemplateVersionStatus(ctx context.Context, templateKey string, version int, status TemplateStatus) error
 
 	// Audit

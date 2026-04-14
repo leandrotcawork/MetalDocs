@@ -15,6 +15,9 @@ const (
 	TemplateStatusDeprecated TemplateStatus = "deprecated"
 )
 
+// TemplateDraftKey identifies a template draft aggregate.
+type TemplateDraftKey string
+
 // TemplateDraft is the admin scratch-pad for a template being authored or edited.
 // It is keyed by template_key and only one draft can exist per key at a time.
 type TemplateDraft struct {

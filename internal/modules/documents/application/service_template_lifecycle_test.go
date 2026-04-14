@@ -206,6 +206,25 @@ func TestPublishAuthorized_HappyPath(t *testing.T) {
 	}
 }
 
+func TestPublishAuthorized_AtomicDeleteFailure(t *testing.T) {
+	repo := documentmemory.NewRepository()
+	svc := NewService(repo, nil, nil)
+
+	draft, err := svc.CreateDraftAuthorized(ctxBypassed(), "po", "Atomic Publish", "actor-1")
+	if err != nil {
+		t.Fatalf("CreateDraftAuthorized() error = %v", err)
+	}
+
+	if _, err := svc.PublishAuthorized(ctxBypassed(), draft.TemplateKey, draft.LockVersion, "actor-1"); err != nil {
+		t.Fatalf("PublishAuthorized() error = %v", err)
+	}
+
+	_, err = repo.GetTemplateDraft(ctxBypassed(), draft.TemplateKey)
+	if !errors.Is(err, domain.ErrTemplateDraftNotFound) {
+		t.Errorf("draft should be deleted atomically after publish, got err = %v", err)
+	}
+}
+
 func TestPublishAuthorized_BlockedByStrippedFields(t *testing.T) {
 	repo := documentmemory.NewRepository()
 	svc := NewService(repo, nil, nil)

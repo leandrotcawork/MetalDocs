@@ -151,3 +151,10 @@ Wrong:   `ListDocumentTemplateVersions` did not scan `status`, and lifecycle "la
 Correct: `ListDocumentTemplateVersions` now selects/scans `status`, and lifecycle selectors accept only `published` (or empty legacy status) before choosing the max version.
 Rule:    Any lifecycle decision that depends on version state must load status from persistence and filter status explicitly before version ordering.
 Layer:   application
+
+## Lesson 22 - Template publish must persist version+draft cleanup atomically
+Date: 2026-04-14 | Trigger: correction
+Wrong:   `PublishAuthorized` called `InsertTemplateVersion` then `DeleteTemplateDraft` separately and swallowed draft-delete failures, allowing published version + orphan draft divergence.
+Correct: Template publish now uses `PublishTemplateAtomic` in the repository to insert the published version and delete the draft in one transaction/critical section.
+Rule:    Lifecycle transitions that move state across tables must be atomic and must never swallow cleanup failures.
+Layer:   infrastructure

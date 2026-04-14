@@ -189,6 +189,10 @@ func (s *Service) PublishAuthorized(ctx context.Context, key string, lockVersion
 		return nil, err
 	}
 
+	if draft.LockVersion != lockVersion {
+		return nil, domain.ErrTemplateLockConflict
+	}
+
 	if draft.HasStrippedFields {
 		return nil, domain.ErrTemplateHasStrippedFields
 	}

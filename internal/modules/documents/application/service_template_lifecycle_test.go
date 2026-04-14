@@ -123,16 +123,11 @@ func TestSaveDraftAuthorized_CASConflict(t *testing.T) {
 	}
 
 	blocks := json.RawMessage(`{"blocks":[]}`)
-	// Use wrong lockVersion (0 = create, but draft exists → conflict).
-	_, err = svc.SaveDraftAuthorized(ctxBypassed(), draft.TemplateKey, blocks, nil, nil, 0, "actor-1")
-	// lockVersion=0 means "create new" but draft already exists, so the memory repo
-	// will overwrite (it's a CAS create). Try stale version instead.
-	// Advance lockVersion past current by saving once.
-	saved1, err2 := svc.SaveDraftAuthorized(ctxBypassed(), draft.TemplateKey, blocks, nil, nil, draft.LockVersion, "actor-1")
-	if err2 != nil {
-		t.Fatalf("first save error = %v", err2)
+	// Advance lockVersion by saving once successfully.
+	_, err = svc.SaveDraftAuthorized(ctxBypassed(), draft.TemplateKey, blocks, nil, nil, draft.LockVersion, "actor-1")
+	if err != nil {
+		t.Fatalf("first save error = %v", err)
 	}
-	_ = saved1
 
 	// Now use the original (stale) lock version — should conflict.
 	_, err = svc.SaveDraftAuthorized(ctxBypassed(), draft.TemplateKey, blocks, nil, nil, draft.LockVersion, "actor-1")
@@ -262,6 +257,22 @@ func TestPublishAuthorized_RBACDenied(t *testing.T) {
 	_, err := svc.PublishAuthorized(ctxWithRole(iamdomain.RoleEditor), "any-key", 1, "actor-1")
 	if !errors.Is(err, domain.ErrDocumentNotFound) {
 		t.Errorf("err = %v, want ErrDocumentNotFound (RBAC mask)", err)
+	}
+}
+
+func TestPublishAuthorized_LockConflict(t *testing.T) {
+	repo := documentmemory.NewRepository()
+	svc := NewService(repo, nil, nil)
+
+	draft, err := svc.CreateDraftAuthorized(ctxBypassed(), "po", "Lock Test", "actor-1")
+	if err != nil {
+		t.Fatalf("CreateDraftAuthorized() error = %v", err)
+	}
+
+	// Try to publish with a stale lock version.
+	_, err = svc.PublishAuthorized(ctxBypassed(), draft.TemplateKey, draft.LockVersion+1, "actor-1")
+	if !errors.Is(err, domain.ErrTemplateLockConflict) {
+		t.Errorf("err = %v, want ErrTemplateLockConflict", err)
 	}
 }
 

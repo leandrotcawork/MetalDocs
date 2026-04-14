@@ -38,12 +38,24 @@ func POTemplateMDDM() map[string]any {
 					bulletListItemBlock("a0000033-0000-0000-0000-000000000033", "Inclua os principais pontos de decisão do fluxo"),
 				}),
 				richBlockBlock("a0000034-0000-0000-0000-000000000034", "Diagrama", true, []map[string]any{
-					imageBlock("a0000035-0000-0000-0000-000000000035", "", "Diagrama do processo", ""),
+					paragraphBlock("a0000035-0000-0000-0000-000000000035", "Adicione aqui o diagrama do processo quando estiver disponivel."),
 				}),
 			}),
 			sectionBlock("a0000040-0000-0000-0000-000000000040", "Detalhamento das Etapas", true, false, []map[string]any{
 				repeatableBlock("a0000041-0000-0000-0000-000000000041", "Etapas", "Etapa", 1, 100, false, []map[string]any{
-					repeatableItemBlock("a0000042-0000-0000-0000-000000000042", "Etapa 1", true, []map[string]any{}),
+					repeatableItemBlock("a0000042-0000-0000-0000-000000000042", "Etapa 1", []map[string]any{
+						richBlockBlock("a0000043-0000-0000-0000-000000000043", "Detalhes da etapa", true, []map[string]any{
+							paragraphBlock("a0000044-0000-0000-0000-000000000044", "Descreva o objetivo e o contexto desta etapa."),
+							bulletListItemBlock("a0000045-0000-0000-0000-000000000045", "Liste as entradas necessarias para iniciar a etapa"),
+							numberedListItemBlock("a0000046-0000-0000-0000-000000000046", "Descreva a sequencia principal de execucao"),
+							dataTableBlock(
+								"a0000047-0000-0000-0000-000000000047",
+								"Entradas e saidas da etapa",
+								[]string{"campo", "descricao"},
+								[][]string{},
+							),
+						}),
+					}),
 				}),
 			}),
 			sectionBlock("a0000055-0000-0000-0000-000000000055", "Controle e Exceções", true, false, []map[string]any{
@@ -122,7 +134,6 @@ func stackFieldBlock(id, label, valueMode string) map[string]any {
 			"label":     label,
 			"valueMode": valueMode,
 			"locked":    true,
-			"layout":    "stack",
 		},
 		"children": []any{},
 	}
@@ -144,13 +155,12 @@ func repeatableBlock(id, label, itemPrefix string, minItems, maxItems int, locke
 	}
 }
 
-func repeatableItemBlock(id, title string, locked bool, children []map[string]any) map[string]any {
+func repeatableItemBlock(id, title string, children []map[string]any) map[string]any {
 	return map[string]any{
 		"id":   id,
 		"type": "repeatableItem",
 		"props": map[string]any{
-			"title":  title,
-			"locked": locked,
+			"title": title,
 		},
 		"children": toAnySlice(children),
 	}
@@ -230,40 +240,43 @@ func imageBlock(id, src, alt, caption string) map[string]any {
 	}
 }
 
-// dataTableBlock creates a DataTable block using the new tableContent format.
-// columnLabels: column header texts (e.g., []string{"Item", "Quantidade"})
+// dataTableBlock creates a schema-compatible DataTable block.
+// columnLabels: column keys/labels (e.g., []string{"item", "quantidade"})
 // rowTexts: data rows, each row is a slice of cell texts (one per column)
 func dataTableBlock(id, label string, columnLabels []string, rowTexts [][]string) map[string]any {
-	// Build header row (first row = column labels)
-	headerCells := make([]any, len(columnLabels))
-	for i, col := range columnLabels {
-		headerCells[i] = []any{map[string]any{"type": "text", "text": col}}
+	columns := make([]any, 0, len(columnLabels))
+	for _, col := range columnLabels {
+		columns = append(columns, map[string]any{
+			"key":      col,
+			"label":    col,
+			"type":     "text",
+			"required": false,
+		})
 	}
-	headerRow := map[string]any{"cells": headerCells}
 
-	// Build data rows
-	dataRows := make([]any, len(rowTexts))
+	rows := make([]any, 0, len(rowTexts))
 	for i, row := range rowTexts {
-		cells := make([]any, len(columnLabels))
-		for j := range columnLabels {
+		cells := make([]any, 0, len(columnLabels))
+		for j, col := range columnLabels {
 			text := ""
 			if j < len(row) {
 				text = row[j]
 			}
-			cells[j] = []any{map[string]any{"type": "text", "text": text}}
+			cells = append(cells, map[string]any{
+				"id":   id + "-cell-" + string(rune('a'+i)) + string(rune('a'+j)),
+				"type": "dataTableCell",
+				"props": map[string]any{
+					"columnKey": col,
+				},
+				"children": []any{textRun(text)},
+			})
 		}
-		dataRows[i] = map[string]any{"cells": cells}
-	}
-
-	// Combine header + data rows
-	allRows := make([]any, 0, 1+len(dataRows))
-	allRows = append(allRows, headerRow)
-	allRows = append(allRows, dataRows...)
-
-	// columnWidths: null for each column
-	columnWidths := make([]any, len(columnLabels))
-	for i := range columnWidths {
-		columnWidths[i] = nil
+		rows = append(rows, map[string]any{
+			"id":       id + "-row-" + string(rune('a'+i)),
+			"type":     "dataTableRow",
+			"props":    map[string]any{},
+			"children": cells,
+		})
 	}
 
 	return map[string]any{
@@ -271,16 +284,12 @@ func dataTableBlock(id, label string, columnLabels []string, rowTexts [][]string
 		"type": "dataTable",
 		"props": map[string]any{
 			"label":   label,
+			"columns": columns,
 			"locked":  false,
-			"density": "normal",
+			"minRows": 0,
+			"maxRows": 100,
 		},
-		"content": map[string]any{
-			"type":         "tableContent",
-			"columnWidths": columnWidths,
-			"headerRows":   1,
-			"rows":         allRows,
-		},
-		"children": []any{},
+		"children": rows,
 	}
 }
 

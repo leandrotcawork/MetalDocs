@@ -268,7 +268,11 @@ func isKnownCapability(raw string) bool {
 		domain.CapabilityDocumentEdit,
 		domain.CapabilityDocumentUploadAttachment,
 		domain.CapabilityDocumentChangeWorkflow,
-		domain.CapabilityDocumentManagePermissions:
+		domain.CapabilityDocumentManagePermissions,
+		domain.CapabilityTemplateView,
+		domain.CapabilityTemplateEdit,
+		domain.CapabilityTemplatePublish,
+		domain.CapabilityTemplateExport:
 		return true
 	default:
 		return false

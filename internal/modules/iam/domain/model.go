@@ -21,4 +21,8 @@ const (
 	PermWorkflowTransition        Permission = "workflow:transition"
 	PermSearchRead                Permission = "search:read"
 	PermIAMManageRoles            Permission = "iam:manage_roles"
+	PermTemplateView              Permission = "template:view"
+	PermTemplateEdit              Permission = "template:edit"
+	PermTemplatePublish           Permission = "template:publish"
+	PermTemplateExport            Permission = "template:export"
 )

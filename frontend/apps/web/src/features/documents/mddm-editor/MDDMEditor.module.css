@@ -37,9 +37,10 @@
   display: flex;
   justify-content: center;
   width: 100%;
-  padding: 0.5rem 0.875rem;
-  background: #ede9e4;
-  border-bottom: 1px solid #d4cfc9;
+  padding: 10px 16px;
+  margin-bottom: 0;
+  background: rgba(239, 231, 223, 0.94);
+  border-bottom: 1px solid #d8cec2;
 }
 
 .pageStack {
@@ -54,13 +55,14 @@
 
 /* The white "paper" page — mimics a Word document page */
 .editorRoot {
-  width: min(var(--mddm-page-width, 210mm), calc(100% - 2rem));
+  width: min(var(--mddm-page-width, 210mm), calc(100vw - 120px));
   max-width: 100%;
   margin: 0 auto;
   background: var(--mddm-raw-white);
-  /* Word-like page margins: ~2.5cm top/bottom, ~3cm left/right */
-  padding: 2.25rem 2.75rem;
+  padding: 24mm 20mm 24mm;
   min-height: var(--mddm-page-height, 297mm);
+  border: 1px solid rgba(90, 63, 49, 0.08);
+  border-radius: 10px;
   font-family: var(--mddm-font-family);
   font-size: var(--mddm-font-size-base);
   color: var(--mddm-raw-gray-700);
@@ -70,6 +72,13 @@
     0 1px 2px rgba(0, 0, 0, 0.06),
     0 4px 12px rgba(0, 0, 0, 0.06),
     0 12px 40px rgba(0, 0, 0, 0.05);
+}
+
+@media (max-width: 1400px) {
+  .editorRoot {
+    width: min(var(--mddm-page-width, 210mm), calc(100% - 2rem));
+    padding: 20mm 16mm 20mm;
+  }
 }
 
 @media print {
@@ -92,6 +101,8 @@
     max-width: none;
     padding: 0;
     box-shadow: none;
+    border: none;
+    border-radius: 0;
     min-height: 0;
   }
 }

@@ -60,7 +60,6 @@
   padding-left: 0 !important;
   padding-right: 0 !important;
   padding-top: 0 !important;
-  padding-bottom: 0 !important;
 }
 
 /* Strip BlockNote's 24px margin-left indent from structural block-groups.
@@ -186,7 +185,7 @@
 
 /* Block spacing from tokens */
 .bn-container .bn-block {
-  margin-bottom: var(--mddm-block-gap, 1px);
+  margin-bottom: var(--mddm-block-gap, 2px);
 }
 
 .bn-container .bn-block-content[data-content-type="section"] {

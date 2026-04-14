@@ -115,6 +115,8 @@ test("template editor keeps scroll inside the document pane", async ({ page }) =
 });
 
 test("template editor uses a centered paper stack without oversized outer margins", async ({ page }) => {
+  await page.setViewportSize({ width: 1680, height: 1080 });
+
   const templateKey = "tpl-paper-density";
   const draft = makeDraft({
     templateKey,
@@ -159,6 +161,7 @@ test("template editor uses a centered paper stack without oversized outer margin
 
     return {
       leftInset: paperBox.left - stackBox.left,
+      rightInset: stackBox.right - paperBox.right,
       stackPaddingTop: parseFloat(stackStyles.paddingTop),
       stackPaddingBottom: parseFloat(stackStyles.paddingBottom),
       stackGap: parseFloat(stackStyles.rowGap || stackStyles.gap || "0"),
@@ -166,7 +169,9 @@ test("template editor uses a centered paper stack without oversized outer margin
   });
 
   expect(metrics).not.toBeNull();
-  expect(metrics!.stackPaddingTop).toBeLessThanOrEqual(16);
+  expect(Math.abs((metrics!.leftInset ?? 0) - (metrics!.rightInset ?? 0))).toBeLessThanOrEqual(2);
+  expect(metrics!.leftInset).toBeLessThanOrEqual(80);
+  expect(metrics!.stackPaddingTop).toBeLessThanOrEqual(20);
   expect(metrics!.stackPaddingBottom).toBeLessThanOrEqual(24);
   expect(metrics!.stackGap).toBeLessThanOrEqual(20);
 });

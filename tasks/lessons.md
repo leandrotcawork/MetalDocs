@@ -306,3 +306,24 @@ Wrong:   The new paper-density e2e check navigated to a template key without stu
 Correct: The density test now seeds the template draft response before opening the editor, then measures the rendered paper stack metrics.
 Rule:    Browser layout assertions must first establish the editor state they are measuring, or they will fail for setup reasons instead of real regressions.
 Layer:   process
+
+## Lesson 45 - Plan-locked UX polish values must be implemented literally
+Date: 2026-04-14 | Trigger: correction
+Wrong:   Task 3 shipped spacing tweaks that were close to the plan but not exact (`toolbarWrapper`, `editorRoot`, and `--mddm-block-gap` fallback), causing spec-compliance failure after implementation.
+Correct: Plan-locked UX polish now uses the exact declared values for toolbar chrome, paper width/padding/border, and block-gap fallback before being considered complete.
+Rule:    When a plan specifies concrete CSS constants as acceptance criteria, implement them literally and treat near-equivalents as non-compliant.
+Layer:   process
+
+## Lesson 46 - Visual density tests must assert centering, not just spacing caps
+Date: 2026-04-14 | Trigger: correction
+Wrong:   The paper-density browser test only checked padding/gap upper bounds and did not assert left/right inset symmetry, allowing centering regressions to pass.
+Correct: The test now compares left/right insets and enforces a tight symmetry threshold alongside spacing caps.
+Rule:    Layout-density checks for centered canvases must include an explicit centering assertion, not only spacing constraints.
+Layer:   process
+
+## Lesson 47 - Density checks must exercise desktop rules and cap horizontal inset
+Date: 2026-04-14 | Trigger: correction
+Wrong:   The density test ran at default viewport (hitting responsive fallback) and did not cap horizontal inset, so oversized centered margins could still pass.
+Correct: The test now forces a desktop viewport and asserts maximum left inset while keeping inset symmetry checks.
+Rule:    When validating primary desktop layout behavior, browser tests must set a desktop viewport and assert both symmetry and absolute margin bounds.
+Layer:   process

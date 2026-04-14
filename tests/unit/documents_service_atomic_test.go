@@ -252,6 +252,31 @@ func (r *atomicRepoSpy) ReleaseDocumentEditLock(context.Context, string, string)
 	return domain.ErrEditLockNotFound
 }
 
+func (r *atomicRepoSpy) SetVersionRendererPin(context.Context, string, int, *domain.RendererPin) error {
+	return nil
+}
+
+// Template lifecycle stubs — satisfy the Repository interface; not used by this test.
+func (r *atomicRepoSpy) GetTemplateDraft(context.Context, string) (*domain.TemplateDraft, error) {
+	return nil, domain.ErrTemplateDraftNotFound
+}
+func (r *atomicRepoSpy) UpsertTemplateDraftCAS(context.Context, *domain.TemplateDraft, int) (*domain.TemplateDraft, error) {
+	return nil, nil
+}
+func (r *atomicRepoSpy) DeleteTemplateDraft(context.Context, string) error { return nil }
+func (r *atomicRepoSpy) InsertTemplateVersion(context.Context, domain.DocumentTemplateVersion) error {
+	return nil
+}
+func (r *atomicRepoSpy) UpdateTemplateVersionStatus(context.Context, string, int, domain.TemplateStatus) error {
+	return nil
+}
+func (r *atomicRepoSpy) WriteTemplateAuditEvent(context.Context, domain.TemplateAuditEvent) error {
+	return nil
+}
+func (r *atomicRepoSpy) ListTemplateAuditEvents(context.Context, string) ([]domain.TemplateAuditEvent, error) {
+	return nil, nil
+}
+
 func TestCreateDocumentPrefersAtomicRepositoryWhenAvailable(t *testing.T) {
 	repo := &atomicRepoSpy{}
 	svc := application.NewService(repo, nil, fixedClock{now: time.Date(2026, 3, 16, 10, 0, 0, 0, time.UTC)})

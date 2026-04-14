@@ -176,6 +176,29 @@ test("template editor uses a centered paper stack without oversized outer margin
   expect(metrics!.stackGap).toBeLessThanOrEqual(20);
 });
 
+test("template editor exposes a page stack container for long-form authoring", async ({ page }) => {
+  const templateKey = "tpl-page-stack";
+  const draft = makeDraft({ templateKey, lockVersion: 6 });
+
+  await page.route("**/api/v1/templates/**", async (route) => {
+    const url = new URL(route.request().url());
+    const method = route.request().method();
+
+    if (url.pathname === `/api/v1/templates/${templateKey}` && method === "GET") {
+      await fulfillJson(route, 200, draft);
+      return;
+    }
+
+    await route.continue();
+  });
+
+  await loginAsAdmin(page);
+  await openTemplateEditor(page, "po", templateKey);
+
+  await expect(page.getByTestId("mddm-editor-page-stack")).toBeVisible();
+  await expect(page.getByTestId("mddm-editor-paper")).toBeVisible();
+});
+
 test("template authoring saves, previews DOCX, blocks invalid client publish, then publishes successfully", async ({ page }) => {
   const templateKey = "tpl-authoring-flow";
   let draft: DraftDto = makeDraft({

@@ -341,3 +341,17 @@ Wrong:   The template editor layout test mocked `BlockPalette` and `PropertySide
 Correct: The test now mounts real side panels and verifies `data-contrast=\"high\"` on both palette and sidebar.
 Rule:    UI contrast regressions should be validated against real rendered panels whenever the component contract is visual and attribute-based.
 Layer:   process
+
+## Lesson 50 - New editor e2e scenarios must seed their template draft explicitly
+Date: 2026-04-14 | Trigger: correction
+Wrong:   A new page-stack Playwright scenario opened a template key without stubbing `GET /api/v1/templates/{key}`, causing setup failure before assertions.
+Correct: The scenario now seeds the draft response for its key before opening the template editor route.
+Rule:    Every isolated template-admin e2e scenario must provide explicit API seed stubs for the template key it opens.
+Layer:   process
+
+## Lesson 51 - Non-print layout spacers must be explicitly neutralized in print mode
+Date: 2026-04-14 | Trigger: correction
+Wrong:   A page-stack spacer pseudo-element used for editor workspace geometry remained active in `@media print`, adding trailing space in print/export output.
+Correct: The print stylesheet now disables the pseudo-element (`content: none; width: 0; height: 0`) while keeping the screen layout hook intact.
+Rule:    Any screen-only layout spacer introduced in editor chrome must be explicitly disabled in print styles.
+Layer:   process

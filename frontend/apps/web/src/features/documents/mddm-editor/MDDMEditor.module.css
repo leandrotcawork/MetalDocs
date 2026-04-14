@@ -53,6 +53,12 @@
   box-sizing: border-box;
 }
 
+.pageStack::after {
+  content: "";
+  width: min(var(--mddm-page-width, 210mm), calc(100vw - 120px));
+  height: 24px;
+}
+
 /* The white "paper" page — mimics a Word document page */
 .editorRoot {
   width: min(var(--mddm-page-width, 210mm), calc(100vw - 120px));
@@ -96,6 +102,11 @@
   }
   .pageStack {
     padding: 0;
+  }
+  .pageStack::after {
+    content: none;
+    width: 0;
+    height: 0;
   }
   .editorRoot {
     max-width: none;

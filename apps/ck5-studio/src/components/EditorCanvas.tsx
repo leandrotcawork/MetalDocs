@@ -41,7 +41,7 @@ export function EditorCanvas({
           config={editorConfig}
           data={initialData}
           onReady={(editor) => {
-            const toolbarElement = editor.ui.view.toolbar.element;
+            const toolbarElement = editor.ui.view.toolbar?.element;
             if (toolbarElement && toolbarHostRef.current) {
               toolbarHostRef.current.replaceChildren(toolbarElement);
             }

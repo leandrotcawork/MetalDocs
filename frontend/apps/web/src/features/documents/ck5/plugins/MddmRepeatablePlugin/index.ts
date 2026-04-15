@@ -21,8 +21,8 @@ export class MddmRepeatablePlugin extends Plugin {
     registerRepeatableSchema(editor.model.schema);
     registerRepeatableConverters(editor);
 
-    editor.commands.add('insertRepeatable', new InsertRepeatableCommand(editor));
-    editor.commands.add('addRepeatableItem', new AddRepeatableItemCommand(editor));
-    editor.commands.add('removeRepeatableItem', new RemoveRepeatableItemCommand(editor));
+    editor.commands.add('insertMddmRepeatable', new InsertRepeatableCommand(editor));
+    editor.commands.add('addMddmRepeatableItem', new AddRepeatableItemCommand(editor));
+    editor.commands.add('removeMddmRepeatableItem', new RemoveRepeatableItemCommand(editor));
   }
 }

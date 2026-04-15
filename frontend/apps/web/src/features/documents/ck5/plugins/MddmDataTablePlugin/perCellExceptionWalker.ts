@@ -50,8 +50,8 @@ export function applyPerCellExceptions( editor: Editor ): void {
 						continue;
 					}
 
-					writer.addMarker( `${ CELL_MARKER_PREFIX }${ tableKey }r${ rowIdx }c${ colIdx }`, {
-						range: writer.createRangeOn( cell ),
+					writer.addMarker( `${ CELL_MARKER_PREFIX }${ tableKey }-r${ rowIdx }-c${ colIdx }`, {
+						range: editor.model.createRangeIn( cell ),
 						usingOperation: true,
 						affectsData: true
 					} );

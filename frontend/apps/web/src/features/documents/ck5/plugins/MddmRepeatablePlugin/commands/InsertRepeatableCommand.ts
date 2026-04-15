@@ -4,7 +4,7 @@ import type { Editor, ModelElement } from 'ckeditor5';
 import { uid } from '../../../shared/uid';
 
 type InsertRepeatableOptions = {
-  repeatableId: string;
+  repeatableId?: string;
   label?: string;
   min?: number;
   max?: number;
@@ -23,15 +23,18 @@ export class InsertRepeatableCommand extends Command {
     this.isEnabled = !!allowedParent;
   }
 
-  public override execute(options: InsertRepeatableOptions): void {
+  public override execute(options: InsertRepeatableOptions = {}): void {
     const {
-      repeatableId,
+      repeatableId = uid('rep'),
       label = '',
-      min = 1,
-      max = Infinity,
-      numberingStyle = '',
-      initialCount = 1,
+      min: rawMin = 0,
+      max: rawMax = Infinity,
+      numberingStyle = 'decimal',
+      initialCount,
     } = options;
+    const min = Math.max(0, rawMin);
+    const max = rawMax > 0 ? rawMax : Infinity;
+    const count = Math.max(min, Math.min(initialCount ?? Math.max(min, 1), isFinite(max) ? max : Infinity));
     const { model } = this.editor;
 
     model.change((writer) => {
@@ -43,7 +46,7 @@ export class InsertRepeatableCommand extends Command {
         numberingStyle,
       });
 
-      for (let i = 0; i < initialCount; i += 1) {
+      for (let i = 0; i < count; i += 1) {
         const item = writer.createElement('mddmRepeatableItem');
         const paragraph = writer.createElement('paragraph');
         writer.append(paragraph, item);
@@ -53,9 +56,9 @@ export class InsertRepeatableCommand extends Command {
       model.insertObject(repeatable, null, null, { setSelection: 'on' });
 
       for (const item of repeatable.getChildren()) {
-        writer.addMarker(`restrictedEditingException:${uid()}`, {
-          range: writer.createRangeOn(item as ModelElement),
-          usingOperation: false,
+        writer.addMarker(`restrictedEditingException:${uid('rex')}`, {
+          range: model.createRangeIn(item as ModelElement),
+          usingOperation: true,
           affectsData: true,
         });
       }

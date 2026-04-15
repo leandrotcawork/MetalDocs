@@ -13,9 +13,9 @@ class RepeatableCommandsTestPlugin extends Plugin {
     registerRepeatableSchema(this.editor.model.schema);
     registerRepeatableConverters(this.editor);
 
-    this.editor.commands.add('insertRepeatable', new InsertRepeatableCommand(this.editor));
-    this.editor.commands.add('addRepeatableItem', new AddRepeatableItemCommand(this.editor));
-    this.editor.commands.add('removeRepeatableItem', new RemoveRepeatableItemCommand(this.editor));
+    this.editor.commands.add('insertMddmRepeatable', new InsertRepeatableCommand(this.editor));
+    this.editor.commands.add('addMddmRepeatableItem', new AddRepeatableItemCommand(this.editor));
+    this.editor.commands.add('removeMddmRepeatableItem', new RemoveRepeatableItemCommand(this.editor));
   }
 }
 
@@ -48,9 +48,9 @@ describe('repeatable commands', () => {
       ],
     });
 
-    insertCmd = editor.commands.get('insertRepeatable') as InsertRepeatableCommand;
-    addCmd = editor.commands.get('addRepeatableItem') as AddRepeatableItemCommand;
-    removeCmd = editor.commands.get('removeRepeatableItem') as RemoveRepeatableItemCommand;
+    insertCmd = editor.commands.get('insertMddmRepeatable') as InsertRepeatableCommand;
+    addCmd = editor.commands.get('addMddmRepeatableItem') as AddRepeatableItemCommand;
+    removeCmd = editor.commands.get('removeMddmRepeatableItem') as RemoveRepeatableItemCommand;
 
     insertCmd.refresh();
     addCmd.refresh();

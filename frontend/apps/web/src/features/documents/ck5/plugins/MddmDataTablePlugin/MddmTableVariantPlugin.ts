@@ -13,8 +13,8 @@ export class MddmTableVariantPlugin extends Plugin {
 		});
 
 		editor.conversion.attributeToAttribute({
-			model: 'mddmTableVariant',
-			view: 'data-mddm-variant'
+			model: { name: 'table', key: 'mddmTableVariant' },
+			view: { name: 'table', key: 'data-mddm-variant' },
 		});
 	}
 }

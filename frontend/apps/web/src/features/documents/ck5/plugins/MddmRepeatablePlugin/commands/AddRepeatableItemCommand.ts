@@ -39,9 +39,9 @@ export class AddRepeatableItemCommand extends Command {
       writer.append(paragraph, item);
       writer.append(item, repeatable as ModelElement);
 
-      writer.addMarker(`restrictedEditingException:${uid()}`, {
-        range: writer.createRangeOn(item),
-        usingOperation: false,
+      writer.addMarker(`restrictedEditingException:${uid('rex')}`, {
+        range: model.createRangeIn(item),
+        usingOperation: true,
         affectsData: true,
       });
     });

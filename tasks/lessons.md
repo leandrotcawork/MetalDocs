@@ -411,3 +411,10 @@ Wrong:   Generic margin clamp fallback always used top-margin default, causing i
 Correct: Clamp/read/write margin helpers now pass explicit fallback per margin field and tests assert non-finite inputs map to each field's own default.
 Rule:    Shared normalizers for multi-field layout settings must take field-specific fallback values instead of a single hardcoded default.
 Layer:   application
+
+## Lesson 60 - Runtime token wiring needs a draft-meta integration guard
+Date: 2026-04-14 | Trigger: correction
+Wrong:   Layout tests validated template editor structure but did not assert `draft.meta.page` parsing reached `MDDMEditor`, allowing silent drift in runtime margin wiring.
+Correct: `TemplateEditorView.layout` now captures mocked `MDDMEditor` props and asserts parsed page settings are forwarded from draft meta.
+Rule:    Any view-level runtime settings path must have an integration-style regression test at the handoff boundary, not only isolated unit tests.
+Layer:   application

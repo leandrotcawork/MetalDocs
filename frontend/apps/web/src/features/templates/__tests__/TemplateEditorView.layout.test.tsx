@@ -142,4 +142,43 @@ describe("TemplateEditorView layout", () => {
     expect(palette?.getAttribute("data-contrast")).toBe("high");
     expect(sidebar?.getAttribute("data-contrast")).toBe("high");
   });
+
+  it("passes parsed page settings from draft.meta to MDDMEditor", () => {
+    useTemplateDraftMock.mockReturnValue({
+      draft: {
+        templateKey: "template-1",
+        name: "Template 1",
+        status: "draft",
+        lockVersion: 3,
+        hasStrippedFields: false,
+        blocks: [],
+        meta: {
+          page: {
+            marginTopMm: 12,
+            marginRightMm: 18,
+            marginBottomMm: 22,
+            marginLeftMm: 27,
+          },
+        },
+      },
+      isLoading: false,
+      error: null,
+      saveDraft: vi.fn(),
+      publish: vi.fn(),
+      discardDraft: vi.fn(),
+      replaceDraft: vi.fn(),
+    });
+
+    act(() => {
+      root.render(<TemplateEditorView profileCode="PO" templateKey="template-1" />);
+    });
+
+    const lastCall = mddmEditorMock.mock.calls.at(-1)?.[0] as { pageSettings?: unknown } | undefined;
+    expect(lastCall?.pageSettings).toEqual({
+      marginTopMm: 12,
+      marginRightMm: 18,
+      marginBottomMm: 22,
+      marginLeftMm: 27,
+    });
+  });
 });

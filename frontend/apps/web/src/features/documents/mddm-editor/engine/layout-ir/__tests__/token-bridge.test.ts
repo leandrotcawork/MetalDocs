@@ -52,4 +52,28 @@ describe("tokensToCssVars", () => {
     const modifiedVars = tokensToCssVars(modified);
     expect(modifiedVars["--mddm-accent"]).toBe("#ff0000");
   });
+
+  it("maps overridden page margins and content width vars", () => {
+    const marginLeftMm = 30;
+    const marginRightMm = 28;
+    const modified = {
+      ...defaultLayoutTokens,
+      page: {
+        ...defaultLayoutTokens.page,
+        marginTopMm: 15,
+        marginRightMm,
+        marginBottomMm: 35,
+        marginLeftMm,
+        contentWidthMm:
+          defaultLayoutTokens.page.widthMm - marginLeftMm - marginRightMm,
+      },
+    };
+
+    const modifiedVars = tokensToCssVars(modified);
+    expect(modifiedVars["--mddm-margin-top"]).toBe("15mm");
+    expect(modifiedVars["--mddm-margin-right"]).toBe("28mm");
+    expect(modifiedVars["--mddm-margin-bottom"]).toBe("35mm");
+    expect(modifiedVars["--mddm-margin-left"]).toBe("30mm");
+    expect(modifiedVars["--mddm-page-content-width"]).toBe("152mm");
+  });
 });

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   clampPageMarginMm,
   defaultTemplatePageSettings,
+  mergePageRuntimeDimensions,
   readTemplatePageSettings,
   type TemplatePageSettings,
   writeTemplatePageSettings,
@@ -96,6 +97,36 @@ describe("page settings", () => {
         marginBottomMm: 10,
         marginLeftMm: 11,
       },
+    });
+  });
+
+  it("merges page settings into runtime dimensions and derives content width", () => {
+    expect(
+      mergePageRuntimeDimensions(
+        {
+          widthMm: 210,
+          heightMm: 297,
+          marginTopMm: 25,
+          marginRightMm: 20,
+          marginBottomMm: 25,
+          marginLeftMm: 25,
+          contentWidthMm: 165,
+        },
+        {
+          marginTopMm: 10,
+          marginRightMm: 30,
+          marginBottomMm: 15,
+          marginLeftMm: 35,
+        },
+      ),
+    ).toEqual({
+      widthMm: 210,
+      heightMm: 297,
+      marginTopMm: 10,
+      marginRightMm: 30,
+      marginBottomMm: 15,
+      marginLeftMm: 35,
+      contentWidthMm: 145,
     });
   });
 });

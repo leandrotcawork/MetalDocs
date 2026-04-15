@@ -177,6 +177,38 @@ describe("MDDMEditor", () => {
     host.remove();
   });
 
+  it("applies pageSettings override to runtime page tokens", () => {
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const root = createRoot(host);
+
+    act(() => {
+      root.render(
+        <MDDMEditor
+          pageSettings={{
+            marginTopMm: 10,
+            marginRightMm: 30,
+            marginBottomMm: 12,
+            marginLeftMm: 35,
+          }}
+        />,
+      );
+    });
+
+    const tokens = getEditorTokens(editor);
+    expect(tokens.page.marginTopMm).toBe(10);
+    expect(tokens.page.marginRightMm).toBe(30);
+    expect(tokens.page.marginBottomMm).toBe(12);
+    expect(tokens.page.marginLeftMm).toBe(35);
+    expect(tokens.page.contentWidthMm).toBe(tokens.page.widthMm - 35 - 30);
+
+    act(() => {
+      root.unmount();
+    });
+
+    host.remove();
+  });
+
   it("locks header cells at the DOM level", async () => {
     const host = document.createElement("div");
     document.body.appendChild(host);

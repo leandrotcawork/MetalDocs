@@ -22,6 +22,10 @@ import { mddmSchema } from "./schema";
 import styles from "./MDDMEditor.module.css";
 import { defaultLayoutTokens, tokensToCssVars } from "./engine/layout-ir";
 import { setEditorTokens } from "./engine/editor-tokens";
+import {
+  mergePageRuntimeDimensions,
+  type TemplatePageSettings,
+} from "../../templates/page-settings";
 
 export type MDDMTheme = {
   accent?: string;
@@ -35,6 +39,7 @@ export type MDDMEditorProps = {
   onChange?: (blocks: unknown[]) => void;
   readOnly?: boolean;
   theme?: MDDMTheme;
+  pageSettings?: TemplatePageSettings;
   onEditorReady?: (editor: unknown) => void;
   onSelectionChange?: (blockId: string | null) => void;
   documentId?: string;
@@ -45,6 +50,7 @@ export function MDDMEditor({
   onChange,
   readOnly,
   theme,
+  pageSettings,
   onEditorReady,
   onSelectionChange,
   documentId,
@@ -103,9 +109,20 @@ export function MDDMEditor({
   }, [editor]);
 
   const tokens = useMemo(() => {
-    if (!theme) return defaultLayoutTokens;
+    const page = pageSettings
+      ? mergePageRuntimeDimensions(defaultLayoutTokens.page, pageSettings)
+      : defaultLayoutTokens.page;
+
+    if (!theme) {
+      return {
+        ...defaultLayoutTokens,
+        page,
+      };
+    }
+
     return {
       ...defaultLayoutTokens,
+      page,
       theme: {
         ...defaultLayoutTokens.theme,
         ...(theme.accent ? { accent: theme.accent } : {}),
@@ -114,7 +131,7 @@ export function MDDMEditor({
         ...(theme.accentBorder ? { accentBorder: theme.accentBorder } : {}),
       },
     };
-  }, [theme]);
+  }, [theme, pageSettings]);
 
   const cssVars = useMemo(() => tokensToCssVars(tokens), [tokens]);
 

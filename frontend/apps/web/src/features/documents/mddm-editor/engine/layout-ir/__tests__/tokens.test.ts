@@ -12,6 +12,23 @@ describe("Layout IR tokens", () => {
     expect(page.contentWidthMm).toBe(page.widthMm - page.marginLeftMm - page.marginRightMm);
   });
 
+  it("keeps contentWidthMm consistent when page margins are overridden", () => {
+    const modified = {
+      ...defaultLayoutTokens,
+      page: {
+        ...defaultLayoutTokens.page,
+        marginLeftMm: 24,
+        marginRightMm: 26,
+        contentWidthMm:
+          defaultLayoutTokens.page.widthMm - 24 - 26,
+      },
+    };
+
+    expect(modified.page.contentWidthMm).toBe(
+      modified.page.widthMm - modified.page.marginLeftMm - modified.page.marginRightMm,
+    );
+  });
+
   it("uses Carlito as the default exportFont", () => {
     expect(defaultLayoutTokens.typography.exportFont).toBe("Carlito");
   });

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PartialBlock } from "@blocknote/core";
 import { MDDMEditor } from "../documents/mddm-editor/MDDMEditor";
 import { MetadataBar } from "./MetadataBar";
@@ -9,6 +9,7 @@ import { StrippedFieldsBanner } from "./StrippedFieldsBanner";
 import { useTemplateDraft } from "./useTemplateDraft";
 import { useTemplatesStore } from "../../store/templates.store";
 import type { TemplateDraftDTO } from "../../api/templates";
+import { readTemplatePageSettings } from "./page-settings";
 import styles from "./TemplateEditorView.module.css";
 
 type TemplateEditorViewProps = {
@@ -95,6 +96,8 @@ export function TemplateEditorView({ profileCode, templateKey }: TemplateEditorV
     replaceDraft(updatedDraft);
   }, [replaceDraft]);
 
+  const pageSettings = useMemo(() => readTemplatePageSettings(draft?.meta), [draft?.meta]);
+
   if (isLoading) {
     return (
       <div className={styles.loadingState}>
@@ -146,6 +149,7 @@ export function TemplateEditorView({ profileCode, templateKey }: TemplateEditorV
         <div className={styles.documentPane} data-testid="template-editor-document-pane">
           <MDDMEditor
             initialContent={Array.isArray(draft.blocks) ? (draft.blocks as PartialBlock[]) : undefined}
+            pageSettings={pageSettings}
             onEditorReady={handleEditorReady}
             onChange={handleChange}
             onSelectionChange={setSelectedBlock}

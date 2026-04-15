@@ -5,6 +5,16 @@ export type TemplatePageSettings = {
   marginLeftMm: number;
 };
 
+export type PageRuntimeDimensions = {
+  widthMm: number;
+  heightMm: number;
+  marginTopMm: number;
+  marginRightMm: number;
+  marginBottomMm: number;
+  marginLeftMm: number;
+  contentWidthMm: number;
+};
+
 export const defaultTemplatePageSettings: TemplatePageSettings = {
   marginTopMm: 25,
   marginRightMm: 20,
@@ -59,5 +69,19 @@ export function writeTemplatePageSettings(meta: unknown, page: TemplatePageSetti
       marginBottomMm: clampPageMarginMm(page.marginBottomMm, defaultTemplatePageSettings.marginBottomMm),
       marginLeftMm: clampPageMarginMm(page.marginLeftMm, defaultTemplatePageSettings.marginLeftMm),
     },
+  };
+}
+
+export function mergePageRuntimeDimensions(
+  basePage: PageRuntimeDimensions,
+  pageSettings: TemplatePageSettings,
+): PageRuntimeDimensions {
+  return {
+    ...basePage,
+    marginTopMm: pageSettings.marginTopMm,
+    marginRightMm: pageSettings.marginRightMm,
+    marginBottomMm: pageSettings.marginBottomMm,
+    marginLeftMm: pageSettings.marginLeftMm,
+    contentWidthMm: basePage.widthMm - pageSettings.marginLeftMm - pageSettings.marginRightMm,
   };
 }

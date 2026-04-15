@@ -6,15 +6,28 @@ type EditorCanvasProps = {
   initialData: string;
   onReady?: (editor: any) => void;
   onChange?: (html: string) => void;
+  onDebouncedChange?: (html: string) => void;
+  debounceMs?: number;
 };
 
-export function EditorCanvas({ initialData, onReady, onChange }: EditorCanvasProps) {
+export function EditorCanvas({
+  initialData,
+  onReady,
+  onChange,
+  onDebouncedChange,
+  debounceMs = 300,
+}: EditorCanvasProps) {
   const toolbarHostRef = useRef<HTMLDivElement | null>(null);
+  const latestHtmlRef = useRef(initialData);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
       if (toolbarHostRef.current) {
-        toolbarHostRef.current.innerHTML = "";
+        toolbarHostRef.current.replaceChildren();
       }
     };
   }, []);
@@ -29,13 +42,24 @@ export function EditorCanvas({ initialData, onReady, onChange }: EditorCanvasPro
           data={initialData}
           onReady={(editor) => {
             const toolbarElement = editor.ui.view.toolbar.element;
-            if (toolbarElement && toolbarHostRef.current && !toolbarHostRef.current.contains(toolbarElement)) {
-              toolbarHostRef.current.appendChild(toolbarElement);
+            if (toolbarElement && toolbarHostRef.current) {
+              toolbarHostRef.current.replaceChildren(toolbarElement);
             }
             onReady?.(editor);
           }}
           onChange={(_, editor) => {
-            onChange?.(editor.getData());
+            const nextHtml = editor.getData();
+            latestHtmlRef.current = nextHtml;
+            onChange?.(nextHtml);
+
+            if (onDebouncedChange) {
+              if (debounceTimerRef.current) {
+                clearTimeout(debounceTimerRef.current);
+              }
+              debounceTimerRef.current = setTimeout(() => {
+                onDebouncedChange(latestHtmlRef.current);
+              }, debounceMs);
+            }
           }}
         />
       </div>

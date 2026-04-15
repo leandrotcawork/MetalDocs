@@ -39,7 +39,7 @@ test.beforeAll(() => {
   seedE2EWorkspace();
 });
 
-test("template editor keeps scroll inside the document pane", async ({ page }) => {
+test("template editor keeps scroll on the document pane instead of the whole workspace or an inner editor div", async ({ page }) => {
   const templateKey = "tpl-scroll-owner";
   const longSectionChildren = Array.from({ length: 26 }, (_, index) => ({
     id: `scroll-rich-${index + 1}`,
@@ -84,34 +84,58 @@ test("template editor keeps scroll inside the document pane", async ({ page }) =
   await openTemplateEditor(page, "po", templateKey);
 
   const scrollShell = page.getByTestId("mddm-editor-scroll-shell");
+  const documentPane = page.getByTestId("template-editor-document-pane");
   await expect(scrollShell).toBeVisible();
+  await expect(documentPane).toBeVisible();
   await expect(page.getByTestId("mddm-editor-page-stack")).toBeVisible();
   await expect(page.getByTestId("mddm-editor-paper")).toBeVisible();
-  await expect(scrollShell).toHaveCSS("overflow-y", "auto");
+  await expect(documentPane).toHaveCSS("overflow-y", "auto");
+  await expect(scrollShell).not.toHaveCSS("overflow-y", "auto");
 
   const scrollState = await page.evaluate(() => {
     const shell = document.querySelector('[data-testid="mddm-editor-scroll-shell"]') as HTMLElement | null;
-    const layoutRoot = document.querySelector('[data-testid="template-editor-layout"]') as HTMLElement | null;
-    if (!shell) {
+    const pane = document.querySelector('[data-testid="template-editor-document-pane"]') as HTMLElement | null;
+    const workspaceContent = document.querySelector("main > div") as HTMLElement | null;
+    if (!shell || !pane || !workspaceContent) {
       return null;
     }
 
-    const before = shell.scrollTop;
-    shell.scrollTop = 320;
-    const after = shell.scrollTop;
+    const beforePane = pane.scrollTop;
+    const beforeInner = shell.scrollTop;
+    const beforeOuter = workspaceContent.scrollTop;
+    pane.scrollTop = 320;
+    const afterPane = pane.scrollTop;
+    const afterInner = shell.scrollTop;
+    const afterOuter = workspaceContent.scrollTop;
 
     return {
-      isScrollable: shell.scrollHeight > shell.clientHeight,
-      before,
-      after,
-      layoutScrollTop: layoutRoot?.scrollTop ?? 0,
+      paneOverflowY: getComputedStyle(pane).overflowY,
+      paneIsScrollable: pane.scrollHeight > pane.clientHeight,
+      outerOverflowY: getComputedStyle(workspaceContent).overflowY,
+      outerPaddingTop: getComputedStyle(workspaceContent).paddingTop,
+      outerPaddingRight: getComputedStyle(workspaceContent).paddingRight,
+      outerIsScrollable: workspaceContent.scrollHeight > workspaceContent.clientHeight,
+      innerOverflowY: getComputedStyle(shell).overflowY,
+      beforePane,
+      afterPane,
+      beforeOuter,
+      afterOuter,
+      beforeInner,
+      afterInner,
     };
   });
 
   expect(scrollState).toBeTruthy();
-  expect(scrollState?.isScrollable).toBe(true);
-  expect((scrollState?.after ?? 0) > (scrollState?.before ?? 0)).toBe(true);
-  expect(scrollState?.layoutScrollTop ?? 0).toBe(0);
+  expect(scrollState?.paneOverflowY).toBe("auto");
+  expect(scrollState?.paneIsScrollable).toBe(true);
+  expect(scrollState?.outerOverflowY).toBe("hidden");
+  expect(scrollState?.outerPaddingTop).toBe("0px");
+  expect(scrollState?.outerPaddingRight).toBe("0px");
+  expect(scrollState?.outerIsScrollable).toBe(false);
+  expect(scrollState?.innerOverflowY).not.toBe("auto");
+  expect((scrollState?.afterPane ?? 0) > (scrollState?.beforePane ?? 0)).toBe(true);
+  expect(scrollState?.afterOuter ?? 0).toBe(scrollState?.beforeOuter ?? 0);
+  expect(scrollState?.afterInner ?? 0).toBe(scrollState?.beforeInner ?? 0);
 });
 
 test("template editor uses a centered paper stack without oversized outer margins", async ({ page }) => {
@@ -608,6 +632,23 @@ test("blank draft supports section-first authoring, allows all palette blocks, a
   await page.getByTestId("palette-insert-section").click();
   await expect.poll(async () => countBlocksByType(page, "section")).toBe(1);
 
+  const rootBlocksAfterSectionInsert = await getBlocks(page);
+  expect(rootBlocksAfterSectionInsert[0]?.type).toBe("section");
+
+  const sectionLayout = await page.evaluate(() => {
+    const section = document.querySelector('[data-mddm-block="section"]') as HTMLElement | null;
+    const paper = document.querySelector('[data-testid="mddm-editor-paper"]') as HTMLElement | null;
+    if (!section || !paper) return null;
+    return {
+      sectionMarginTop: getComputedStyle(section).marginTop,
+      sectionOffsetFromPaper: section.getBoundingClientRect().top - paper.getBoundingClientRect().top,
+      paperPaddingTop: parseFloat(getComputedStyle(paper).paddingTop),
+    };
+  });
+  expect(sectionLayout).not.toBeNull();
+  expect(sectionLayout?.sectionMarginTop).toBe("0px");
+  expect(sectionLayout?.sectionOffsetFromPaper ?? 0).toBeLessThanOrEqual((sectionLayout?.paperPaddingTop ?? 0) + 2);
+
   const sectionId = await findNthBlockIdByType(page, "section", 0);
   expect(sectionId).toBeTruthy();
   await selectBlock(page, sectionId!);
@@ -630,6 +671,72 @@ test("blank draft supports section-first authoring, allows all palette blocks, a
   expect(box).toBeTruthy();
   const ratio = (box?.height ?? 0) / Math.max(box?.width ?? 1, 1);
   expect(ratio).toBeGreaterThan(1.2);
+});
+
+test("template editor updates paper padding live when page margins change", async ({ page }) => {
+  const templateKey = "tpl-page-margin-live";
+  const draft = makeDraft({
+    templateKey,
+    lockVersion: 1,
+  });
+
+  await page.route("**/api/v1/templates/**", async (route) => {
+    const url = new URL(route.request().url());
+    const method = route.request().method();
+
+    if (url.pathname === `/api/v1/templates/${templateKey}` && method === "GET") {
+      await fulfillJson(route, 200, draft);
+      return;
+    }
+
+    await route.continue();
+  });
+
+  await loginAsAdmin(page);
+  await openTemplateEditor(page, "po", templateKey);
+
+  const readPaperPaddingPx = () =>
+    page.evaluate(() => {
+      const paper = document.querySelector('[data-testid="mddm-editor-paper"]') as HTMLElement | null;
+      if (!paper) return null;
+      const computed = getComputedStyle(paper);
+      return {
+        top: parseFloat(computed.paddingTop),
+        right: parseFloat(computed.paddingRight),
+        bottom: parseFloat(computed.paddingBottom),
+        left: parseFloat(computed.paddingLeft),
+      };
+    });
+
+  const before = await readPaperPaddingPx();
+  expect(before).not.toBeNull();
+
+  await page.getByTestId("page-margin-top-mm").fill("33");
+  await page.getByTestId("page-margin-right-mm").fill("29");
+  await page.getByTestId("page-margin-bottom-mm").fill("31");
+  await page.getByTestId("page-margin-left-mm").fill("27");
+
+  const mmToPx = (mm: number) => (mm * 96) / 25.4;
+
+  await expect
+    .poll(async () => {
+      const value = await readPaperPaddingPx();
+      if (!value) return false;
+      return (
+        Math.abs(value.top - mmToPx(33)) <= 2 &&
+        Math.abs(value.right - mmToPx(29)) <= 2 &&
+        Math.abs(value.bottom - mmToPx(31)) <= 2 &&
+        Math.abs(value.left - mmToPx(27)) <= 2
+      );
+    })
+    .toBe(true);
+
+  const after = await readPaperPaddingPx();
+  expect(after).not.toBeNull();
+  expect(after?.top).not.toBe(before?.top);
+  expect(after?.right).not.toBe(before?.right);
+  expect(after?.bottom).not.toBe(before?.bottom);
+  expect(after?.left).not.toBe(before?.left);
 });
 
 function makeDraft(overrides: Partial<DraftDto> = {}): DraftDto {

@@ -425,3 +425,17 @@ Wrong:   `useTemplateDraft` sent `apiSaveDraft` payloads with only `blocks` and 
 Correct: `saveDraft` and publish pre-save now include `meta: current.meta`, and regression tests assert both paths send the current meta payload.
 Rule:    Any save operation that persists editor state must include all mutable draft surfaces (blocks + meta) to avoid silent state loss.
 Layer:   application
+
+## Lesson 62 - Paper padding must be driven by page margin tokens
+Date: 2026-04-14 | Trigger: correction
+Wrong:   `MDDMEditor.module.css` used hardcoded paper padding values, so sidebar margin controls changed state but not visible canvas padding.
+Correct: Paper padding now binds to `--mddm-margin-top/right/bottom/left`, and Playwright verifies live padding updates after control changes.
+Rule:    Any user-editable layout setting must be wired from tokens/CSS vars to rendered geometry, with a real-browser assertion on computed styles.
+Layer:   delivery
+
+## Lesson 63 - Print layout must keep configured page margins
+Date: 2026-04-14 | Trigger: correction
+Wrong:   `@media print` in `MDDMEditor.module.css` reset `.editorRoot` padding to `0`, dropping user-configured margin settings in print output.
+Correct: Print styles now use the same `--mddm-margin-top/right/bottom/left` variables as screen layout so configured margins render consistently.
+Rule:    Print styles for editable page geometry must reuse the same margin tokens as screen mode instead of hard resets.
+Layer:   delivery

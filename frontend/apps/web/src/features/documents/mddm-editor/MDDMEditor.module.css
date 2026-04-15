@@ -3,8 +3,8 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  height: 100%;
-  overflow: hidden;
+  height: auto;
+  overflow: visible;
   background: #ede9e4;
 }
 
@@ -13,8 +13,8 @@
   flex: 1 1 auto;
   flex-direction: column;
   min-height: 0;
-  height: 100%;
-  overflow: hidden;
+  height: auto;
+  overflow: visible;
 }
 
 .scrollShell {
@@ -23,10 +23,7 @@
   flex-direction: column;
   min-height: 0;
   min-width: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-gutter: stable;
+  overflow: visible;
 }
 
 /* Sticky toolbar band — sits in the gray desk area above the white paper */
@@ -65,7 +62,10 @@
   max-width: 100%;
   margin: 0 auto;
   background: var(--mddm-raw-white);
-  padding: 24mm 20mm 24mm;
+  padding-top: var(--mddm-margin-top, 25mm);
+  padding-right: var(--mddm-margin-right, 20mm);
+  padding-bottom: var(--mddm-margin-bottom, 25mm);
+  padding-left: var(--mddm-margin-left, 25mm);
   min-height: var(--mddm-page-height, 297mm);
   border: 1px solid rgba(90, 63, 49, 0.08);
   border-radius: 10px;
@@ -83,7 +83,6 @@
 @media (max-width: 1400px) {
   .editorRoot {
     width: min(var(--mddm-page-width, 210mm), calc(100% - 2rem));
-    padding: 20mm 16mm 20mm;
   }
 }
 
@@ -110,7 +109,10 @@
   }
   .editorRoot {
     max-width: none;
-    padding: 0;
+    padding-top: var(--mddm-margin-top, 25mm);
+    padding-right: var(--mddm-margin-right, 20mm);
+    padding-bottom: var(--mddm-margin-bottom, 25mm);
+    padding-left: var(--mddm-margin-left, 25mm);
     box-shadow: none;
     border: none;
     border-radius: 0;

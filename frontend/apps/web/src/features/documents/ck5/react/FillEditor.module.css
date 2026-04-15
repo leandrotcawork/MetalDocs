@@ -1,0 +1,12 @@
+.shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 600px;
+}
+
+.editable {
+  padding: 24px 32px;
+  max-width: 880px;
+  margin: 0 auto;
+  background: #fff;
+}

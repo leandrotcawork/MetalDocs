@@ -53,8 +53,6 @@ export type MDDMEditorProps = {
 };
 
 const PX_PER_MM = 96 / 25.4;
-const PAGE_STACK_GAP_REM = 1.25;
-const PAGE_STACK_GAP_PX = PAGE_STACK_GAP_REM * 16;
 const DEFAULT_PAGE_LAYOUT: PageLayout = {
   pageCount: 1,
   breakOffsetsByBlockId: {},
@@ -464,9 +462,7 @@ export function MDDMEditor({
 
   const visualPageCount = Math.max(1, pageLayout.pageCount);
   const visualPageHeightPx = tokens.page.heightMm * PX_PER_MM;
-  const visualStackHeightPx =
-    visualPageCount * visualPageHeightPx +
-    Math.max(0, visualPageCount - 1) * PAGE_STACK_GAP_PX;
+  const visualStackHeightPx = visualPageCount * visualPageHeightPx;
 
   const paperStyle = useMemo<CSSProperties>(
     () => ({

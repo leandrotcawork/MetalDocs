@@ -453,3 +453,10 @@ Wrong:   Page margin inputs committed/clamped on every `onChange`, so deleting t
 Correct: Margin inputs now keep local string draft while typing and only commit/clamp on blur or Enter, with invalid/empty drafts restored safely.
 Rule:    Constrained numeric fields for layout must separate edit-state from commit-state to avoid keystroke-level value corruption.
 Layer:   delivery
+
+## Lesson 66 - Visual page stack spacing must share the same coordinate model as editor content
+Date: 2026-04-14 | Trigger: correction
+Wrong:   Page surfaces used a fixed inter-page visual gap while editor content height/pagination math was continuous, creating accumulated offset and "bugged" behavior near last-page transitions.
+Correct: Visual stack now uses zero inter-surface gap to match continuous editor coordinates, and browser regression asserts near-zero gap between first and second surfaces.
+Rule:    In visual pagination overlays, background page spacing must match content coordinate space or page boundaries will drift.
+Layer:   delivery

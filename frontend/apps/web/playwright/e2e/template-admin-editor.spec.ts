@@ -271,19 +271,26 @@ test("template editor shows a second page automatically when content exceeds pag
     .poll(async () => {
       const value = await page.evaluate(() => {
         const paperSurfaces = document.querySelectorAll('[data-testid="mddm-editor-paper-surface"]').length;
+        const surfaces = Array.from(document.querySelectorAll<HTMLElement>('[data-testid="mddm-editor-paper-surface"]'));
         const paper = document.querySelector('[data-testid="mddm-editor-paper"]') as HTMLElement | null;
         if (!paper) return null;
+        const surfaceGapPx =
+          surfaces.length >= 2
+            ? surfaces[1].getBoundingClientRect().top - surfaces[0].getBoundingClientRect().bottom
+            : 0;
         const computedPageCount = Number(paper.dataset.pageCount ?? "1");
         return {
           paperSurfaces,
           computedPageCount,
+          surfaceGapPx,
         };
       });
       if (!value) return false;
       return (
         value.computedPageCount >= 2 &&
         value.paperSurfaces >= 2 &&
-        value.paperSurfaces >= value.computedPageCount
+        value.paperSurfaces >= value.computedPageCount &&
+        Math.abs(value.surfaceGapPx) <= 1
       );
     })
     .toBe(true);

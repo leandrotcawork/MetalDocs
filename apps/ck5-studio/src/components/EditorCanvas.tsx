@@ -100,6 +100,15 @@ export function EditorCanvas({
             if (toolbarElement && toolbarHostRef.current) {
               toolbarHostRef.current.replaceChildren(toolbarElement);
             }
+            if (mode === "fill") {
+              requestAnimationFrame(() => {
+                const goNext = editor.commands.get("goToNextRestrictedEditingException");
+                if (goNext?.isEnabled) {
+                  editor.execute("goToNextRestrictedEditingException");
+                }
+                editor.editing.view.focus();
+              });
+            }
             onReady?.(editor);
           }}
           onChange={(_, editor) => {

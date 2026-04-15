@@ -7,16 +7,32 @@ import { RightPanel } from "./RightPanel";
 type AppShellProps = {
   children: ReactNode;
   selection: SelectionSummary | null;
+  mode: "author" | "fill";
+  onModeChange: (mode: "author" | "fill") => void;
+  onNewDocument: () => void;
   onInsert: (key: LibraryItemKey) => void;
   onImagePick: () => void;
 };
 
-export function AppShell({ children, selection, onInsert, onImagePick }: AppShellProps) {
+export function AppShell({
+  children,
+  selection,
+  mode,
+  onModeChange,
+  onNewDocument,
+  onInsert,
+  onImagePick,
+}: AppShellProps) {
   return (
     <div className="studio-shell">
-      <TopBar />
+      <TopBar mode={mode} onModeChange={onModeChange} />
       <div className="studio-body">
-        <LeftLibrary onInsert={onInsert} onImagePick={onImagePick} />
+        <LeftLibrary
+          onNewDocument={onNewDocument}
+          onInsert={onInsert}
+          onImagePick={onImagePick}
+          actionsDisabled={mode === "fill"}
+        />
         <main className="studio-center" data-testid="editor-canvas">
           {children}
         </main>

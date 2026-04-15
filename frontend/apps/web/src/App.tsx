@@ -178,6 +178,7 @@ function AppContent() {
       : documents;
 
   const locationView = useMemo(() => viewFromPath(location.pathname), [location.pathname]);
+  const templateEditorParams = useMemo(() => parseTemplateEditorPath(location.pathname), [location.pathname]);
 
   const handleWorkspaceNavigate = useCallback((nextView: Parameters<typeof pathFromView>[0]) => {
     if (nextView === "admin" && !isAdmin) {
@@ -393,7 +394,6 @@ function AppContent() {
     }
 
     if (activeView === "registry") {
-      const templateEditorParams = parseTemplateEditorPath(location.pathname);
       if (templateEditorParams) {
         return (
           <TemplateEditorView
@@ -516,6 +516,7 @@ function AppContent() {
           onPrimaryAction={handlePrimaryAction}
           onRefreshWorkspace={refreshWorkspace}
           isRefreshing={loadState === "loading"}
+          flushContent={Boolean(templateEditorParams)}
           onLogout={handleLogout}
         >
           {workspaceView}

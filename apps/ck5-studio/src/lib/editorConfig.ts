@@ -25,6 +25,8 @@ const {
   Link,
   List,
   Paragraph,
+  RestrictedEditingMode,
+  StandardEditingMode,
   Table,
   TableToolbar,
   Underline,
@@ -32,60 +34,88 @@ const {
 
 export const editorClass = DecoupledEditor as any;
 
-export const editorConfig = {
-  licenseKey: "GPL",
-  plugins: [
-    Essentials,
-    Paragraph,
-    Heading,
-    Bold,
-    Italic,
-    Underline,
-    Link,
-    List,
-    Table,
-    TableToolbar,
-    Image,
-    ImageUpload,
-    ImageToolbar,
-    ImageStyle,
-    ImageResize,
-    ImageCaption,
-    ImageInsert,
-    AutoImage,
-    Base64UploadAdapter,
-    Autoformat,
-    Alignment,
-    FontFamily,
-    FontSize,
-    FontColor,
-    FontBackgroundColor,
-    BlockQuote,
-  ],
-  toolbar: {
-    items: [
-      "undo",
-      "redo",
-      "|",
-      "heading",
-      "|",
-      "fontFamily",
-      "fontSize",
-      "fontColor",
-      "fontBackgroundColor",
-      "|",
-      "bold",
-      "italic",
-      "underline",
-      "link",
-      "|",
-      "alignment",
-      "bulletedList",
-      "numberedList",
-      "blockQuote",
-      "insertTable",
-      "uploadImage",
-    ],
-    shouldNotGroupWhenFull: true,
-  },
-};
+export type EditingTemplateMode = "author" | "fill";
+
+const BASE_PLUGINS = [
+  Essentials,
+  Paragraph,
+  Heading,
+  Bold,
+  Italic,
+  Underline,
+  Link,
+  List,
+  Table,
+  TableToolbar,
+  Image,
+  ImageUpload,
+  ImageToolbar,
+  ImageStyle,
+  ImageResize,
+  ImageCaption,
+  ImageInsert,
+  AutoImage,
+  Base64UploadAdapter,
+  Autoformat,
+  Alignment,
+  FontFamily,
+  FontSize,
+  FontColor,
+  FontBackgroundColor,
+  BlockQuote,
+];
+
+const BASE_TOOLBAR_ITEMS = [
+  "undo",
+  "redo",
+  "|",
+  "heading",
+  "|",
+  "fontFamily",
+  "fontSize",
+  "fontColor",
+  "fontBackgroundColor",
+  "|",
+  "bold",
+  "italic",
+  "underline",
+  "link",
+  "|",
+  "alignment",
+  "bulletedList",
+  "numberedList",
+  "blockQuote",
+  "insertTable",
+  "uploadImage",
+];
+
+export function getEditorConfig(mode: EditingTemplateMode) {
+  const plugins = [...BASE_PLUGINS];
+  const toolbarItems = [...BASE_TOOLBAR_ITEMS];
+
+  if (mode === "author" && StandardEditingMode) {
+    plugins.push(StandardEditingMode);
+    toolbarItems.splice(2, 0, "restrictedEditingException:dropdown", "|");
+  }
+
+  if (mode === "fill" && RestrictedEditingMode) {
+    plugins.push(RestrictedEditingMode);
+    toolbarItems.splice(2, 0, "restrictedEditing", "|");
+  }
+
+  return {
+    licenseKey: "GPL",
+    plugins,
+    toolbar: {
+      items: toolbarItems,
+      shouldNotGroupWhenFull: true,
+    },
+    restrictedEditing:
+      mode === "fill"
+        ? {
+            allowedCommands: ["bold", "italic", "link"],
+            allowedAttributes: ["bold", "italic", "linkHref"],
+          }
+        : undefined,
+  };
+}

@@ -1,0 +1,30 @@
+{
+  "metrics": {
+    "shell": {
+      "overflowY": "visible",
+      "overflowX": "visible",
+      "scrollHeight": 2713,
+      "clientHeight": 2713,
+      "scrollTopBefore": 0
+    },
+    "outer": {
+      "overflowY": "auto",
+      "paddingTop": "0px",
+      "paddingRight": "0px",
+      "scrollHeight": 2760,
+      "clientHeight": 1150,
+      "scrollTopBefore": 0
+    },
+    "pane": {
+      "overflowY": "visible"
+    },
+    "layout": {
+      "height": "1150px",
+      "overflowY": "visible"
+    }
+  },
+  "afterScroll": {
+    "shellScrollTop": 0,
+    "outerScrollTop": 320
+  }
+}

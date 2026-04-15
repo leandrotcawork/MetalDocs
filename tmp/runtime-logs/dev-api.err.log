@@ -1,0 +1,8 @@
+APP_PORT 8081 is already in use by process(es): 62208. Stop the running API/gateway before starting local API.
+No C:\Users\leandro.theodoro.MN-NTB-LEANDROT\Documents\MetalDocs\scripts\dev-api.ps1:38 caractere:3
++   throw "APP_PORT $appPort is already in use by process(es): $pids. S ...
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (APP_PORT 8081 i...ting local API.:String) [], RuntimeException
+    + FullyQualifiedErrorId : APP_PORT 8081 is already in use by process(es): 62208. Stop the running API/gateway befo 
+   re starting local API.
+ 

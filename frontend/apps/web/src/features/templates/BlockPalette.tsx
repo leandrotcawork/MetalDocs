@@ -41,6 +41,20 @@ export function BlockPalette({ editor }: BlockPaletteProps) {
     return null;
   }
 
+  function isEffectivelyEmptyRootBlock(block: any): boolean {
+    return (
+      block?.type === "paragraph" &&
+      Array.isArray(block.content) &&
+      block.content.length === 0 &&
+      Array.isArray(block.children) &&
+      block.children.length === 0
+    );
+  }
+
+  function isEffectivelyEmptyRootDocument(blocks: any[]): boolean {
+    return blocks.length === 0 || blocks.every(isEffectivelyEmptyRootBlock);
+  }
+
   function findContainingSectionId(
     blocks: any[],
     targetId: string,
@@ -87,8 +101,8 @@ export function BlockPalette({ editor }: BlockPaletteProps) {
       children: [],
     };
 
-    if (doc.length === 0 && typeof editor.replaceBlocks === "function") {
-      const result = editor.replaceBlocks([], [sectionBlock]);
+    if (isEffectivelyEmptyRootDocument(doc) && typeof editor.replaceBlocks === "function") {
+      const result = editor.replaceBlocks(doc, [sectionBlock]);
       const inserted = result?.insertedBlocks?.[0];
       if (inserted?.id) return String(inserted.id);
       const fallback = (editor.document as any[])?.find((block) => block.type === "section");
@@ -111,8 +125,8 @@ export function BlockPalette({ editor }: BlockPaletteProps) {
   function insertSectionAtRoot(sectionBlock: Record<string, unknown>) {
     const doc = (editor.document as any[]) ?? [];
 
-    if (doc.length === 0 && typeof editor.replaceBlocks === "function") {
-      editor.replaceBlocks([], [sectionBlock]);
+    if (isEffectivelyEmptyRootDocument(doc) && typeof editor.replaceBlocks === "function") {
+      editor.replaceBlocks(doc, [sectionBlock]);
       return;
     }
 

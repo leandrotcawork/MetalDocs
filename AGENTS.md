@@ -1,76 +1,54 @@
-# AGENTS — MetalDocs
+Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
 
-## On every session start
-1. Read `tasks/lessons.md` — apply every rule before touching code
-2. Read `tasks/todo.md` — know current state
-3. After any correction: write lesson to `tasks/lessons.md` immediately
-4. When launching a subagent, stay in the loop: explicitly wait for completion and proceed through reviews without pausing for user prompts. Never require the user to tell you to continue.
+Tradeoff: These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
-## Engineering bar
-Every decision passes this filter:
-*"Would a Stripe or Google senior engineer approve this in code review?"*
-- Names are self-documenting — no comment needed
-- Errors carry structured codes: `MODULE_ENTITY_REASON`
-- Every request logs `trace_id`, `user_id`, `module`, `action`, `result`, `duration_ms`
-- Every write event uses `idempotency_key` and outbox pattern
-- Authorization always validated in backend — never skipped
+1. Think Before Coding
+Don't assume. Don't hide confusion. Surface tradeoffs.
 
-## Absolute rules — violation = stop and fix immediately
+Before implementing:
 
-**Request flow (frozen)**
-- `delivery → application → domain → infrastructure`
-- Handler never contains business logic
-- Domain never depends on infrastructure
-- Modules never import internals of other modules directly
+State your assumptions explicitly. If uncertain, ask.
+If multiple interpretations exist, present them - don't pick silently.
+If a simpler approach exists, say so. Push back when warranted.
+If something is unclear, stop. Name what's confusing. Ask.
+2. Simplicity First
+Minimum code that solves the problem. Nothing speculative.
 
-**Auth and authorization**
-- IAM middleware handles auth — handler reads via `authn.UserIDFromContext(ctx)`
-- Permission check registered in `permissions.go` for every new endpoint
-- Never bypass authorization in handler
+No features beyond what was asked.
+No abstractions for single-use code.
+No "flexibility" or "configurability" that wasn't requested.
+No error handling for impossible scenarios.
+If you write 200 lines and it could be 50, rewrite it.
+Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
 
-**Events and outbox**
-- Every relevant mutation publishes a domain event via `messaging.Publisher`
-- Outbox `ON CONFLICT (idempotency_key) DO NOTHING` — idempotent by design
-- `idempotency_key` format: `event_type:aggregate_id`
-- Worker consumers must be idempotent — retry-safe
+3. Surgical Changes
+Touch only what you must. Clean up only your own mess.
 
-**Data**
-- Document versions are immutable — never update existing version content, except when the version is DRAFT (draft versions may be updated in place)
-- Audit log is append-only — never update or delete audit events
-- Migrations additive-first — destructive migration requires ADR
+When editing existing code:
 
-**API**
-- `api/openapi/v1/openapi.yaml` is source of truth
-- No endpoint without OpenAPI entry
-- Breaking change only in `/api/v2`
-- OpenAPI updated in same PR as API change
+Don't "improve" adjacent code, comments, or formatting.
+Don't refactor things that aren't broken.
+Match existing style, even if you'd do it differently.
+If you notice unrelated dead code, mention it - don't delete it.
+When your changes create orphans:
 
-**Code**
-- No secrets or credentials in code — env var only
-- No business logic in delivery layer
-- No direct table access across module boundaries
-- Smallest safe diff — never mix feature + broad refactor
+Remove imports/variables/functions that YOUR changes made unused.
+Don't remove pre-existing dead code unless asked.
+The test: Every changed line should trace directly to the user's request.
 
-## Skill map
+4. Goal-Driven Execution
+Define success criteria. Loop until verified.
 
-| Task | Skill |
-|---|---|
-| Any implementation | `$md` |
-| New Go module | `$metaldocs-module` |
-| OpenAPI contract | `$metaldocs-openapi` |
-| ADR lifecycle | `$metaldocs-adr` |
-| Review | `$metaldocs-review` |
+Transform tasks into verifiable goals:
 
-## Commit format
-`<type>(<scope>): <what>` — feat | fix | docs | chore | refactor | test
-One commit per completed task. No uncommitted work at session end.
+"Add validation" → "Write tests for invalid inputs, then make them pass"
+"Fix the bug" → "Write a test that reproduces it, then make it pass"
+"Refactor X" → "Ensure tests pass before and after"
+For multi-step tasks, state a brief plan:
 
-## Lesson format (write to tasks/lessons.md after every correction)
-```
-## Lesson N — <title>
-Date: YYYY-MM-DD | Trigger: <correction | review | build failure>
-Wrong:   <exact code or decision>
-Correct: <exact code or decision>
-Rule:    <one sentence>
-Layer:   <delivery | application | domain | infrastructure | process>
-```
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+3. [Step] → verify: [check]
+Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+
+These guidelines are working if: fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.

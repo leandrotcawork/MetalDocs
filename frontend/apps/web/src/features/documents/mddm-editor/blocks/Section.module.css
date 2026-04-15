@@ -1,6 +1,6 @@
 .section {
   width: 100%;
-  margin: var(--mddm-spacing-lg) 0 0;
+  margin: 0;
   /* No side borders — the header bar is the visual boundary.
      A full border on a full-width block creates vertical lines down the page. */
   overflow: hidden;

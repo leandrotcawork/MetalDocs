@@ -12,6 +12,11 @@ export const DEFAULT_EDITORIAL_HTML = `
     <tr><td><em>Typographic Authority</em></td><td><span class="restricted-editing-exception">Establishing trust through classic editorial stems.</span></td></tr>
   </tbody>
 </table>
+<h2>Section 2 - Locked Header</h2>
+<div class="restricted-editing-exception">
+  <p><strong>Editable body:</strong> Write narrative, add tables, and insert media here in Fill mode.</p>
+  <p>This is a full editing region under a locked section title.</p>
+</div>
 <p>[ Image placeholder ]</p>
 <p><em><span class="restricted-editing-exception">Fig 1.1: The Interplay of Light and Intellectual Space</span></em></p>
 `;

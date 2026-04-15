@@ -16,6 +16,7 @@ type WorkspaceShellProps = {
   processAreas: ProcessAreaItem[];
   documents: SearchDocumentItem[];
   isRefreshing: boolean;
+  flushContent?: boolean;
   onSearchChange: (value: string) => void;
   onNavigate: (view: WorkspaceView) => void;
   onPrimaryAction: () => void;
@@ -45,6 +46,7 @@ export function WorkspaceShell(props: WorkspaceShellProps) {
       onPrimaryAction={props.onPrimaryAction}
       onRefreshWorkspace={props.onRefreshWorkspace}
       isRefreshing={props.isRefreshing}
+      flushContent={props.flushContent}
       onLogout={props.onLogout}
     >
       {props.children}

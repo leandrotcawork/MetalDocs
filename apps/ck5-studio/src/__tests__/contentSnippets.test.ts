@@ -34,4 +34,9 @@ describe("contentSnippets", () => {
   it("seeds restricted editing exception markers for fill mode", () => {
     expect(DEFAULT_EDITORIAL_HTML).toContain("restricted-editing-exception");
   });
+
+  it("includes mixed section in default template", () => {
+    expect(DEFAULT_EDITORIAL_HTML).toContain("Section 2 - Locked Header");
+    expect(DEFAULT_EDITORIAL_HTML).toContain('<div class="restricted-editing-exception">');
+  });
 });

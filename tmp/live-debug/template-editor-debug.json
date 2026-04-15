@@ -1,0 +1,107 @@
+{
+  "before": {
+    "doc": [
+      {
+        "id": "d5bcadaa-9a08-4712-9d98-02f2f1aca3c0",
+        "type": "paragraph",
+        "props": {
+          "backgroundColor": "default",
+          "textColor": "default",
+          "textAlignment": "left"
+        },
+        "content": [],
+        "children": []
+      }
+    ],
+    "shell": {
+      "overflowY": "auto",
+      "scrollHeight": 1236,
+      "clientHeight": 1153,
+      "paddingTop": "0px"
+    },
+    "pane": {
+      "overflowY": "hidden",
+      "paddingTop": "0px",
+      "clientHeight": 1153
+    },
+    "paper": {
+      "paddingTop": "90.7087px",
+      "rectTop": 184,
+      "rectLeft": 500
+    },
+    "pageStack": {
+      "paddingTop": "12px",
+      "rectTop": 172
+    }
+  },
+  "after": {
+    "doc": [
+      {
+        "id": "d5bcadaa-9a08-4712-9d98-02f2f1aca3c0",
+        "type": "paragraph",
+        "props": {
+          "backgroundColor": "default",
+          "textColor": "default",
+          "textAlignment": "left"
+        },
+        "content": [],
+        "children": []
+      },
+      {
+        "id": "8717e64e-c098-47c3-a33f-49c4cade597b",
+        "type": "section",
+        "props": {
+          "title": "Nova secao",
+          "color": "#6b1f2a",
+          "locked": true,
+          "optional": false,
+          "variant": "bar",
+          "__template_block_id": "",
+          "styleJson": "{}",
+          "capabilitiesJson": "{}"
+        },
+        "children": []
+      },
+      {
+        "id": "963d514e-ccb3-462f-9cba-41beb18fc511",
+        "type": "paragraph",
+        "props": {
+          "backgroundColor": "default",
+          "textColor": "default",
+          "textAlignment": "left"
+        },
+        "content": [],
+        "children": []
+      }
+    ],
+    "firstSection": {
+      "rectTop": 332.703125,
+      "marginTop": "24px",
+      "parentTag": "DIV",
+      "previousSiblingType": null,
+      "text": "Nova secao"
+    },
+    "shell": {
+      "overflowY": "auto",
+      "scrollHeight": 1236,
+      "clientHeight": 1153,
+      "scrollTop": 0
+    },
+    "pane": {
+      "overflowY": "hidden",
+      "clientHeight": 1153,
+      "scrollHeight": 1153
+    },
+    "paper": {
+      "paddingTop": "90.7087px",
+      "rectTop": 184
+    },
+    "pageStack": {
+      "paddingTop": "12px",
+      "rectTop": 172
+    },
+    "bnEditor": {
+      "paddingTop": "0px"
+    }
+  }
+}

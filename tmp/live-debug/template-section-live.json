@@ -1,0 +1,22 @@
+{
+  "blocks": [
+    {
+      "type": "section",
+      "id": "e2633293-9813-48fc-9841-f76467ba42a4"
+    },
+    {
+      "type": "paragraph",
+      "id": "1819c353-93ea-4aa2-8d58-b1518f7cdee6"
+    }
+  ],
+  "firstBlockType": "section",
+  "section": {
+    "rectTop": 248.703125,
+    "marginTop": "24px",
+    "text": "Nova secao"
+  },
+  "paper": {
+    "rectTop": 130,
+    "paddingTop": "90.7087px"
+  }
+}

@@ -16,6 +16,7 @@ type WorkspaceShellProps = {
   reviewCount: number;
   registryCount: number;
   showAdmin: boolean;
+  flushContent?: boolean;
   documentProfiles: DocumentProfileItem[];
   processAreas: ProcessAreaItem[];
   documents: SearchDocumentItem[];
@@ -482,7 +483,7 @@ export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
         <main className={`${styles["workspace-main"]} ${isCatalogView || isCreateView || isContentBuilder ? styles["is-toolbarless"] : ""} ${isCreateView ? styles["is-create-view"] : ""} ${isContentBuilder ? styles["is-content-builder-view"] : ""}`}>
           {isCreateView || isContentBuilder || isCatalogView
             ? props.children
-            : <div className={styles["workspace-content"]}>{props.children}</div>}
+            : <div className={`${styles["workspace-content"]} ${props.flushContent ? styles["is-flush"] : ""}`}>{props.children}</div>}
         </main>
       </div>
     </div>

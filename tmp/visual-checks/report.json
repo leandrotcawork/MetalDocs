@@ -1,0 +1,27 @@
+{
+  "sectionMetrics": [
+    {
+      "top": 57,
+      "marginTop": "16px"
+    },
+    {
+      "top": 105,
+      "marginTop": "16px"
+    }
+  ],
+  "browserMetrics": {
+    "surfacePadding": "0px",
+    "surfaceOverflowX": "visible",
+    "surfaceOverflowY": "visible",
+    "viewportPadding": "0px",
+    "viewportOverflowX": "visible",
+    "viewportOverflowY": "visible",
+    "errorBannerMargin": "12px 12px 0px",
+    "shellScrollHeight": 1341,
+    "shellClientHeight": 1000
+  },
+  "screenshots": {
+    "section": "C:\\Users\\leandro.theodoro.MN-NTB-LEANDROT\\Documents\\MetalDocs\\tmp\\visual-checks\\section-gap-check.png",
+    "browser": "C:\\Users\\leandro.theodoro.MN-NTB-LEANDROT\\Documents\\MetalDocs\\tmp\\visual-checks\\browser-editor-scroll-check.png"
+  }
+}

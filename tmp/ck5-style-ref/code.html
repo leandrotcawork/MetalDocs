@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Template Creator | The Editorial Architect</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,700;1,6..72,400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "on-error-container": "#93000a",
+            "surface-container-high": "#e2e8f5",
+            "on-tertiary": "#ffffff",
+            "on-error": "#ffffff",
+            "on-primary": "#ffffff",
+            "primary-fixed": "#ffdad4",
+            "on-primary-fixed": "#410000",
+            "surface-bright": "#f8f9ff",
+            "surface-container": "#e7eefb",
+            "secondary-container": "#ff9b8c",
+            "on-secondary": "#ffffff",
+            "surface-dim": "#d4dae7",
+            "on-surface-variant": "#5a413d",
+            "surface-container-low": "#eeef4ff",
+            "tertiary-fixed": "#dfe0ff",
+            "primary-fixed-dim": "#ffb4a8",
+            "surface-variant": "#dce3f0",
+            "inverse-surface": "#2a313b",
+            "surface-tint": "#b22b1d",
+            "secondary-fixed": "#ffdad4",
+            "error": "#ba1a1a",
+            "on-tertiary-container": "#94a0ff",
+            "on-surface": "#151c25",
+            "surface-container-highest": "#dce3f0",
+            "tertiary-container": "#0021b9",
+            "tertiary-fixed-dim": "#bcc2ff",
+            "primary-container": "#800000",
+            "inverse-primary": "#ffb4a8",
+            "on-secondary-container": "#783126",
+            "on-secondary-fixed-variant": "#783026",
+            "on-tertiary-fixed": "#000c61",
+            "secondary": "#96473b",
+            "outline": "#8e706c",
+            "inverse-on-surface": "#eaf1fe",
+            "surface": "#f8f9ff",
+            "primary": "#570000",
+            "surface-container-lowest": "#ffffff",
+            "tertiary": "#00137f",
+            "background": "#f8f9ff",
+            "on-tertiary-fixed-variant": "#1830c2",
+            "on-primary-container": "#ff8371",
+            "on-background": "#151c25",
+            "error-container": "#ffdad6",
+            "outline-variant": "#e2bfb9",
+            "on-primary-fixed-variant": "#8f0f07",
+            "secondary-fixed-dim": "#ffb4a8",
+            "on-secondary-fixed": "#3e0502"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "fontFamily": {
+            "headline": ["Newsreader"],
+            "body": ["Inter"],
+            "label": ["Inter"]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    .glass-panel {
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    .editor-canvas {
+      min-height: 297mm;
+      width: 210mm;
+    }
+  </style>
+</head>
+<body class="bg-surface font-body text-on-surface selection:bg-primary-fixed selection:text-on-primary-fixed-variant">
+<!-- Top Navigation Shell -->
+<nav class="fixed top-0 w-full flex justify-between items-center px-6 h-16 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-xl z-50 tonal-layering">
+<div class="flex items-center gap-8">
+<span class="text-xl font-serif italic text-red-900 dark:text-red-600">The Editorial Architect</span>
+<div class="hidden md:flex items-center gap-6">
+<a class="text-zinc-500 dark:text-zinc-400 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 px-3 py-1 rounded-xl transition-colors" href="#">Documents</a>
+<a class="text-red-900 dark:text-red-500 font-semibold border-b-2 border-red-900 px-3 py-1" href="#">Templates</a>
+<a class="text-zinc-500 dark:text-zinc-400 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 px-3 py-1 rounded-xl transition-colors" href="#">Publish</a>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<button class="flex items-center gap-2 px-4 py-2 text-primary font-semibold hover:bg-surface-container-high transition-colors rounded-xl">
+<span class="material-symbols-outlined text-[20px]">visibility</span>
+<span>Preview</span>
+</button>
+<button class="bg-gradient-to-r from-primary to-primary-container text-on-primary px-6 py-2 rounded-xl font-semibold shadow-sm hover:opacity-90 transition-all active:scale-95">
+        Share
+      </button>
+<div class="h-6 w-px bg-outline-variant mx-2"></div>
+<button class="p-2 text-zinc-600 hover:bg-zinc-100 rounded-full transition-colors">
+<span class="material-symbols-outlined">history</span>
+</button>
+<button class="p-2 text-zinc-600 hover:bg-zinc-100 rounded-full transition-colors">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<img alt="User profile" class="w-8 h-8 rounded-full border border-outline-variant ml-2" data-alt="professional portrait of a creative director in a minimalist studio environment with soft natural lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDpHuY3aYeMKvtYnfETRoK-cJ2ztkC77T5kcnylNZaXssDJ9o8oFWMwJVxz2_SKm4_A9UQj-bqsjCIaogqTRwSBJdeFsAXPMXw_G-5Cisgnup5VXkt98hiJHK75kaD3GgwR32dx5CEOhbOYTArbmdiM4qQAvWFBfHeNn88WijAshsegfT_UfDE_fyH0Epl13hClOCzd11YfI23su3733uAmyGDWJo_RABLxgZxi3hyrCX2QMFNMCrcCzuYYb7sXORxOOGANxMVFNk0"/>
+</div>
+</nav>
+<main class="pt-16 flex h-screen overflow-hidden">
+<!-- Left Sidebar: Blocks Library -->
+<aside class="w-72 bg-surface-container-low flex flex-col no-scrollbar overflow-y-auto">
+<div class="p-6">
+<h2 class="font-headline text-xl text-on-surface mb-1">Library</h2>
+<p class="text-label-sm text-on-surface-variant font-medium opacity-70 italic">Intellectual Atelier</p>
+</div>
+<div class="px-4 mb-6">
+<button class="w-full bg-surface-container-highest text-on-surface py-3 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-surface-variant transition-all">
+<span class="material-symbols-outlined">add</span>
+<span>New Document</span>
+</button>
+</div>
+<div class="px-4 space-y-6">
+<div>
+<label class="px-2 text-[10px] uppercase tracking-widest font-bold text-outline mb-3 block">Basic Blocks</label>
+<div class="grid grid-cols-2 gap-3">
+<div class="bg-surface-container-lowest p-4 rounded-xl flex flex-col items-center gap-2 cursor-grab hover:bg-surface-bright transition-all group">
+<span class="material-symbols-outlined text-primary group-hover:scale-110 transition-transform">title</span>
+<span class="text-xs font-medium">Text</span>
+</div>
+<div class="bg-surface-container-lowest p-4 rounded-xl flex flex-col items-center gap-2 cursor-grab hover:bg-surface-bright transition-all group">
+<span class="material-symbols-outlined text-primary group-hover:scale-110 transition-transform">image</span>
+<span class="text-xs font-medium">Media</span>
+</div>
+<div class="bg-surface-container-lowest p-4 rounded-xl flex flex-col items-center gap-2 cursor-grab hover:bg-surface-bright transition-all group border-2 border-transparent hover:border-primary/10">
+<span class="material-symbols-outlined text-primary group-hover:scale-110 transition-transform">table_chart</span>
+<span class="text-xs font-medium">Table</span>
+</div>
+<div class="bg-surface-container-lowest p-4 rounded-xl flex flex-col items-center gap-2 cursor-grab hover:bg-surface-bright transition-all group">
+<span class="material-symbols-outlined text-primary group-hover:scale-110 transition-transform">view_agenda</span>
+<span class="text-xs font-medium">Section</span>
+</div>
+</div>
+</div>
+<div>
+<label class="px-2 text-[10px] uppercase tracking-widest font-bold text-outline mb-3 block">Structural</label>
+<div class="space-y-2">
+<div class="bg-surface-container-lowest p-3 rounded-xl flex items-center gap-3 cursor-grab hover:bg-surface-bright transition-all">
+<span class="material-symbols-outlined text-on-surface-variant">splitscreen</span>
+<span class="text-sm">Two Column Grid</span>
+</div>
+<div class="bg-surface-container-lowest p-3 rounded-xl flex items-center gap-3 cursor-grab hover:bg-surface-bright transition-all">
+<span class="material-symbols-outlined text-on-surface-variant">format_quote</span>
+<span class="text-sm">Pull Quote</span>
+</div>
+<div class="bg-surface-container-lowest p-3 rounded-xl flex items-center gap-3 cursor-grab hover:bg-surface-bright transition-all">
+<span class="material-symbols-outlined text-on-surface-variant">calendar_today</span>
+<span class="text-sm">Timeline Block</span>
+</div>
+</div>
+</div>
+</div>
+<div class="mt-auto p-4 border-t border-outline-variant/30">
+<div class="flex items-center gap-3 p-3 text-zinc-600 hover:bg-zinc-200/50 rounded-xl transition-all cursor-pointer">
+<span class="material-symbols-outlined">help</span>
+<span class="text-sm font-medium">Support</span>
+</div>
+</div>
+</aside>
+<!-- Center Area: Editor Canvas -->
+<section class="flex-1 bg-surface-container overflow-y-auto p-12 flex justify-center no-scrollbar">
+<div class="editor-canvas bg-white shadow-sm flex flex-col p-20 gap-12 relative group">
+<!-- Document Header Block (Selected State) -->
+<div class="relative -mx-8 px-8 py-4 rounded-xl ring-2 ring-primary ring-offset-4 ring-offset-white group/block transition-all">
+<!-- Block Interaction Handles -->
+<div class="absolute -left-10 top-1/2 -translate-y-1/2 opacity-0 group-hover/block:opacity-100 transition-opacity flex flex-col items-center gap-1">
+<button class="p-1 hover:bg-surface-container-high rounded cursor-grab">
+<span class="material-symbols-outlined text-on-surface-variant text-lg">drag_indicator</span>
+</button>
+<button class="p-1 hover:bg-red-50 text-red-700 rounded">
+<span class="material-symbols-outlined text-lg">add_circle</span>
+</button>
+</div>
+<header class="space-y-4">
+<h1 class="font-headline text-5xl text-on-surface leading-tight">Untitled Editorial Concept</h1>
+<div class="flex items-center gap-4 text-label-sm text-outline font-medium tracking-tight">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">calendar_month</span> Oct 24, 2023</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-sm">person</span> Senior Editor</span>
+<span class="bg-primary-fixed text-on-primary-fixed-variant px-2 py-0.5 rounded uppercase text-[9px] font-bold">Draft</span>
+</div>
+</header>
+</div>
+<!-- 2x2 Table Block -->
+<div class="relative group/block hover:bg-surface-container-lowest/50 -mx-4 px-4 py-2 rounded-lg transition-colors">
+<div class="absolute -left-10 top-4 opacity-0 group-hover/block:opacity-100 transition-opacity">
+<button class="p-1 hover:bg-surface-container-high rounded cursor-grab">
+<span class="material-symbols-outlined text-on-surface-variant text-lg">drag_indicator</span>
+</button>
+</div>
+<table class="w-full border-collapse">
+<thead>
+<tr class="bg-surface-container-low">
+<th class="p-3 text-left font-headline text-lg border-b border-outline-variant">Framework</th>
+<th class="p-3 text-left font-headline text-lg border-b border-outline-variant">Outcome</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="p-3 border-b border-outline-variant/30 text-sm italic font-serif">Minimalist Cohesion</td>
+<td class="p-3 border-b border-outline-variant/30 text-sm">Reduced cognitive load for deep focus writing.</td>
+</tr>
+<tr>
+<td class="p-3 border-b border-outline-variant/30 text-sm italic font-serif">Typographic Authority</td>
+<td class="p-3 border-b border-outline-variant/30 text-sm">Establishing trust through classic editorial stems.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Image Placeholder Block -->
+<div class="relative group/block -mx-4 px-4 py-2 rounded-lg">
+<div class="absolute -left-10 top-1/2 -translate-y-1/2 opacity-0 group-hover/block:opacity-100 transition-opacity">
+<button class="p-1 hover:bg-surface-container-high rounded cursor-grab">
+<span class="material-symbols-outlined text-on-surface-variant text-lg">drag_indicator</span>
+</button>
+</div>
+<div class="aspect-video bg-surface-container-low rounded-xl flex flex-col items-center justify-center gap-4 border-2 border-dashed border-outline-variant group/img transition-all hover:bg-surface-container-high cursor-pointer overflow-hidden relative">
+<img class="absolute inset-0 w-full h-full object-cover opacity-20 grayscale" data-alt="abstract artistic background with soft grainy textures and cinematic lighting reflecting on a metallic surface" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCf80gCbmP0GWKwtkEJ8fk1dqaB6yf6mMJIJOZW7guFzfgKV_15yZ92F1m8t-YNMn5LxBhRn2Rp9vUBFe5zcY7ySpm_L3BinNBUXgvhpL1G9fYqpFXHy6Kgzs_ARnba_r74pdahaHHZxCRnAQJtRtwrY1UykXuu0jyafzJqWrEBfE5yvpz_zaTD-tTfntesIrx9AyrH2GIhQYCAI3ypTvW1-NQeYz8cIClKf6AiUG7VQxMVu19fjlwbsm3PNUtMbIpI9JW6lOihee4"/>
+<span class="material-symbols-outlined text-4xl text-outline group-hover/img:scale-110 transition-transform relative z-10">image</span>
+<p class="text-sm font-medium text-outline relative z-10">Drop high-fidelity assets here</p>
+</div>
+<p class="mt-4 text-center italic text-sm text-on-surface-variant font-serif opacity-70">Fig 1.1: The Interplay of Light and Intellectual Space</p>
+</div>
+<!-- Contextual Toolbar (Floating) -->
+<div class="absolute bottom-12 left-1/2 -translate-x-1/2 glass-panel bg-white/80 border border-outline-variant/20 shadow-xl rounded-full px-4 py-2 flex items-center gap-2 z-20">
+<button class="p-2 hover:bg-primary/10 text-primary rounded-full transition-colors"><span class="material-symbols-outlined">format_bold</span></button>
+<button class="p-2 hover:bg-primary/10 text-primary rounded-full transition-colors"><span class="material-symbols-outlined">format_italic</span></button>
+<button class="p-2 hover:bg-primary/10 text-primary rounded-full transition-colors"><span class="material-symbols-outlined">format_underlined</span></button>
+<div class="h-6 w-px bg-outline-variant/30 mx-1"></div>
+<button class="p-2 hover:bg-primary/10 text-primary rounded-full transition-colors"><span class="material-symbols-outlined">link</span></button>
+<button class="p-2 hover:bg-primary/10 text-primary rounded-full transition-colors"><span class="material-symbols-outlined">comment</span></button>
+</div>
+</div>
+</section>
+<!-- Right Sidebar: Properties Panel -->
+<aside class="w-80 bg-surface-container-low border-l border-outline-variant/10 flex flex-col no-scrollbar overflow-y-auto">
+<div class="p-6 border-b border-outline-variant/20">
+<div class="flex items-center justify-between mb-1">
+<h3 class="font-headline text-lg">Properties</h3>
+<span class="bg-primary-fixed text-on-primary-fixed-variant px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">Section</span>
+</div>
+<p class="text-xs text-outline font-medium">Element ID: #header-section-01</p>
+</div>
+<div class="p-6 space-y-8">
+<!-- Size Controls -->
+<div class="space-y-4">
+<label class="text-[10px] uppercase tracking-widest font-bold text-outline">Dimensions</label>
+<div class="grid grid-cols-2 gap-4">
+<div class="space-y-1.5">
+<span class="text-[11px] font-semibold text-on-surface-variant">Width</span>
+<div class="relative">
+<input class="w-full bg-surface-container-lowest border-none rounded-lg text-sm focus:ring-1 focus:ring-primary/20" type="text" value="100%"/>
+<span class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-outline font-bold">PX</span>
+</div>
+</div>
+<div class="space-y-1.5">
+<span class="text-[11px] font-semibold text-on-surface-variant">Height</span>
+<div class="relative">
+<input class="w-full bg-surface-container-lowest border-none rounded-lg text-sm focus:ring-1 focus:ring-primary/20" type="text" value="Auto"/>
+<span class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-outline font-bold">AUTO</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Background Color Presets -->
+<div class="space-y-4">
+<label class="text-[10px] uppercase tracking-widest font-bold text-outline">Background Surface</label>
+<div class="flex flex-wrap gap-2.5">
+<button class="w-8 h-8 rounded-full ring-2 ring-primary ring-offset-2 ring-offset-surface-container-low bg-white border border-outline-variant"></button>
+<button class="w-8 h-8 rounded-full bg-primary border border-primary"></button>
+<button class="w-8 h-8 rounded-full bg-zinc-200 border border-outline-variant"></button>
+<button class="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-900"></button>
+<button class="w-8 h-8 rounded-full bg-primary-fixed border border-primary-fixed-dim"></button>
+<button class="w-8 h-8 rounded-full flex items-center justify-center border border-outline-variant bg-surface-container-lowest">
+<span class="material-symbols-outlined text-sm">colorize</span>
+</button>
+</div>
+</div>
+<!-- Border Styles -->
+<div class="space-y-4">
+<label class="text-[10px] uppercase tracking-widest font-bold text-outline">Stroke &amp; Border</label>
+<div class="grid grid-cols-3 gap-2">
+<button class="py-2 px-1 border-2 border-primary rounded-lg flex flex-col items-center gap-1 bg-white">
+<div class="w-6 h-0.5 bg-on-surface"></div>
+<span class="text-[9px] font-bold">Solid</span>
+</button>
+<button class="py-2 px-1 border-2 border-transparent hover:border-outline-variant rounded-lg flex flex-col items-center gap-1 bg-surface-container-lowest transition-all">
+<div class="w-6 h-0.5 border-t border-dashed border-on-surface"></div>
+<span class="text-[9px] font-bold">Dashed</span>
+</button>
+<button class="py-2 px-1 border-2 border-transparent hover:border-outline-variant rounded-lg flex flex-col items-center gap-1 bg-surface-container-lowest transition-all">
+<div class="w-6 h-1 border-b-4 border-double border-on-surface"></div>
+<span class="text-[9px] font-bold">Double</span>
+</button>
+</div>
+</div>
+<!-- Padding -->
+<div class="space-y-4">
+<label class="text-[10px] uppercase tracking-widest font-bold text-outline">Spacing</label>
+<div class="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/10 relative">
+<div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+<div class="w-16 h-8 border border-primary/20 bg-primary/5 rounded"></div>
+</div>
+<div class="flex flex-col items-center gap-4">
+<input class="w-12 text-center text-xs font-bold bg-transparent border-none p-0 focus:ring-0" type="text" value="32"/>
+<div class="w-full flex justify-between items-center">
+<input class="w-12 text-center text-xs font-bold bg-transparent border-none p-0 focus:ring-0" type="text" value="48"/>
+<input class="w-12 text-center text-xs font-bold bg-transparent border-none p-0 focus:ring-0" type="text" value="48"/>
+</div>
+<input class="w-12 text-center text-xs font-bold bg-transparent border-none p-0 focus:ring-0" type="text" value="32"/>
+</div>
+</div>
+</div>
+</div>
+<div class="mt-auto p-6 space-y-3">
+<button class="w-full py-4 bg-primary text-on-primary rounded-xl font-bold tracking-tight shadow-lg shadow-primary/20 hover:opacity-90 active:scale-95 transition-all">
+          Save Template
+        </button>
+<button class="w-full py-3 text-red-900 font-semibold text-sm hover:bg-red-50 rounded-xl transition-colors">
+          Discard Changes
+        </button>
+</div>
+</aside>
+</main>
+</body></html>

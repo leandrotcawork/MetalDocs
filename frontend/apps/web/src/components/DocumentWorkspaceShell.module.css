@@ -339,6 +339,12 @@
   align-content: start;
 }
 
+.workspace-content.is-flush {
+  padding: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .workspace-content.is-toolbarless {
   padding-top: 0;
 }

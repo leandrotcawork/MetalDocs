@@ -1,4 +1,4 @@
-export type LibraryItemKey = "text" | "heading" | "section" | "table" | "image";
+export type LibraryItemKey = "text" | "heading" | "section" | "table" | "note" | "mixed" | "image";
 
 export type SelectionSummary = {
   label: string;

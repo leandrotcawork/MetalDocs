@@ -13,7 +13,13 @@ import {
 } from "@blocknote/react";
 import { MddmTextAlignButton } from "./toolbar/MddmTextAlignButton";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
-import { useEffect, useMemo, type CSSProperties } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
 import "./mddm-editor-global.css";
@@ -26,6 +32,7 @@ import {
   mergePageRuntimeDimensions,
   type TemplatePageSettings,
 } from "../../templates/page-settings";
+import { computePageLayout, type PageLayout } from "./pagination";
 
 export type MDDMTheme = {
   accent?: string;
@@ -44,6 +51,49 @@ export type MDDMEditorProps = {
   onSelectionChange?: (blockId: string | null) => void;
   documentId?: string;
 };
+
+const PX_PER_MM = 96 / 25.4;
+const PAGE_STACK_GAP_REM = 1.25;
+const PAGE_STACK_GAP_PX = PAGE_STACK_GAP_REM * 16;
+const DEFAULT_PAGE_LAYOUT: PageLayout = {
+  pageCount: 1,
+  breakOffsetsByBlockId: {},
+};
+
+function parseCssLengthToPx(value: string | null | undefined): number | null {
+  if (!value) return null;
+
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  if (trimmed.endsWith("px")) {
+    const numeric = Number.parseFloat(trimmed);
+    return Number.isFinite(numeric) ? numeric : null;
+  }
+
+  if (trimmed.endsWith("mm")) {
+    const numeric = Number.parseFloat(trimmed);
+    return Number.isFinite(numeric) ? numeric * PX_PER_MM : null;
+  }
+
+  const numeric = Number.parseFloat(trimmed);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function sameBreakOffsets(
+  left: Record<string, number>,
+  right: Record<string, number>,
+): boolean {
+  const leftKeys = Object.keys(left);
+  const rightKeys = Object.keys(right);
+  if (leftKeys.length !== rightKeys.length) return false;
+
+  for (const key of leftKeys) {
+    if (left[key] !== right[key]) return false;
+  }
+
+  return true;
+}
 
 export function MDDMEditor({
   initialContent,
@@ -99,6 +149,9 @@ export function MDDMEditor({
     uploadFile,
     resolveFileUrl,
   });
+  const editorRootRef = useRef<HTMLDivElement | null>(null);
+  const recomputeLayoutRef = useRef<(() => void) | null>(null);
+  const [pageLayout, setPageLayout] = useState<PageLayout>(DEFAULT_PAGE_LAYOUT);
 
   useEffect(() => {
     if (import.meta.env.DEV) {
@@ -138,6 +191,145 @@ export function MDDMEditor({
   useEffect(() => {
     setEditorTokens(editor, tokens);
   }, [editor, tokens]);
+
+  useEffect(() => {
+    const tiptapRoot = (editor as any)?._tiptapEditor?.view?.dom;
+    const paperElement = editorRootRef.current;
+    if (!(tiptapRoot instanceof HTMLElement) || !(paperElement instanceof HTMLElement)) {
+      setPageLayout(DEFAULT_PAGE_LAYOUT);
+      recomputeLayoutRef.current = null;
+      return undefined;
+    }
+
+    let frameId = 0;
+    const recomputeLayout = () => {
+      frameId = 0;
+
+      const paperStyle = window.getComputedStyle(paperElement);
+      const pageHeightPx =
+        parseCssLengthToPx(paperStyle.getPropertyValue("--mddm-page-height")) ??
+        tokens.page.heightMm * PX_PER_MM;
+      const topMarginPx = Number.parseFloat(paperStyle.paddingTop) || 0;
+      const bottomMarginPx = Number.parseFloat(paperStyle.paddingBottom) || 0;
+      const contentOriginTop = paperElement.getBoundingClientRect().top + topMarginPx;
+
+      const blockElements = Array.from(
+        tiptapRoot.querySelectorAll<HTMLElement>(
+          '.bn-block-content[data-id], .bn-block[data-id], .bn-block-outer[data-id], [data-id][data-content-type]',
+        ),
+      );
+
+      const seenIds = new Set<string>();
+      const blocks = blockElements
+        .map((element) => {
+          const id = element.dataset.id?.trim() ?? "";
+          if (!id || seenIds.has(id)) return null;
+          seenIds.add(id);
+
+          const rect = element.getBoundingClientRect();
+          const topPx = Math.max(0, rect.top - contentOriginTop);
+          const heightPx = Math.max(0, rect.height);
+          if (!Number.isFinite(topPx) || !Number.isFinite(heightPx)) return null;
+          return {
+            id,
+            topPx,
+            heightPx,
+          };
+        })
+        .filter((block): block is { id: string; topPx: number; heightPx: number } => Boolean(block));
+
+      const blocksForLayout =
+        blocks.length > 0
+          ? blocks
+          : [
+              {
+                id: "__content__",
+                topPx: 0,
+                heightPx: Math.max(0, tiptapRoot.scrollHeight),
+              },
+            ];
+
+      const nextLayout = computePageLayout({
+        pageHeightPx,
+        topMarginPx,
+        bottomMarginPx,
+        blocks: blocksForLayout,
+      });
+
+      setPageLayout((previous) => {
+        if (
+          previous.pageCount === nextLayout.pageCount &&
+          sameBreakOffsets(previous.breakOffsetsByBlockId, nextLayout.breakOffsetsByBlockId)
+        ) {
+          return previous;
+        }
+        return nextLayout;
+      });
+    };
+
+    const scheduleRecomputeLayout = () => {
+      if (frameId !== 0) return;
+      frameId = window.requestAnimationFrame(recomputeLayout);
+    };
+
+    recomputeLayoutRef.current = scheduleRecomputeLayout;
+    scheduleRecomputeLayout();
+
+    const mutationObserver = new MutationObserver(() => {
+      scheduleRecomputeLayout();
+    });
+    mutationObserver.observe(tiptapRoot, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+    });
+
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(() => {
+            scheduleRecomputeLayout();
+          })
+        : null;
+    resizeObserver?.observe(tiptapRoot);
+    resizeObserver?.observe(paperElement);
+    window.addEventListener("resize", scheduleRecomputeLayout);
+
+    return () => {
+      if (frameId !== 0) {
+        window.cancelAnimationFrame(frameId);
+      }
+      mutationObserver.disconnect();
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", scheduleRecomputeLayout);
+      recomputeLayoutRef.current = null;
+    };
+  }, [editor, tokens.page.heightMm, tokens.page.marginTopMm, tokens.page.marginBottomMm]);
+
+  useEffect(() => {
+    const tiptapRoot = (editor as any)?._tiptapEditor?.view?.dom;
+    if (!(tiptapRoot instanceof HTMLElement)) {
+      return;
+    }
+
+    const elements = Array.from(
+      tiptapRoot.querySelectorAll<HTMLElement>(".bn-block-content[data-id], .bn-block[data-id], .bn-block-outer[data-id], [data-id][data-content-type]"),
+    );
+
+    for (const element of elements) {
+      const id = element.dataset.id?.trim() ?? "";
+      if (!id) continue;
+
+      const breakOffsetPx = pageLayout.breakOffsetsByBlockId[id];
+      if (typeof breakOffsetPx === "number" && Number.isFinite(breakOffsetPx)) {
+        element.dataset.mddmPageBreak = "true";
+        element.style.setProperty("--mddm-page-break-offset", `${breakOffsetPx}px`);
+      } else {
+        delete element.dataset.mddmPageBreak;
+        element.style.removeProperty("--mddm-page-break-offset");
+      }
+    }
+  }, [editor, pageLayout.breakOffsetsByBlockId]);
 
   useEffect(() => {
     const root = (editor as any)?._tiptapEditor?.view?.dom;
@@ -270,6 +462,20 @@ export function MDDMEditor({
     }
   }, [editor, readOnly]);
 
+  const visualPageCount = Math.max(1, pageLayout.pageCount);
+  const visualPageHeightPx = tokens.page.heightMm * PX_PER_MM;
+  const visualStackHeightPx =
+    visualPageCount * visualPageHeightPx +
+    Math.max(0, visualPageCount - 1) * PAGE_STACK_GAP_PX;
+
+  const paperStyle = useMemo<CSSProperties>(
+    () => ({
+      ...(cssVars as CSSProperties),
+      minHeight: `${Math.max(visualPageHeightPx, visualStackHeightPx)}px`,
+    }),
+    [cssVars, visualPageHeightPx, visualStackHeightPx],
+  );
+
   return (
     <div className={styles.pageShell} data-testid="mddm-editor-root">
       <BlockNoteView
@@ -278,7 +484,10 @@ export function MDDMEditor({
         formattingToolbar={false}
         tableHandles={false}
         renderEditor={false}
-        onChange={(currentEditor) => onChange?.(currentEditor.document)}
+        onChange={(currentEditor) => {
+          onChange?.(currentEditor.document);
+          recomputeLayoutRef.current?.();
+        }}
       >
         <div className={styles.scrollShell} data-testid="mddm-editor-scroll-shell">
           {!readOnly && (
@@ -312,14 +521,27 @@ export function MDDMEditor({
             </div>
           )}
           <div className={styles.pageStack} data-testid="mddm-editor-page-stack">
+            <div className={styles.surfaceStack} aria-hidden="true">
+              {Array.from({ length: visualPageCount }).map((_, pageIndex) => (
+                <div
+                  key={`surface-${pageIndex}`}
+                  className={styles.paperSurface}
+                  data-testid="mddm-editor-paper-surface"
+                />
+              ))}
+            </div>
+            <div className={styles.editorLayer}>
             <div
+              ref={editorRootRef}
               className={styles.editorRoot}
-              style={cssVars as CSSProperties}
+              style={paperStyle}
               data-editable={!readOnly}
               data-mddm-editor-root="true"
               data-testid="mddm-editor-paper"
+              data-page-count={visualPageCount}
             >
               <BlockNoteViewEditor />
+            </div>
             </div>
           </div>
         </div>

@@ -223,6 +223,72 @@ test("template editor exposes a page stack container for long-form authoring", a
   await expect(page.getByTestId("mddm-editor-paper")).toBeVisible();
 });
 
+test("template editor shows a second page automatically when content exceeds page one", async ({ page }) => {
+  const templateKey = "tpl-auto-pages";
+  const longSectionChildren = Array.from({ length: 32 }, (_, index) => ({
+    id: `auto-pages-rich-${index + 1}`,
+    type: "richBlock",
+    props: {
+      label: `Bloco ${index + 1}`,
+      styleJson: "{}",
+      capabilitiesJson: JSON.stringify({ locked: false, removable: true }),
+    },
+    children: [],
+  }));
+  const draft = makeDraft({
+    templateKey,
+    lockVersion: 7,
+    blocks: [
+      {
+        id: "auto-pages-section",
+        type: "section",
+        props: {
+          title: "Sessao com conteudo extenso",
+          styleJson: "{}",
+          capabilitiesJson: JSON.stringify({ locked: true, removable: false, reorderable: false }),
+        },
+        children: longSectionChildren,
+      },
+    ],
+  });
+
+  await page.route("**/api/v1/templates/**", async (route) => {
+    const url = new URL(route.request().url());
+    const method = route.request().method();
+
+    if (url.pathname === `/api/v1/templates/${templateKey}` && method === "GET") {
+      await fulfillJson(route, 200, draft);
+      return;
+    }
+
+    await route.continue();
+  });
+
+  await loginAsAdmin(page);
+  await openTemplateEditor(page, "po", templateKey);
+
+  await expect
+    .poll(async () => {
+      const value = await page.evaluate(() => {
+        const paperSurfaces = document.querySelectorAll('[data-testid="mddm-editor-paper-surface"]').length;
+        const paper = document.querySelector('[data-testid="mddm-editor-paper"]') as HTMLElement | null;
+        if (!paper) return null;
+        const computedPageCount = Number(paper.dataset.pageCount ?? "1");
+        return {
+          paperSurfaces,
+          computedPageCount,
+        };
+      });
+      if (!value) return false;
+      return (
+        value.computedPageCount >= 2 &&
+        value.paperSurfaces >= 2 &&
+        value.paperSurfaces >= value.computedPageCount
+      );
+    })
+    .toBe(true);
+});
+
 test("template authoring saves, previews DOCX, blocks invalid client publish, then publishes successfully", async ({ page }) => {
   const templateKey = "tpl-authoring-flow";
   let draft: DraftDto = makeDraft({

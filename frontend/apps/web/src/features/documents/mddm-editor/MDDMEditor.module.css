@@ -41,13 +41,41 @@
 }
 
 .pageStack {
-  display: grid;
-  justify-items: center;
-  gap: 1.25rem;
+  position: relative;
+  display: block;
   width: 100%;
   min-height: 0;
   padding: 0.75rem 1rem 1.5rem;
   box-sizing: border-box;
+}
+
+.surfaceStack {
+  display: grid;
+  justify-items: center;
+  gap: 1.25rem;
+  width: 100%;
+  pointer-events: none;
+}
+
+.paperSurface {
+  width: min(var(--mddm-page-width, 210mm), calc(100vw - 120px));
+  max-width: 100%;
+  height: var(--mddm-page-height, 297mm);
+  background: var(--mddm-raw-white);
+  border: 1px solid rgba(90, 63, 49, 0.08);
+  border-radius: 10px;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.06),
+    0 4px 12px rgba(0, 0, 0, 0.06),
+    0 12px 40px rgba(0, 0, 0, 0.05);
+}
+
+.editorLayer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
 }
 
 .pageStack::after {
@@ -60,27 +88,26 @@
 .editorRoot {
   width: min(var(--mddm-page-width, 210mm), calc(100vw - 120px));
   max-width: 100%;
-  margin: 0 auto;
-  background: var(--mddm-raw-white);
+  margin: 0;
+  background: transparent;
   padding-top: var(--mddm-margin-top, 25mm);
   padding-right: var(--mddm-margin-right, 20mm);
   padding-bottom: var(--mddm-margin-bottom, 25mm);
   padding-left: var(--mddm-margin-left, 25mm);
   min-height: var(--mddm-page-height, 297mm);
-  border: 1px solid rgba(90, 63, 49, 0.08);
-  border-radius: 10px;
+  border: none;
+  border-radius: 0;
   font-family: var(--mddm-font-family);
   font-size: var(--mddm-font-size-base);
   color: var(--mddm-raw-gray-700);
   line-height: 1.6;
   counter-reset: mddm-section;
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.06),
-    0 4px 12px rgba(0, 0, 0, 0.06),
-    0 12px 40px rgba(0, 0, 0, 0.05);
+  box-shadow: none;
+  pointer-events: auto;
 }
 
 @media (max-width: 1400px) {
+  .paperSurface,
   .editorRoot {
     width: min(var(--mddm-page-width, 210mm), calc(100% - 2rem));
   }
@@ -99,7 +126,17 @@
   .toolbarWrapper {
     display: none;
   }
+  .surfaceStack {
+    display: none;
+  }
+  .editorLayer {
+    position: static;
+    inset: auto;
+    display: block;
+    pointer-events: auto;
+  }
   .pageStack {
+    display: block;
     padding: 0;
   }
   .pageStack::after {
@@ -108,11 +145,13 @@
     height: 0;
   }
   .editorRoot {
+    width: 100%;
     max-width: none;
     padding-top: var(--mddm-margin-top, 25mm);
     padding-right: var(--mddm-margin-right, 20mm);
     padding-bottom: var(--mddm-margin-bottom, 25mm);
     padding-left: var(--mddm-margin-left, 25mm);
+    background: var(--mddm-raw-white);
     box-shadow: none;
     border: none;
     border-radius: 0;

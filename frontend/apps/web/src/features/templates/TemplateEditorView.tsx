@@ -9,7 +9,7 @@ import { StrippedFieldsBanner } from "./StrippedFieldsBanner";
 import { useTemplateDraft } from "./useTemplateDraft";
 import { useTemplatesStore } from "../../store/templates.store";
 import type { TemplateDraftDTO } from "../../api/templates";
-import { readTemplatePageSettings } from "./page-settings";
+import { readTemplatePageSettings, writeTemplatePageSettings, type TemplatePageSettings } from "./page-settings";
 import styles from "./TemplateEditorView.module.css";
 
 type TemplateEditorViewProps = {
@@ -22,7 +22,7 @@ export function TemplateEditorView({ profileCode, templateKey }: TemplateEditorV
   const editorRef = useRef<{ document: unknown[] } | null>(null);
   const [editorInstance, setEditorInstance] = useState<{ document: unknown[] } | null>(null);
 
-  const { draft, isLoading, error, saveDraft, publish, discardDraft, replaceDraft } = useTemplateDraft({ templateKey });
+  const { draft, isLoading, error, saveDraft, publish, discardDraft, replaceDraft, updateDraftMeta } = useTemplateDraft({ templateKey });
 
   const {
     isDirty,
@@ -98,6 +98,10 @@ export function TemplateEditorView({ profileCode, templateKey }: TemplateEditorV
 
   const pageSettings = useMemo(() => readTemplatePageSettings(draft?.meta), [draft?.meta]);
 
+  const handlePageSettingsChange = useCallback((nextPageSettings: TemplatePageSettings) => {
+    updateDraftMeta((currentMeta) => writeTemplatePageSettings(currentMeta, nextPageSettings));
+  }, [updateDraftMeta]);
+
   if (isLoading) {
     return (
       <div className={styles.loadingState}>
@@ -160,6 +164,8 @@ export function TemplateEditorView({ profileCode, templateKey }: TemplateEditorV
         <PropertySidebar
           editor={editorInstance}
           selectedBlockId={selectedBlockId}
+          pageSettings={pageSettings}
+          onPageSettingsChange={handlePageSettingsChange}
         />
 
         {/* Bottom: Validation panel (slides up from bottom, absolute within the row) */}

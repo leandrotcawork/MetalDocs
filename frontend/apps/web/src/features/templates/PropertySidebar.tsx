@@ -3,6 +3,7 @@ import { PropriedadesTab } from "./tabs/PropriedadesTab";
 import { ColorPicker } from "./controls/ColorPicker";
 import { SelectControl } from "./controls/SelectControl";
 import { ToggleControl } from "./controls/ToggleControl";
+import type { TemplatePageSettings } from "./page-settings";
 import {
   sectionStyleFieldSchema,
   sectionCapsFieldSchema,
@@ -224,9 +225,11 @@ const TABS: { id: TabId; label: string }[] = [
 interface Props {
   editor: any;
   selectedBlockId: string | null;
+  pageSettings: TemplatePageSettings;
+  onPageSettingsChange: (nextSettings: TemplatePageSettings) => void;
 }
 
-export function PropertySidebar({ editor, selectedBlockId }: Props) {
+export function PropertySidebar({ editor, selectedBlockId, pageSettings, onPageSettingsChange }: Props) {
   const [activeTab, setActiveTab] = useState<TabId>("propriedades");
 
   const block = selectedBlockId && editor ? editor.getBlock(selectedBlockId) : null;
@@ -276,6 +279,99 @@ export function PropertySidebar({ editor, selectedBlockId }: Props) {
     lineHeight: 1.5,
   };
 
+  const pageSectionStyle: React.CSSProperties = {
+    marginBottom: "12px",
+    padding: "10px",
+    border: "1px solid rgba(43,33,29,0.12)",
+    borderRadius: "6px",
+    background: "rgba(255,255,255,0.35)",
+  };
+
+  const pageTitleStyle: React.CSSProperties = {
+    margin: "0 0 8px",
+    fontSize: "12px",
+    fontWeight: 600,
+    color: "#2b211d",
+  };
+
+  const pageLabelStyle: React.CSSProperties = {
+    display: "block",
+    fontSize: "12px",
+    color: "#43322d",
+    marginBottom: "4px",
+  };
+
+  const pageInputStyle: React.CSSProperties = {
+    width: "100%",
+    background: "#ffffff",
+    border: "1px solid #c4b8b0",
+    borderRadius: "4px",
+    color: "#2b211d",
+    fontSize: "12px",
+    padding: "4px 6px",
+    boxSizing: "border-box",
+    marginBottom: "8px",
+  };
+
+  const updatePageMargin = (key: keyof TemplatePageSettings, rawValue: string) => {
+    const parsedValue = Number(rawValue);
+    const nextValue = Number.isFinite(parsedValue) ? parsedValue : pageSettings[key];
+    onPageSettingsChange({
+      ...pageSettings,
+      [key]: nextValue,
+    });
+  };
+
+  const pageControls = (
+    <section data-testid="page-settings-controls" style={pageSectionStyle}>
+      <p style={pageTitleStyle}>Pagina</p>
+      <label style={pageLabelStyle} htmlFor="page-margin-top-mm">Margem superior (mm)</label>
+      <input
+        id="page-margin-top-mm"
+        data-testid="page-margin-top-mm"
+        type="number"
+        min={5}
+        max={50}
+        value={pageSettings.marginTopMm}
+        onChange={(event) => updatePageMargin("marginTopMm", event.target.value)}
+        style={pageInputStyle}
+      />
+      <label style={pageLabelStyle} htmlFor="page-margin-right-mm">Margem direita (mm)</label>
+      <input
+        id="page-margin-right-mm"
+        data-testid="page-margin-right-mm"
+        type="number"
+        min={5}
+        max={50}
+        value={pageSettings.marginRightMm}
+        onChange={(event) => updatePageMargin("marginRightMm", event.target.value)}
+        style={pageInputStyle}
+      />
+      <label style={pageLabelStyle} htmlFor="page-margin-bottom-mm">Margem inferior (mm)</label>
+      <input
+        id="page-margin-bottom-mm"
+        data-testid="page-margin-bottom-mm"
+        type="number"
+        min={5}
+        max={50}
+        value={pageSettings.marginBottomMm}
+        onChange={(event) => updatePageMargin("marginBottomMm", event.target.value)}
+        style={pageInputStyle}
+      />
+      <label style={pageLabelStyle} htmlFor="page-margin-left-mm">Margem esquerda (mm)</label>
+      <input
+        id="page-margin-left-mm"
+        data-testid="page-margin-left-mm"
+        type="number"
+        min={5}
+        max={50}
+        value={pageSettings.marginLeftMm}
+        onChange={(event) => updatePageMargin("marginLeftMm", event.target.value)}
+        style={{ ...pageInputStyle, marginBottom: 0 }}
+      />
+    </section>
+  );
+
   if (!block) {
     return (
       <div style={sidebarStyle} data-testid="property-sidebar" data-contrast="high">
@@ -287,6 +383,7 @@ export function PropertySidebar({ editor, selectedBlockId }: Props) {
           ))}
         </div>
         <div style={contentStyle}>
+          {pageControls}
           <p style={placeholderStyle}>Selecione um bloco para editar suas propriedades.</p>
         </div>
       </div>
@@ -311,6 +408,7 @@ export function PropertySidebar({ editor, selectedBlockId }: Props) {
       </div>
 
       <div style={contentStyle}>
+        {pageControls}
         {activeTab === "propriedades" && (
           <PropriedadesTab block={block} editor={editor} />
         )}

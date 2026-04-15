@@ -29,11 +29,12 @@ interface UseTemplateDraftResult {
   publish: (blocks: unknown) => Promise<void>;
   discardDraft: () => Promise<void>;
   replaceDraft: (draft: TemplateDraftDTO) => void;
+  updateDraftMeta: (updater: (meta: unknown) => unknown) => void;
 }
 
 export function useTemplateDraft({ templateKey }: UseTemplateDraftOptions): UseTemplateDraftResult {
   const navigate = useNavigate();
-  const { setDraft, setActiveTemplate, setValidationErrors, markClean } = useTemplatesStore();
+  const { setDraft, setActiveTemplate, setValidationErrors, markClean, markDirty } = useTemplatesStore();
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,6 +80,7 @@ export function useTemplateDraft({ templateKey }: UseTemplateDraftOptions): UseT
       try {
         const updated = await apiSaveDraft(templateKey, {
           blocks,
+          meta: current.meta,
           lockVersion: current.lockVersion,
         });
         setLocalDraft(updated);
@@ -115,6 +117,7 @@ export function useTemplateDraft({ templateKey }: UseTemplateDraftOptions): UseT
       try {
         const savedDraft = await apiSaveDraft(templateKey, {
           blocks,
+          meta: current.meta,
           lockVersion: current.lockVersion,
         });
         setLocalDraft(savedDraft);
@@ -160,6 +163,19 @@ export function useTemplateDraft({ templateKey }: UseTemplateDraftOptions): UseT
     markClean();
   }, [setDraft, markClean]);
 
+  const updateDraftMeta = useCallback((updater: (meta: unknown) => unknown) => {
+    if (!localDraft) return;
+
+    const nextDraft: TemplateDraftDTO = {
+      ...localDraft,
+      meta: updater(localDraft.meta),
+    };
+
+    setLocalDraft(nextDraft);
+    setDraft(nextDraft);
+    markDirty();
+  }, [localDraft, setDraft, markDirty]);
+
   return {
     draft: localDraft,
     isLoading,
@@ -168,5 +184,6 @@ export function useTemplateDraft({ templateKey }: UseTemplateDraftOptions): UseT
     publish,
     discardDraft,
     replaceDraft,
+    updateDraftMeta,
   };
 }

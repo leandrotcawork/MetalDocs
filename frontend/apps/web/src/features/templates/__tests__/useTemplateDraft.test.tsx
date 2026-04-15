@@ -42,6 +42,25 @@ function Harness({ templateKey, blocks, replacementDraft }: HarnessProps) {
       <button data-testid="publish" type="button" onClick={() => void state.publish(blocks)}>
         publish
       </button>
+      <button data-testid="save" type="button" onClick={() => void state.saveDraft(blocks)}>
+        save
+      </button>
+      <button
+        data-testid="update-meta"
+        type="button"
+        onClick={() =>
+          state.updateDraftMeta(() => ({
+            page: {
+              marginTopMm: 31,
+              marginRightMm: 22,
+              marginBottomMm: 33,
+              marginLeftMm: 24,
+            },
+          }))
+        }
+      >
+        update-meta
+      </button>
       <button
         data-testid="replace-draft"
         type="button"
@@ -127,6 +146,7 @@ describe("useTemplateDraft", () => {
       lockVersion: 1,
       hasStrippedFields: false,
       blocks: [],
+      meta: { page: { marginTopMm: 25 } },
       updatedAt: "2026-04-14T00:00:00Z",
     });
     vi.mocked(saveDraft).mockResolvedValueOnce({
@@ -188,10 +208,120 @@ describe("useTemplateDraft", () => {
           caps: { locked: true, removable: false, reorderable: false },
         },
       }],
+      meta: { page: { marginTopMm: 25 } },
       lockVersion: 1,
     });
     expect(publishTemplate).toHaveBeenCalledWith("tmpl-draft", 2);
     expect(navigateMock).toHaveBeenCalledWith(-1);
+  });
+
+  it("sends current meta when saving a draft", async () => {
+    const { getTemplate, saveDraft } = await import("../../../api/templates");
+
+    vi.mocked(getTemplate).mockResolvedValueOnce({
+      templateKey: "tmpl-save",
+      profileCode: "po",
+      name: "Draft template",
+      status: "draft",
+      lockVersion: 3,
+      hasStrippedFields: false,
+      blocks: [],
+      meta: { page: { marginLeftMm: 22, marginRightMm: 20 } },
+      updatedAt: "2026-04-14T00:00:00Z",
+    });
+    vi.mocked(saveDraft).mockResolvedValueOnce({
+      templateKey: "tmpl-save",
+      profileCode: "po",
+      name: "Draft template",
+      status: "draft",
+      lockVersion: 4,
+      hasStrippedFields: false,
+      blocks: [{ id: "p-1", type: "paragraph", content: "abc" }],
+      meta: { page: { marginLeftMm: 22, marginRightMm: 20 } },
+      updatedAt: "2026-04-14T00:00:01Z",
+    });
+
+    act(() => {
+      root.render(
+        <Harness
+          templateKey="tmpl-save"
+          blocks={[{ id: "p-1", type: "paragraph", content: "abc" }]}
+        />,
+      );
+    });
+    await flush();
+
+    const saveButton = container.querySelector('[data-testid="save"]') as HTMLButtonElement | null;
+    expect(saveButton).toBeTruthy();
+
+    await act(async () => {
+      saveButton?.click();
+      await Promise.resolve();
+    });
+
+    expect(saveDraft).toHaveBeenCalledWith("tmpl-save", {
+      blocks: [{ id: "p-1", type: "paragraph", content: "abc" }],
+      meta: { page: { marginLeftMm: 22, marginRightMm: 20 } },
+      lockVersion: 3,
+    });
+  });
+
+  it("uses meta updated via updateDraftMeta in subsequent saveDraft call", async () => {
+    const { getTemplate, saveDraft } = await import("../../../api/templates");
+
+    vi.mocked(getTemplate).mockResolvedValueOnce({
+      templateKey: "tmpl-save-updated-meta",
+      profileCode: "po",
+      name: "Draft template",
+      status: "draft",
+      lockVersion: 5,
+      hasStrippedFields: false,
+      blocks: [],
+      meta: { page: { marginTopMm: 25, marginRightMm: 20, marginBottomMm: 25, marginLeftMm: 25 } },
+      updatedAt: "2026-04-14T00:00:00Z",
+    });
+    vi.mocked(saveDraft).mockResolvedValueOnce({
+      templateKey: "tmpl-save-updated-meta",
+      profileCode: "po",
+      name: "Draft template",
+      status: "draft",
+      lockVersion: 6,
+      hasStrippedFields: false,
+      blocks: [{ id: "p-2", type: "paragraph", content: "xyz" }],
+      meta: { page: { marginTopMm: 31, marginRightMm: 22, marginBottomMm: 33, marginLeftMm: 24 } },
+      updatedAt: "2026-04-14T00:00:01Z",
+    });
+
+    act(() => {
+      root.render(
+        <Harness
+          templateKey="tmpl-save-updated-meta"
+          blocks={[{ id: "p-2", type: "paragraph", content: "xyz" }]}
+        />,
+      );
+    });
+    await flush();
+
+    const updateMetaButton = container.querySelector('[data-testid="update-meta"]') as HTMLButtonElement | null;
+    const saveButton = container.querySelector('[data-testid="save"]') as HTMLButtonElement | null;
+    expect(updateMetaButton).toBeTruthy();
+    expect(saveButton).toBeTruthy();
+
+    await act(async () => {
+      updateMetaButton?.click();
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      saveButton?.click();
+      await Promise.resolve();
+    });
+
+    expect(saveDraft).toHaveBeenCalledWith("tmpl-save-updated-meta", {
+      blocks: [{ id: "p-2", type: "paragraph", content: "xyz" }],
+      meta: { page: { marginTopMm: 31, marginRightMm: 22, marginBottomMm: 33, marginLeftMm: 24 } },
+      lockVersion: 5,
+    });
   });
 
   it("replaces the local draft when server-side acknowledgement returns updated state", async () => {

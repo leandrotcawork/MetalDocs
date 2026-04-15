@@ -418,3 +418,10 @@ Wrong:   Layout tests validated template editor structure but did not assert `dr
 Correct: `TemplateEditorView.layout` now captures mocked `MDDMEditor` props and asserts parsed page settings are forwarded from draft meta.
 Rule:    Any view-level runtime settings path must have an integration-style regression test at the handoff boundary, not only isolated unit tests.
 Layer:   application
+
+## Lesson 61 - Draft save payloads must carry current template meta
+Date: 2026-04-14 | Trigger: correction
+Wrong:   `useTemplateDraft` sent `apiSaveDraft` payloads with only `blocks` and `lockVersion`, so local margin/meta edits could be dropped on save/publish pre-save.
+Correct: `saveDraft` and publish pre-save now include `meta: current.meta`, and regression tests assert both paths send the current meta payload.
+Rule:    Any save operation that persists editor state must include all mutable draft surfaces (blocks + meta) to avoid silent state loss.
+Layer:   application

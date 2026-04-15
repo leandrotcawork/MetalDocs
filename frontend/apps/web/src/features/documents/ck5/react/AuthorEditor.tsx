@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import { DecoupledEditor } from 'ckeditor5';
+import type { DecoupledEditorUIView } from 'ckeditor5';
 import 'ckeditor5/ckeditor5.css';
 import { createAuthorConfig } from '../config/editorConfig';
 import styles from './AuthorEditor.module.css';
@@ -25,12 +26,10 @@ export function AuthorEditor({ initialHtml, onChange, onReady, language = 'en' }
           config={createAuthorConfig({ language })}
           onReady={(editor) => {
             // Move the detached toolbar into our toolbar container.
-            const toolbarEl = (editor.ui.view as unknown as { toolbar: { element: HTMLElement } }).toolbar.element;
-            if (toolbarRef.current && toolbarEl) {
-              toolbarRef.current.appendChild(toolbarEl);
+            const view = editor.ui.view as DecoupledEditorUIView;
+            if (toolbarRef.current && view.toolbar.element) {
+              toolbarRef.current.appendChild(view.toolbar.element);
             }
-            // Notify parent of the initial data so callers always have current state.
-            onChange(editor.getData());
             onReady?.(editor);
           }}
           onChange={(_event, editor) => {

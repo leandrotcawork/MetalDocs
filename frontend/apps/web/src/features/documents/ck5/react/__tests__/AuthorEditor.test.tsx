@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest';
-import { render, waitFor, cleanup } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { render, waitFor, cleanup, act } from '@testing-library/react';
 import { afterEach } from 'vitest';
+import type { DecoupledEditor } from 'ckeditor5';
 import { AuthorEditor } from '../AuthorEditor';
 
 afterEach(cleanup);
@@ -14,11 +15,32 @@ describe('<AuthorEditor />', () => {
     });
   });
 
-  it('fires onChange with data after edits', async () => {
+  it('fires onChange with data after a programmatic edit', async () => {
     const onChange = vi.fn();
-    render(<AuthorEditor initialHtml="<p>Hello</p>" onChange={onChange} />);
+    let editorRef: DecoupledEditor | null = null;
+
+    render(
+      <AuthorEditor
+        initialHtml="<p>Hello</p>"
+        onChange={onChange}
+        onReady={(e) => { editorRef = e; }}
+      />,
+    );
+
+    // Wait for the editor to be ready.
+    await waitFor(() => expect(editorRef).not.toBeNull());
+
+    // Programmatically mutate the model to trigger change:data.
+    await act(async () => {
+      editorRef!.model.change((writer) => {
+        const root = editorRef!.model.document.getRoot()!;
+        const firstPara = root.getChild(0)!;
+        writer.insertText(' World', firstPara, 'end');
+      });
+    });
+
     await waitFor(() => {
-      expect(onChange).toHaveBeenCalledWith(expect.stringContaining('Hello'));
+      expect(onChange).toHaveBeenCalledWith(expect.stringContaining('World'));
     });
   });
 });

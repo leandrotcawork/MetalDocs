@@ -22,11 +22,13 @@ export function FillEditor({ documentHtml, onChange, onReady, language = 'en' }:
           onReady={(editor) => {
             // Land the caret on the first restricted-editing exception so the
             // user can start typing immediately.
-            try {
-              editor.execute('goToNextRestrictedEditingException');
-            } catch {
-              // No exceptions in this document, or command unavailable mid-init.
-              // Safe to ignore; happens when the template has no fillable regions.
+            // Gate on command presence: if RestrictedEditingMode was accidentally
+            // removed, we get a dev warning instead of a silent catch masking the bug.
+            const navCmd = editor.commands.get('goToNextRestrictedEditingException');
+            if (navCmd) {
+              navCmd.execute();
+            } else if (import.meta.env.DEV) {
+              console.warn('[FillEditor] RestrictedEditingMode not loaded; navigation unavailable.');
             }
             onReady?.(editor);
           }}

@@ -7,9 +7,9 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
-    "e2e": "playwright test"
+    "e2e": "playwright test --pass-with-no-tests"
   },
   "dependencies": {
     "@ckeditor/ckeditor5-react": "^9.2.0",

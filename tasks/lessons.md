@@ -376,3 +376,38 @@ Wrong:   Removing `.surface` padding to enforce scroll ownership left `.errorBan
 Correct: Keep zero padding/scroll ownership on `.surface` and `.editorViewport`, but add scoped `.errorBanner` margins to preserve alert spacing without restoring editor-wrapper padding.
 Rule:    When removing global layout padding for scroll correctness, reintroduce visual spacing only on the specific transient state component that needs it.
 Layer:   delivery
+
+## Lesson 55 - Blank template section insertion must replace BlockNote placeholder paragraphs
+Date: 2026-04-14 | Trigger: correction
+Wrong:   Template palette treated BlockNote's auto-created empty root paragraph as real content, so inserting `section` on a blank draft appended after the placeholder and left a false first-line gap.
+Correct: Section creation now treats root documents made only of empty paragraphs as blank and replaces those placeholders with the first section.
+Rule:    When BlockNote seeds placeholder paragraphs in an otherwise blank template, root-level insertion logic must collapse them before applying author-visible structure.
+Layer:   delivery
+
+## Lesson 56 - Section blocks must not add their own first-block top margin
+Date: 2026-04-14 | Trigger: correction
+Wrong:   `blocks/Section.module.css` gave every section block `margin-top`, so even the first real section started below the paper's first writable line.
+Correct: Section blocks now rely on container-level spacing only, with no intrinsic top margin on the section wrapper.
+Rule:    When first-block spacing matters, keep inter-block spacing at the container layer and do not duplicate it inside the block component itself.
+Layer:   delivery
+
+## Lesson 57 - Template editor route needs pane-local scroll ownership
+Date: 2026-04-14 | Trigger: correction
+Wrong:   Template editor moved scrolling to `workspace-content`, which made whole workspace column slide while side chrome stayed visually misaligned.
+Correct: Template editor route now clips `workspace-content` and delegates vertical scrolling only to `TemplateEditorView.documentPane`, while inner MDDM wrappers remain non-scrolling.
+Rule:    For split-pane authoring layouts, keep scroll ownership on central document pane rather than generic workspace wrappers or nested editor internals.
+Layer:   delivery
+
+## Lesson 58 - Structural BlockNote wrappers can add hidden first-line offset
+Date: 2026-04-14 | Trigger: correction
+Wrong:   Section-gap debugging stopped at block wrapper margins, while BlockNote's `.bn-block-content[data-content-type=\"section\"]` still injected `padding-top: 3px` and pushed the first section below the page start.
+Correct: MDDM editor globals now explicitly zero top padding on structural `bn-block-content` wrappers so the first section aligns with the paper padding edge.
+Rule:    When pixel alignment matters in BlockNote, inspect wrapper padding as well as custom block CSS because framework chrome can add hidden offsets.
+Layer:   delivery
+
+## Lesson 59 - Margin normalizers must use field-specific non-finite fallbacks
+Date: 2026-04-14 | Trigger: correction
+Wrong:   Generic margin clamp fallback always used top-margin default, causing invalid right/left/bottom inputs to silently become top defaults.
+Correct: Clamp/read/write margin helpers now pass explicit fallback per margin field and tests assert non-finite inputs map to each field's own default.
+Rule:    Shared normalizers for multi-field layout settings must take field-specific fallback values instead of a single hardcoded default.
+Layer:   application

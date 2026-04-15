@@ -439,3 +439,10 @@ Wrong:   `@media print` in `MDDMEditor.module.css` reset `.editorRoot` padding t
 Correct: Print styles now use the same `--mddm-margin-top/right/bottom/left` variables as screen layout so configured margins render consistently.
 Rule:    Print styles for editable page geometry must reuse the same margin tokens as screen mode instead of hard resets.
 Layer:   delivery
+
+## Lesson 64 - Persistence e2e must re-enter editor via routed navigation, not raw reload
+Date: 2026-04-14 | Trigger: correction
+Wrong:   The new margin-persistence test used `page.reload()` and expected editor chrome immediately, causing flaky failures where the editor route shell was not re-established deterministically.
+Correct: The test now reopens the editor using the same routed navigation flow (`/#/registry` + `openTemplateEditor(...)`) and verifies persisted margin fields after a fresh GET.
+Rule:    For SPA editor persistence checks, always re-enter through explicit route navigation helpers instead of relying on raw reload semantics.
+Layer:   process

@@ -805,6 +805,79 @@ test("template editor updates paper padding live when page margins change", asyn
   expect(after?.left).not.toBe(before?.left);
 });
 
+test("template editor preserves page margins after save and reload", async ({ page }) => {
+  const templateKey = "tpl-page-margin-persist";
+  let draft = makeDraft({
+    templateKey,
+    lockVersion: 4,
+    meta: {
+      page: {
+        marginTopMm: 25,
+        marginRightMm: 20,
+        marginBottomMm: 25,
+        marginLeftMm: 25,
+      },
+    },
+  });
+  const saveBodies: Array<{ blocks: unknown[]; meta?: unknown; lockVersion: number }> = [];
+
+  await page.route("**/api/v1/templates/**", async (route) => {
+    const url = new URL(route.request().url());
+    const method = route.request().method();
+
+    if (url.pathname === `/api/v1/templates/${templateKey}` && method === "GET") {
+      await fulfillJson(route, 200, draft);
+      return;
+    }
+
+    if (url.pathname === `/api/v1/templates/${templateKey}/draft` && method === "PUT") {
+      const payload = route.request().postDataJSON() as { blocks: unknown[]; meta?: unknown; lockVersion: number };
+      saveBodies.push(payload);
+      draft = {
+        ...draft,
+        blocks: payload.blocks,
+        meta: payload.meta,
+        lockVersion: payload.lockVersion + 1,
+        updatedAt: "2026-04-14T04:00:00Z",
+      };
+      await fulfillJson(route, 200, draft);
+      return;
+    }
+
+    await route.continue();
+  });
+
+  await loginAsAdmin(page);
+  await openTemplateEditor(page, "po", templateKey);
+
+  await page.getByTestId("page-margin-top-mm").fill("32");
+  await page.getByTestId("page-margin-right-mm").fill("28");
+  await page.getByTestId("page-margin-bottom-mm").fill("30");
+  await page.getByTestId("page-margin-left-mm").fill("17");
+
+  const saveResponse = waitForTemplateResponse(page, `/api/v1/templates/${templateKey}/draft`, 200);
+  await page.getByTestId("template-save-btn").click();
+  await saveResponse;
+
+  expect(saveBodies).toHaveLength(1);
+  expect(saveBodies[0]?.meta).toMatchObject({
+    page: {
+      marginTopMm: 32,
+      marginRightMm: 28,
+      marginBottomMm: 30,
+      marginLeftMm: 17,
+    },
+  });
+
+  await page.goto("/#/registry");
+  await openTemplateEditor(page, "po", templateKey);
+
+  await expect(page.getByTestId("page-margin-top-mm")).toHaveValue("32");
+  await expect(page.getByTestId("page-margin-right-mm")).toHaveValue("28");
+  await expect(page.getByTestId("page-margin-bottom-mm")).toHaveValue("30");
+  await expect(page.getByTestId("page-margin-left-mm")).toHaveValue("17");
+});
+
 function makeDraft(overrides: Partial<DraftDto> = {}): DraftDto {
   return {
     templateKey: overrides.templateKey ?? "tpl-draft",

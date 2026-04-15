@@ -81,7 +81,7 @@ describe("PropertySidebar", () => {
     expect(container.textContent).toContain("Margem esquerda (mm)");
   });
 
-  it("calls onPageSettingsChange when page margin control changes", () => {
+  it("commits page margin change on Enter", () => {
     setup();
     const editor = makeEditor(SECTION_BLOCK);
     const onPageSettingsChange = vi.fn();
@@ -113,12 +113,63 @@ describe("PropertySidebar", () => {
       marginTopInput.dispatchEvent(new Event("change", { bubbles: true }));
     });
 
+    expect(onPageSettingsChange).not.toHaveBeenCalled();
+
+    act(() => {
+      if (!marginTopInput) return;
+      marginTopInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    });
+
     expect(onPageSettingsChange).toHaveBeenCalledWith({
       marginTopMm: 30,
       marginRightMm: defaultTemplatePageSettings.marginRightMm,
       marginBottomMm: defaultTemplatePageSettings.marginBottomMm,
       marginLeftMm: defaultTemplatePageSettings.marginLeftMm,
     });
+  });
+
+  it("allows temporary empty margin input and restores on blur", () => {
+    setup();
+    const editor = makeEditor(SECTION_BLOCK);
+    const onPageSettingsChange = vi.fn();
+    renderSidebar(makeSidebarProps({
+      editor,
+      selectedBlockId: "block-1",
+      pageSettings: defaultTemplatePageSettings,
+      onPageSettingsChange,
+    }));
+
+    const marginTopInput = container.querySelector(
+      '[data-testid="page-margin-top-mm"]'
+    ) as HTMLInputElement | null;
+
+    expect(marginTopInput).toBeTruthy();
+
+    act(() => {
+      if (!marginTopInput) return;
+      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value"
+      )?.set;
+      if (nativeInputValueSetter) {
+        nativeInputValueSetter.call(marginTopInput, "");
+      } else {
+        marginTopInput.value = "";
+      }
+      marginTopInput.dispatchEvent(new Event("input", { bubbles: true }));
+      marginTopInput.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+
+    expect(marginTopInput?.value).toBe("");
+    expect(onPageSettingsChange).not.toHaveBeenCalled();
+
+    act(() => {
+      if (!marginTopInput) return;
+      marginTopInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    });
+
+    expect(marginTopInput?.value).toBe(String(defaultTemplatePageSettings.marginTopMm));
+    expect(onPageSettingsChange).not.toHaveBeenCalled();
   });
 
   it("1. shows placeholder when no block is selected", () => {

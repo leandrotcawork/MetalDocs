@@ -446,3 +446,10 @@ Wrong:   The new margin-persistence test used `page.reload()` and expected edito
 Correct: The test now reopens the editor using the same routed navigation flow (`/#/registry` + `openTemplateEditor(...)`) and verifies persisted margin fields after a fresh GET.
 Rule:    For SPA editor persistence checks, always re-enter through explicit route navigation helpers instead of relying on raw reload semantics.
 Layer:   process
+
+## Lesson 65 - Numeric layout inputs must not clamp while user is typing
+Date: 2026-04-14 | Trigger: correction
+Wrong:   Page margin inputs committed/clamped on every `onChange`, so deleting temporarily empty value snapped to minimum (`5`) and continued typing could produce wrong values (`15` -> `50`), cascading into false top-margin mismatch and premature pagination.
+Correct: Margin inputs now keep local string draft while typing and only commit/clamp on blur or Enter, with invalid/empty drafts restored safely.
+Rule:    Constrained numeric fields for layout must separate edit-state from commit-state to avoid keystroke-level value corruption.
+Layer:   delivery

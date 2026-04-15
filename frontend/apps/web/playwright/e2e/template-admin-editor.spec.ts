@@ -778,9 +778,13 @@ test("template editor updates paper padding live when page margins change", asyn
   expect(before).not.toBeNull();
 
   await page.getByTestId("page-margin-top-mm").fill("33");
+  await page.getByTestId("page-margin-top-mm").press("Tab");
   await page.getByTestId("page-margin-right-mm").fill("29");
+  await page.getByTestId("page-margin-right-mm").press("Tab");
   await page.getByTestId("page-margin-bottom-mm").fill("31");
+  await page.getByTestId("page-margin-bottom-mm").press("Tab");
   await page.getByTestId("page-margin-left-mm").fill("27");
+  await page.getByTestId("page-margin-left-mm").press("Tab");
 
   const mmToPx = (mm: number) => (mm * 96) / 25.4;
 
@@ -803,6 +807,78 @@ test("template editor updates paper padding live when page margins change", asyn
   expect(after?.right).not.toBe(before?.right);
   expect(after?.bottom).not.toBe(before?.bottom);
   expect(after?.left).not.toBe(before?.left);
+});
+
+test("template editor page margin inputs commit on blur and keep 5mm paddings equal", async ({ page }) => {
+  const templateKey = "tpl-page-margin-input-commit";
+  const draft = makeDraft({
+    templateKey,
+    lockVersion: 2,
+  });
+
+  await page.route("**/api/v1/templates/**", async (route) => {
+    const url = new URL(route.request().url());
+    const method = route.request().method();
+
+    if (url.pathname === `/api/v1/templates/${templateKey}` && method === "GET") {
+      await fulfillJson(route, 200, draft);
+      return;
+    }
+
+    await route.continue();
+  });
+
+  await loginAsAdmin(page);
+  await openTemplateEditor(page, "po", templateKey);
+
+  const topInput = page.getByTestId("page-margin-top-mm");
+  await topInput.click();
+  await topInput.press("Control+A");
+  await topInput.press("Backspace");
+  await expect(topInput).toHaveValue("");
+  await topInput.type("15");
+  await expect(topInput).toHaveValue("15");
+  await topInput.press("Tab");
+  await expect(topInput).toHaveValue("15");
+
+  for (const testId of [
+    "page-margin-top-mm",
+    "page-margin-right-mm",
+    "page-margin-bottom-mm",
+    "page-margin-left-mm",
+  ]) {
+    const input = page.getByTestId(testId);
+    await input.click();
+    await input.press("Control+A");
+    await input.type("5");
+    await input.press("Tab");
+    await expect(input).toHaveValue("5");
+  }
+
+  const mmToPx = (mm: number) => (mm * 96) / 25.4;
+  await expect
+    .poll(async () => {
+      const padding = await page.evaluate(() => {
+        const paper = document.querySelector('[data-testid="mddm-editor-paper"]') as HTMLElement | null;
+        if (!paper) return null;
+        const computed = getComputedStyle(paper);
+        return {
+          top: parseFloat(computed.paddingTop),
+          right: parseFloat(computed.paddingRight),
+          bottom: parseFloat(computed.paddingBottom),
+          left: parseFloat(computed.paddingLeft),
+        };
+      });
+      if (!padding) return false;
+      const target = mmToPx(5);
+      return (
+        Math.abs(padding.top - target) <= 2 &&
+        Math.abs(padding.right - target) <= 2 &&
+        Math.abs(padding.bottom - target) <= 2 &&
+        Math.abs(padding.left - target) <= 2
+      );
+    })
+    .toBe(true);
 });
 
 test("template editor preserves page margins after save and reload", async ({ page }) => {

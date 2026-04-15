@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PropriedadesTab } from "./tabs/PropriedadesTab";
 import { ColorPicker } from "./controls/ColorPicker";
 import { SelectControl } from "./controls/SelectControl";
 import { ToggleControl } from "./controls/ToggleControl";
-import type { TemplatePageSettings } from "./page-settings";
+import {
+  clampPageMarginMm,
+  type TemplatePageSettings,
+} from "./page-settings";
 import {
   sectionStyleFieldSchema,
   sectionCapsFieldSchema,
@@ -231,8 +234,28 @@ interface Props {
 
 export function PropertySidebar({ editor, selectedBlockId, pageSettings, onPageSettingsChange }: Props) {
   const [activeTab, setActiveTab] = useState<TabId>("propriedades");
+  const [pageInputDraft, setPageInputDraft] = useState<Record<keyof TemplatePageSettings, string>>({
+    marginTopMm: String(pageSettings.marginTopMm),
+    marginRightMm: String(pageSettings.marginRightMm),
+    marginBottomMm: String(pageSettings.marginBottomMm),
+    marginLeftMm: String(pageSettings.marginLeftMm),
+  });
 
   const block = selectedBlockId && editor ? editor.getBlock(selectedBlockId) : null;
+
+  useEffect(() => {
+    setPageInputDraft({
+      marginTopMm: String(pageSettings.marginTopMm),
+      marginRightMm: String(pageSettings.marginRightMm),
+      marginBottomMm: String(pageSettings.marginBottomMm),
+      marginLeftMm: String(pageSettings.marginLeftMm),
+    });
+  }, [
+    pageSettings.marginTopMm,
+    pageSettings.marginRightMm,
+    pageSettings.marginBottomMm,
+    pageSettings.marginLeftMm,
+  ]);
 
   const sidebarStyle: React.CSSProperties = {
     width: "320px",
@@ -313,13 +336,55 @@ export function PropertySidebar({ editor, selectedBlockId, pageSettings, onPageS
     marginBottom: "8px",
   };
 
-  const updatePageMargin = (key: keyof TemplatePageSettings, rawValue: string) => {
+  const updatePageInputDraft = (key: keyof TemplatePageSettings, rawValue: string) => {
+    setPageInputDraft((current) => ({
+      ...current,
+      [key]: rawValue,
+    }));
+  };
+
+  const commitPageMargin = (key: keyof TemplatePageSettings) => {
+    const rawValue = pageInputDraft[key]?.trim() ?? "";
+    if (rawValue.length === 0) {
+      setPageInputDraft((current) => ({
+        ...current,
+        [key]: String(pageSettings[key]),
+      }));
+      return;
+    }
+
     const parsedValue = Number(rawValue);
-    const nextValue = Number.isFinite(parsedValue) ? parsedValue : pageSettings[key];
-    onPageSettingsChange({
+    if (!Number.isFinite(parsedValue)) {
+      setPageInputDraft((current) => ({
+        ...current,
+        [key]: String(pageSettings[key]),
+      }));
+      return;
+    }
+
+    const nextValue = clampPageMarginMm(parsedValue, pageSettings[key]);
+    const nextSettings = {
       ...pageSettings,
       [key]: nextValue,
+    };
+
+    onPageSettingsChange({
+      ...nextSettings,
     });
+
+    setPageInputDraft((current) => ({
+      ...current,
+      [key]: String(nextValue),
+    }));
+  };
+
+  const handlePageMarginKeyDown = (
+    key: keyof TemplatePageSettings,
+    event: React.KeyboardEvent<HTMLInputElement>,
+  ) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    commitPageMargin(key);
   };
 
   const pageControls = (
@@ -332,8 +397,11 @@ export function PropertySidebar({ editor, selectedBlockId, pageSettings, onPageS
         type="number"
         min={5}
         max={50}
-        value={pageSettings.marginTopMm}
-        onChange={(event) => updatePageMargin("marginTopMm", event.target.value)}
+        step={1}
+        value={pageInputDraft.marginTopMm}
+        onChange={(event) => updatePageInputDraft("marginTopMm", event.target.value)}
+        onBlur={() => commitPageMargin("marginTopMm")}
+        onKeyDown={(event) => handlePageMarginKeyDown("marginTopMm", event)}
         style={pageInputStyle}
       />
       <label style={pageLabelStyle} htmlFor="page-margin-right-mm">Margem direita (mm)</label>
@@ -343,8 +411,11 @@ export function PropertySidebar({ editor, selectedBlockId, pageSettings, onPageS
         type="number"
         min={5}
         max={50}
-        value={pageSettings.marginRightMm}
-        onChange={(event) => updatePageMargin("marginRightMm", event.target.value)}
+        step={1}
+        value={pageInputDraft.marginRightMm}
+        onChange={(event) => updatePageInputDraft("marginRightMm", event.target.value)}
+        onBlur={() => commitPageMargin("marginRightMm")}
+        onKeyDown={(event) => handlePageMarginKeyDown("marginRightMm", event)}
         style={pageInputStyle}
       />
       <label style={pageLabelStyle} htmlFor="page-margin-bottom-mm">Margem inferior (mm)</label>
@@ -354,8 +425,11 @@ export function PropertySidebar({ editor, selectedBlockId, pageSettings, onPageS
         type="number"
         min={5}
         max={50}
-        value={pageSettings.marginBottomMm}
-        onChange={(event) => updatePageMargin("marginBottomMm", event.target.value)}
+        step={1}
+        value={pageInputDraft.marginBottomMm}
+        onChange={(event) => updatePageInputDraft("marginBottomMm", event.target.value)}
+        onBlur={() => commitPageMargin("marginBottomMm")}
+        onKeyDown={(event) => handlePageMarginKeyDown("marginBottomMm", event)}
         style={pageInputStyle}
       />
       <label style={pageLabelStyle} htmlFor="page-margin-left-mm">Margem esquerda (mm)</label>
@@ -365,8 +439,11 @@ export function PropertySidebar({ editor, selectedBlockId, pageSettings, onPageS
         type="number"
         min={5}
         max={50}
-        value={pageSettings.marginLeftMm}
-        onChange={(event) => updatePageMargin("marginLeftMm", event.target.value)}
+        step={1}
+        value={pageInputDraft.marginLeftMm}
+        onChange={(event) => updatePageInputDraft("marginLeftMm", event.target.value)}
+        onBlur={() => commitPageMargin("marginLeftMm")}
+        onKeyDown={(event) => handlePageMarginKeyDown("marginLeftMm", event)}
         style={{ ...pageInputStyle, marginBottom: 0 }}
       />
     </section>

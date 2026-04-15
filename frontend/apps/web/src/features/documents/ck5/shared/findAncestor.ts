@@ -1,3 +1,5 @@
+// Signature is compatible with CK5's Node interface (model Element/Text) —
+// both expose `parent` and an `is(kind, name?)` type-narrowing helper.
 export interface NodeLike {
   parent: NodeLike | null;
   is(kind: 'element', name?: string): boolean;

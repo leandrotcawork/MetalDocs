@@ -57,6 +57,8 @@ export function createAuthorConfig(opts: ConfigOptions = {}): EditorConfig {
         },
       ],
     },
+    // Read by MddmUploadAdapterPlugin; endpoint + auth header supplied by
+    // callers (AuthorPage/FillPage) via the ConfigOptions passthrough.
     mddmUpload: opts.uploadEndpoint
       ? {
           endpoint: opts.uploadEndpoint,

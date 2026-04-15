@@ -37,6 +37,10 @@ import {
   PasteFromOffice,
 } from 'ckeditor5';
 
+// MetalDocs custom plugins are added in later tasks.
+// Each primitive plugin appends itself to these lists via a registration helper
+// (see editorConfig.ts extraPlugins). For now, we define the CK5-native baseline.
+
 const SHARED_BASE = [
   Essentials,
   Paragraph,

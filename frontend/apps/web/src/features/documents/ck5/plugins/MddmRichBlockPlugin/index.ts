@@ -2,6 +2,7 @@ import { Plugin, Widget } from 'ckeditor5';
 import { registerRichBlockSchema } from './schema';
 import { registerRichBlockConverters } from './converters';
 import { InsertRichBlockCommand } from './commands/InsertRichBlockCommand';
+import { registerInsertionButton } from '../../shared/registerInsertionButton';
 
 export class MddmRichBlockPlugin extends Plugin {
   static get pluginName(): 'MddmRichBlockPlugin' {
@@ -17,5 +18,11 @@ export class MddmRichBlockPlugin extends Plugin {
     registerRichBlockSchema(editor.model.schema);
     registerRichBlockConverters(editor);
     editor.commands.add('insertMddmRichBlock', new InsertRichBlockCommand(editor));
+
+    registerInsertionButton(editor, {
+      componentName: 'insertMddmRichBlock',
+      commandName: 'insertMddmRichBlock',
+      label: 'Insert rich block',
+    });
   }
 }

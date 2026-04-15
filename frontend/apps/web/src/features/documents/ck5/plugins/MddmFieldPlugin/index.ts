@@ -2,6 +2,7 @@ import { Plugin, Widget, viewToModelPositionOutsideModelElement } from 'ckeditor
 import { registerFieldSchema } from './schema';
 import { registerFieldConverters } from './converters';
 import { InsertFieldCommand } from './commands/InsertFieldCommand';
+import { registerInsertionButton } from '../../shared/registerInsertionButton';
 
 export class MddmFieldPlugin extends Plugin {
   static get pluginName(): 'MddmFieldPlugin' {
@@ -28,5 +29,12 @@ export class MddmFieldPlugin extends Plugin {
         viewEl.hasClass('mddm-field'),
       ),
     );
+
+    registerInsertionButton(editor, {
+      componentName: 'insertMddmField',
+      commandName: 'insertMddmField',
+      label: 'Insert field',
+      executeOptions: { fieldType: 'text', fieldLabel: 'Field', fieldValue: '' },
+    });
   }
 }

@@ -5,6 +5,7 @@ import { AddRepeatableItemCommand } from './commands/AddRepeatableItemCommand';
 import { InsertRepeatableCommand } from './commands/InsertRepeatableCommand';
 import { RemoveRepeatableItemCommand } from './commands/RemoveRepeatableItemCommand';
 import { registerRepeatableSchema } from './schema';
+import { registerInsertionButton } from '../../shared/registerInsertionButton';
 
 export class MddmRepeatablePlugin extends Plugin {
   public static get pluginName(): 'MddmRepeatablePlugin' {
@@ -24,5 +25,12 @@ export class MddmRepeatablePlugin extends Plugin {
     editor.commands.add('insertMddmRepeatable', new InsertRepeatableCommand(editor));
     editor.commands.add('addMddmRepeatableItem', new AddRepeatableItemCommand(editor));
     editor.commands.add('removeMddmRepeatableItem', new RemoveRepeatableItemCommand(editor));
+
+    registerInsertionButton(editor, {
+      componentName: 'insertMddmRepeatable',
+      commandName: 'insertMddmRepeatable',
+      label: 'Insert repeatable',
+      executeOptions: { min: 1, max: 10, initialCount: 1 },
+    });
   }
 }

@@ -14,7 +14,7 @@ export function TopBar() {
         </a>
       </nav>
       <div className="studio-actions">
-        <button type="button" className="ghost-btn">
+        <button type="button" className="topbar-ghost-btn">
           Preview
         </button>
         <button type="button" className="primary-btn">

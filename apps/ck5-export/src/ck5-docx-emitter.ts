@@ -254,6 +254,7 @@ function emitField(node: ExportNode, tokens: LayoutTokens): Table[] {
   }
 
   const borderColor = hexToFill(tokens.theme.accentBorder)
+  const labelText = node.label ?? node.id
   const borders = {
     top: { style: BorderStyle.SINGLE, size: 4, color: borderColor },
     bottom: { style: BorderStyle.SINGLE, size: 4, color: borderColor },
@@ -271,7 +272,7 @@ function emitField(node: ExportNode, tokens: LayoutTokens): Table[] {
               width: { size: 35, type: WidthType.PERCENTAGE },
               shading: { fill: hexToFill(tokens.theme.accentLight), type: "clear", color: "auto" },
               borders,
-              children: [new Paragraph({ children: [new TextRun({ text: node.id })] })],
+              children: [new Paragraph({ children: [new TextRun({ text: labelText })] })],
             }),
             new TableCell({
               width: { size: 65, type: WidthType.PERCENTAGE },

@@ -39,6 +39,7 @@ export interface TableCell {
 export interface Field {
   kind: "field"
   id: string
+  label?: string
   fieldType: "text" | "number" | "date" | "boolean" | "select"
   value: string
 }

@@ -109,10 +109,12 @@ function walkNode(node: Node, inlineContext: boolean, marks: TextMark[]): Export
   }
 
   if (tagName === "SPAN" && el.classList.contains("mddm-field")) {
+    const label = el.getAttribute("data-field-label") ?? undefined
     return [
       {
         kind: "field",
         id: el.getAttribute("data-field-id") ?? "",
+        label: label && label.length > 0 ? label : undefined,
         fieldType: (el.getAttribute("data-field-type") ?? "text") as Field["fieldType"],
         value: el.textContent ?? "",
       },

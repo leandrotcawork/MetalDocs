@@ -1,3 +1,22 @@
 import { Hono } from "hono"
+import { serve } from "@hono/node-server"
+import { fileURLToPath } from "node:url"
 
 export const app = new Hono()
+
+app.get("/health", (c) => c.json({ ok: true, service: "ck5-export" }))
+
+export const start = (port: number) => {
+  serve({
+    fetch: app.fetch,
+    port,
+  })
+}
+
+const isMain = process.argv[1] === fileURLToPath(import.meta.url)
+
+if (isMain) {
+  start(parseInt(process.env.PORT ?? "9001", 10))
+}
+
+export default app

@@ -28,7 +28,7 @@ export function AuthorEditor({ initialHtml, onChange, onReady, language = 'en' }
             // Move the detached toolbar into our toolbar container.
             const view = editor.ui.view as DecoupledEditorUIView;
             if (toolbarRef.current && view.toolbar.element) {
-              toolbarRef.current.appendChild(view.toolbar.element);
+              toolbarRef.current.replaceChildren(view.toolbar.element);
             }
             onReady?.(editor);
           }}

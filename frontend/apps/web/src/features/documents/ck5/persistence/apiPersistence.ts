@@ -21,7 +21,7 @@ export async function saveTemplate(
 }
 
 export async function loadTemplate(id: string): Promise<TemplateRecord | null> {
-  const res = await fetch(`/api/v1/templates/${encodeURIComponent(id)}/draft`, {
+  const res = await fetch(`/api/v1/templates/${encodeURIComponent(id)}`, {
     credentials: 'include',
   });
   if (res.status === 404) return null;

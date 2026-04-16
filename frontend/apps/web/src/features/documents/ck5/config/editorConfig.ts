@@ -73,6 +73,9 @@ export function createAuthorConfig(opts: ConfigOptions = {}): EditorConfig {
           },
         },
       ],
+      disallow: [
+        { name: 'span', classes: 'mddm-field' },
+      ],
     },
     // Read by MddmUploadAdapterPlugin; endpoint + auth header supplied by
     // callers (AuthorPage/FillPage) via the ConfigOptions passthrough.

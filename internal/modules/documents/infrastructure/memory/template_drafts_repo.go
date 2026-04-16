@@ -76,6 +76,33 @@ func (r *Repository) DeleteTemplateDraft(_ context.Context, templateKey string) 
 	return nil
 }
 
+func (r *Repository) UpdateTemplateDraftStatus(_ context.Context, templateKey string, newStatus domain.TemplateStatus) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	d, ok := r.templateDrafts[templateKey]
+	if !ok {
+		return domain.ErrTemplateDraftNotFound
+	}
+	d.DraftStatus = newStatus
+	r.templateDrafts[templateKey] = d
+	return nil
+}
+
+func (r *Repository) SetTemplateDraftPublished(_ context.Context, templateKey string, publishedHTML string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	d, ok := r.templateDrafts[templateKey]
+	if !ok {
+		return domain.ErrTemplateDraftNotFound
+	}
+	d.DraftStatus = domain.TemplateStatusPublished
+	d.PublishedHTML = &publishedHTML
+	r.templateDrafts[templateKey] = d
+	return nil
+}
+
 // InsertTemplateVersion inserts a new version into the in-memory store.
 func (r *Repository) InsertTemplateVersion(_ context.Context, version domain.DocumentTemplateVersion) error {
 	r.mu.Lock()
@@ -159,6 +186,10 @@ func cloneTemplateDraft(d domain.TemplateDraft) domain.TemplateDraft {
 	}
 	if len(d.StrippedFieldsJSON) > 0 {
 		out.StrippedFieldsJSON = cloneJSON(d.StrippedFieldsJSON)
+	}
+	if d.PublishedHTML != nil {
+		s := *d.PublishedHTML
+		out.PublishedHTML = &s
 	}
 	return out
 }

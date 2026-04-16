@@ -193,3 +193,61 @@ func TestUpdateTemplateVersionStatus_NotFound(t *testing.T) {
 		t.Fatalf("expected ErrTemplateNotFound, got %v", err)
 	}
 }
+
+func TestUpdateTemplateDraftStatus_NotFound(t *testing.T) {
+	repo := NewRepository()
+	ctx := context.Background()
+
+	err := repo.UpdateTemplateDraftStatus(ctx, "missing", domain.TemplateStatusPendingReview)
+	if !errors.Is(err, domain.ErrTemplateDraftNotFound) {
+		t.Fatalf("expected ErrTemplateDraftNotFound, got %v", err)
+	}
+}
+
+func TestUpdateTemplateDraftStatus_OK(t *testing.T) {
+	repo := NewRepository()
+	ctx := context.Background()
+
+	draft := newTestDraft("tpl-status")
+	if _, err := repo.UpsertTemplateDraftCAS(ctx, draft, 0); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	if err := repo.UpdateTemplateDraftStatus(ctx, "tpl-status", domain.TemplateStatusPendingReview); err != nil {
+		t.Fatalf("update draft status: %v", err)
+	}
+
+	got, err := repo.GetTemplateDraft(ctx, "tpl-status")
+	if err != nil {
+		t.Fatalf("get template draft: %v", err)
+	}
+	if got.DraftStatus != domain.TemplateStatusPendingReview {
+		t.Fatalf("expected draft status %q, got %q", domain.TemplateStatusPendingReview, got.DraftStatus)
+	}
+}
+
+func TestSetTemplateDraftPublished_OK(t *testing.T) {
+	repo := NewRepository()
+	ctx := context.Background()
+
+	draft := newTestDraft("tpl-published")
+	if _, err := repo.UpsertTemplateDraftCAS(ctx, draft, 0); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	const html = "<html><body>published</body></html>"
+	if err := repo.SetTemplateDraftPublished(ctx, "tpl-published", html); err != nil {
+		t.Fatalf("set template draft published: %v", err)
+	}
+
+	got, err := repo.GetTemplateDraft(ctx, "tpl-published")
+	if err != nil {
+		t.Fatalf("get template draft: %v", err)
+	}
+	if got.DraftStatus != domain.TemplateStatusPublished {
+		t.Fatalf("expected draft status %q, got %q", domain.TemplateStatusPublished, got.DraftStatus)
+	}
+	if got.PublishedHTML == nil {
+		t.Fatal("expected PublishedHTML to be set")
+	}
+}

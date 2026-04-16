@@ -10,9 +10,10 @@ import (
 type TemplateStatus string
 
 const (
-	TemplateStatusDraft      TemplateStatus = "draft"
-	TemplateStatusPublished  TemplateStatus = "published"
-	TemplateStatusDeprecated TemplateStatus = "deprecated"
+	TemplateStatusDraft         TemplateStatus = "draft"
+	TemplateStatusPendingReview TemplateStatus = "pending_review"
+	TemplateStatusPublished     TemplateStatus = "published"
+	TemplateStatusDeprecated    TemplateStatus = "deprecated"
 )
 
 // TemplateDraftKey identifies a template draft aggregate.
@@ -28,6 +29,8 @@ type TemplateDraft struct {
 	ThemeJSON          json.RawMessage
 	MetaJSON           json.RawMessage
 	BlocksJSON         json.RawMessage
+	DraftStatus        TemplateStatus `json:"draft_status"`
+	PublishedHTML      *string        `json:"published_html,omitempty"`
 	LockVersion        int
 	HasStrippedFields  bool
 	StrippedFieldsJSON json.RawMessage // nullable
@@ -78,11 +81,13 @@ func (e *TemplatePublishValidationError) Unwrap() error {
 }
 
 var (
-	ErrTemplateLockConflict      = errors.New("template: lock version conflict")
-	ErrTemplateHasStrippedFields = errors.New("template: has stripped fields, acknowledge before publishing")
-	ErrTemplateAlreadyPublished  = errors.New("template: already published")
-	ErrTemplateNotDraft          = errors.New("template: not in draft status")
-	ErrTemplatePublishValidation = errors.New("template: publish validation failed")
-	ErrTemplateDraftNotFound     = errors.New("template: draft not found")
-	ErrTemplateNotFound          = errors.New("template: not found")
+	ErrTemplateLockConflict       = errors.New("template: lock version conflict")
+	ErrTemplateHasStrippedFields  = errors.New("template: has stripped fields, acknowledge before publishing")
+	ErrTemplateAlreadyPublished   = errors.New("template: already published")
+	ErrTemplateNotDraft           = errors.New("template: not in draft status")
+	ErrTemplatePublishValidation  = errors.New("template: publish validation failed")
+	ErrTemplateDraftNotFound      = errors.New("template: draft not found")
+	ErrTemplateNotFound           = errors.New("template: not found")
+	ErrInvalidTemplateDraftStatus = errors.New("template: invalid draft status for operation")
+	ErrEmptyTemplateContent       = errors.New("template: contentHtml is empty")
 )

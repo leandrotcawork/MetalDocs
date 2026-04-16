@@ -17,6 +17,7 @@ func (r *Repository) GetTemplateDraft(ctx context.Context, templateKey string) (
 	const q = `
 SELECT template_key, profile_code, base_version, name,
        theme_json, meta_json, blocks_json,
+       draft_status, published_html,
        lock_version, has_stripped_fields, stripped_fields_json,
        created_by, created_at, updated_at
 FROM metaldocs.template_drafts
@@ -25,6 +26,8 @@ WHERE template_key = $1
 	var d domain.TemplateDraft
 	var themeJSON, metaJSON, blocksJSON []byte
 	var strippedJSON []byte
+	var draftStatus string
+	var publishedHTML sql.NullString
 	var strippedNull sql.NullString
 
 	row := r.db.QueryRowContext(ctx, q, strings.TrimSpace(templateKey))
@@ -36,6 +39,8 @@ WHERE template_key = $1
 		&themeJSON,
 		&metaJSON,
 		&blocksJSON,
+		&draftStatus,
+		&publishedHTML,
 		&d.LockVersion,
 		&d.HasStrippedFields,
 		&strippedNull,
@@ -52,6 +57,11 @@ WHERE template_key = $1
 	d.ThemeJSON = themeJSON
 	d.MetaJSON = metaJSON
 	d.BlocksJSON = blocksJSON
+	d.DraftStatus = domain.TemplateStatus(draftStatus)
+	if publishedHTML.Valid {
+		s := publishedHTML.String
+		d.PublishedHTML = &s
+	}
 	if strippedNull.Valid {
 		strippedJSON = []byte(strippedNull.String)
 	}
@@ -176,6 +186,32 @@ func (r *Repository) DeleteTemplateDraft(ctx context.Context, templateKey string
 	}
 	affected, _ := result.RowsAffected()
 	if affected == 0 {
+		return domain.ErrTemplateDraftNotFound
+	}
+	return nil
+}
+
+func (r *Repository) UpdateTemplateDraftStatus(ctx context.Context, templateKey string, newStatus domain.TemplateStatus) error {
+	const q = `UPDATE metaldocs.template_drafts SET draft_status = $1 WHERE template_key = $2`
+	res, err := r.db.ExecContext(ctx, q, string(newStatus), templateKey)
+	if err != nil {
+		return fmt.Errorf("update template draft status: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return domain.ErrTemplateDraftNotFound
+	}
+	return nil
+}
+
+func (r *Repository) SetTemplateDraftPublished(ctx context.Context, templateKey string, publishedHTML string) error {
+	const q = `UPDATE metaldocs.template_drafts SET draft_status = 'published', published_html = $1 WHERE template_key = $2`
+	res, err := r.db.ExecContext(ctx, q, publishedHTML, templateKey)
+	if err != nil {
+		return fmt.Errorf("set template draft published: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
 		return domain.ErrTemplateDraftNotFound
 	}
 	return nil

@@ -93,13 +93,12 @@ func (h *Handler) handleDocumentExportCK5PDF(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Use existing renderPDF handler renderer (Gotenberg).
-	if h.renderPDF == nil || h.renderPDF.renderer == nil {
+	if h.pdfConverter == nil {
 		writeAPIError(w, http.StatusBadGateway, "RENDER_UNAVAILABLE", "PDF renderer not configured", traceID)
 		return
 	}
 
-	pdfBytes, err := h.renderPDF.renderer.ConvertHTMLToPDF(r.Context(), []byte(wrappedHTML), nil)
+	pdfBytes, err := h.pdfConverter.ConvertHTMLToPDF(r.Context(), []byte(wrappedHTML), nil)
 	if err != nil {
 		writeAPIError(w, http.StatusBadGateway, "RENDER_UPSTREAM_ERROR", "Upstream Gotenberg error", traceID)
 		return

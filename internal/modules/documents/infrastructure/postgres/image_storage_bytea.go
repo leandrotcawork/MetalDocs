@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"metaldocs/internal/modules/documents/domain/mddm"
+	"metaldocs/internal/modules/documents/domain"
 )
 
 type PostgresByteaStorage struct {
@@ -39,7 +39,7 @@ func (s *PostgresByteaStorage) Get(ctx context.Context, id uuid.UUID) ([]byte, s
 		SELECT bytes, mime_type FROM metaldocs.document_images WHERE id = $1
 	`, id).Scan(&bytes, &mimeType)
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, "", mddm.ErrImageNotFound
+		return nil, "", domain.ErrImageNotFound
 	}
 	if err != nil {
 		return nil, "", err
@@ -64,4 +64,4 @@ func (s *PostgresByteaStorage) Exists(ctx context.Context, sha256 string) (uuid.
 	return id, true, nil
 }
 
-var _ mddm.ImageStorage = (*PostgresByteaStorage)(nil)
+var _ domain.ImageStorage = (*PostgresByteaStorage)(nil)

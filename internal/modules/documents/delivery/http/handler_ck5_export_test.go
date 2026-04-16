@@ -214,7 +214,7 @@ func TestCK5ExportPdf_OK_200(t *testing.T) {
 	renderer := &fakePdfRenderer{
 		result: []byte("pdf-bytes"),
 	}
-	handler := NewHandler(svc).WithCK5ExportClient(client).WithRenderPDF(renderer)
+	handler := NewHandler(svc).WithCK5ExportClient(client).WithPDFConverter(renderer)
 
 	req := authCK5ExportRequest(http.MethodGet, "/api/v1/documents/"+doc.ID+"/export/ck5/pdf")
 	rec := httptest.NewRecorder()
@@ -238,7 +238,7 @@ func TestCK5ExportPdf_OK_200(t *testing.T) {
 func TestCK5ExportPdf_NoAuth_404(t *testing.T) {
 	repo := documentmemory.NewRepository()
 	svc := application.NewService(repo, nil, nil)
-	handler := NewHandler(svc).WithCK5ExportClient(&mockCK5ExportClient{}).WithRenderPDF(&fakePdfRenderer{})
+	handler := NewHandler(svc).WithCK5ExportClient(&mockCK5ExportClient{}).WithPDFConverter(&fakePdfRenderer{})
 
 	req := authCK5ExportRequest(http.MethodGet, "/api/v1/documents/non-existent/export/ck5/pdf")
 	rec := httptest.NewRecorder()
@@ -258,7 +258,7 @@ func TestCK5ExportPdf_Upstream500_502(t *testing.T) {
 			return "", &application.CK5ExportError{Status: http.StatusInternalServerError, Body: "upstream failed"}
 		},
 	}
-	handler := NewHandler(svc).WithCK5ExportClient(client).WithRenderPDF(&fakePdfRenderer{})
+	handler := NewHandler(svc).WithCK5ExportClient(client).WithPDFConverter(&fakePdfRenderer{})
 
 	req := authCK5ExportRequest(http.MethodGet, "/api/v1/documents/"+doc.ID+"/export/ck5/pdf")
 	rec := httptest.NewRecorder()
@@ -278,7 +278,7 @@ func TestCK5ExportPdf_Upstream400_422(t *testing.T) {
 			return "", &application.CK5ExportError{Status: http.StatusBadRequest, Body: "invalid html"}
 		},
 	}
-	handler := NewHandler(svc).WithCK5ExportClient(client).WithRenderPDF(&fakePdfRenderer{})
+	handler := NewHandler(svc).WithCK5ExportClient(client).WithPDFConverter(&fakePdfRenderer{})
 
 	req := authCK5ExportRequest(http.MethodGet, "/api/v1/documents/"+doc.ID+"/export/ck5/pdf")
 	rec := httptest.NewRecorder()

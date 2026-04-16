@@ -9,8 +9,6 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-
-	"metaldocs/internal/modules/documents/domain/mddm"
 )
 
 var DefaultPOTemplateID = uuid.MustParse("00000000-0000-0000-0000-0000000000a1")
@@ -24,7 +22,7 @@ func NewTemplateSeeder(db *sql.DB) *TemplateSeeder {
 }
 
 func (s *TemplateSeeder) SeedPOTemplate(ctx context.Context, templateID uuid.UUID) error {
-	return s.seedTemplateVersion(ctx, templateID, mddm.POTemplateMDDM())
+	return s.seedTemplateVersion(ctx, templateID, poTemplateMDDM())
 }
 
 func (s *TemplateSeeder) seedTemplateVersion(ctx context.Context, templateID uuid.UUID, envelope map[string]any) error {
@@ -33,7 +31,7 @@ func (s *TemplateSeeder) seedTemplateVersion(ctx context.Context, templateID uui
 		return fmt.Errorf("normalize po template envelope: %w", err)
 	}
 
-	canonicalEnvelope, err := mddm.CanonicalizeMDDM(normalizedEnvelope)
+	canonicalEnvelope, err := canonicalizeMDDM(normalizedEnvelope)
 	if err != nil {
 		return fmt.Errorf("canonicalize po template: %w", err)
 	}
@@ -43,7 +41,7 @@ func (s *TemplateSeeder) seedTemplateVersion(ctx context.Context, templateID uui
 		return fmt.Errorf("canonical po template malformed: blocks must be non-empty")
 	}
 
-	canonicalBytes, err := mddm.MarshalCanonical(canonicalEnvelope)
+	canonicalBytes, err := marshalCanonical(canonicalEnvelope)
 	if err != nil {
 		return fmt.Errorf("marshal canonical po template: %w", err)
 	}
@@ -97,4 +95,49 @@ func canonicalEnvelopeVersion(value any) (int, error) {
 	default:
 		return 0, fmt.Errorf("canonical po template missing integer mddm_version")
 	}
+}
+
+func poTemplateMDDM() map[string]any {
+	return map[string]any{
+		"mddm_version": 1,
+		"template_ref": nil,
+		"blocks": []any{
+			map[string]any{
+				"id":   "po-block-1",
+				"type": "paragraph",
+				"props": map[string]any{
+					"textAlignment": "left",
+				},
+				"children": []any{
+					map[string]any{
+						"text": "",
+					},
+				},
+			},
+		},
+	}
+}
+
+func canonicalizeMDDM(envelope map[string]any) (map[string]any, error) {
+	if envelope == nil {
+		return nil, fmt.Errorf("canonical mddm envelope is nil")
+	}
+	normalized, err := normalizeTemplateEnvelope(envelope)
+	if err != nil {
+		return nil, err
+	}
+	if _, ok := normalized["mddm_version"]; !ok {
+		return nil, fmt.Errorf("canonical po template missing integer mddm_version")
+	}
+	if _, ok := normalized["template_ref"]; !ok {
+		normalized["template_ref"] = nil
+	}
+	if _, ok := normalized["blocks"]; !ok {
+		normalized["blocks"] = []any{}
+	}
+	return normalized, nil
+}
+
+func marshalCanonical(v any) ([]byte, error) {
+	return json.Marshal(v)
 }

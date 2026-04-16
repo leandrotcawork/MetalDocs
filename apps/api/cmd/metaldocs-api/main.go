@@ -70,26 +70,13 @@ func main() {
 	docService := docapp.NewService(deps.DocumentsRepo, deps.Publisher, nil).
 		WithAttachmentStore(deps.AttachmentStore).
 		WithAuditWriter(deps.AuditWriter).
-		WithDocgenClient(deps.DocgenClient).
 		WithGotenberg(deps.GotenbergClient).
 		WithApprovalReader(docapp.NewWorkflowApprovalAdapter(deps.WorkflowApprovals))
 
-	var loadService *docapp.LoadService
-	var submitForApprovalService *docapp.SubmitForApprovalService
-	if deps.MDDMRepo != nil {
-		loadService = docapp.NewLoadService(&mddmLoadRepoAdapter{repo: deps.MDDMRepo})
-		submitForApprovalService = docapp.NewSubmitForApprovalService(deps.MDDMRepo)
-	}
-	var shadowDiffHandler *docdelivery.ShadowDiffHandler
-	if deps.ShadowDiffRepo != nil {
-		shadowDiffHandler = docdelivery.NewShadowDiffHandler(deps.ShadowDiffRepo)
-	}
 	auditHandler := auditdelivery.NewHandler(auditService)
 	docHandler := docdelivery.NewHandler(docService).
 		WithAttachmentDownloads(security.NewAttachmentSigner(attachmentsCfg.DownloadSecret), time.Duration(attachmentsCfg.DownloadTTLSeconds)*time.Second).
-		WithMDDMHandlers(loadService, submitForApprovalService).
-		WithRenderPDF(deps.GotenbergClient).
-		WithShadowDiffHandler(shadowDiffHandler)
+		WithPDFConverter(deps.GotenbergClient)
 	searchService := searchapp.NewService(searchdocs.NewReader(deps.DocumentsRepo))
 	searchHandler := searchdelivery.NewHandler(searchService)
 	notificationService := notificationapp.NewService(deps.NotificationsRepo, deps.DocumentsRepo, nil)

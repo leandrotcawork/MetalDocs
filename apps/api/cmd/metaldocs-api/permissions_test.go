@@ -30,7 +30,6 @@ func TestPermissionResolver(t *testing.T) {
 		{name: "workflow transition", method: http.MethodPost, path: "/api/v1/workflow/documents/doc-1/transitions", wantPerm: iamdomain.PermWorkflowTransition, wantGuard: true},
 		{name: "iam users list", method: http.MethodGet, path: "/api/v1/iam/users", wantPerm: iamdomain.PermIAMManageRoles, wantGuard: true},
 		{name: "iam roles update", method: http.MethodPut, path: "/api/v1/iam/users/u-1/roles", wantPerm: iamdomain.PermIAMManageRoles, wantGuard: true},
-		{name: "telemetry shadow diff", method: http.MethodPost, path: "/api/v1/telemetry/mddm-shadow-diff", wantPerm: iamdomain.PermDocumentRead, wantGuard: true},
 		// feature-flags is fully public: no permission required, no session required.
 		// This must remain unguarded so initFeatureFlags() can call it before login.
 		{name: "feature flags unguarded", method: http.MethodGet, path: "/api/v1/feature-flags", wantPerm: "", wantGuard: false},

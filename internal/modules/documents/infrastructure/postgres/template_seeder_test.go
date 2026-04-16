@@ -9,8 +9,6 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-
-	"metaldocs/internal/modules/documents/domain/mddm"
 )
 
 func TestTemplateSeeder_IsIdempotent(t *testing.T) {
@@ -151,15 +149,15 @@ func seedStaleTemplateRow(t *testing.T, ctx context.Context, db *sql.DB, templat
 func expectedCanonicalTemplateSeed(t *testing.T) ([]byte, string) {
 	t.Helper()
 
-	envelope, err := normalizeTemplateEnvelope(mddm.POTemplateMDDM())
+	envelope, err := normalizeTemplateEnvelope(poTemplateMDDM())
 	if err != nil {
 		t.Fatalf("normalize template: %v", err)
 	}
-	canonicalEnvelope, err := mddm.CanonicalizeMDDM(envelope)
+	canonicalEnvelope, err := canonicalizeMDDM(envelope)
 	if err != nil {
 		t.Fatalf("canonicalize template: %v", err)
 	}
-	canonicalBytes, err := mddm.MarshalCanonical(canonicalEnvelope)
+	canonicalBytes, err := marshalCanonical(canonicalEnvelope)
 	if err != nil {
 		t.Fatalf("marshal canonical template: %v", err)
 	}

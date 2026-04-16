@@ -583,3 +583,30 @@ func normalizeDocgenColor(value string) string {
 	}
 	return strings.TrimPrefix(strings.ToUpper(trimmed), "#")
 }
+
+func toRuntimeMapSlice(value any) []any {
+	slice, ok := toRuntimeSlice(value)
+	if !ok {
+		return []any{}
+	}
+	return slice
+}
+
+func toRuntimeString(value any) (string, bool) {
+	raw, ok := value.(string)
+	if !ok {
+		return "", false
+	}
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return "", false
+	}
+	return trimmed, true
+}
+
+func toRuntimeStringFallback(value any, fallback string) string {
+	if resolved, ok := toRuntimeString(value); ok {
+		return resolved
+	}
+	return fallback
+}

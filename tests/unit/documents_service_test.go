@@ -4,9 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"metaldocs/internal/platform/config"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -16,7 +13,6 @@ import (
 	"metaldocs/internal/modules/documents/infrastructure/memory"
 	iamdomain "metaldocs/internal/modules/iam/domain"
 	"metaldocs/internal/platform/messaging"
-	"metaldocs/internal/platform/render/docgen"
 )
 
 type fixedClock struct {
@@ -626,100 +622,6 @@ func TestService_SaveDocumentValues_UpdatesDraftInPlace(t *testing.T) {
 	}
 }
 
-type capturedDocgenRequest struct {
-	DocumentType string `json:"documentType"`
-	DocumentCode string `json:"documentCode"`
-	Title        string `json:"title"`
-	Schema       struct {
-		Sections []struct {
-			Key string `json:"key"`
-		} `json:"sections"`
-	} `json:"schema"`
-	Values map[string]any `json:"values"`
-}
-
-type runtimeDocgenStub struct {
-	LastPayload capturedDocgenRequest
-}
-
-func newRuntimeServiceWithDocgenStub(t *testing.T) (*application.Service, *runtimeDocgenStub) {
-	t.Helper()
-
-	repo := memory.NewRepository()
-	stub := &runtimeDocgenStub{}
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost || r.URL.Path != "/generate" {
-			t.Fatalf("unexpected docgen request %s %s", r.Method, r.URL.Path)
-		}
-		defer r.Body.Close()
-
-		if err := json.NewDecoder(r.Body).Decode(&stub.LastPayload); err != nil {
-			t.Fatalf("decode docgen payload: %v", err)
-		}
-
-		w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("docx"))
-	}))
-	t.Cleanup(server.Close)
-
-	service := application.NewService(repo, nil, nil).WithDocgenClient(docgen.NewClient(config.DocgenConfig{
-		Enabled:               true,
-		APIURL:                server.URL,
-		RequestTimeoutSeconds: 5,
-	}))
-
-	doc := seedDocument("doc-1")
-	doc.DocumentProfile = "po"
-	doc.DocumentType = "po"
-	doc.Status = domain.StatusDraft
-	doc.ProfileSchemaVersion = 1
-	doc.CreatedAt = time.Date(2026, 3, 16, 10, 0, 0, 0, time.UTC)
-	doc.UpdatedAt = doc.CreatedAt
-	if err := repo.CreateDocument(context.Background(), doc); err != nil {
-		t.Fatalf("seed runtime document: %v", err)
-	}
-	if err := repo.SaveVersion(context.Background(), domain.Version{
-		DocumentID:    doc.ID,
-		Number:        1,
-		Content:       "{}",
-		ContentHash:   "hash-runtime-export",
-		ChangeSummary: "initial runtime export",
-		ContentSource: domain.ContentSourceNative,
-		Values: map[string]any{
-			"identification": map[string]any{
-				"objetivo": "Texto de teste",
-			},
-		},
-		CreatedAt: doc.CreatedAt,
-	}); err != nil {
-		t.Fatalf("seed runtime version: %v", err)
-	}
-
-	return service, stub
-}
-
-func TestService_ExportDocxUsesSchemaRuntimePayload(t *testing.T) {
-	service, docgenStub := newRuntimeServiceWithDocgenStub(t)
-	ctx := context.Background()
-
-	_, err := service.ExportDocumentDocxAuthorized(ctx, "doc-1", "trace-export")
-	if err != nil {
-		t.Fatalf("export docx: %v", err)
-	}
-
-	if len(docgenStub.LastPayload.Schema.Sections) < 4 {
-		t.Fatalf("expected runtime schema payload, got %d sections", len(docgenStub.LastPayload.Schema.Sections))
-	}
-
-	keys := make([]string, 0, len(docgenStub.LastPayload.Schema.Sections))
-	for _, section := range docgenStub.LastPayload.Schema.Sections {
-		keys = append(keys, section.Key)
-	}
-	if !containsString(keys, "identificacaoProcesso") {
-		t.Fatalf("expected runtime schema sections to include identificacaoProcesso, got %v", keys)
-	}
-}
 
 func containsString(items []string, target string) bool {
 	for _, item := range items {

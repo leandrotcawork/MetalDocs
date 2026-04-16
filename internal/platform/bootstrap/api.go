@@ -31,7 +31,6 @@ import (
 	nooppub "metaldocs/internal/platform/messaging/noop"
 	outboxpg "metaldocs/internal/platform/messaging/outbox/postgres"
 	"metaldocs/internal/platform/observability"
-	docgenclient "metaldocs/internal/platform/render/docgen"
 	"metaldocs/internal/platform/render/gotenberg"
 	localstorage "metaldocs/internal/platform/storage/local"
 	miniostorage "metaldocs/internal/platform/storage/minio"
@@ -39,8 +38,6 @@ import (
 
 type APIDependencies struct {
 	DocumentsRepo     docdomain.Repository
-	MDDMRepo          *pgrepo.MDDMRepository
-	ShadowDiffRepo    *pgrepo.ShadowDiffRepository
 	WorkflowApprovals workflowdomain.ApprovalRepository
 	AttachmentStore   docdomain.AttachmentStore
 	RoleProvider      iamdomain.RoleProvider
@@ -50,7 +47,6 @@ type APIDependencies struct {
 	AuditWriter       auditdomain.Writer
 	AuditReader       auditdomain.Reader
 	Publisher         messaging.Publisher
-	DocgenClient      *docgenclient.Client
 	GotenbergClient   *gotenberg.Client
 	StatusProvider    observability.RuntimeStatusProvider
 	Cleanup           func()
@@ -61,7 +57,6 @@ type bucketEnsurer interface {
 }
 
 func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg config.AttachmentsConfig) (APIDependencies, error) {
-	docgenClient := docgenclient.NewClient(config.LoadDocgenConfig())
 	gotenbergCfg := config.LoadGotenbergConfig()
 	var gotenbergClient *gotenberg.Client
 	if gotenbergCfg.Enabled {
@@ -92,8 +87,6 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 		authRepo := authpg.NewRepository(db)
 		return APIDependencies{
 			DocumentsRepo:     pgrepo.NewRepository(db),
-			MDDMRepo:          pgrepo.NewMDDMRepository(db),
-			ShadowDiffRepo:    pgrepo.NewShadowDiffRepository(db),
 			WorkflowApprovals: workflowpg.NewApprovalRepository(db),
 			AttachmentStore:   store,
 			RoleProvider:      iampg.NewRoleProvider(db),
@@ -103,7 +96,6 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 			AuditWriter:       auditpg.NewWriter(db),
 			AuditReader:       auditpg.NewWriter(db),
 			Publisher:         outboxpg.NewPublisher(db),
-			DocgenClient:      docgenClient,
 			GotenbergClient:   gotenbergClient,
 			StatusProvider:    observability.NewPostgresRuntimeStatusProvider(db, repoMode, attachmentsCfg.Provider, authn.Enabled(), gotenbergHealthCheck(gotenbergCfg)),
 			Cleanup:           func() { _ = closeDB(db) },
@@ -128,8 +120,6 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 		auditStore := auditmemory.NewWriter()
 		return APIDependencies{
 			DocumentsRepo:     memoryrepo.NewRepository(),
-			MDDMRepo:          nil,
-			ShadowDiffRepo:    nil,
 			WorkflowApprovals: workflowmemory.NewApprovalRepository(),
 			AttachmentStore:   store,
 			RoleProvider:      authRepo,
@@ -139,7 +129,6 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 			AuditWriter:       auditStore,
 			AuditReader:       auditStore,
 			Publisher:         nooppub.NewPublisher(),
-			DocgenClient:      docgenClient,
 			GotenbergClient:   gotenbergClient,
 			StatusProvider:    observability.NewStaticRuntimeStatusProvider(repoMode, attachmentsCfg.Provider, authn.Enabled(), gotenbergHealthCheck(gotenbergCfg)),
 			Cleanup:           func() {},

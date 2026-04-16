@@ -6,7 +6,7 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"metaldocs/internal/modules/documents/domain/mddm"
+	"metaldocs/internal/modules/documents/domain"
 )
 
 func TestPostgresByteaStorage_PutGetExists(t *testing.T) {
@@ -68,7 +68,7 @@ func TestPostgresByteaStorage_PutGetExists(t *testing.T) {
 	}
 
 	// Get after delete should error
-	if _, _, err := store.Get(ctx, id1); err != mddm.ErrImageNotFound {
+	if _, _, err := store.Get(ctx, id1); err != domain.ErrImageNotFound {
 		t.Errorf("expected ErrImageNotFound, got %v", err)
 	}
 }

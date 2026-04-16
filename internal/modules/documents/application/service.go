@@ -10,7 +10,6 @@ import (
 	auditdomain "metaldocs/internal/modules/audit/domain"
 	"metaldocs/internal/modules/documents/domain"
 	"metaldocs/internal/platform/messaging"
-	"metaldocs/internal/platform/render/docgen"
 	"metaldocs/internal/platform/render/gotenberg"
 )
 
@@ -40,7 +39,6 @@ type Service struct {
 	audit           auditdomain.Writer
 	publisher       messaging.Publisher
 	clock           Clock
-	docgenClient    *docgen.Client
 	gotenbergClient *gotenberg.Client
 	userResolver    UserDisplayNameResolver
 	approvalReader  WorkflowApprovalReader
@@ -60,11 +58,6 @@ func (s *Service) WithAttachmentStore(store domain.AttachmentStore) *Service {
 
 func (s *Service) WithAuditWriter(writer auditdomain.Writer) *Service {
 	s.audit = writer
-	return s
-}
-
-func (s *Service) WithDocgenClient(client *docgen.Client) *Service {
-	s.docgenClient = client
 	return s
 }
 

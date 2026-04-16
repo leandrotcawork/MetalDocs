@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 
 	"metaldocs/internal/modules/documents/domain"
-	"metaldocs/internal/modules/documents/domain/mddm"
 )
 
 type ReleaseInput struct {
@@ -133,7 +132,7 @@ func (s *ReleaseService) ReleaseDraft(ctx context.Context, in ReleaseInput) (ret
 	if err := json.Unmarshal(draft.ContentBlocks, &currEnvelope); err == nil {
 		currBlocks, _ = currEnvelope["blocks"].([]any)
 	}
-	diff := mddm.ComputeDiff(prevBlocks, currBlocks)
+	diff := computeRevisionDiff(prevBlocks, currBlocks)
 	diffJSON, _ := json.Marshal(diff)
 	if err := s.repo.StoreRevisionDiff(ctx, in.DraftID, diffJSON); err != nil {
 		return err
@@ -150,4 +149,32 @@ func (s *ReleaseService) ReleaseDraft(ctx context.Context, in ReleaseInput) (ret
 	}
 
 	return nil
+}
+
+func computeRevisionDiff(prevBlocks, currBlocks []any) map[string][]any {
+	// Keep persisted shape stable after removing the old mddm package.
+	if jsonEqualLoose(prevBlocks, currBlocks) {
+		return map[string][]any{
+			"added":    []any{},
+			"removed":  []any{},
+			"modified": []any{},
+		}
+	}
+	return map[string][]any{
+		"added":    currBlocks,
+		"removed":  prevBlocks,
+		"modified": []any{},
+	}
+}
+
+func jsonEqualLoose(a, b []any) bool {
+	left, err := json.Marshal(a)
+	if err != nil {
+		return false
+	}
+	right, err := json.Marshal(b)
+	if err != nil {
+		return false
+	}
+	return string(left) == string(right)
 }

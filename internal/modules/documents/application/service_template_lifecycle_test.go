@@ -296,6 +296,8 @@ func TestPublishAuthorized_LockConflict(t *testing.T) {
 }
 
 func TestPublishAuthorized_StrictValidation(t *testing.T) {
+	t.Skip("MDDM block-type validation removed in Plan C — CK5 publish uses ApproveTemplate path")
+	// original test preserved below for reference
 	repo := documentmemory.NewRepository()
 	svc := NewService(repo, nil, nil)
 

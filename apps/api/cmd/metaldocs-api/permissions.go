@@ -109,10 +109,6 @@ func newPermissionResolver() iamdelivery.PermissionResolver {
 			return iamdomain.PermIAMManageRoles, true
 		}
 
-		if method == http.MethodPost && path == "/api/v1/telemetry/mddm-shadow-diff" {
-			return iamdomain.PermDocumentRead, true
-		}
-
 		// Template admin (Phase 2). Fine-grained RBAC is enforced inside the
 		// service layer via isAllowedTemplate; at the HTTP boundary we only
 		// need to require an authenticated session. PermTemplateView is the
@@ -137,4 +133,3 @@ func newPublicPathChecker(resolver iamdelivery.PermissionResolver) authdelivery.
 		return !guarded
 	}
 }
-

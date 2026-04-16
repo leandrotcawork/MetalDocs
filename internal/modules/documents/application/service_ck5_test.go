@@ -91,3 +91,25 @@ func TestSaveCK5DocumentContentAuthorized_FinalizedDocReturnsError(t *testing.T)
 		t.Fatalf("err = %v, want ErrVersioningNotAllowed", err)
 	}
 }
+
+func TestSaveCK5DocumentContentAuthorized_CASConflict(t *testing.T) {
+	svc, repo := makeCK5Service(t)
+	seedDocWithVersion(t, repo, "doc-cas", "<p>Original</p>")
+
+	ctx := context.Background()
+	current, err := repo.GetVersion(ctx, "doc-cas", 1)
+	if err != nil {
+		t.Fatalf("GetVersion() error = %v", err)
+	}
+
+	// Corrupt the stored hash to simulate an out-of-band concurrent change.
+	current.ContentHash = ""
+	if err := repo.UpdateDraftVersionContentCAS(ctx, current, "abc123"); err != nil {
+		t.Fatalf("UpdateDraftVersionContentCAS() error = %v", err)
+	}
+
+	err = svc.SaveCK5DocumentContentAuthorized(ctx, "doc-cas", "<p>New</p>")
+	if !errors.Is(err, domain.ErrDraftConflict) {
+		t.Fatalf("err = %v, want ErrDraftConflict", err)
+	}
+}

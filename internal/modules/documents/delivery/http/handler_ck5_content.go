@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+
+	"metaldocs/internal/modules/documents/domain"
 )
 
 type ck5ContentRequest struct {
@@ -17,6 +19,10 @@ type ck5ContentResponse struct {
 // handleDocumentContentCK5Get serves GET /api/v1/documents/{id}/content/ck5.
 func (h *Handler) handleDocumentContentCK5Get(w http.ResponseWriter, r *http.Request, documentID string) {
 	traceID := requestTraceID(r)
+	if userIDFromContext(r.Context()) == "" {
+		h.writeDomainError(w, domain.ErrDocumentNotFound, traceID)
+		return
+	}
 	html, err := h.service.GetCK5DocumentContentAuthorized(r.Context(), documentID)
 	if err != nil {
 		h.writeDomainError(w, err, traceID)

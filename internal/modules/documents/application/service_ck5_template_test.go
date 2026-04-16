@@ -9,6 +9,7 @@ import (
 	"metaldocs/internal/modules/documents/application"
 	"metaldocs/internal/modules/documents/domain"
 	"metaldocs/internal/modules/documents/infrastructure/memory"
+	iamdomain "metaldocs/internal/modules/iam/domain"
 )
 
 func makeCK5TemplateSvc(t *testing.T) (*application.Service, *memory.Repository) {
@@ -16,6 +17,10 @@ func makeCK5TemplateSvc(t *testing.T) (*application.Service, *memory.Repository)
 	repo := memory.NewRepository()
 	svc := application.NewService(repo, nil, nil)
 	return svc, repo
+}
+
+func withTemplateAdminRole() context.Context {
+	return iamdomain.WithAuthContext(context.Background(), "user-test", []iamdomain.Role{iamdomain.RoleAdmin})
 }
 
 func seedDraft(t *testing.T, repo *memory.Repository, key string) {
@@ -40,7 +45,7 @@ func TestGetCK5TemplateDraftContent_EmptyWhenNoCK5Key(t *testing.T) {
 	svc, repo := makeCK5TemplateSvc(t)
 	seedDraft(t, repo, "tpl-1")
 
-	html, manifest, err := svc.GetCK5TemplateDraftContent(context.Background(), "tpl-1")
+	html, manifest, err := svc.GetCK5TemplateDraftContent(withTemplateAdminRole(), "tpl-1")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -54,7 +59,7 @@ func TestGetCK5TemplateDraftContent_EmptyWhenNoCK5Key(t *testing.T) {
 
 func TestGetCK5TemplateDraftContent_NotFound(t *testing.T) {
 	svc, _ := makeCK5TemplateSvc(t)
-	_, _, err := svc.GetCK5TemplateDraftContent(context.Background(), "missing")
+	_, _, err := svc.GetCK5TemplateDraftContent(withTemplateAdminRole(), "missing")
 	if err == nil {
 		t.Fatal("expected error for missing draft")
 	}
@@ -64,9 +69,9 @@ func TestSaveAndGetCK5TemplateDraftContent_RoundTrip(t *testing.T) {
 	svc, repo := makeCK5TemplateSvc(t)
 	seedDraft(t, repo, "tpl-2")
 
-	ctx := context.Background()
+	ctx := withTemplateAdminRole()
 	manifest := map[string]any{"fields": []any{}}
-	if err := svc.SaveCK5TemplateDraftAuthorized(ctx, "tpl-2", "<p>CK5 tpl</p>", manifest, "user-1"); err != nil {
+	if err := svc.SaveCK5TemplateDraftAuthorized(ctx, "tpl-2", "<p>CK5 tpl</p>", manifest); err != nil {
 		t.Fatalf("save: %v", err)
 	}
 
@@ -84,7 +89,7 @@ func TestSaveAndGetCK5TemplateDraftContent_RoundTrip(t *testing.T) {
 
 func TestSaveCK5TemplateDraftAuthorized_NotFound(t *testing.T) {
 	svc, _ := makeCK5TemplateSvc(t)
-	err := svc.SaveCK5TemplateDraftAuthorized(context.Background(), "missing", "<p>x</p>", nil, "u")
+	err := svc.SaveCK5TemplateDraftAuthorized(withTemplateAdminRole(), "missing", "<p>x</p>", nil)
 	if err == nil {
 		t.Fatal("expected error for missing draft")
 	}
@@ -111,8 +116,8 @@ func TestSaveCK5TemplateDraftAuthorized_PreservesNonCK5Keys(t *testing.T) {
 		UpdatedAt:   time.Now(),
 	})
 
-	ctx := context.Background()
-	if err := svc.SaveCK5TemplateDraftAuthorized(ctx, "tpl-preserve", "<p>ck5</p>", nil, "u"); err != nil {
+	ctx := withTemplateAdminRole()
+	if err := svc.SaveCK5TemplateDraftAuthorized(ctx, "tpl-preserve", "<p>ck5</p>", nil); err != nil {
 		t.Fatalf("save: %v", err)
 	}
 

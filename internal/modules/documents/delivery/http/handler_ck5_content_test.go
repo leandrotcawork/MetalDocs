@@ -12,6 +12,7 @@ import (
 	"metaldocs/internal/modules/documents/application"
 	"metaldocs/internal/modules/documents/domain"
 	"metaldocs/internal/modules/documents/infrastructure/memory"
+	iamdomain "metaldocs/internal/modules/iam/domain"
 )
 
 func setupCK5ContentHandler(t *testing.T) (*Handler, *memory.Repository) {
@@ -20,6 +21,10 @@ func setupCK5ContentHandler(t *testing.T) (*Handler, *memory.Repository) {
 	svc := application.NewService(repo, nil, applicationFixedClock{now: time.Now().UTC()})
 	h := NewHandler(svc)
 	return h, repo
+}
+
+func withDocumentAuth(req *http.Request) *http.Request {
+	return req.WithContext(iamdomain.WithAuthContext(req.Context(), "user-123", nil))
 }
 
 func seedCK5Doc(t *testing.T, repo *memory.Repository, docID, html string) {
@@ -48,6 +53,7 @@ func TestGetCK5Content_200(t *testing.T) {
 	h.RegisterRoutes(mux)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/documents/d1/content/ck5", nil)
+	req = withDocumentAuth(req)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
@@ -70,8 +76,25 @@ func TestGetCK5Content_404(t *testing.T) {
 	h.RegisterRoutes(mux)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/documents/missing/content/ck5", nil)
+	req = withDocumentAuth(req)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("got %d, want 404", w.Code)
+	}
+}
+
+func TestGetCK5Content_NoAuthReturnsExpectedStatus(t *testing.T) {
+	h, repo := setupCK5ContentHandler(t)
+	seedCK5Doc(t, repo, "d-no-auth", "<p>hidden</p>")
+
+	mux := http.NewServeMux()
+	h.RegisterRoutes(mux)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/documents/d-no-auth/content/ck5", nil)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("got %d, want 404", w.Code)
 	}

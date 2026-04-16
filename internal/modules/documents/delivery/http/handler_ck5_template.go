@@ -51,8 +51,7 @@ func (h *Handler) handlePutCK5TemplateDraft(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	actorID := userIDFromContext(r.Context())
-	if err := h.service.SaveCK5TemplateDraftAuthorized(r.Context(), key, req.ContentHTML, req.Manifest, actorID); err != nil {
+	if err := h.service.SaveCK5TemplateDraftAuthorized(r.Context(), key, req.ContentHTML, req.Manifest); err != nil {
 		h.writeDomainError(w, err, traceID)
 		return
 	}

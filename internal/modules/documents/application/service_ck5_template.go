@@ -5,12 +5,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+
+	"metaldocs/internal/modules/documents/domain"
 )
 
 // GetCK5TemplateDraftContent reads CK5 HTML + manifest from a template draft BlocksJSON payload.
 func (s *Service) GetCK5TemplateDraftContent(ctx context.Context, templateKey string) (string, map[string]any, error) {
 	draft, err := s.repo.GetTemplateDraft(ctx, strings.TrimSpace(templateKey))
 	if err != nil {
+		return "", nil, err
+	}
+	if err := s.isAllowedTemplate(ctx, domain.CapabilityTemplateView); err != nil {
 		return "", nil, err
 	}
 
@@ -39,9 +44,10 @@ func (s *Service) GetCK5TemplateDraftContent(ctx context.Context, templateKey st
 }
 
 // SaveCK5TemplateDraftAuthorized stores CK5 HTML + manifest under BlocksJSON["_ck5"] with merge semantics.
-func (s *Service) SaveCK5TemplateDraftAuthorized(ctx context.Context, templateKey, contentHTML string, manifest map[string]any, actorID string) error {
-	_ = actorID
-
+func (s *Service) SaveCK5TemplateDraftAuthorized(ctx context.Context, templateKey, contentHTML string, manifest map[string]any) error {
+	if err := s.isAllowedTemplate(ctx, domain.CapabilityTemplateEdit); err != nil {
+		return err
+	}
 	key := strings.TrimSpace(templateKey)
 	existing, err := s.repo.GetTemplateDraft(ctx, key)
 	if err != nil {

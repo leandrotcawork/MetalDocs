@@ -1,10 +1,12 @@
 import { Hono } from "hono"
 import { serve } from "@hono/node-server"
 import { fileURLToPath } from "node:url"
+import { renderDocxHandler } from "./routes/render-docx"
 
 export const app = new Hono()
 
 app.get("/health", (c) => c.json({ ok: true, service: "ck5-export" }))
+app.post("/render/docx", renderDocxHandler)
 
 export const start = (port: number) => {
   serve({

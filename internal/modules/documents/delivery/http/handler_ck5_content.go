@@ -6,8 +6,6 @@ import (
 	"strings"
 )
 
-const maxCK5PayloadBytes = 2 << 20 // 2 MB
-
 type ck5ContentRequest struct {
 	Body string `json:"body"`
 }
@@ -30,7 +28,7 @@ func (h *Handler) handleDocumentContentCK5Get(w http.ResponseWriter, r *http.Req
 // handleDocumentContentCK5Post serves POST /api/v1/documents/{id}/content/ck5.
 func (h *Handler) handleDocumentContentCK5Post(w http.ResponseWriter, r *http.Request, documentID string) {
 	traceID := requestTraceID(r)
-	r.Body = http.MaxBytesReader(w, r.Body, maxCK5PayloadBytes)
+	r.Body = http.MaxBytesReader(w, r.Body, maxDocumentContentPayloadBytes)
 
 	var req ck5ContentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

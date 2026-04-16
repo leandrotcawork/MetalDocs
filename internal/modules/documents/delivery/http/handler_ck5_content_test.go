@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"metaldocs/internal/modules/documents/application"
 	"metaldocs/internal/modules/documents/domain"
@@ -16,7 +17,7 @@ import (
 func setupCK5ContentHandler(t *testing.T) (*Handler, *memory.Repository) {
 	t.Helper()
 	repo := memory.NewRepository()
-	svc := application.NewService(repo, nil, nil)
+	svc := application.NewService(repo, nil, applicationFixedClock{now: time.Now().UTC()})
 	h := NewHandler(svc)
 	return h, repo
 }

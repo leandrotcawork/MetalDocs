@@ -1,4 +1,4 @@
-import type { ResolvedAsset } from "../asset-resolver";
+import type { ResolvedAsset } from "./asset-resolver";
 
 function bytesToBase64(bytes: Uint8Array): string {
   // Chunked to avoid stack overflow on large arrays and quadratic string allocs.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { rewriteImgSrcToDataUri } from "../inline-asset-rewriter";
-import type { ResolvedAsset } from "../../asset-resolver";
+import type { ResolvedAsset } from "../asset-resolver";
 
 function makeAsset(byte: number): ResolvedAsset {
   return {

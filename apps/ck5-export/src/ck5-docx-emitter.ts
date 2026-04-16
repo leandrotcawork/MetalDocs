@@ -27,7 +27,7 @@ import type {
   TableCell as ExportTableCell,
   TableRow as ExportTableRow,
 } from "./export-node"
-import type { LayoutTokens } from "./layout-ir"
+import type { LayoutTokens } from "./layout-tokens"
 import { mmToTwip, ptToHalfPt } from "./shared/helpers/units"
 
 const DEFAULT_IMAGE_WIDTH_PX = 320

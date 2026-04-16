@@ -3,7 +3,7 @@ import { Packer } from "docx"
 import { type ResolvedAsset, AssetResolver } from "../asset-resolver"
 import { collectImageUrls, emitDocxFromExportTree } from "../ck5-docx-emitter"
 import { htmlToExportTree } from "../html-to-export-tree"
-import { defaultLayoutTokens } from "../layout-ir"
+import { defaultLayoutTokens } from "../layout-tokens"
 
 export async function renderDocxHandler(c: Context): Promise<Response> {
   try {

@@ -1,4 +1,4 @@
-import { defaultLayoutTokens } from "../layout-ir";
+import { defaultLayoutTokens } from "../layout-tokens";
 
 const { exportFont, exportFontFallbacks } = defaultLayoutTokens.typography;
 const fontFamily = [`"${exportFont}"`, ...exportFontFallbacks.map((f) => (f.includes(" ") ? `"${f}"` : f))].join(", ");

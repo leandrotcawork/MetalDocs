@@ -18,7 +18,7 @@ export function AuthorPage({ tplId }: AuthorPageProps) {
   const onReady = useCallback((editor: DecoupledEditor) => {
     editorRef.current = editor;
     applyPerCellExceptions(editor);
-    installAuthorHook(editor, onChange);
+    installAuthorHook(editor, (html) => onChange(html ?? editor.getData()));
   }, []);
 
   const onChange = useCallback(

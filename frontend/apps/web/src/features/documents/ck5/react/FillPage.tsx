@@ -23,7 +23,7 @@ export function FillPage({ tplId, docId }: FillPageProps) {
 
   const onReady = useCallback(
     (editor: ClassicEditor) => {
-      installFillHook(editor, onChange);
+      installFillHook(editor, (html) => onChange(html ?? editor.getData()));
     },
     [onChange],
   );

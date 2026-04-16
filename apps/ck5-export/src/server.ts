@@ -6,6 +6,9 @@ import { renderPdfHtmlHandler } from "./routes/render-pdf-html"
 
 export const app = new Hono()
 
+app.onError((err, c) => c.json({ error: err.message ?? "internal error" }, 500))
+app.notFound((c) => c.json({ error: "not found" }, 404))
+
 app.get("/health", (c) => c.json({ ok: true, service: "ck5-export" }))
 app.post("/render/docx", renderDocxHandler)
 app.post("/render/pdf-html", renderPdfHtmlHandler)

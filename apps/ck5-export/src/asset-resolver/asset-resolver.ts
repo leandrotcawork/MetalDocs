@@ -50,7 +50,10 @@ export class AssetResolver {
       throw new AssetResolverError(`Asset URL not allowlisted: ${url}`, "NOT_ALLOWLISTED");
     }
 
-    const response = await fetch(url, { credentials: "same-origin" });
+    const response = await fetch(url, {
+      credentials: "same-origin",
+      signal: AbortSignal.timeout(5_000),
+    });
     if (!response.ok) {
       throw new AssetResolverError(
         `Asset fetch failed: ${response.status} ${response.statusText}`,

@@ -28,4 +28,4 @@ shared/schemas/node_modules/
 .claude/settings.local.json
 apps/ck5-studio/.dev.err
 frontend/apps/web/.tmp-main-tsc.txt
-!
+\!

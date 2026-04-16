@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 )
 
@@ -15,7 +16,9 @@ func (s *Service) GetCK5TemplateDraftContent(ctx context.Context, templateKey st
 
 	var data map[string]any
 	if len(draft.BlocksJSON) > 0 {
-		_ = json.Unmarshal(draft.BlocksJSON, &data)
+		if err := json.Unmarshal(draft.BlocksJSON, &data); err != nil {
+			return "", nil, fmt.Errorf("blocks_json corrupt for %q: %w", strings.TrimSpace(templateKey), err)
+		}
 	}
 
 	ck5Raw, ok := data["_ck5"]
@@ -51,7 +54,9 @@ func (s *Service) SaveCK5TemplateDraftAuthorized(ctx context.Context, templateKe
 
 	var existingData map[string]any
 	if len(existing.BlocksJSON) > 0 {
-		_ = json.Unmarshal(existing.BlocksJSON, &existingData)
+		if err := json.Unmarshal(existing.BlocksJSON, &existingData); err != nil {
+			return fmt.Errorf("blocks_json corrupt for %q: %w", key, err)
+		}
 	}
 	if existingData == nil {
 		existingData = map[string]any{}

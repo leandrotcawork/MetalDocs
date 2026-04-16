@@ -37,6 +37,7 @@ export type LayoutTokens = Readonly<{
     accentLight: string;
     accentDark: string;
     accentBorder: string;
+    hyperlink: string;
   }>;
 }>;
 
@@ -139,6 +140,7 @@ export const defaultLayoutTokens: LayoutTokens = {
     accentLight: "#f9f3f3",
     accentDark: "#3e1018",
     accentBorder: "#dfc8c8",
+    hyperlink: "#0563C1",
   },
 };
 

@@ -100,6 +100,7 @@ function mapHyperlinkRuns(node: Hyperlink, tokens: LayoutTokens): TextRun[] {
 
 function collectHyperlinkRuns(nodes: ExportNode[], tokens: LayoutTokens): TextRun[] {
   const runs: TextRun[] = []
+  const linkColor = hexToFill(tokens.theme.hyperlink)
 
   for (const node of nodes) {
     switch (node.kind) {
@@ -110,7 +111,7 @@ function collectHyperlinkRuns(nodes: ExportNode[], tokens: LayoutTokens): TextRu
             text: node.value,
             font: tokens.typography.exportFont,
             size: ptToHalfPt(tokens.typography.baseSizePt),
-            color: "0563C1",
+            color: linkColor,
             bold: set.has("bold"),
             italics: set.has("italic"),
             underline: {},
@@ -139,7 +140,7 @@ function collectHyperlinkRuns(nodes: ExportNode[], tokens: LayoutTokens): TextRu
             text: node.value,
             font: tokens.typography.exportFont,
             size: ptToHalfPt(tokens.typography.baseSizePt),
-            color: "0563C1",
+            color: linkColor,
             underline: {},
           }),
         )

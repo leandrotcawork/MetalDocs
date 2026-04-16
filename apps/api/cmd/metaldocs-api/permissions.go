@@ -123,13 +123,33 @@ func newPermissionResolver() iamdelivery.PermissionResolver {
 }
 
 // newPublicPathChecker derives a PublicPathChecker from the permission resolver.
-// A route is fully public (no session cookie required) when the resolver says
-// it is not guarded (guarded=false). This ensures the auth middleware and the
-// IAM middleware share the same single source of truth — one change to the
-// resolver propagates to both layers automatically.
+//
+// A route is public (no session cookie required) when the resolver says it is
+// not guarded (guarded=false), UNLESS it is one of the session-required-but-
+// unguarded endpoints below. That carve-out exists because "not guarded by
+// IAM" (no RBAC permission required) is a different concern from "no session
+// required". For example, GET /api/v1/auth/me and POST /api/v1/auth/change-
+// password need a resolved session (so the handler knows which user) but are
+// not gated by any IAM permission.
+//
+// The resolver remains the single source of truth for IAM perms; this checker
+// only adds the minimal auth-scoped exceptions.
 func newPublicPathChecker(resolver iamdelivery.PermissionResolver) authdelivery.PublicPathChecker {
 	return func(method, path string) bool {
+		if requiresSessionButNoPermission(method, path) {
+			return false
+		}
 		_, guarded := resolver(method, path)
 		return !guarded
 	}
+}
+
+func requiresSessionButNoPermission(method, path string) bool {
+	if method == http.MethodGet && path == "/api/v1/auth/me" {
+		return true
+	}
+	if method == http.MethodPost && path == "/api/v1/auth/change-password" {
+		return true
+	}
+	return false
 }

@@ -87,7 +87,7 @@ describe('exception element round-trip', () => {
     const author = await mount(createAuthorConfig({}));
     (author.commands.get('insertMddmRichBlock') as { refresh(): void }).refresh();
     author.execute('insertMddmRichBlock');
-    const html = author.getData({ trim: false as const });
+    const html = author.getData({ trim: 'none' });
     expect(html).toMatch(/class="restricted-editing-exception"/);
     const fill = await mount(createFillConfig({}));
     fill.setData(html);

@@ -5,7 +5,7 @@ import { registerRepeatableConverters } from '../converters';
 import { registerRepeatableSchema } from '../schema';
 
 class RepeatableConvertersTestPlugin extends Plugin {
-  public override init(): void {
+  public init(): void {
     registerRepeatableSchema(this.editor.model.schema);
     registerRepeatableConverters(this.editor);
   }

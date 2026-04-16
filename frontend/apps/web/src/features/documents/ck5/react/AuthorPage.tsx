@@ -1,8 +1,9 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import type { DecoupledEditor } from 'ckeditor5';
 import { AuthorEditor } from './AuthorEditor';
 import { saveTemplate, loadTemplate } from '../persistence/localStorageStub';
 import { applyPerCellExceptions } from '../plugins/MddmDataTablePlugin';
+import { installAuthorHook, clearHooks } from './windowHooks';
 
 export interface AuthorPageProps {
   tplId: string;
@@ -17,6 +18,7 @@ export function AuthorPage({ tplId }: AuthorPageProps) {
   const onReady = useCallback((editor: DecoupledEditor) => {
     editorRef.current = editor;
     applyPerCellExceptions(editor);
+    installAuthorHook(editor, onChange);
   }, []);
 
   const onChange = useCallback(
@@ -32,6 +34,8 @@ export function AuthorPage({ tplId }: AuthorPageProps) {
     },
     [tplId, existing],
   );
+
+  useEffect(() => clearHooks, []);
 
   return (
     <div data-testid="ck5-author-page" style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>

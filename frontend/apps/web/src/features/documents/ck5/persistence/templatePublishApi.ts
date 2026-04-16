@@ -1,9 +1,5 @@
 export type TemplateDraftStatus = 'draft' | 'pending_review' | 'published';
 
-export interface TemplateDraftStatusResponse {
-  draft_status: TemplateDraftStatus;
-}
-
 /**
  * POST /api/v1/templates/{key}/submit-review
  * Transitions draft → pending_review.

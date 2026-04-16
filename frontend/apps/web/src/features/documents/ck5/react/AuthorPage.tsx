@@ -7,6 +7,10 @@ import { installAuthorHook, clearHooks } from './windowHooks';
 import { PublishButton } from './components/PublishButton';
 import type { TemplateDraftStatus } from '../persistence/templatePublishApi';
 
+function isTemplateDraftStatus(value: unknown): value is TemplateDraftStatus {
+  return value === 'draft' || value === 'pending_review' || value === 'published';
+}
+
 export interface AuthorPageProps {
   tplId: string;
 }
@@ -18,10 +22,6 @@ export function AuthorPage({ tplId }: AuthorPageProps) {
   const editorRef = useRef<DecoupledEditor | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const templateKey = tplId;
-
-  function isTemplateDraftStatus(value: unknown): value is TemplateDraftStatus {
-    return value === 'draft' || value === 'pending_review' || value === 'published';
-  }
 
   const onReady = useCallback((editor: DecoupledEditor) => {
     editorRef.current = editor;
@@ -49,9 +49,8 @@ export function AuthorPage({ tplId }: AuthorPageProps) {
         if (rec) {
           setHtml(rec.contentHtml);
           setManifest(rec.manifest);
-          const nextStatus = (rec as { draft_status?: unknown }).draft_status;
-          if (isTemplateDraftStatus(nextStatus)) {
-            setDraftStatus(nextStatus);
+          if (isTemplateDraftStatus(rec.draft_status)) {
+            setDraftStatus(rec.draft_status);
           }
         }
       })

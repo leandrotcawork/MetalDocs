@@ -1,6 +1,12 @@
 import type { EditorConfig } from 'ckeditor5';
 import { AUTHOR_PLUGINS, FILL_PLUGINS } from './pluginLists';
 import { AUTHOR_TOOLBAR, FILL_TOOLBAR } from './toolbars';
+import { MddmFieldPlugin } from '../plugins/MddmFieldPlugin';
+import { MddmSectionPlugin } from '../plugins/MddmSectionPlugin';
+import { MddmRepeatablePlugin } from '../plugins/MddmRepeatablePlugin';
+import { MddmDataTablePlugin } from '../plugins/MddmDataTablePlugin';
+import { MddmRichBlockPlugin } from '../plugins/MddmRichBlockPlugin';
+import { MddmUploadAdapterPlugin } from '../plugins/MddmUploadAdapter';
 
 type PluginCtor = NonNullable<EditorConfig['plugins']>[number];
 
@@ -15,7 +21,16 @@ export function createAuthorConfig(opts: ConfigOptions = {}): EditorConfig {
   return {
     licenseKey: 'GPL',
     language: opts.language ?? 'en',
-    plugins: [...AUTHOR_PLUGINS, ...(opts.extraPlugins ?? [])],
+    plugins: [
+      ...AUTHOR_PLUGINS,
+      MddmFieldPlugin,
+      MddmSectionPlugin,
+      MddmRepeatablePlugin,
+      MddmDataTablePlugin,
+      MddmUploadAdapterPlugin,
+      MddmRichBlockPlugin,
+      ...(opts.extraPlugins ?? []),
+    ],
     toolbar: { items: [...AUTHOR_TOOLBAR] },
     image: {
       toolbar: [
@@ -72,7 +87,16 @@ export function createFillConfig(opts: ConfigOptions = {}): EditorConfig {
   const base = createAuthorConfig(opts);
   return {
     ...base,
-    plugins: [...FILL_PLUGINS, ...(opts.extraPlugins ?? [])],
+    plugins: [
+      ...FILL_PLUGINS,
+      MddmFieldPlugin,
+      MddmSectionPlugin,
+      MddmRepeatablePlugin,
+      MddmDataTablePlugin,
+      MddmRichBlockPlugin,
+      MddmUploadAdapterPlugin,
+      ...(opts.extraPlugins ?? []),
+    ],
     toolbar: { items: [...FILL_TOOLBAR] },
     restrictedEditing: {
       allowedCommands: [

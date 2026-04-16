@@ -1,5 +1,4 @@
 import { Command, type Editor } from 'ckeditor5';
-import { uid } from '../../../shared/uid';
 
 export class InsertRichBlockCommand extends Command {
   constructor(editor: Editor) {
@@ -16,14 +15,10 @@ export class InsertRichBlockCommand extends Command {
     const { model } = this.editor;
     model.change((writer) => {
       const block = writer.createElement('mddmRichBlock');
-      writer.appendElement('paragraph', block);
+      const exception = writer.createElement('restrictedEditingException');
+      writer.appendElement('paragraph', exception);
+      writer.append(exception, block);
       model.insertContent(block, model.document.selection);
-      const range = model.createRangeIn(block);
-      writer.addMarker(`restrictedEditingException:${uid('rb')}`, {
-        range,
-        usingOperation: true,
-        affectsData: true,
-      });
     });
   }
 }

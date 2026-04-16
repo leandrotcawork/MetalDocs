@@ -2,7 +2,6 @@ import { Command } from 'ckeditor5';
 import type { Editor, ModelElement } from 'ckeditor5';
 
 import { findAncestorByName } from '../../../shared/findAncestor';
-import { uid } from '../../../shared/uid';
 
 export class AddRepeatableItemCommand extends Command {
   declare public editor: Editor;
@@ -35,15 +34,10 @@ export class AddRepeatableItemCommand extends Command {
 
     model.change((writer) => {
       const item = writer.createElement('mddmRepeatableItem');
-      const paragraph = writer.createElement('paragraph');
-      writer.append(paragraph, item);
+      const exception = writer.createElement('restrictedEditingException');
+      writer.appendElement('paragraph', exception);
+      writer.append(exception, item);
       writer.append(item, repeatable as ModelElement);
-
-      writer.addMarker(`restrictedEditingException:${uid('rex')}`, {
-        range: model.createRangeIn(item),
-        usingOperation: true,
-        affectsData: true,
-      });
     });
   }
 }

@@ -1,13 +1,22 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { ClassicEditor, Essentials, Paragraph, StandardEditingMode, Table, Widget } from 'ckeditor5';
 import { MddmTableVariantPlugin } from '../MddmTableVariantPlugin';
-import { applyPerCellExceptions, CELL_MARKER_PREFIX } from '../perCellExceptionWalker';
+import { applyPerCellExceptions } from '../perCellExceptionWalker';
 
-function getCellMarkerNames( editor: ClassicEditor ): Array<string> {
-	return Array.from( editor.model.markers )
-		.map( marker => marker.name )
-		.filter( name => name.startsWith( CELL_MARKER_PREFIX ) )
-		.sort();
+function countCellExceptions( editor: ClassicEditor ): number {
+	let count = 0;
+	function visit( node: any ): void {
+		if ( node.is && node.is( 'element', 'restrictedEditingException' ) ) {
+			count++;
+		}
+		if ( node.getChildren ) {
+			for ( const child of node.getChildren() ) {
+				visit( child );
+			}
+		}
+	}
+	visit( editor.model.document.getRoot() );
+	return count;
 }
 
 describe( 'applyPerCellExceptions', () => {
@@ -25,7 +34,7 @@ describe( 'applyPerCellExceptions', () => {
 		}
 	} );
 
-	it( 'creates 2 markers for 2 cells in fixed table', async () => {
+	it( 'wraps 2 cells in restrictedEditingException elements for fixed table', async () => {
 		const el = document.createElement( 'div' );
 		document.body.appendChild( el );
 		hosts.push( el );
@@ -39,10 +48,10 @@ describe( 'applyPerCellExceptions', () => {
 
 		applyPerCellExceptions( editor );
 
-		expect( getCellMarkerNames( editor ) ).toHaveLength( 2 );
+		expect( countCellExceptions( editor ) ).toBe( 2 );
 	} );
 
-	it( 'creates 0 markers when table has no mddmTableVariant', async () => {
+	it( 'wraps 0 cells when table has no mddmTableVariant', async () => {
 		const el = document.createElement( 'div' );
 		document.body.appendChild( el );
 		hosts.push( el );
@@ -56,7 +65,7 @@ describe( 'applyPerCellExceptions', () => {
 
 		applyPerCellExceptions( editor );
 
-		expect( getCellMarkerNames( editor ) ).toHaveLength( 0 );
+		expect( countCellExceptions( editor ) ).toBe( 0 );
 	} );
 
 	it( 'is idempotent when run twice', async () => {
@@ -72,11 +81,11 @@ describe( 'applyPerCellExceptions', () => {
 		editors.push( editor );
 
 		applyPerCellExceptions( editor );
-		const firstPass = getCellMarkerNames( editor );
+		const firstPass = countCellExceptions( editor );
 		applyPerCellExceptions( editor );
-		const secondPass = getCellMarkerNames( editor );
+		const secondPass = countCellExceptions( editor );
 
-		expect( firstPass ).toEqual( secondPass );
-		expect( secondPass ).toHaveLength( 2 );
+		expect( firstPass ).toBe( 2 );
+		expect( secondPass ).toBe( 2 );
 	} );
 } );

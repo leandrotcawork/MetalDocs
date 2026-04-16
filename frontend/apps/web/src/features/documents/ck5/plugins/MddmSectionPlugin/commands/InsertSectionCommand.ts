@@ -29,19 +29,18 @@ export class InsertSectionCommand extends Command {
       const body = writer.createElement('mddmSectionBody');
       writer.append(header, section);
       writer.append(body, section);
-      writer.appendElement('paragraph', body);
+
+      if (variant === 'editable' || variant === 'mixed') {
+        const exception = writer.createElement('restrictedEditingException');
+        writer.appendElement('paragraph', exception);
+        writer.append(exception, body);
+      } else {
+        writer.appendElement('paragraph', body);
+      }
+
       // insertContent handles both inline and block contexts by auto-detecting
       // the correct insertion position (splits paragraph for block objects).
       model.insertContent(section, model.document.selection);
-
-      if (variant === 'editable' || variant === 'mixed') {
-        const range = model.createRangeIn(body);
-        writer.addMarker(`restrictedEditingException:${uid('rex')}`, {
-          range,
-          usingOperation: true,
-          affectsData: true,
-        });
-      }
     });
   }
 }

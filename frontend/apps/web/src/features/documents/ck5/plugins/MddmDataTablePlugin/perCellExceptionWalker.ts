@@ -1,22 +1,12 @@
 import type { Editor } from 'ckeditor5';
 
-export const CELL_MARKER_PREFIX = 'restrictedEditingException:mddmCell:';
-
 export function applyPerCellExceptions( editor: Editor ): void {
 	editor.model.change( writer => {
-		for ( const marker of Array.from( editor.model.markers ) ) {
-			if ( marker.name.startsWith( CELL_MARKER_PREFIX ) ) {
-				writer.removeMarker( marker );
-			}
-		}
-
 		const root = editor.model.document.getRoot();
 
 		if ( !root ) {
 			return;
 		}
-
-		let tableIdx = 0;
 
 		visitNode( root, node => {
 			if ( !node.is( 'element', 'table' ) ) {
@@ -29,34 +19,28 @@ export function applyPerCellExceptions( editor: Editor ): void {
 				return;
 			}
 
-			const tableKey = String( node.getAttribute( 'mddmTableId' ) ?? `t${ tableIdx }` );
-			tableIdx++;
-
-			const rows = Array.from( node.getChildren() );
-
-			for ( let rowIdx = 0; rowIdx < rows.length; rowIdx++ ) {
-				const row = rows[ rowIdx ];
-
-				if ( !row.is( 'element', 'tableRow' ) ) {
-					continue;
+			visitNode( node, innerNode => {
+				if ( !innerNode.is( 'element', 'tableCell' ) ) {
+					return;
 				}
 
-				const cells = Array.from( row.getChildren() );
-
-				for ( let colIdx = 0; colIdx < cells.length; colIdx++ ) {
-					const cell = cells[ colIdx ];
-
-					if ( !cell.is( 'element', 'tableCell' ) ) {
-						continue;
-					}
-
-					writer.addMarker( `${ CELL_MARKER_PREFIX }${ tableKey }-r${ rowIdx }-c${ colIdx }`, {
-						range: editor.model.createRangeIn( cell ),
-						usingOperation: true,
-						affectsData: true
-					} );
+				// Idempotency: skip if already wrapped.
+				const firstChild = Array.from( innerNode.getChildren() )[ 0 ];
+				if ( firstChild && firstChild.is( 'element', 'restrictedEditingException' ) ) {
+					return;
 				}
-			}
+
+				const children = Array.from( innerNode.getChildren() );
+				const exception = writer.createElement( 'restrictedEditingException' );
+				writer.append( exception, innerNode );
+
+				for ( const child of children ) {
+					writer.move(
+						writer.createRangeOn( child as any ),
+						writer.createPositionAt( exception, 'end' ),
+					);
+				}
+			} );
 		} );
 	} );
 }

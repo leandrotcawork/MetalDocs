@@ -1,5 +1,5 @@
 import { Command } from 'ckeditor5';
-import type { Editor, ModelElement } from 'ckeditor5';
+import type { Editor } from 'ckeditor5';
 
 import { uid } from '../../../shared/uid';
 
@@ -48,20 +48,13 @@ export class InsertRepeatableCommand extends Command {
 
       for (let i = 0; i < count; i += 1) {
         const item = writer.createElement('mddmRepeatableItem');
-        const paragraph = writer.createElement('paragraph');
-        writer.append(paragraph, item);
+        const exception = writer.createElement('restrictedEditingException');
+        writer.appendElement('paragraph', exception);
+        writer.append(exception, item);
         writer.append(item, repeatable);
       }
 
       model.insertObject(repeatable, null, null, { setSelection: 'on' });
-
-      for (const item of repeatable.getChildren()) {
-        writer.addMarker(`restrictedEditingException:${uid('rex')}`, {
-          range: model.createRangeIn(item as ModelElement),
-          usingOperation: true,
-          affectsData: true,
-        });
-      }
     });
   }
 }

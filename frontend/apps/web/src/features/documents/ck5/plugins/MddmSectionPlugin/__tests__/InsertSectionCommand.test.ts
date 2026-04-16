@@ -5,6 +5,18 @@ import { registerSectionPostFixer } from '../postFixer';
 import { registerSectionConverters } from '../converters';
 import { InsertSectionCommand } from '../commands/InsertSectionCommand';
 
+function countExceptionElements(editor: any): number {
+  let count = 0;
+  function visit(node: any): void {
+    if (node.is && node.is('element', 'restrictedEditingException')) count++;
+    if (node.getChildren) {
+      for (const child of node.getChildren()) visit(child);
+    }
+  }
+  visit(editor.model.document.getRoot());
+  return count;
+}
+
 describe('InsertSectionCommand', () => {
   let editor: ClassicEditor;
 
@@ -44,9 +56,6 @@ describe('InsertSectionCommand', () => {
 
   it('plants a restricted-editing-exception marker on the body for editable variant', () => {
     editor.execute('insertMddmSection', { variant: 'editable' });
-    const markers = Array.from(editor.model.markers).filter((m) =>
-      m.name.startsWith('restrictedEditingException:'),
-    );
-    expect(markers.length).toBeGreaterThanOrEqual(1);
+    expect(countExceptionElements(editor)).toBeGreaterThanOrEqual(1);
   });
 });

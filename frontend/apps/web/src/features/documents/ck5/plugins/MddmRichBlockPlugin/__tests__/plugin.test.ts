@@ -8,6 +8,18 @@ import {
 } from 'ckeditor5';
 import { MddmRichBlockPlugin } from '../index';
 
+function countExceptionElements(editor: any): number {
+  let count = 0;
+  function visit(node: any): void {
+    if (node.is && node.is('element', 'restrictedEditingException')) count++;
+    if (node.getChildren) {
+      for (const child of node.getChildren()) visit(child);
+    }
+  }
+  visit(editor.model.document.getRoot());
+  return count;
+}
+
 describe('MddmRichBlockPlugin', () => {
   let editor: ClassicEditor;
 
@@ -37,17 +49,14 @@ describe('MddmRichBlockPlugin', () => {
   it('inserts a <div class="mddm-rich-block"> on execute', () => {
     (editor.commands.get('insertMddmRichBlock') as { refresh(): void }).refresh();
     editor.execute('insertMddmRichBlock');
-    const html = editor.getData();
+    const html = editor.getData({ trim: false as const });
     expect(html).toContain('class="mddm-rich-block"');
   });
 
   it('plants a block exception marker on the rich block', () => {
     (editor.commands.get('insertMddmRichBlock') as { refresh(): void }).refresh();
     editor.execute('insertMddmRichBlock');
-    const markers = Array.from(editor.model.markers).filter((m) =>
-      m.name.startsWith('restrictedEditingException:'),
-    );
-    expect(markers.length).toBeGreaterThanOrEqual(1);
+    expect(countExceptionElements(editor)).toBeGreaterThanOrEqual(1);
   });
 
   it('round-trips mddm-rich-block HTML via setData/getData', () => {

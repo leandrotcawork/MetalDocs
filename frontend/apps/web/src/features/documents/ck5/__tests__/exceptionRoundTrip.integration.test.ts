@@ -8,8 +8,8 @@ async function mount(config: ReturnType<typeof createAuthorConfig>) {
   return ClassicEditor.create(el, config);
 }
 
-describe('exception marker round-trip', () => {
-  it('section insertion plants a marker that survives Author save', async () => {
+describe('exception element round-trip', () => {
+  it('section insertion plants an exception element that survives Author save', async () => {
     const ed = await mount(createAuthorConfig({}));
     (ed.commands.get('insertMddmSection') as { refresh(): void }).refresh();
     ed.execute('insertMddmSection', { variant: 'editable' });
@@ -18,7 +18,7 @@ describe('exception marker round-trip', () => {
     await ed.destroy();
   });
 
-  it('section marker survives round-trip to Fill editor', async () => {
+  it('section exception element survives round-trip to Fill editor', async () => {
     const author = await mount(createAuthorConfig({}));
     (author.commands.get('insertMddmSection') as { refresh(): void }).refresh();
     author.execute('insertMddmSection', { variant: 'editable' });
@@ -27,6 +27,7 @@ describe('exception marker round-trip', () => {
 
     const fill = await mount(createFillConfig({}));
     fill.setData(html);
+    // RestrictedEditingMode upcasts the exception class into markers on Fill side - this is an internal CKEditor detail.
     const markers = Array.from(fill.model.markers).filter((m) =>
       m.name.startsWith('restrictedEditingException:'),
     );
@@ -34,7 +35,7 @@ describe('exception marker round-trip', () => {
     await fill.destroy();
   });
 
-  it('repeatable items each carry a marker that survives Author → Fill', async () => {
+  it('repeatable items each carry an exception element that survives Author to Fill', async () => {
     const author = await mount(createAuthorConfig({}));
     (author.commands.get('insertMddmRepeatable') as { refresh(): void }).refresh();
     author.execute('insertMddmRepeatable', { min: 1, max: 5, initialCount: 3 });
@@ -44,6 +45,7 @@ describe('exception marker round-trip', () => {
 
     const fill = await mount(createFillConfig({}));
     fill.setData(html);
+    // RestrictedEditingMode upcasts the exception class into markers on Fill side - this is an internal CKEditor detail.
     const markers = Array.from(fill.model.markers).filter((m) =>
       m.name.startsWith('restrictedEditingException:'),
     );
@@ -69,6 +71,7 @@ describe('exception marker round-trip', () => {
 
     const fill = await mount(createFillConfig({}));
     fill.setData(html);
+    // RestrictedEditingMode upcasts the exception class into markers on Fill side - this is an internal CKEditor detail.
     const markers = Array.from(fill.model.markers).filter((m) =>
       m.name.startsWith('restrictedEditingException:'),
     );
@@ -80,7 +83,7 @@ describe('exception marker round-trip', () => {
     await fill.destroy();
   });
 
-  it('rich block marker survives round-trip', async () => {
+  it('rich block exception element survives round-trip', async () => {
     const author = await mount(createAuthorConfig({}));
     (author.commands.get('insertMddmRichBlock') as { refresh(): void }).refresh();
     author.execute('insertMddmRichBlock');
@@ -88,6 +91,7 @@ describe('exception marker round-trip', () => {
     expect(html).toMatch(/class="restricted-editing-exception"/);
     const fill = await mount(createFillConfig({}));
     fill.setData(html);
+    // RestrictedEditingMode upcasts the exception class into markers on Fill side - this is an internal CKEditor detail.
     const markers = Array.from(fill.model.markers).filter((m) =>
       m.name.startsWith('restrictedEditingException:'),
     );

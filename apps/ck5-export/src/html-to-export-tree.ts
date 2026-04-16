@@ -8,29 +8,46 @@ const TEXT_NODE = 3
 
 export function htmlToExportTree(html: string): ExportNode[] {
   const { document } = parseHTML(`<!DOCTYPE html><html><body>${html}</body></html>`)
-  return walkChildren(document.body, false, [])
+  return walkBlocks(document.body, [])
 }
 
-function walkChildren(parent: ParentNode, inlineContext: boolean, marks: TextMark[]): ExportNode[] {
+// Inline walker keeps whitespace-only text nodes so inline joins stay intact.
+function walkInline(parent: ParentNode, marks: TextMark[]): ExportNode[] {
   const out: ExportNode[] = []
-
   for (const child of Array.from(parent.childNodes)) {
-    out.push(...walkNode(child, inlineContext, marks))
+    out.push(...walkNodeInline(child, marks))
   }
-
   return out
 }
 
-function walkNode(node: Node, inlineContext: boolean, marks: TextMark[]): ExportNode[] {
+// Block walker drops pure-whitespace text nodes between block elements.
+function walkBlocks(parent: ParentNode, marks: TextMark[]): ExportNode[] {
+  const out: ExportNode[] = []
+  for (const child of Array.from(parent.childNodes)) {
+    out.push(...walkNodeBlock(child, marks))
+  }
+  return out
+}
+
+function walkNodeInline(node: Node, marks: TextMark[]): ExportNode[] {
+  if (node.nodeType === TEXT_NODE) {
+    return [buildText(node.textContent ?? "", marks)]
+  }
+  return walkElement(node, true, marks)
+}
+
+function walkNodeBlock(node: Node, marks: TextMark[]): ExportNode[] {
   if (node.nodeType === TEXT_NODE) {
     const value = node.textContent ?? ""
-    if (!inlineContext && isWhitespaceOnly(value)) {
+    if (isWhitespaceOnly(value)) {
       return []
     }
-
     return [buildText(value, marks)]
   }
+  return walkElement(node, false, marks)
+}
 
+function walkElement(node: Node, inInline: boolean, marks: TextMark[]): ExportNode[] {
   if (node.nodeType !== ELEMENT_NODE) {
     return []
   }
@@ -39,35 +56,35 @@ function walkNode(node: Node, inlineContext: boolean, marks: TextMark[]): Export
   const tagName = el.tagName.toUpperCase()
 
   if (tagName === "DIV" && el.classList.contains("mddm-rich-block")) {
-    return walkChildren(el, inlineContext, marks)
+    return inInline ? walkInline(el, marks) : walkBlocks(el, marks)
   }
 
   if (tagName === "SPAN" && el.classList.contains("restricted-editing-exception")) {
-    return walkChildren(el, inlineContext, marks)
+    return inInline ? walkInline(el, marks) : walkBlocks(el, marks)
   }
 
   if (tagName === "STRONG" || tagName === "B") {
-    return walkChildren(el, true, addMark(marks, "bold"))
+    return walkInline(el, addMark(marks, "bold"))
   }
 
   if (tagName === "EM" || tagName === "I") {
-    return walkChildren(el, true, addMark(marks, "italic"))
+    return walkInline(el, addMark(marks, "italic"))
   }
 
   if (tagName === "U") {
-    return walkChildren(el, true, addMark(marks, "underline"))
+    return walkInline(el, addMark(marks, "underline"))
   }
 
   if (tagName === "S" || tagName === "STRIKE") {
-    return walkChildren(el, true, addMark(marks, "strike"))
+    return walkInline(el, addMark(marks, "strike"))
   }
 
   if (tagName === "SECTION" && el.classList.contains("mddm-section")) {
     const headerContainer = findDirectChildByClass(el, "mddm-section-header")
     const bodyContainer = findDirectChildByClass(el, "mddm-section-body")
 
-    const header = headerContainer ? walkChildren(headerContainer, false, []) : undefined
-    const body = bodyContainer ? walkChildren(bodyContainer, false, []) : []
+    const header = headerContainer ? walkBlocks(headerContainer, []) : undefined
+    const body = bodyContainer ? walkBlocks(bodyContainer, []) : []
 
     return [
       {
@@ -84,7 +101,7 @@ function walkNode(node: Node, inlineContext: boolean, marks: TextMark[]): Export
       .filter((child) => child.tagName.toUpperCase() === "LI")
       .map((li) => ({
         kind: "repeatableItem" as const,
-        children: walkChildren(li, false, []),
+        children: walkBlocks(li, []),
       }))
 
     return [
@@ -126,7 +143,7 @@ function walkNode(node: Node, inlineContext: boolean, marks: TextMark[]): Export
       {
         kind: "heading",
         level: Number.parseInt(tagName[1] ?? "1", 10) as 1 | 2 | 3 | 4 | 5 | 6,
-        children: walkChildren(el, true, marks),
+        children: walkInline(el, marks),
       },
     ]
   }
@@ -138,7 +155,7 @@ function walkNode(node: Node, inlineContext: boolean, marks: TextMark[]): Export
       {
         kind: "paragraph",
         align,
-        children: walkChildren(el, true, marks),
+        children: walkInline(el, marks),
       },
     ]
   }
@@ -148,7 +165,7 @@ function walkNode(node: Node, inlineContext: boolean, marks: TextMark[]): Export
       .filter((child) => child.tagName.toUpperCase() === "LI")
       .map((li) => ({
         kind: "listItem" as const,
-        children: walkChildren(li, false, marks),
+        children: walkBlocks(li, marks),
       }))
 
     return [
@@ -184,7 +201,7 @@ function walkNode(node: Node, inlineContext: boolean, marks: TextMark[]): Export
       {
         kind: "hyperlink",
         href: (el as HTMLAnchorElement).href,
-        children: walkChildren(el, true, marks),
+        children: walkInline(el, marks),
       },
     ]
   }
@@ -197,7 +214,7 @@ function walkNode(node: Node, inlineContext: boolean, marks: TextMark[]): Export
     return [
       {
         kind: "blockquote",
-        children: walkChildren(el, false, marks),
+        children: walkBlocks(el, marks),
       },
     ]
   }
@@ -205,7 +222,7 @@ function walkNode(node: Node, inlineContext: boolean, marks: TextMark[]): Export
   // TR/TH/TD nodes are handled exclusively by collectTableRows → collectCells → buildTableCell.
   // They are never reached through walkNode in valid CK5 HTML.
 
-  return walkChildren(el, inlineContext, marks)
+  return inInline ? walkInline(el, marks) : walkBlocks(el, marks)
 }
 
 function collectTableRows(tableEl: Element): TableRow[] {
@@ -239,7 +256,7 @@ function buildTableCell(el: Element): TableCell {
   return {
     kind: "tableCell",
     isHeader: el.tagName.toUpperCase() === "TH",
-    children: walkChildren(el, false, []),
+    children: walkBlocks(el, []),
     colspan,
     rowspan,
   }

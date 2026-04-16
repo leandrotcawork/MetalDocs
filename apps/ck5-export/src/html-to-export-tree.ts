@@ -158,14 +158,8 @@ function walkNode(node: Node, inlineContext: boolean, marks: TextMark[]): Export
     ]
   }
 
-  if (tagName === "LI") {
-    return [
-      {
-        kind: "listItem",
-        children: walkChildren(el, false, marks),
-      },
-    ]
-  }
+  // LI nodes are collected directly by the UL/OL branch above via Array.from(el.children).
+  // A bare <li> outside a list is not valid CK5 HTML; fall through to walkChildren.
 
   if (tagName === "IMG") {
     const imageEl = el as HTMLImageElement
@@ -206,18 +200,8 @@ function walkNode(node: Node, inlineContext: boolean, marks: TextMark[]): Export
     ]
   }
 
-  if (tagName === "TR") {
-    return [
-      {
-        kind: "tableRow",
-        cells: collectCells(el),
-      },
-    ]
-  }
-
-  if (tagName === "TH" || tagName === "TD") {
-    return [buildTableCell(el)]
-  }
+  // TR/TH/TD nodes are handled exclusively by collectTableRows → collectCells → buildTableCell.
+  // They are never reached through walkNode in valid CK5 HTML.
 
   return walkChildren(el, inlineContext, marks)
 }

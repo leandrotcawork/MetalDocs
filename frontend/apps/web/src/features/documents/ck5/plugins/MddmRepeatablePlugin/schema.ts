@@ -1,6 +1,6 @@
-import type { Schema } from 'ckeditor5';
+import type { ModelSchema } from 'ckeditor5';
 
-export function registerRepeatableSchema(schema: Schema): void {
+export function registerRepeatableSchema(schema: ModelSchema): void {
   schema.register('mddmRepeatable', {
     inheritAllFrom: '$blockObject',
     allowChildren: ['mddmRepeatableItem'],
@@ -17,7 +17,6 @@ export function registerRepeatableSchema(schema: Schema): void {
     if (context.endsWith('mddmRepeatableItem') && def.name === 'mddmRepeatable') {
       return false;
     }
-
     return undefined;
   });
 }

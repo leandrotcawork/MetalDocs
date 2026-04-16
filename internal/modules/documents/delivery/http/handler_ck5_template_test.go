@@ -50,7 +50,7 @@ func seedTemplateDraft(t *testing.T, repo *memory.Repository, key string) {
 	}
 }
 
-func TestGetCK5TemplateDraft_200_EmptyInitially(t *testing.T) {
+func TestGetCK5TemplateDraft_200_DraftExistsButNoCK5Key(t *testing.T) {
 	h, repo := setupCK5TemplateHandler(t)
 	seedTemplateDraft(t, repo, "k1")
 
@@ -78,6 +78,22 @@ func TestGetCK5TemplateDraft_200_EmptyInitially(t *testing.T) {
 	}
 	if resp.Manifest == nil {
 		t.Fatal("manifest should be non-nil")
+	}
+}
+
+func TestGetCK5TemplateDraft_401_NoAuth(t *testing.T) {
+	h, repo := setupCK5TemplateHandler(t)
+	seedTemplateDraft(t, repo, "k1")
+
+	mux := http.NewServeMux()
+	h.RegisterRoutes(mux)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/templates/k1/ck5-draft", nil)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("got %d, want 401; body: %s", w.Code, w.Body.String())
 	}
 }
 
@@ -136,6 +152,27 @@ func TestPutCK5TemplateDraft_200(t *testing.T) {
 	}
 	if resp.ContentHTML != "<p>CK5</p>" {
 		t.Fatalf("contentHtml = %q, want <p>CK5</p>", resp.ContentHTML)
+	}
+}
+
+func TestPutCK5TemplateDraft_401_NoAuth(t *testing.T) {
+	h, repo := setupCK5TemplateHandler(t)
+	seedTemplateDraft(t, repo, "k2")
+
+	mux := http.NewServeMux()
+	h.RegisterRoutes(mux)
+
+	putBody, _ := json.Marshal(map[string]any{
+		"contentHtml": "<p>CK5</p>",
+		"manifest":    map[string]any{},
+	})
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/templates/k2/ck5-draft", bytes.NewReader(putBody))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("got %d, want 401; body: %s", w.Code, w.Body.String())
 	}
 }
 

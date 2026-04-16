@@ -18,6 +18,11 @@ type ck5TemplateDraftResponse struct {
 // handleGetCK5TemplateDraft serves GET /api/v1/templates/{key}/ck5-draft.
 func (h *Handler) handleGetCK5TemplateDraft(w http.ResponseWriter, r *http.Request, key string) {
 	traceID := requestTraceID(r)
+	if userIDFromContext(r.Context()) == "" {
+		writeAPIError(w, http.StatusUnauthorized, "AUTH_UNAUTHORIZED", "Authentication required", traceID)
+		return
+	}
+
 	html, manifest, err := h.service.GetCK5TemplateDraftContent(r.Context(), key)
 	if err != nil {
 		h.writeDomainError(w, err, traceID)
@@ -33,6 +38,11 @@ func (h *Handler) handleGetCK5TemplateDraft(w http.ResponseWriter, r *http.Reque
 // handlePutCK5TemplateDraft serves PUT /api/v1/templates/{key}/ck5-draft.
 func (h *Handler) handlePutCK5TemplateDraft(w http.ResponseWriter, r *http.Request, key string) {
 	traceID := requestTraceID(r)
+	if userIDFromContext(r.Context()) == "" {
+		writeAPIError(w, http.StatusUnauthorized, "AUTH_UNAUTHORIZED", "Authentication required", traceID)
+		return
+	}
+
 	r.Body = http.MaxBytesReader(w, r.Body, maxDocumentContentPayloadBytes)
 
 	var req ck5TemplateDraftRequest

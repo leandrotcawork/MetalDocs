@@ -25,3 +25,7 @@ shared/schemas/node_modules/
 
 .worktrees/
 .pnpm-store/
+.claude/settings.local.json
+apps/ck5-studio/.dev.err
+frontend/apps/web/.tmp-main-tsc.txt
+!

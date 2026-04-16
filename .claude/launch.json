@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "metaldocs-api",
+      "runtimeExecutable": "go",
+      "runtimeArgs": ["run", "./apps/api/cmd/metaldocs-api"],
+      "port": 8080
+    },
+    {
+      "name": "metaldocs-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "frontend/apps/web", "run", "dev"],
+      "port": 4173
+    }
+  ]
+}

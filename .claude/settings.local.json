@@ -58,7 +58,10 @@
       "Bash(go vet:*)",
       "Bash(grep -n \"GetBrowserEditorBundle\\\\|BrowserEditorBundle\\\\|browser_editor_bundle\\\\|browserEditorBundle\" /c/Users/leandro.theodoro.MN-NTB-LEANDROT/Documents/MetalDocs/internal/modules/documents/application/*.go)",
       "Bash(rtk git:*)",
-      "Bash(rtk git commit -m ':*)"
+      "Bash(rtk git commit -m ':*)",
+      "Bash(plugin marketplace:*)",
+      "Bash(echo \"EXIT: $?\")",
+      "mcp__Claude_Preview__preview_start"
     ],
     "defaultMode": "bypassPermissions",
     "additionalDirectories": [

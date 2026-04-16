@@ -26,7 +26,13 @@ export function applyPerCellExceptions( editor: Editor ): void {
 
 				// Idempotency: skip if already wrapped.
 				const firstChild = Array.from( innerNode.getChildren() )[ 0 ];
-				if ( firstChild && firstChild.is( 'element', 'restrictedEditingException' ) ) {
+				if (
+					firstChild &&
+					(firstChild as { is?: ( kind: string, name?: string ) => boolean }).is?.(
+						'element',
+						'restrictedEditingException',
+					)
+				) {
 					return;
 				}
 

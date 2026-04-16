@@ -18,7 +18,7 @@ export class AddRepeatableItemCommand extends Command {
     }
 
     const itemCount = Array.from(repeatable.getChildren()).length;
-    const max = repeatable.getAttribute('max');
+    const max = repeatable.is('element', 'mddmRepeatable') ? repeatable.getAttribute('max') : undefined;
     this.isEnabled = max === Infinity || typeof max !== 'number' || itemCount < max;
   }
 

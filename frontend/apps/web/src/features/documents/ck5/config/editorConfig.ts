@@ -82,7 +82,7 @@ export function createAuthorConfig(opts: ConfigOptions = {}): EditorConfig {
           getAuthHeader: opts.getAuthHeader ?? (() => null),
         }
       : { endpoint: '/assets', getAuthHeader: () => null },
-  } as EditorConfig;
+  } as unknown as EditorConfig;
 }
 
 export function createFillConfig(opts: ConfigOptions = {}): EditorConfig {

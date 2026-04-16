@@ -16,7 +16,7 @@ export class MddmRepeatablePlugin extends Plugin {
     return [Widget] as const;
   }
 
-  public override init(): void {
+  public init(): void {
     const { editor } = this;
 
     registerRepeatableSchema(editor.model.schema);

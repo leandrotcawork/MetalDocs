@@ -14,7 +14,7 @@ export class MddmTableVariantPlugin extends Plugin {
 
 		editor.conversion.attributeToAttribute({
 			model: { name: 'table', key: 'mddmTableVariant' },
-			view: { name: 'table', key: 'data-mddm-variant' },
+			view: 'data-mddm-variant',
 		});
 	}
 }

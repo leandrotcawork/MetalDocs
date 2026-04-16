@@ -6,14 +6,23 @@ export function registerFieldConverters(editor: Editor): void {
 
   conversion.for('upcast').elementToElement({
     view: { name: 'span', classes: 'mddm-field' },
-    model: (viewEl, { writer }: UpcastConversionApi) =>
+    model: (viewEl, { writer }: UpcastConversionApi) => {
+      const firstChild = viewEl.getChild(0);
+      const fieldValue =
+        firstChild?.is('$text')
+          ? (firstChild as unknown as { data: string }).data
+          : '';
+
+      return (
       writer.createElement('mddmField', {
         fieldId: viewEl.getAttribute('data-field-id') ?? '',
         fieldType: viewEl.getAttribute('data-field-type') ?? 'text',
         fieldLabel: viewEl.getAttribute('data-field-label') ?? '',
         fieldRequired: viewEl.getAttribute('data-field-required') === 'true',
-        fieldValue: viewEl.getChild(0)?.is('$text') ? (viewEl.getChild(0) as { data: string }).data : '',
-      }),
+        fieldValue,
+      })
+      );
+    },
   });
 
   conversion.for('dataDowncast').elementToElement({

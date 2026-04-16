@@ -28,7 +28,10 @@ export class MddmTableLockPlugin extends Plugin {
 		const refreshCommands = (): void => {
 			const position = this.editor.model.document.selection.getFirstPosition();
 			const table = position ? findAncestorByName( position.parent, 'table' ) : null;
-			const isFixedTable = table?.getAttribute( 'mddmTableVariant' ) === 'fixed';
+			const isFixedTable =
+				!!table &&
+				table.is( 'element', 'table' ) &&
+				table.getAttribute( 'mddmTableVariant' ) === 'fixed';
 
 			for ( const commandName of STRUCTURAL_COMMANDS ) {
 				const command = this.editor.commands.get( commandName );

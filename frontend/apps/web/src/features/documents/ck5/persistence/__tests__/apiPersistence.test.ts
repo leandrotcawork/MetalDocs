@@ -37,6 +37,7 @@ describe('saveTemplate', () => {
       '/api/v1/templates/tpl-1/ck5-draft',
       expect.objectContaining({
         method: 'PUT',
+        credentials: 'include',
         body: JSON.stringify({ contentHtml: '<p>hi</p>', manifest: { fields: [] } }),
       }),
     );
@@ -69,6 +70,7 @@ describe('saveDocument', () => {
       '/api/v1/documents/doc-1/content/ck5',
       expect.objectContaining({
         method: 'POST',
+        credentials: 'include',
         body: JSON.stringify({ body: '<p>doc</p>' }),
       }),
     );

@@ -1,6 +1,7 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type { ClassicEditor } from 'ckeditor5';
 import { FillEditor } from './FillEditor';
+import { ExportMenu } from './components/ExportMenu';
 import { loadDocument, saveDocument, loadTemplate } from '../persistence';
 import { installFillHook, clearHooks } from './windowHooks';
 
@@ -11,6 +12,7 @@ export interface FillPageProps {
 
 export function FillPage({ tplId, docId }: FillPageProps) {
   const [html, setHtml] = useState<string>('<p>Empty</p>');
+  const editorRef = useRef<ClassicEditor | null>(null);
 
   const onChange = useCallback(
     (next: string) => {
@@ -22,6 +24,7 @@ export function FillPage({ tplId, docId }: FillPageProps) {
 
   const onReady = useCallback(
     (editor: ClassicEditor) => {
+      editorRef.current = editor;
       installFillHook(editor, (html) => onChange(html ?? editor.getData()));
     },
     [onChange],
@@ -57,6 +60,9 @@ export function FillPage({ tplId, docId }: FillPageProps) {
   return (
     <div data-testid="ck5-fill-page" style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <h1 style={{ padding: 12, margin: 0, borderBottom: '1px solid #ddd' }}>Fill - {docId}</h1>
+      <div style={{ padding: '0 12px' }}>
+        <ExportMenu docId={docId} editorHtml={html} />
+      </div>
       <div style={{ flex: 1, overflow: 'hidden' }}>
         <FillEditor documentHtml={html} onChange={onChange} onReady={onReady} />
       </div>

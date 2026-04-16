@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { htmlToExportTree } from "../html-to-export-tree"
-import { emitDocxFromExportTree } from "../ck5-docx-emitter"
+import { emitDocxFromExportTree } from "../docx-emitter"
 import { defaultLayoutTokens } from "../layout-tokens"
 import { readDocxDocumentXml } from "./helpers/read-docx-xml"
 

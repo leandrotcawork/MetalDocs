@@ -1,7 +1,7 @@
 import { type Context } from "hono"
 import { Packer } from "docx"
 import { type ResolvedAsset, AssetResolver } from "../asset-resolver"
-import { collectImageUrls, emitDocxFromExportTree } from "../ck5-docx-emitter"
+import { collectImageUrls, emitDocxFromExportTree } from "../docx-emitter"
 import { htmlToExportTree } from "../html-to-export-tree"
 import { defaultLayoutTokens } from "../layout-tokens"
 

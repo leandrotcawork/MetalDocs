@@ -19,6 +19,12 @@ import (
 	"metaldocs/internal/platform/security"
 )
 
+// CK5ExportClientInterface is the minimal interface the CK5 export handler needs.
+type CK5ExportClientInterface interface {
+	RenderDocx(ctx context.Context, html string) ([]byte, error)
+	RenderPDFHtml(ctx context.Context, html string) (string, error)
+}
+
 type Handler struct {
 	service                  *application.Service
 	signer                   *security.AttachmentSigner
@@ -27,6 +33,7 @@ type Handler struct {
 	submitForApprovalHandler *SubmitForApprovalHandler
 	renderPDF                *RenderPDFHandler
 	shadowDiff               *ShadowDiffHandler
+	ck5Export                CK5ExportClientInterface
 }
 
 type CreateDocumentRequest struct {
@@ -475,6 +482,11 @@ func (h *Handler) WithRenderPDF(renderer PDFRenderer) *Handler {
 // return 503 in that case.
 func (h *Handler) WithShadowDiffHandler(s *ShadowDiffHandler) *Handler {
 	h.shadowDiff = s
+	return h
+}
+
+func (h *Handler) WithCK5ExportClient(client CK5ExportClientInterface) *Handler {
+	h.ck5Export = client
 	return h
 }
 
@@ -1508,6 +1520,16 @@ func (h *Handler) handleDocumentSubRoutes(w http.ResponseWriter, r *http.Request
 	}
 	if len(parts) == 3 && strings.TrimSpace(parts[0]) != "" && parts[1] == "export" && parts[2] == "docx" && r.Method == http.MethodPost {
 		h.handleDocumentExportDocx(w, r, parts[0])
+		return
+	}
+	// Task 16: GET /documents/{id}/export/ck5/docx
+	if len(parts) == 4 && parts[0] != "" && parts[1] == "export" && parts[2] == "ck5" && parts[3] == "docx" && r.Method == http.MethodGet {
+		h.handleDocumentExportCK5Docx(w, r, parts[0])
+		return
+	}
+	// Task 17: GET /documents/{id}/export/ck5/pdf
+	if len(parts) == 4 && parts[0] != "" && parts[1] == "export" && parts[2] == "ck5" && parts[3] == "pdf" && r.Method == http.MethodGet {
+		h.handleDocumentExportCK5PDF(w, r, parts[0])
 		return
 	}
 	if len(parts) == 3 && strings.TrimSpace(parts[0]) != "" && parts[1] == "content" && parts[2] == "pdf" && r.Method == http.MethodGet {

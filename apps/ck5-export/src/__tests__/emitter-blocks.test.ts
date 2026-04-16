@@ -72,7 +72,7 @@ describe("emitter — image", () => {
       "base64",
     )
     const assets = new Map<string, ResolvedAsset>([
-      ["/assets/one.png", { bytes, mimeType: "image/png" }],
+      ["/assets/one.png", { bytes, mimeType: "image/png", sizeBytes: bytes.byteLength }],
     ])
     const xml = await emit('<img src="/assets/one.png" width="10" height="10">', assets)
     expect(xml).toMatch(/<w:drawing/)

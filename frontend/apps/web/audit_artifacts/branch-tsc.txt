@@ -1,0 +1,24 @@
+src/features/documents/ck5/__tests__/exceptionRoundTrip.integration.test.ts(90,35): error TS2322: Type 'false' is not assignable to type '"none" | "empty" | undefined'.
+src/features/documents/ck5/plugins/MddmDataTablePlugin/__tests__/lock.test.ts(11,20): error TS2339: Property 'getChild' does not exist on type 'ModelNode'.
+src/features/documents/ck5/plugins/MddmFieldPlugin/__tests__/converters.test.ts(31,25): error TS2339: Property 'getChild' does not exist on type 'ModelNode'.
+src/features/documents/ck5/plugins/MddmRepeatablePlugin/__tests__/commands.test.ts(12,19): error TS4113: This member cannot have an 'override' modifier because it is not declared in the base class 'Plugin'.
+src/features/documents/ck5/plugins/MddmRepeatablePlugin/__tests__/commands.test.ts(33,65): error TS2339: Property 'name' does not exist on type 'ModelNode'.
+src/features/documents/ck5/plugins/MddmRepeatablePlugin/__tests__/commands.test.ts(88,47): error TS2339: Property 'getChildren' does not exist on type 'ModelNode'.
+src/features/documents/ck5/plugins/MddmRepeatablePlugin/__tests__/commands.test.ts(89,27): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(selectable: ModelNode, placeOrOffset: ModelPlaceOrOffset, options?: { backward?: boolean | undefined; } | undefined): void', gave the following error.
+    Argument of type 'unknown' is not assignable to parameter of type 'ModelNode'.
+  Overload 2 of 2, '(selectable: ModelDocumentSelection | ModelPosition | ModelRange | ModelSelection | Iterable<ModelRange> | null, options?: { ...; } | undefined): void', gave the following error.
+    Argument of type 'unknown' is not assignable to parameter of type 'ModelDocumentSelection | ModelPosition | ModelRange | ModelSelection | Iterable<ModelRange> | null'.
+src/features/documents/ck5/plugins/MddmRepeatablePlugin/__tests__/commands.test.ts(109,47): error TS2339: Property 'getChildren' does not exist on type 'ModelNode'.
+src/features/documents/ck5/plugins/MddmRepeatablePlugin/__tests__/commands.test.ts(110,27): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(selectable: ModelNode, placeOrOffset: ModelPlaceOrOffset, options?: { backward?: boolean | undefined; } | undefined): void', gave the following error.
+    Argument of type 'unknown' is not assignable to parameter of type 'ModelNode'.
+  Overload 2 of 2, '(selectable: ModelDocumentSelection | ModelPosition | ModelRange | ModelSelection | Iterable<ModelRange> | null, options?: { ...; } | undefined): void', gave the following error.
+    Argument of type 'unknown' is not assignable to parameter of type 'ModelDocumentSelection | ModelPosition | ModelRange | ModelSelection | Iterable<ModelRange> | null'.
+src/features/documents/ck5/plugins/MddmRepeatablePlugin/__tests__/commands.test.ts(135,47): error TS2339: Property 'getChildren' does not exist on type 'ModelNode'.
+src/features/documents/ck5/plugins/MddmRepeatablePlugin/__tests__/commands.test.ts(136,27): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(selectable: ModelNode, placeOrOffset: ModelPlaceOrOffset, options?: { backward?: boolean | undefined; } | undefined): void', gave the following error.
+    Argument of type 'unknown' is not assignable to parameter of type 'ModelNode'.
+  Overload 2 of 2, '(selectable: ModelDocumentSelection | ModelPosition | ModelRange | ModelSelection | Iterable<ModelRange> | null, options?: { ...; } | undefined): void', gave the following error.
+    Argument of type 'unknown' is not assignable to parameter of type 'ModelDocumentSelection | ModelPosition | ModelRange | ModelSelection | Iterable<ModelRange> | null'.
+src/features/documents/ck5/plugins/MddmRepeatablePlugin/__tests__/converters.test.ts(8,19): error TS4113: This member cannot have an 'override' modifier because it is not declared in the base class 'Plugin'.

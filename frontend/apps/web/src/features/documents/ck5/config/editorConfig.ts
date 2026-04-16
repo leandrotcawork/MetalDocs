@@ -56,18 +56,20 @@ export function createAuthorConfig(opts: ConfigOptions = {}): EditorConfig {
       allow: [
         {
           name: /^(section|div|span|header|ol|li)$/,
+          classes: (className: string) =>
+            className.startsWith('mddm-') ||
+            className.startsWith('restricted-editing-exception'),
           attributes: {
-            class: /^(mddm-|restricted-editing-exception).*/,
             'data-section-id': true,
-            'data-variant': /^(locked|editable|mixed)$/,
+            'data-variant': ['locked', 'editable', 'mixed'],
             'data-repeatable-id': true,
             'data-item-id': true,
             'data-field-id': true,
             'data-field-type': true,
             'data-field-label': true,
-            'data-field-required': /^(true|false)$/,
-            'data-mddm-variant': /^(fixed|dynamic)$/,
-            'data-mddm-schema': /^v\d+$/,
+            'data-field-required': ['true', 'false'],
+            'data-mddm-variant': ['fixed', 'dynamic'],
+            'data-mddm-schema': (value: string) => /^v\d+$/.test(value),
           },
         },
       ],

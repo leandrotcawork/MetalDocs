@@ -279,6 +279,12 @@ func (r *atomicRepoSpy) WriteTemplateAuditEvent(context.Context, domain.Template
 func (r *atomicRepoSpy) ListTemplateAuditEvents(context.Context, string) ([]domain.TemplateAuditEvent, error) {
 	return nil, nil
 }
+func (r *atomicRepoSpy) UpdateTemplateDraftStatus(context.Context, string, domain.TemplateStatus) error {
+	return nil
+}
+func (r *atomicRepoSpy) SetTemplateDraftPublished(context.Context, string, string) error {
+	return nil
+}
 
 func TestCreateDocumentPrefersAtomicRepositoryWhenAvailable(t *testing.T) {
 	repo := &atomicRepoSpy{}

@@ -1,5 +1,5 @@
 import type { DocumentListItem } from "../../lib.types";
-import { BrowserDocumentEditorView } from "../../features/documents/browser-editor/BrowserDocumentEditorView";
+import { FillPage } from "../../features/documents/ck5/react/FillPage";
 
 type ContentBuilderViewProps = {
   document: DocumentListItem | null;
@@ -18,7 +18,7 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
         </button>
       </section>
     );
-	}
+  }
 
   if (!props.document.documentId.trim()) {
     return (
@@ -31,5 +31,8 @@ export function ContentBuilderView(props: ContentBuilderViewProps) {
       </section>
     );
   }
-  return <BrowserDocumentEditorView document={props.document} onBack={props.onBack} currentUserId={props.currentUserId} />;
+
+  void props.currentUserId;
+  const templateId = props.document.documentType?.trim() || props.document.documentId;
+  return <FillPage tplId={templateId} docId={props.document.documentId} />;
 }

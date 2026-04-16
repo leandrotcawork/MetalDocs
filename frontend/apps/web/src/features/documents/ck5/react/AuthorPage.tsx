@@ -12,15 +12,20 @@ export function AuthorPage({ tplId }: AuthorPageProps) {
   const existing = loadTemplate(tplId);
   const [html, setHtml] = useState<string>(existing?.contentHtml ?? '<p>New template</p>');
   const editorRef = useRef<DecoupledEditor | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const onReady = useCallback((editor: DecoupledEditor) => {
     editorRef.current = editor;
+    applyPerCellExceptions(editor);
   }, []);
 
   const onChange = useCallback(
     (next: string) => {
       const editor = editorRef.current;
-      if (editor) applyPerCellExceptions(editor);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        if (editorRef.current) applyPerCellExceptions(editorRef.current);
+      }, 500);
       const finalHtml = editor ? editor.getData() : next;
       setHtml(finalHtml);
       saveTemplate(tplId, finalHtml, existing?.manifest ?? { fields: [] });

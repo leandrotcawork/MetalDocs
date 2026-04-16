@@ -24,3 +24,4 @@ apps/docgen/dist/
 shared/schemas/node_modules/
 
 .worktrees/
+.pnpm-store/

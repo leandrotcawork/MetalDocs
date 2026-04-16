@@ -3,15 +3,52 @@
   "configurations": [
     {
       "name": "metaldocs-api",
-      "runtimeExecutable": "go",
-      "runtimeArgs": ["run", "./apps/api/cmd/metaldocs-api"],
-      "port": 8080
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": ["-ExecutionPolicy", "Bypass", "-File", "scripts/start-api.ps1"],
+      "port": 8081
     },
     {
       "name": "metaldocs-web",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "frontend/apps/web", "run", "dev"],
       "port": 4173
+    },
+    {
+      "name": "ck5-web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--dir", "../MetalDocs-ck5/frontend/apps/web", "run", "dev"],
+      "port": 4173
+    },
+    {
+      "name": "ck5-plan-b-web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--dir", "../MetalDocs-ck5-plan-b/frontend/apps/web", "run", "dev"],
+      "port": 4174
+    },
+    {
+      "name": "ck5-plan-b-api",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": ["-ExecutionPolicy", "Bypass", "-File", "../MetalDocs-ck5-plan-b/scripts/start-api.ps1"],
+      "port": 8082
+    },
+    {
+      "name": "ck5-plan-c-export",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "../MetalDocs-ck5-plan-c/apps/ck5-export", "run", "dev"],
+      "port": 9001,
+      "autoPort": true
+    },
+    {
+      "name": "ck5-plan-c-api",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": ["-ExecutionPolicy", "Bypass", "-File", "../MetalDocs-ck5-plan-c/scripts/start-api-planc.ps1"],
+      "port": 8083
+    },
+    {
+      "name": "ck5-plan-c-web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--dir", "../MetalDocs-ck5-plan-c/frontend/apps/web", "run", "dev", "--", "--port", "4175"],
+      "port": 4175
     }
   ]
 }

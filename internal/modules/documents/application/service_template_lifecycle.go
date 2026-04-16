@@ -674,8 +674,7 @@ func (s *Service) PreviewDocxAuthorized(ctx context.Context, key, actorID string
 
 	// Build synthetic document and version so the existing MDDM DOCX pipeline
 	// can render the template blocks as if they were a filled document body.
-	// The Envelope the docgen service expects is exactly the BlocksJSON stored
-	// in the draft (same {blocks:[...]} format used by document versions).
+	// The Envelope is exactly the BlocksJSON stored (see template_drafts.blocks_json).
 	syntheticDoc := domain.Document{
 		DocumentCode:    key,
 		Title:           draft.Name,

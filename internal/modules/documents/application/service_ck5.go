@@ -45,6 +45,9 @@ func (s *Service) SaveCK5DocumentContentAuthorized(ctx context.Context, document
 	if !allowed {
 		return domain.ErrDocumentNotFound
 	}
+	if !isVersioningAllowed(doc) {
+		return domain.ErrVersioningNotAllowed
+	}
 	current, err := s.latestVersion(ctx, doc.ID)
 	if err != nil {
 		return err
@@ -59,6 +62,7 @@ func (s *Service) SaveCK5DocumentContentAuthorized(ctx context.Context, document
 	updated.Content = html
 	updated.ContentHash = contentHash(html)
 	updated.ContentSource = domain.ContentSourceCK5Browser
+	// CK5 content is HTML (not MDDM), so text extraction stays empty until a CK5-specific extractor is added.
 	updated.TextContent = ""
 
 	return s.repo.UpdateDraftVersionContentCAS(ctx, updated, expectedHash)

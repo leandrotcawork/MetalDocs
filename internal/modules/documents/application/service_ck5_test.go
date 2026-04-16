@@ -2,6 +2,7 @@ package application_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"metaldocs/internal/modules/documents/application"
@@ -22,6 +23,7 @@ func seedDocWithVersion(t *testing.T, repo *memory.Repository, docID, html strin
 	doc := domain.Document{
 		ID:              docID,
 		DocumentProfile: "po",
+		Status:          domain.StatusDraft,
 	}
 	ver := domain.Version{
 		DocumentID:    docID,
@@ -72,5 +74,20 @@ func TestSaveCK5DocumentContentAuthorized(t *testing.T) {
 	}
 	if html != "<p>New</p>" {
 		t.Errorf("got %q, want %q", html, "<p>New</p>")
+	}
+}
+
+func TestSaveCK5DocumentContentAuthorized_FinalizedDocReturnsError(t *testing.T) {
+	svc, repo := makeCK5Service(t)
+	seedDocWithVersion(t, repo, "doc-3", "<p>Old</p>")
+
+	ctx := context.Background()
+	if err := repo.UpdateDocumentStatus(ctx, "doc-3", domain.StatusApproved); err != nil {
+		t.Fatalf("set document status: %v", err)
+	}
+
+	err := svc.SaveCK5DocumentContentAuthorized(ctx, "doc-3", "<p>New</p>")
+	if !errors.Is(err, domain.ErrVersioningNotAllowed) {
+		t.Fatalf("err = %v, want ErrVersioningNotAllowed", err)
 	}
 }

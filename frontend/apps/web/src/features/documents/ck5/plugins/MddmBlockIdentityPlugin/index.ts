@@ -1,6 +1,7 @@
 import { Plugin } from 'ckeditor5';
 import { registerBidClipboardHandler } from './clipboard';
 import { registerBidConverters } from './converters';
+import { registerSchemaV4Migration } from './migration';
 import { registerBidPostFixer } from './post-fixer';
 import { extendSchemaWithBid } from './schema';
 
@@ -16,5 +17,6 @@ export class MddmBlockIdentityPlugin extends Plugin {
     registerBidConverters(this.editor);
     registerBidPostFixer(this.editor);
     registerBidClipboardHandler(this.editor);
+    registerSchemaV4Migration(this.editor);
   }
 }

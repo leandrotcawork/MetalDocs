@@ -13,6 +13,8 @@ import {
   type IParagraphOptions,
 } from "docx"
 import JSZip from "jszip"
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
 import type { ResolvedAsset } from "./asset-resolver"
 import type {
   ExportNode,
@@ -37,6 +39,21 @@ const DEFAULT_NUMBERING_REFERENCE = "default-numbering"
 
 type DocxBlock = Paragraph | Table
 type HeadingLevelValue = (typeof HeadingLevel)[keyof typeof HeadingLevel]
+
+function loadCarlitoFonts(): { name: string; data: Buffer }[] {
+  try {
+    const dir = join(process.cwd(), "fonts")
+    return [
+      { name: "Carlito", data: readFileSync(join(dir, "Carlito-Regular.ttf")) },
+      { name: "Carlito", data: readFileSync(join(dir, "Carlito-Bold.ttf")) },
+      { name: "Carlito", data: readFileSync(join(dir, "Carlito-Italic.ttf")) },
+      { name: "Carlito", data: readFileSync(join(dir, "Carlito-BoldItalic.ttf")) },
+    ]
+  } catch (e) {
+    console.warn("[ck5-export] Carlito fonts not found, proceeding without font embed:", (e as Error).message)
+    return []
+  }
+}
 
 function hexToFill(hex: string): string {
   return hex.replace(/^#/, "").toUpperCase()
@@ -470,6 +487,7 @@ export function emitDocxFromExportTree(
   const children = emitBlocks(nodes, tokens, assetMap)
 
   return new Document({
+    fonts: loadCarlitoFonts(),
     settings: {
       autoHyphenation: false,
       defaultTabStop: 720,

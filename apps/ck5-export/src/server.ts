@@ -1,6 +1,8 @@
 import { Hono } from "hono"
 import { serve } from "@hono/node-server"
 import { serveStatic } from "@hono/node-server/serve-static"
+import { existsSync } from "node:fs"
+import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { renderDocxHandler } from "./routes/render-docx"
 import { renderPdfHtmlHandler } from "./routes/render-pdf-html"
@@ -25,6 +27,12 @@ export const start = (port: number) => {
 const isMain = process.argv[1] === fileURLToPath(import.meta.url)
 
 if (isMain) {
+  for (const variant of ["Regular", "Bold", "Italic", "BoldItalic"]) {
+    if (!existsSync(join("./fonts", `Carlito-${variant}.ttf`))) {
+      console.error(`FATAL: missing fonts/Carlito-${variant}.ttf`)
+      process.exit(1)
+    }
+  }
   start(parseInt(process.env.PORT ?? "9001", 10))
 }
 

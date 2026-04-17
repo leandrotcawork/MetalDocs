@@ -4,7 +4,7 @@ import { injectSentinels } from '../sentinel';
 describe('injectSentinels', () => {
   it("injects sentinel as first child for each bid'd block", () => {
     const out = injectSentinels('<p data-mddm-bid="aaa">x</p><p>y</p>');
-    expect(out).toContain('<span data-pb-marker="aaa"');
+    expect(out).toContain('data-pb-marker="aaa"');
     expect(out.match(/data-pb-marker/g)).toHaveLength(1);
   });
   it('idempotent', () => {

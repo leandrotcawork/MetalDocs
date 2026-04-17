@@ -1,0 +1,5 @@
+src/features/documents/ck5/__tests__/exceptionRoundTrip.integration.test.ts
+src/features/documents/ck5/plugins/MddmDataTablePlugin/__tests__/lock.test.ts
+src/features/documents/ck5/plugins/MddmFieldPlugin/__tests__/converters.test.ts
+src/features/documents/ck5/plugins/MddmRepeatablePlugin/__tests__/commands.test.ts
+src/features/documents/ck5/plugins/MddmRepeatablePlugin/__tests__/converters.test.ts

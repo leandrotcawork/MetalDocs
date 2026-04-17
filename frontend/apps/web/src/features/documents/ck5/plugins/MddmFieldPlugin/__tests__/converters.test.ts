@@ -27,7 +27,7 @@ describe('field converters', () => {
   it('upcasts a span.mddm-field into mddmField model element', () => {
     editor.setData(sampleHtml);
     const root = editor.model.document.getRoot()!;
-    const para = root.getChild(0);
+    const para = root.getChild(0) as unknown as { getChild(index: number): unknown };
     const field = para!.getChild(0) as { name: string; getAttribute(k: string): unknown };
     expect(field.name).toBe('mddmField');
     expect(field.getAttribute('fieldId')).toBe('customer');

@@ -1,4 +1,4 @@
-import type { Editor, Element as ModelElement, ViewElement } from 'ckeditor5';
+import type { Editor, ModelElement, ViewElement } from 'ckeditor5';
 import { toWidget, toWidgetEditable } from 'ckeditor5';
 
 function parseNumberAttribute(value: unknown, fallback: number): number {

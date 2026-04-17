@@ -9,7 +9,7 @@ import { RemoveRepeatableItemCommand } from '../commands/RemoveRepeatableItemCom
 import { registerRepeatableSchema } from '../schema';
 
 class RepeatableCommandsTestPlugin extends Plugin {
-  public override init(): void {
+  public init(): void {
     registerRepeatableSchema(this.editor.model.schema);
     registerRepeatableConverters(this.editor);
 
@@ -30,7 +30,11 @@ describe('repeatable commands', () => {
 
   const findRepeatable = () => {
     const root = editor.model.document.getRoot()!;
-    return Array.from(root.getChildren()).find((child) => child.name === 'mddmRepeatable') ?? null;
+    return (
+      Array.from(root.getChildren()).find(
+        (child) => (child as { name?: string }).name === 'mddmRepeatable',
+      ) ?? null
+    ) as { getChildren(): Iterable<unknown> } | null;
   };
 
   beforeEach(async () => {
@@ -86,7 +90,7 @@ describe('repeatable commands', () => {
     editor.model.change((writer) => {
       const repeatable = findRepeatable()!;
       const firstItem = Array.from(repeatable.getChildren())[0];
-      writer.setSelection(firstItem, 'in');
+      writer.setSelection(firstItem as never, 'in');
     });
 
     addCmd.refresh();
@@ -107,7 +111,7 @@ describe('repeatable commands', () => {
     editor.model.change((writer) => {
       const repeatable = findRepeatable()!;
       const firstItem = Array.from(repeatable.getChildren())[0];
-      writer.setSelection(firstItem, 'in');
+      writer.setSelection(firstItem as never, 'in');
     });
 
     removeCmd.refresh();
@@ -133,7 +137,7 @@ describe('repeatable commands', () => {
     editor.model.change((writer) => {
       const repeatable = findRepeatable()!;
       const firstItem = Array.from(repeatable.getChildren())[0];
-      writer.setSelection(firstItem, 'in');
+      writer.setSelection(firstItem as never, 'in');
     });
 
     addCmd.refresh();

@@ -49,7 +49,7 @@ describe('MddmRichBlockPlugin', () => {
   it('inserts a <div class="mddm-rich-block"> on execute', () => {
     (editor.commands.get('insertMddmRichBlock') as { refresh(): void }).refresh();
     editor.execute('insertMddmRichBlock');
-    const html = editor.getData({ trim: false as const });
+    const html = editor.getData({ trim: 'none' });
     expect(html).toContain('class="mddm-rich-block"');
   });
 

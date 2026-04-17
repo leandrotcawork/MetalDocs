@@ -6,12 +6,12 @@ import { MddmTableLockPlugin } from '../MddmTableLockPlugin';
 function navigateIntoCell( editor: ClassicEditor ): void {
 	editor.model.change( writer => {
 		const root = editor.model.document.getRoot()!;
-		const table = Array.from( root.getChildren() ).find( node => node.is( 'element', 'table' ) )!;
-		const row = table.getChild( 0 )!;
-		const cell = row.getChild( 0 )!;
-		const para = cell.getChild( 0 )!;
+		const table = Array.from( root.getChildren() ).find( node => node.is( 'element', 'table' ) ) as { getChild( index: number ): unknown };
+		const row = table.getChild( 0 ) as { getChild( index: number ): unknown };
+		const cell = row.getChild( 0 ) as { getChild( index: number ): unknown };
+		const para = cell.getChild( 0 ) as unknown;
 
-		writer.setSelection( writer.createPositionAt( para, 0 ) );
+		writer.setSelection( writer.createPositionAt( para as never, 0 ) );
 	} );
 }
 

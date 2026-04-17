@@ -1,6 +1,6 @@
-import type { Schema } from 'ckeditor5';
+import type { ModelSchema } from 'ckeditor5';
 
-export function registerFieldSchema(schema: Schema): void {
+export function registerFieldSchema(schema: ModelSchema): void {
   schema.register('mddmField', {
     inheritAllFrom: '$inlineObject',
     allowAttributes: ['fieldId', 'fieldType', 'fieldLabel', 'fieldRequired', 'fieldValue'],

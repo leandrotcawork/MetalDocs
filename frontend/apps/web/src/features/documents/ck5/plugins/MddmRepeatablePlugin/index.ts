@@ -16,7 +16,7 @@ export class MddmRepeatablePlugin extends Plugin {
     return [Widget] as const;
   }
 
-  public override init(): void {
+  public init(): void {
     const { editor } = this;
 
     registerRepeatableSchema(editor.model.schema);
@@ -31,6 +31,25 @@ export class MddmRepeatablePlugin extends Plugin {
       commandName: 'insertMddmRepeatable',
       label: 'Insert repeatable',
       executeOptions: { min: 1, max: 10, initialCount: 1 },
+    });
+
+    const LIST_ATTRS = ['listItemId', 'listIndent', 'listType', 'htmlLiAttributes'] as const;
+
+    editor.model.document.registerPostFixer((writer) => {
+      let changed = false;
+      const root = editor.model.document.getRoot();
+      if (!root) return false;
+
+      for (const { item } of editor.model.createRangeIn(root)) {
+        if (!item.is('element', 'mddmRepeatableItem')) continue;
+        for (const attr of LIST_ATTRS) {
+          if (item.hasAttribute(attr)) {
+            writer.removeAttribute(attr, item);
+            changed = true;
+          }
+        }
+      }
+      return changed;
     });
   }
 }

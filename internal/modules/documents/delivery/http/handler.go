@@ -1490,6 +1490,17 @@ func (h *Handler) handleDocumentSubRoutes(w http.ResponseWriter, r *http.Request
 		h.handleDocumentContentBrowserPost(w, r, parts[0])
 		return
 	}
+	if len(parts) == 3 && strings.TrimSpace(parts[0]) != "" && parts[1] == "content" && parts[2] == "ck5" {
+		switch r.Method {
+		case http.MethodGet:
+			h.handleDocumentContentCK5Get(w, r, parts[0])
+		case http.MethodPost:
+			h.handleDocumentContentCK5Post(w, r, parts[0])
+		default:
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
+		return
+	}
 	if len(parts) == 2 && strings.TrimSpace(parts[0]) != "" && parts[1] == "content" && r.Method == http.MethodPut {
 		h.handleDocumentRuntimeContentPut(w, r, parts[0])
 		return

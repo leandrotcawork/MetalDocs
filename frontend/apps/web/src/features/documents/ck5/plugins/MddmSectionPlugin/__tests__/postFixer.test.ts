@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { ClassicEditor, Essentials, Paragraph, Widget } from 'ckeditor5';
+import type { ModelElement } from 'ckeditor5';
 import { registerSectionSchema } from '../schema';
 import { registerSectionPostFixer } from '../postFixer';
 import { registerSectionConverters } from '../converters';
@@ -33,7 +34,7 @@ describe('section post-fixer', () => {
     });
     // Root starts with an initial paragraph; the appended section is after it.
     const root = editor.model.document.getRoot()!;
-    const allChildren = Array.from(root.getChildren()) as { name: string }[];
+    const allChildren = Array.from(root.getChildren()) as ModelElement[];
     const section = allChildren.find((c) => c.name === 'mddmSection');
     expect(section).toBeDefined();
     const children = Array.from((section as unknown as { getChildren(): Iterable<{ name: string }> }).getChildren());

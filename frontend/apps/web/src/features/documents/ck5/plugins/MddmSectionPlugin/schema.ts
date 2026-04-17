@@ -1,6 +1,6 @@
-import type { Schema } from 'ckeditor5';
+import type { ModelSchema } from 'ckeditor5';
 
-export function registerSectionSchema(schema: Schema): void {
+export function registerSectionSchema(schema: ModelSchema): void {
   schema.register('mddmSection', {
     inheritAllFrom: '$blockObject',
     allowChildren: ['mddmSectionHeader', 'mddmSectionBody'],

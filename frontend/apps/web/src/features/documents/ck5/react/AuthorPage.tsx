@@ -1,22 +1,24 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import type { DecoupledEditor } from 'ckeditor5';
 import { AuthorEditor } from './AuthorEditor';
-import { saveTemplate, loadTemplate } from '../persistence/localStorageStub';
+import { saveTemplate, loadTemplate } from '../persistence';
 import { applyPerCellExceptions } from '../plugins/MddmDataTablePlugin';
+import { installAuthorHook, clearHooks } from './windowHooks';
 
 export interface AuthorPageProps {
   tplId: string;
 }
 
 export function AuthorPage({ tplId }: AuthorPageProps) {
-  const existing = loadTemplate(tplId);
-  const [html, setHtml] = useState<string>(existing?.contentHtml ?? '<p>New template</p>');
+  const [html, setHtml] = useState<string>('<p>New template</p>');
+  const [manifest, setManifest] = useState<{ fields: Array<{ id: string; label?: string; type: string; required?: boolean }> }>({ fields: [] });
   const editorRef = useRef<DecoupledEditor | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const onReady = useCallback((editor: DecoupledEditor) => {
     editorRef.current = editor;
     applyPerCellExceptions(editor);
+    installAuthorHook(editor, (html) => onChange(html ?? editor.getData()));
   }, []);
 
   const onChange = useCallback(
@@ -28,10 +30,25 @@ export function AuthorPage({ tplId }: AuthorPageProps) {
       }, 500);
       const finalHtml = editor ? editor.getData() : next;
       setHtml(finalHtml);
-      saveTemplate(tplId, finalHtml, existing?.manifest ?? { fields: [] });
+      void saveTemplate(tplId, finalHtml, manifest);
     },
-    [tplId, existing],
+    [tplId, manifest],
   );
+
+  useEffect(() => {
+    Promise.resolve(loadTemplate(tplId))
+      .then((rec) => {
+        if (rec) {
+          setHtml(rec.contentHtml);
+          setManifest(rec.manifest);
+        }
+      })
+      .catch((e) => {
+        console.error('[AuthorPage] loadTemplate failed', e);
+      });
+  }, [tplId]);
+
+  useEffect(() => clearHooks, []);
 
   return (
     <div data-testid="ck5-author-page" style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>

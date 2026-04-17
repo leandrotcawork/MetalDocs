@@ -30,6 +30,29 @@ export class MddmFieldPlugin extends Plugin {
       ),
     );
 
+    // Post-fixer: strip GHS htmlSpan attribute injected onto mddmField elements.
+    // GHS adds htmlSpan to any model element upcast from <span>, which causes GHS
+    // dataDowncast to emit an outer wrapper <span data-field-*> around our
+    // MddmFieldPlugin output, producing double-span in getData().
+    const GHS_SPAN_ATTRS = ['htmlSpan', 'htmlSpanAttributes'] as const;
+
+    editor.model.document.registerPostFixer((writer) => {
+      let changed = false;
+      const root = editor.model.document.getRoot();
+      if (!root) return false;
+
+      for (const { item } of editor.model.createRangeIn(root)) {
+        if (!item.is('element', 'mddmField')) continue;
+        for (const attr of GHS_SPAN_ATTRS) {
+          if (item.hasAttribute(attr)) {
+            writer.removeAttribute(attr, item);
+            changed = true;
+          }
+        }
+      }
+      return changed;
+    });
+
     registerInsertionButton(editor, {
       componentName: 'insertMddmField',
       commandName: 'insertMddmField',

@@ -4,6 +4,9 @@ import type { PlaywrightPool } from './playwright-pool';
 import { injectSentinels } from './sentinel';
 import { wrapInPrintDocument } from '../print-stylesheet/wrap-print-document';
 import { withWorker, WorkerCrash, PaginatorTimeoutError } from './pool-retry';
+import { PaginationCache } from './cache';
+
+export const paginationCache = new PaginationCache();
 
 export { PaginatorTimeoutError } from './pool-retry';
 
@@ -14,7 +17,10 @@ export async function paginateWithChromium(
   rawHtml: string,
   opts: { timeoutMs: number },
 ): Promise<ServerBreak[]> {
-  return withWorker(pool, async (browser: any) => {
+  const cached = paginationCache.get(rawHtml);
+  if (cached) return cached;
+
+  const result = await withWorker(pool, async (browser: any) => {
     const withSentinels = injectSentinels(rawHtml);
     const fullHtml = wrapInPrintDocument(withSentinels);
 
@@ -60,4 +66,6 @@ export async function paginateWithChromium(
       await ctx.close();
     }
   });
+  paginationCache.set(rawHtml, result);
+  return result;
 }

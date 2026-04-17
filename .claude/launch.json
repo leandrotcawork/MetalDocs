@@ -47,7 +47,7 @@
     {
       "name": "ck5-plan-c-web",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--dir", "../MetalDocs-ck5-plan-c/frontend/apps/web", "run", "dev", "--", "--port", "4175"],
+      "runtimeArgs": ["--dir", "../MetalDocs-ck5-plan-c/frontend/apps/web", "exec", "vite", "--port", "4175", "--strictPort"],
       "port": 4175
     }
   ]

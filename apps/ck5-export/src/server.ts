@@ -8,6 +8,7 @@ import { renderDocxHandler } from "./routes/render-docx"
 import { renderPdfHtmlHandler } from "./routes/render-pdf-html"
 import { PlaywrightPool } from "./pagination/playwright-pool"
 import { paginateRoute } from "./routes/paginate"
+import { paginationDebugRoute } from "./routes/pagination-debug"
 
 export const app = new Hono()
 const pool = new PlaywrightPool({ size: Number(process.env.CHROMIUM_POOL_SIZE ?? 3) })
@@ -20,6 +21,7 @@ app.get("/health", (c) => c.json({ ok: true, service: "ck5-export" }))
 app.post("/render/docx", renderDocxHandler)
 app.post("/render/pdf-html", renderPdfHtmlHandler)
 app.route("/", paginateRoute(pool))
+app.route("/", paginationDebugRoute())
 
 export const start = (port: number) => {
   serve({

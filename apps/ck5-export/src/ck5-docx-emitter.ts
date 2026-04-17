@@ -194,6 +194,7 @@ function paragraphFromInlineChildren(
   return new Paragraph({
     ...options,
     children: runs.length > 0 ? runs : [new TextRun({ text: "" })],
+    widowControl: false,
   })
 }
 
@@ -244,6 +245,7 @@ function emitImage(node: Image, assetMap: ReadonlyMap<string, ResolvedAsset>): P
           },
         }),
       ],
+      widowControl: false,
     }),
   ]
 }
@@ -271,12 +273,12 @@ function emitField(node: ExportNode, tokens: LayoutTokens): Table[] {
               width: { size: 35, type: WidthType.PERCENTAGE },
               shading: { fill: hexToFill(tokens.theme.accentLight), type: "clear", color: "auto" },
               borders,
-              children: [new Paragraph({ children: [new TextRun({ text: node.id })] })],
+              children: [new Paragraph({ children: [new TextRun({ text: node.id })], widowControl: false })],
             }),
             new TableCell({
               width: { size: 65, type: WidthType.PERCENTAGE },
               borders,
-              children: [new Paragraph({ children: [new TextRun({ text: node.value })] })],
+              children: [new Paragraph({ children: [new TextRun({ text: node.value })], widowControl: false })],
             }),
           ],
         }),
@@ -303,7 +305,7 @@ function emitTableCell(
       left: { style: BorderStyle.SINGLE, size: 4, color: borderColor },
       right: { style: BorderStyle.SINGLE, size: 4, color: borderColor },
     },
-    children: children.length > 0 ? children : [new Paragraph({ children: [] })],
+    children: children.length > 0 ? children : [new Paragraph({ children: [], widowControl: false })],
   })
 }
 
@@ -367,7 +369,7 @@ function emitRepeatable(
 }
 
 function ensureCellChildren(children: DocxBlock[]): DocxBlock[] {
-  return children.length > 0 ? children : [new Paragraph({ children: [] })]
+  return children.length > 0 ? children : [new Paragraph({ children: [], widowControl: false })]
 }
 
 function emitSection(
@@ -447,7 +449,7 @@ function emitBlock(node: ExportNode, tokens: LayoutTokens, assetMap: ReadonlyMap
     case "hyperlink":
     case "text":
     case "lineBreak":
-      return [new Paragraph({ children: collectInlineRuns([node], tokens) })]
+      return [new Paragraph({ children: collectInlineRuns([node], tokens), widowControl: false })]
   }
 }
 

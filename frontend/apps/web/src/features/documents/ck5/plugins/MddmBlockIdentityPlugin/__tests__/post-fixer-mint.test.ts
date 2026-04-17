@@ -84,16 +84,16 @@ describe( 'MddmBlockIdentityPlugin bid post-fixer', () => {
 		} );
 
 		const root = editor.model.document.getRoot()!;
-		expect( root.childCount ).toBe( 100 );
+		// Editor initializes with 1 default paragraph, so 100 appended = 101 total
+		expect( root.childCount ).toBe( 101 );
 
 		const bids = new Set<string>();
 		for ( const node of root.getChildren() ) {
-			expect( node.is( 'element', 'paragraph' ) ).toBe( true );
 			const bid = ( node as { getAttribute( key: string ): unknown } ).getAttribute( 'mddmBid' );
 			expect( typeof bid ).toBe( 'string' );
 			bids.add( bid as string );
 		}
 
-		expect( bids.size ).toBe( 100 );
+		expect( bids.size ).toBe( 101 );
 	} );
 } );

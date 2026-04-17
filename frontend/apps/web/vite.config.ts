@@ -34,6 +34,7 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@metaldocs/mddm-layout-tokens': resolve(__dirname, '../../../shared/mddm-layout-tokens/index.ts'),
+        '@metaldocs/mddm-pagination-types': resolve(__dirname, '../../../shared/mddm-pagination-types/index.ts'),
       },
     },
     server: {

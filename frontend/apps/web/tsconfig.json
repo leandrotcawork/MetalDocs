@@ -18,7 +18,8 @@
     "types": ["vite/client"],
     "baseUrl": ".",
     "paths": {
-      "@metaldocs/mddm-layout-tokens": ["../../../shared/mddm-layout-tokens/index.ts"]
+      "@metaldocs/mddm-layout-tokens": ["../../../shared/mddm-layout-tokens/index.ts"],
+      "@metaldocs/mddm-pagination-types": ["../../../shared/mddm-pagination-types/index.ts"]
     }
   },
   "include": ["src"],

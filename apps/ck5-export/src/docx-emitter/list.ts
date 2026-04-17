@@ -1,6 +1,6 @@
 import type { Paragraph } from "docx"
 import type { List } from "../export-node"
-import type { LayoutTokens } from "../layout-tokens"
+import type { LayoutTokens } from "../layout-ir"
 import { paragraphFromInlineChildren } from "./paragraph"
 
 export const DEFAULT_NUMBERING_REFERENCE = "default-numbering"

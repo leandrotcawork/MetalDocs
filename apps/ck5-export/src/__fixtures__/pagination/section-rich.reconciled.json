@@ -1,0 +1,35 @@
+{
+  "resolved": [],
+  "logs": {
+    "exactMatches": 0,
+    "minorDrift": 0,
+    "majorDrift": 0,
+    "orphanedEditor": 0,
+    "serverOnly": 0
+  },
+  "drift": {
+    "majorDrift": 0,
+    "minorDrift": 0,
+    "perBlockType": {
+      "h1": {
+        "total": 1,
+        "majorDrift": 0,
+        "minorDrift": 0
+      },
+      "p": {
+        "total": 4,
+        "majorDrift": 0,
+        "minorDrift": 0
+      },
+      "h2": {
+        "total": 3,
+        "majorDrift": 0,
+        "minorDrift": 0
+      }
+    }
+  },
+  "validator": {
+    "bidCollision": false,
+    "editorServerDesync": false
+  }
+}

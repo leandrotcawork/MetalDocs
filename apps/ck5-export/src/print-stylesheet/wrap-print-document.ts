@@ -13,6 +13,7 @@ export function wrapInPrintDocument(bodyHtml: string): string {
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>MDDM Document</title>
 <style>${PRINT_STYLESHEET}</style>
+<script src="/assets/paged.polyfill.js" defer></script>
 </head>
 <body>
 ${bodyHtml}

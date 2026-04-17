@@ -1,7 +1,7 @@
 ﻿import { describe, it, expect } from "vitest"
 import { htmlToExportTree } from "../html-to-export-tree"
 import { collectImageUrls, emitDocxFromExportTree } from "../docx-emitter"
-import { defaultLayoutTokens } from "../layout-tokens"
+import { defaultLayoutTokens } from "../layout-ir"
 import type { ResolvedAsset } from "../asset-resolver"
 import { readDocxDocumentXml } from "./helpers/read-docx-xml"
 

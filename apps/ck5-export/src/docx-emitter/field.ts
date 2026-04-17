@@ -1,6 +1,6 @@
 import { BorderStyle, Paragraph, Table, TableCell, TableRow, TextRun, WidthType } from "docx"
 import type { ExportNode } from "../export-node"
-import type { LayoutTokens } from "../layout-tokens"
+import type { LayoutTokens } from "../layout-ir"
 import { hexToFill } from "./helpers"
 
 export function emitField(node: ExportNode, tokens: LayoutTokens): Table[] {

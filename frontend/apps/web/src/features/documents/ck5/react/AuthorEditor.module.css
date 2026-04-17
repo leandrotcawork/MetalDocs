@@ -1,3 +1,35 @@
+@font-face {
+  font-family: 'Carlito';
+  src: url('/fonts/carlito-regular.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Carlito';
+  src: url('/fonts/carlito-bold.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Carlito';
+  src: url('/fonts/carlito-italic.woff2') format('woff2');
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Carlito';
+  src: url('/fonts/carlito-bold-italic.woff2') format('woff2');
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+}
+
 .shell {
   display: flex;
   flex-direction: column;
@@ -27,6 +59,7 @@
   width: 210mm;
   min-height: 297mm;
   padding: 25mm 20mm;
+  font-family: Carlito, 'Liberation Sans', Arial, sans-serif;
   background: #fff;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
   border: 1px solid rgba(0, 0, 0, 0.08);
@@ -41,4 +74,14 @@
   border-color: rgba(59, 130, 246, 0.4);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15), 0 0 0 2px rgba(59, 130, 246, 0.15);
   outline: none;
+}
+
+.editable :global(.mddm-page-overlay) {
+  background: #e8eaed;
+  color: #5f6368;
+  font: 11px/1 Carlito, sans-serif;
+  padding: 6px 12px;
+  text-align: right;
+  box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.08);
+  pointer-events: none;
 }

@@ -5,7 +5,7 @@ import type {
   TableCell as ExportTableCell,
   TableRow as ExportTableRow,
 } from "../export-node"
-import type { LayoutTokens } from "../layout-tokens"
+import type { LayoutTokens } from "../layout-ir"
 import { hexToFill, type EmitBlocks } from "./helpers"
 
 export function emitTableCell(

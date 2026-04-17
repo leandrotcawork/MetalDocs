@@ -1,6 +1,6 @@
 import { HeadingLevel, type Paragraph } from "docx"
 import type { Heading } from "../export-node"
-import type { LayoutTokens } from "../layout-tokens"
+import type { LayoutTokens } from "../layout-ir"
 import type { HeadingLevelValue } from "./helpers"
 import { paragraphFromInlineChildren } from "./paragraph"
 

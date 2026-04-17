@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { htmlToExportTree } from "../html-to-export-tree"
 import { emitDocxFromExportTree } from "../docx-emitter"
-import { defaultLayoutTokens } from "../layout-tokens"
+import { defaultLayoutTokens } from "../layout-ir"
 import { readDocxDocumentXml } from "./helpers/read-docx-xml"
 
 describe("field label round-trip", () => {

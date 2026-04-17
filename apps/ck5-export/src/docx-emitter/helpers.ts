@@ -1,7 +1,7 @@
 import { HeadingLevel, type Paragraph, type Table } from "docx"
 import type { ResolvedAsset } from "../asset-resolver"
 import type { ExportNode } from "../export-node"
-import type { LayoutTokens } from "../layout-tokens"
+import type { LayoutTokens } from "../layout-ir"
 
 export type DocxBlock = Paragraph | Table
 export type HeadingLevelValue = (typeof HeadingLevel)[keyof typeof HeadingLevel]

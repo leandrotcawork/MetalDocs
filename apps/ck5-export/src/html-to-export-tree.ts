@@ -210,6 +210,10 @@ function walkElement(node: Node, inInline: boolean, marks: TextMark[]): ExportNo
     return [{ kind: "lineBreak" }]
   }
 
+  if (tagName === "DIV" && el.classList.contains("mddm-page-break")) {
+    return [{ kind: "pageBreak" }]
+  }
+
   if (tagName === "BLOCKQUOTE") {
     return [
       {

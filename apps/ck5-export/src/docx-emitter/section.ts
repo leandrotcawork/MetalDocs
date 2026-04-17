@@ -8,7 +8,7 @@ import {
 } from "docx"
 import type { ResolvedAsset } from "../asset-resolver"
 import type { Section } from "../export-node"
-import type { LayoutTokens } from "../layout-tokens"
+import type { LayoutTokens } from "../layout-ir"
 import { hexToFill, type EmitBlocks } from "./helpers"
 import { ensureCellChildren } from "./repeatable"
 

@@ -1,6 +1,6 @@
 import { Paragraph, TextRun, type IParagraphOptions } from "docx"
 import type { ExportNode, Paragraph as ExportParagraph } from "../export-node"
-import type { LayoutTokens } from "../layout-tokens"
+import type { LayoutTokens } from "../layout-ir"
 import { collectInlineRuns } from "./inline"
 
 export function paragraphFromInlineChildren(

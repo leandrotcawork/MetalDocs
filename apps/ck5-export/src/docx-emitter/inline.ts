@@ -1,6 +1,6 @@
 import { TextRun } from "docx"
 import type { ExportNode, Hyperlink } from "../export-node"
-import type { LayoutTokens } from "../layout-tokens"
+import type { LayoutTokens } from "../layout-ir"
 import { ptToHalfPt } from "../shared/helpers/units"
 import { hexToFill } from "./helpers"
 

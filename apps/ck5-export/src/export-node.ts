@@ -91,6 +91,10 @@ export interface LineBreak {
   kind: "lineBreak"
 }
 
+export interface PageBreak {
+  kind: "pageBreak"
+}
+
 export interface Blockquote {
   kind: "blockquote"
   children: ExportNode[]
@@ -112,4 +116,5 @@ export type ExportNode =
   | Hyperlink
   | Text
   | LineBreak
+  | PageBreak
   | Blockquote

@@ -1,7 +1,7 @@
 import { BorderStyle, Paragraph, Table, TableCell, TableRow, WidthType } from "docx"
 import type { ResolvedAsset } from "../asset-resolver"
 import type { Repeatable, RepeatableItem } from "../export-node"
-import type { LayoutTokens } from "../layout-tokens"
+import type { LayoutTokens } from "../layout-ir"
 import { hexToFill, type DocxBlock, type EmitBlocks } from "./helpers"
 
 export function ensureCellChildren(children: DocxBlock[]): DocxBlock[] {

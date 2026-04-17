@@ -4,6 +4,7 @@ import { type ResolvedAsset, AssetResolver } from "../asset-resolver"
 import { collectImageUrls, emitDocxFromExportTree } from "../ck5-docx-emitter"
 import { htmlToExportTree } from "../html-to-export-tree"
 import { defaultLayoutTokens } from "../layout-ir"
+import { validateBids } from "../pagination/validator"
 
 export async function renderDocxHandler(c: Context): Promise<Response> {
   try {
@@ -16,7 +17,16 @@ export async function renderDocxHandler(c: Context): Promise<Response> {
       return c.json({ error: "html required" }, 400)
     }
 
-    const tree = htmlToExportTree(body.html)
+    const html = body.html
+    const v = validateBids(html);
+    if (!v.ok && v.severity === 'error') {
+      return c.json({ error: v.error, bids: (v as any).bids }, 422);
+    }
+    if (!v.ok && v.severity === 'warn') {
+      console.warn(`mddm:${v.error}`, (v as any).elements);
+    }
+
+    const tree = htmlToExportTree(html)
     const urls = collectImageUrls(tree)
 
     const assetResolver = new AssetResolver()

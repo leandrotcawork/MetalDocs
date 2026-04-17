@@ -1,6 +1,7 @@
 import { type Context } from "hono"
 import { type ResolvedAsset, AssetResolver } from "../asset-resolver"
 import { rewriteImgSrcToDataUri } from "../inline-asset-rewriter"
+import { validateBids } from "../pagination/validator"
 import { wrapInPrintDocument } from "../print-stylesheet"
 
 function extractImgSrcs(html: string): string[] {
@@ -24,7 +25,16 @@ export async function renderPdfHtmlHandler(c: Context): Promise<Response> {
       return c.json({ error: "html required" }, 400)
     }
 
-    const urls = extractImgSrcs(body.html)
+    const html = body.html
+    const v = validateBids(html);
+    if (!v.ok && v.severity === 'error') {
+      return c.json({ error: v.error, bids: (v as any).bids }, 422);
+    }
+    if (!v.ok && v.severity === 'warn') {
+      console.warn(`mddm:${v.error}`, (v as any).elements);
+    }
+
+    const urls = extractImgSrcs(html)
     const assetResolver = new AssetResolver()
     const assetMap = new Map<string, ResolvedAsset>()
 
@@ -37,7 +47,7 @@ export async function renderPdfHtmlHandler(c: Context): Promise<Response> {
       }
     }
 
-    const rewritten = rewriteImgSrcToDataUri(body.html, assetMap)
+    const rewritten = rewriteImgSrcToDataUri(html, assetMap)
     const wrapped = wrapInPrintDocument(rewritten)
 
     return c.body(wrapped, 200, { "Content-Type": "text/html; charset=utf-8" })

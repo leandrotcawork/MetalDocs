@@ -1,6 +1,7 @@
 import type { Editor } from 'ckeditor5';
 import { defaultLayoutTokens } from '@metaldocs/mddm-layout-tokens';
 import { planBreaks } from './BreakPlanner';
+import { findEnclosingSection } from './SectionScope';
 import type { DirtyRangeTracker } from './DirtyRangeTracker';
 import type { ComputedBreak } from './types';
 
@@ -74,7 +75,8 @@ export class BreakMeasurer {
 
     const dirty = this.tracker.snapshot();
     const from = dirty ?? this.editor.model.createPositionFromPath(root, [0]);
-    const candidates = planBreaks(this.editor, from);
+    const walkRoot = findEnclosingSection(from) ?? undefined;
+    const candidates = planBreaks(this.editor, from, walkRoot);
 
     const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
     const contentHeightPx = mmToPx(

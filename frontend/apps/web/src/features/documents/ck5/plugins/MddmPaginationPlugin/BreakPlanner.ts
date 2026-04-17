@@ -14,15 +14,22 @@ const KEEP_WITH_NEXT = new Set(['heading1', 'heading2', 'heading3']);
  * - blocks without a bid → skipped
  * - non-paginable elements → skipped
  */
-export function planBreaks(editor: Editor, from: ModelPosition): BreakCandidate[] {
+export function planBreaks(
+  editor: Editor,
+  from: ModelPosition,
+  walkRoot?: Element,
+): BreakCandidate[] {
   const root = editor.model.document.getRoot();
   if (!root) return [];
 
-  const out: BreakCandidate[] = [];
-  const startIdx = from.path[0] ?? 0;
+  const container: Element | null = walkRoot ?? (root as unknown as Element);
+  if (!container) return [];
 
-  for (let i = startIdx; i < root.childCount; i++) {
-    const node = root.getChild(i);
+  const out: BreakCandidate[] = [];
+  const startIdx = walkRoot ? 0 : (from.path[0] ?? 0);
+
+  for (let i = startIdx; i < container.childCount; i++) {
+    const node = container.getChild(i);
     if (!node || !node.is('element')) continue;
     const el = node as Element;
     if (!PAGINABLE.has(el.name)) continue;

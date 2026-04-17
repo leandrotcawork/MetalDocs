@@ -191,6 +191,10 @@ function walkNode(node: Node, inlineContext: boolean, marks: TextMark[]): Export
     return [{ kind: "lineBreak" }]
   }
 
+  if (tagName === "DIV" && el.classList.contains("mddm-page-break")) {
+    return [{ kind: "pageBreak" }]
+  }
+
   if (tagName === "BLOCKQUOTE") {
     return [
       {

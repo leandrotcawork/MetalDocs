@@ -38,3 +38,21 @@ export function validateBids(html: string): ValidationResult {
   }
   return { ok: true };
 }
+
+export function validateEditorBidSet(
+  html: string,
+  editorBids: string[],
+): { ok: true } | { ok: false; missingBids: string[] } {
+  const { document } = parseHTML(`<!DOCTYPE html><html><body>${html}</body></html>`);
+  const htmlBids = new Set(
+    Array.from(document.querySelectorAll('[data-mddm-bid]'))
+      .map((el) => (el as Element).getAttribute('data-mddm-bid'))
+      .filter((bid): bid is string => typeof bid === 'string'),
+  );
+
+  const missingBids = editorBids.filter((bid) => !htmlBids.has(bid));
+  if (missingBids.length > 0) {
+    return { ok: false, missingBids };
+  }
+  return { ok: true };
+}

@@ -24,6 +24,7 @@ const (
 	ContentSourceNative        = "native"
 	ContentSourceDocxUpload    = "docx_upload"
 	ContentSourceBrowserEditor = "browser_editor"
+	ContentSourceCK5Browser    = "ck5_browser"
 )
 
 const (

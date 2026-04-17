@@ -14,7 +14,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"metaldocs/internal/modules/documents/domain/mddm"
+	"metaldocs/internal/modules/documents/domain"
 )
 
 func makePNG(t *testing.T) []byte {
@@ -103,7 +103,7 @@ func (f *fakeImageStorage) Get(ctx context.Context, id uuid.UUID) ([]byte, strin
 	defer f.mu.Unlock()
 	b, ok := f.byID[id]
 	if !ok {
-		return nil, "", mddm.ErrImageNotFound
+		return nil, "", domain.ErrImageNotFound
 	}
 	return b, f.mimes[id], nil
 }

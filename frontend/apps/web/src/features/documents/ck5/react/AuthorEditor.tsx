@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import { DecoupledEditor } from 'ckeditor5';
 import type { DecoupledEditorUIView } from 'ckeditor5';
@@ -15,6 +15,10 @@ export interface AuthorEditorProps {
 
 export function AuthorEditor({ initialHtml, onChange, onReady, language = 'en' }: AuthorEditorProps) {
   const toolbarRef = useRef<HTMLDivElement>(null);
+  // Memoize config — the CKEditor React wrapper re-runs its mount-sync cycle
+  // when config object identity changes, which can double-fire editor.data.set
+  // and trip CKEditor's "unexpected-error" in DataController.set.
+  const config = useMemo(() => createAuthorConfig({ language }), [language]);
 
   return (
     <div className={styles.shell}>
@@ -23,9 +27,8 @@ export function AuthorEditor({ initialHtml, onChange, onReady, language = 'en' }
         <CKEditor
           editor={DecoupledEditor}
           data={initialHtml}
-          config={createAuthorConfig({ language })}
+          config={config}
           onReady={(editor) => {
-            // Move the detached toolbar into our toolbar container.
             const view = editor.ui.view as DecoupledEditorUIView;
             if (toolbarRef.current && view.toolbar.element) {
               toolbarRef.current.replaceChildren(view.toolbar.element);

@@ -1,7 +1,10 @@
+import type { TemplateDraftStatus } from './templatePublishApi';
+
 export interface TemplateRecord {
   id: string;
   contentHtml: string;
   manifest: { fields: Array<{ id: string; label?: string; type: string; required?: boolean }> };
+  draft_status?: TemplateDraftStatus;
 }
 
 const DOC_KEY = (id: string) => `ck5.doc.${id}`;

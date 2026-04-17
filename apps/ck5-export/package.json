@@ -1,0 +1,26 @@
+{
+  "name": "@metaldocs/ck5-export",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "hono": "^4",
+    "linkedom": "^0.18",
+    "docx": "^9",
+    "@hono/node-server": "^1"
+  },
+  "devDependencies": {
+    "@types/jszip": "^3.4",
+    "@types/node": "^20",
+    "jszip": "^3.10",
+    "tsx": "^4",
+    "typescript": "^5.4",
+    "vitest": "^2"
+  }
+}

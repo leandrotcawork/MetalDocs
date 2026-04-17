@@ -258,6 +258,8 @@ func TestHandlePublish_422_HasStrippedFields(t *testing.T) {
 }
 
 func TestHandlePublish_422_ReturnsStructuredValidationErrors(t *testing.T) {
+	t.Skip("MDDM block-type validation removed in Plan C — CK5 publish uses ApproveTemplate path")
+	// original test preserved below for reference
 	h, _ := newTemplateTestHandler(t)
 
 	draft := createTestDraft(t, h, "po", "Invalid Publish Test")

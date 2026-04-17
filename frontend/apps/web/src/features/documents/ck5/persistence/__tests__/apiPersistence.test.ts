@@ -6,9 +6,25 @@ describe('apiPersistence', () => {
   });
 
   it('saveTemplate PUTs to /api/v1/templates/:key/draft', async () => {
-    const mockFetch = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }));
+    const loadResponse = {
+      templateKey: 'tpl-1',
+      profileCode: 'PO',
+      name: 'tpl-1',
+      status: 'draft',
+      lockVersion: 1,
+      hasStrippedFields: false,
+      blocks: { _ck5: { contentHtml: '' } },
+      theme: {},
+      meta: {},
+    };
+    const saveResponse = { ...loadResponse, lockVersion: 2 };
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(loadResponse), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(saveResponse), { status: 200 }));
     vi.stubGlobal('fetch', mockFetch);
-    const { saveTemplate } = await import('../apiPersistence');
+    const { saveTemplate, loadTemplate } = await import('../apiPersistence');
+    await loadTemplate('tpl-1');
     await saveTemplate('tpl-1', '<p>x</p>', { fields: [] });
     expect(mockFetch).toHaveBeenCalledWith(
       '/api/v1/templates/tpl-1/draft',

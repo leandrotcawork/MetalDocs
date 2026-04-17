@@ -70,6 +70,8 @@ type Repository interface {
 	// Returns ErrTemplateDraftNotFound if no draft exists and expectedLockVersion > 0.
 	UpsertTemplateDraftCAS(ctx context.Context, draft *TemplateDraft, expectedLockVersion int) (*TemplateDraft, error)
 	DeleteTemplateDraft(ctx context.Context, templateKey string) error
+	UpdateTemplateDraftStatus(ctx context.Context, templateKey string, newStatus TemplateStatus) error
+	SetTemplateDraftPublished(ctx context.Context, templateKey string, publishedHTML string) error
 
 	// Template version operations
 

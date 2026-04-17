@@ -463,3 +463,19 @@ ALTER TABLE template_drafts
 | All custom plugins | own code | — |
 
 Zero commercial / premium CKEditor licenses.
+
+---
+
+## Amendments (post-ship)
+
+### 2026-04-16 — Migration column name: `draft_status`
+
+Spec §PR2 specified column name `status`. Shipped migration `0077_add_template_publish_state.sql` uses `draft_status` to avoid a naming collision with the existing `template_versions.status` column, which tracks a different state machine (draft / published / deprecated lifecycle vs the review workflow). Functional behavior identical.
+
+### 2026-04-16 — IR golden retirement deferred, then obsoleted
+
+Spec §Testing step 3 planned a dual-path golden-parity migration: run both the IR → docx and the HTML → docx paths against equivalent goldens, confirm parity, then retire the IR-only goldens. The dual-path phase was skipped during implementation; both paths shipped together without a parity check. The post-audit sweep (see below) deleted the IR path entirely, making the retirement moot. Any IR-only golden fixtures were removed as part of the `docx-emitter/` directory deletion and are not recoverable without restoring the legacy pipeline.
+
+### 2026-04-16 — Post-audit dead-code sweep
+
+An outsider audit found `apps/ck5-export/src/{docx-emitter,codecs,layout-interpreter}/` shipped but unreachable from any route. The `layout-ir/` directory framed design tokens as a persistent IR in violation of the "IR is ephemeral" principle. All three directories + `layout-ir/` were deleted in plan `docs/superpowers/plans/2026-04-16-ck5-plan-c-post-audit-fixes.md`. The surviving `ck5-docx-emitter.ts` god file was split into `docx-emitter/` (block-per-file) and `layout-ir/` was collapsed to a single `layout-tokens.ts`. Correctness bugs (missing block-exception button, field label not rendered, hyperlink color hardcoded) were fixed at the same time.

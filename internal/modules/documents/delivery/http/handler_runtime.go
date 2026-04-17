@@ -46,23 +46,3 @@ func (h *Handler) handleDocumentRuntimeContentPut(w http.ResponseWriter, r *http
 
 	w.WriteHeader(http.StatusNoContent)
 }
-
-func (h *Handler) handleDocumentExportDocx(w http.ResponseWriter, r *http.Request, documentID string) {
-	traceID := requestTraceID(r)
-	userID := strings.TrimSpace(authn.UserIDFromContext(r.Context()))
-	if userID == "" {
-		writeAPIError(w, http.StatusUnauthorized, "AUTH_UNAUTHORIZED", "Authentication required", traceID)
-		return
-	}
-
-	payload, err := h.service.ExportDocumentDocxAuthorized(r.Context(), documentID, traceID)
-	if err != nil {
-		h.writeDomainError(w, err, traceID)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
-	w.Header().Set("Content-Disposition", `attachment; filename="document-`+documentID+`-runtime.docx"`)
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(payload)
-}

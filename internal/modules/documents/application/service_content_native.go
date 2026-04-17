@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -10,7 +11,6 @@ import (
 
 	"metaldocs/internal/modules/documents/domain"
 	"metaldocs/internal/platform/messaging"
-	"metaldocs/internal/platform/render/docgen"
 )
 
 func (s *Service) GetNativeContentAuthorized(ctx context.Context, documentID string) (domain.Version, error) {
@@ -100,15 +100,19 @@ func (s *Service) SaveNativeContentAuthorized(ctx context.Context, cmd domain.Sa
 		version.TemplateKey = resolvedTemplate.TemplateKey
 		version.TemplateVersion = resolvedTemplate.Version
 
-		pending := &docgen.RenderRevision{
-			Versao:    fmt.Sprintf("%d", current.Number),
-			Data:      now.Format("2006-01-02"),
-			Descricao: fmt.Sprintf("Content version %d", current.Number),
-			Por:       doc.OwnerID,
+		expectedHash := strings.TrimSpace(current.ContentHash)
+		if expectedHash == "" {
+			expectedHash = contentHash(current.Content)
 		}
-		docxBytes, err := s.generateDocxBytes(ctx, doc, version, contentPayload, cmd.TraceID, pending)
+		docxBytes, err := s.generateDocxBytes(ctx, doc, version, contentPayload, cmd.TraceID, nil)
 		if err != nil {
-			return domain.Version{}, err
+			if !errors.Is(err, domain.ErrRenderUnavailable) {
+				return domain.Version{}, err
+			}
+			if err := s.repo.UpdateDraftVersionContentCAS(ctx, version, expectedHash); err != nil {
+				return domain.Version{}, err
+			}
+			return version, nil
 		}
 		docxKey := documentContentStorageKey(doc.ID, current.Number, "docx")
 		if err := s.attachmentStore.Save(ctx, docxKey, docxBytes); err != nil {
@@ -127,11 +131,6 @@ func (s *Service) SaveNativeContentAuthorized(ctx context.Context, cmd domain.Sa
 			return domain.Version{}, err
 		}
 		version.PdfStorageKey = pdfKey
-
-		expectedHash := strings.TrimSpace(current.ContentHash)
-		if expectedHash == "" {
-			expectedHash = contentHash(current.Content)
-		}
 		if err := s.repo.UpdateDraftVersionContentCAS(ctx, version, expectedHash); err != nil {
 			_ = s.attachmentStore.Delete(ctx, pdfKey)
 			_ = s.attachmentStore.Delete(ctx, docxKey)
@@ -165,14 +164,32 @@ func (s *Service) SaveNativeContentAuthorized(ctx context.Context, cmd domain.Sa
 		CreatedAt:       now,
 	}
 
-	pending := &docgen.RenderRevision{
-		Versao:    fmt.Sprintf("%d", next),
-		Data:      now.Format("2006-01-02"),
-		Descricao: fmt.Sprintf("Content version %d", next),
-		Por:       doc.OwnerID,
-	}
-	docxBytes, err := s.generateDocxBytes(ctx, doc, version, contentPayload, cmd.TraceID, pending)
+	docxBytes, err := s.generateDocxBytes(ctx, doc, version, contentPayload, cmd.TraceID, nil)
 	if err != nil {
+		if errors.Is(err, domain.ErrRenderUnavailable) {
+			if err := s.repo.SaveVersion(ctx, version); err != nil {
+				return domain.Version{}, err
+			}
+			if s.publisher != nil {
+				_ = s.publisher.Publish(ctx, messaging.Event{
+					EventID:           fmt.Sprintf("evt-doc-version-create-%s-%d", doc.ID, next),
+					EventType:         "document.version.created",
+					AggregateType:     "document",
+					AggregateID:       doc.ID,
+					OccurredAtRFC3339: now.Format(time.RFC3339),
+					Version:           next,
+					IdempotencyKey:    fmt.Sprintf("document.version.created:%s:%d", doc.ID, next),
+					Producer:          "documents",
+					TraceID:           cmd.TraceID,
+					Payload: map[string]any{
+						"document_id": doc.ID,
+						"version":     next,
+						"source":      version.ContentSource,
+					},
+				})
+			}
+			return version, nil
+		}
 		return domain.Version{}, err
 	}
 	docxKey := documentContentStorageKey(doc.ID, next, "docx")

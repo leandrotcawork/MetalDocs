@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"metaldocs/internal/modules/documents/domain/mddm"
+	"metaldocs/internal/modules/documents/domain"
 )
 
 const maxImageBytes = 10 * 1024 * 1024
@@ -22,10 +22,10 @@ var allowedMIMEs = map[string]bool{
 }
 
 type ImageHandler struct {
-	storage mddm.ImageStorage
+	storage domain.ImageStorage
 }
 
-func NewImageHandler(storage mddm.ImageStorage) *ImageHandler {
+func NewImageHandler(storage domain.ImageStorage) *ImageHandler {
 	return &ImageHandler{storage: storage}
 }
 
@@ -83,7 +83,7 @@ func (h *ImageHandler) GetImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	bytes, mimeType, err := h.storage.Get(r.Context(), id)
-	if err == mddm.ErrImageNotFound {
+	if err == domain.ErrImageNotFound {
 		http.NotFound(w, r)
 		return
 	}

@@ -11,7 +11,6 @@ import {
 } from "../../api/templates";
 import type { TemplateDraftDTO } from "../../api/templates";
 import { useTemplatesStore } from "../../store/templates.store";
-import { validateTemplate } from "../documents/mddm-editor/engine/codecs/validate-template";
 
 // NOTE: The project has no generic toast library (only the operations-stream
 // notification system). For conflict alerts we fall back to window.alert().
@@ -106,14 +105,6 @@ export function useTemplateDraft({ templateKey }: UseTemplateDraftOptions): UseT
       const current = localDraft;
       if (!current) return;
 
-      // Client-side validation before hitting the server
-      const blocksArray = Array.isArray(blocks) ? blocks : [];
-      const clientErrors = validateTemplate(blocksArray);
-      if (clientErrors.length > 0) {
-        setValidationErrors(clientErrors);
-        return;
-      }
-
       try {
         const savedDraft = await apiSaveDraft(templateKey, {
           blocks,
@@ -144,7 +135,7 @@ export function useTemplateDraft({ templateKey }: UseTemplateDraftOptions): UseT
         throw err;
       }
     },
-    [templateKey, localDraft, setValidationErrors, navigate],
+    [templateKey, localDraft, setValidationErrors, navigate, setDraft, markClean],
   );
 
   const discardDraft = useCallback(async () => {

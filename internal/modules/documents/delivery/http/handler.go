@@ -19,14 +19,25 @@ import (
 	"metaldocs/internal/platform/security"
 )
 
+// CK5ExportClientInterface is the minimal interface the CK5 export handler needs.
+type CK5ExportClientInterface interface {
+	RenderDocx(ctx context.Context, html string) ([]byte, error)
+	RenderPDFHtml(ctx context.Context, html string) (string, error)
+}
+
+// HTMLToPDFConverter converts HTML bytes to PDF bytes (implemented by gotenberg.Client).
+type HTMLToPDFConverter interface {
+	ConvertHTMLToPDF(ctx context.Context, htmlBytes []byte, cssBytes []byte) ([]byte, error)
+}
+
 type Handler struct {
 	service                  *application.Service
 	signer                   *security.AttachmentSigner
 	downloadTTL              time.Duration
 	loadHandler              *LoadHandler
 	submitForApprovalHandler *SubmitForApprovalHandler
-	renderPDF                *RenderPDFHandler
-	shadowDiff               *ShadowDiffHandler
+	ck5Export                CK5ExportClientInterface
+	pdfConverter             HTMLToPDFConverter
 }
 
 type CreateDocumentRequest struct {
@@ -462,19 +473,13 @@ func (h *Handler) WithMDDMHandlers(load *application.LoadService, submit *applic
 	return h
 }
 
-// WithRenderPDF wires the Gotenberg Chromium HTML→PDF handler.
-// renderer may be nil (e.g. Gotenberg is not configured); the handler's nil
-// guard returns a structured 502 in that case.
-func (h *Handler) WithRenderPDF(renderer PDFRenderer) *Handler {
-	h.renderPDF = NewRenderPDFHandler(renderer, h.service)
+func (h *Handler) WithCK5ExportClient(client CK5ExportClientInterface) *Handler {
+	h.ck5Export = client
 	return h
 }
 
-// WithShadowDiffHandler wires the shadow diff telemetry handler.
-// s may be nil when the repo is not configured (memory mode); the route will
-// return 503 in that case.
-func (h *Handler) WithShadowDiffHandler(s *ShadowDiffHandler) *Handler {
-	h.shadowDiff = s
+func (h *Handler) WithPDFConverter(c HTMLToPDFConverter) *Handler {
+	h.pdfConverter = c
 	return h
 }
 
@@ -494,7 +499,6 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/documents", h.handleDocuments)
 	mux.HandleFunc("/api/v1/documents/", h.handleDocumentSubRoutes)
 	mux.HandleFunc("/api/v1/attachments/", h.handleAttachmentDownloads)
-	mux.HandleFunc("/api/v1/telemetry/mddm-shadow-diff", h.handleShadowDiffTelemetry)
 	mux.HandleFunc("/api/v1/templates", h.handleTemplatesCollection)
 	mux.HandleFunc("/api/v1/templates/", h.handleTemplatesSubRoutes)
 }
@@ -642,8 +646,6 @@ func (h *Handler) handleDocumentProfileSubRoutes(w http.ResponseWriter, r *http.
 		h.handleUpdateDocumentProfile(w, r, parts[0])
 	case len(parts) == 1 && r.Method == http.MethodDelete:
 		h.handleDeleteDocumentProfile(w, r, parts[0])
-	case len(parts) == 3 && parts[1] == "template" && parts[2] == "docx" && r.Method == http.MethodGet:
-		h.handleDocumentProfileTemplateDocx(w, r, parts[0])
 	case len(parts) == 2 && parts[1] == "schema" && r.Method == http.MethodGet:
 		h.handleDocumentProfileSchemas(w, r, parts[0])
 	case len(parts) == 2 && parts[1] == "schema" && r.Method == http.MethodPost:
@@ -1486,44 +1488,26 @@ func (h *Handler) handleDocumentSubRoutes(w http.ResponseWriter, r *http.Request
 		}
 		return
 	}
-	if len(parts) == 3 && strings.TrimSpace(parts[0]) != "" && parts[1] == "content" && parts[2] == "browser" && r.Method == http.MethodPost {
-		h.handleDocumentContentBrowserPost(w, r, parts[0])
-		return
-	}
 	if len(parts) == 2 && strings.TrimSpace(parts[0]) != "" && parts[1] == "content" && r.Method == http.MethodPut {
 		h.handleDocumentRuntimeContentPut(w, r, parts[0])
 		return
 	}
-	if len(parts) == 3 && strings.TrimSpace(parts[0]) != "" && parts[1] == "content" && parts[2] == "render-pdf" && r.Method == http.MethodPost {
-		h.handleDocumentContentRenderPDF(w, r, parts[0])
+	// Task 16: GET /documents/{id}/export/ck5/docx
+	if len(parts) == 4 && parts[0] != "" && parts[1] == "export" && parts[2] == "ck5" && parts[3] == "docx" && r.Method == http.MethodGet {
+		h.handleDocumentExportCK5Docx(w, r, parts[0])
 		return
 	}
-	if len(parts) == 3 && strings.TrimSpace(parts[0]) != "" && parts[1] == "render" && parts[2] == "pdf" && r.Method == http.MethodPost {
-		if h.renderPDF == nil {
-			writeAPIError(w, http.StatusBadGateway, "RENDER_UNAVAILABLE", "PDF renderer not configured", requestTraceID(r))
-			return
-		}
-		h.renderPDF.HandleRenderPDF(w, r, parts[0])
-		return
-	}
-	if len(parts) == 3 && strings.TrimSpace(parts[0]) != "" && parts[1] == "export" && parts[2] == "docx" && r.Method == http.MethodPost {
-		h.handleDocumentExportDocx(w, r, parts[0])
+	// Task 17: GET /documents/{id}/export/ck5/pdf
+	if len(parts) == 4 && parts[0] != "" && parts[1] == "export" && parts[2] == "ck5" && parts[3] == "pdf" && r.Method == http.MethodGet {
+		h.handleDocumentExportCK5PDF(w, r, parts[0])
 		return
 	}
 	if len(parts) == 3 && strings.TrimSpace(parts[0]) != "" && parts[1] == "content" && parts[2] == "pdf" && r.Method == http.MethodGet {
 		h.handleDocumentContentPDF(w, r, parts[0])
 		return
 	}
-	if len(parts) == 3 && strings.TrimSpace(parts[0]) != "" && parts[1] == "content" && parts[2] == "docx" && r.Method == http.MethodGet {
-		h.handleDocumentContentDocx(w, r, parts[0])
-		return
-	}
 	if len(parts) == 3 && strings.TrimSpace(parts[0]) != "" && parts[1] == "content" && parts[2] == "upload" && r.Method == http.MethodPost {
 		h.handleDocumentContentUpload(w, r, parts[0])
-		return
-	}
-	if len(parts) == 3 && strings.TrimSpace(parts[0]) != "" && parts[1] == "template" && parts[2] == "docx" && r.Method == http.MethodGet {
-		h.handleDocumentTemplateDocx(w, r, parts[0])
 		return
 	}
 	if len(parts) == 2 && strings.TrimSpace(parts[0]) != "" && parts[1] == "editor-bundle" && r.Method == http.MethodGet {
@@ -2181,18 +2165,4 @@ func mapDocumentTemplateSnapshotResponse(item domain.DocumentTemplateSnapshot) *
 		Body:          item.Body,
 		Definition:    item.Definition,
 	}
-}
-
-// handleShadowDiffTelemetry dispatches POST /api/v1/telemetry/mddm-shadow-diff
-// to the ShadowDiffHandler. Non-POST methods are rejected with 405.
-func (h *Handler) handleShadowDiffTelemetry(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-	if h.shadowDiff == nil {
-		writeAPIError(w, http.StatusServiceUnavailable, "TELEMETRY_UNAVAILABLE", "Shadow diff telemetry is not configured", requestTraceID(r))
-		return
-	}
-	h.shadowDiff.Handle(w, r)
 }

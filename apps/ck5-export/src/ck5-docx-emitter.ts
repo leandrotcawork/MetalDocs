@@ -12,6 +12,7 @@ import {
   type IBorderOptions,
   type IParagraphOptions,
 } from "docx"
+import JSZip from "jszip"
 import type { ResolvedAsset } from "./asset-resolver"
 import type {
   ExportNode,
@@ -571,4 +572,23 @@ export function collectImageUrls(nodes: ExportNode[]): string[] {
 
   walk(nodes)
   return [...urls]
+}
+
+/**
+ * Post-pack: docx@9 does not serialize autoHyphenation / defaultTabStop from
+ * the Document settings object. Inject them directly into word/settings.xml.
+ */
+export async function injectDocxSettings(buf: Buffer): Promise<Buffer> {
+  const zip = await JSZip.loadAsync(buf)
+  const settingsFile = zip.file("word/settings.xml")
+  if (!settingsFile) return buf
+  let xml = await settingsFile.async("string")
+  // Insert before </w:settings>
+  const injection = [
+    '<w:autoHyphenation w:val="false"/>',
+    '<w:defaultTabStop w:val="720"/>',
+  ].join("")
+  xml = xml.replace("</w:settings>", `${injection}</w:settings>`)
+  zip.file("word/settings.xml", xml)
+  return Buffer.from(await zip.generateAsync({ type: "uint8array" }))
 }

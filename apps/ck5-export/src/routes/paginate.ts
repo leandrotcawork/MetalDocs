@@ -1,9 +1,10 @@
 import { Hono } from "hono";
 import { paginateWithChromium, PaginatorTimeoutError } from "../pagination/paginate-with-chromium";
 import { PaginationDegraded } from "../pagination/pool-retry";
+import type { PlaywrightPool } from "../pagination/playwright-pool";
 import { validateBids, validateEditorBidSet } from "../pagination/validator";
 
-export function paginateRoute(pool: unknown): Hono {
+export function paginateRoute(pool: PlaywrightPool): Hono {
   const route = new Hono();
 
   route.post("/paginate", async (c) => {
@@ -26,7 +27,7 @@ export function paginateRoute(pool: unknown): Hono {
     }
 
     try {
-      const breaks = await paginateWithChromium(pool as any, html, { timeoutMs: 15_000 });
+      const breaks = await paginateWithChromium(pool, html, { timeoutMs: 15_000 });
       return c.json({ breaks }, 200);
     } catch (error) {
       if (error instanceof PaginatorTimeoutError) {
@@ -36,9 +37,9 @@ export function paginateRoute(pool: unknown): Hono {
         if (error.reason === "runtime-error") {
           return c.json({ breaks: [], degraded: true }, 200);
         }
-        return c.json({ error: "pagination-degraded", reason: error.reason }, 503);
+        return c.json({ error: "paginator-unavailable", reason: error.reason }, 503);
       }
-      return c.json({ error: "pagination-degraded", reason: "unknown" }, 503);
+      return c.json({ error: "paginator-unavailable" }, 503);
     }
   });
 

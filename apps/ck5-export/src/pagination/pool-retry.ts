@@ -30,15 +30,37 @@ type PoolLike = {
 };
 
 async function acquireWithTimeout(pool: PoolLike, timeoutMs: number): Promise<unknown> {
-  let t: ReturnType<typeof setTimeout> | null = null;
-  const timeout = new Promise<never>((_, rej) => {
-    t = setTimeout(() => rej(new PaginationDegraded('pool-exhausted')), timeoutMs);
+  const acquisition = pool.acquire();
+  let settled = false;
+
+  // If we time out, the pool waiter is still registered and will eventually
+  // receive a worker. Release it back so it does not leak out of the pool.
+  acquisition.then(
+    (w) => { if (settled) pool.release(w); },
+    () => { /* acquire error after timeout — nothing to release */ },
+  );
+
+  return new Promise<unknown>((resolve, reject) => {
+    const t = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      reject(new PaginationDegraded('pool-exhausted'));
+    }, timeoutMs);
+    acquisition.then(
+      (w) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(t);
+        resolve(w);
+      },
+      (e) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(t);
+        reject(e);
+      },
+    );
   });
-  try {
-    return await Promise.race([pool.acquire(), timeout]);
-  } finally {
-    if (t) clearTimeout(t);
-  }
 }
 
 export async function withWorker<T>(

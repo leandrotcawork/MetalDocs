@@ -13,7 +13,10 @@ import { paginationDebugRoute } from "./routes/pagination-debug"
 export const app = new Hono()
 const pool = new PlaywrightPool({ size: Number(process.env.CHROMIUM_POOL_SIZE ?? 3) })
 
-app.onError((err, c) => c.json({ error: err.message ?? "internal error" }, 500))
+app.onError((err, c) => {
+  console.error(err)
+  return c.json({ error: "internal error" }, 500)
+})
 app.notFound((c) => c.json({ error: "not found" }, 404))
 
 app.use("/assets/*", serveStatic({ root: "./public" }))

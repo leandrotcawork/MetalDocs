@@ -1,4 +1,4 @@
-﻿import { test, expect } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import JSZip from 'jszip';
 
 test('pagination — 10 pages end-to-end', async ({ page }) => {

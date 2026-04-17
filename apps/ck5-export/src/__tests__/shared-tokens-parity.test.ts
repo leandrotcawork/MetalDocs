@@ -8,4 +8,11 @@ describe('shared tokens parity (export)', () => {
     expect(shared.page.marginLeftMm).toBe(25);
     expect(shared.typography.exportFont).toBe('Carlito');
   });
+
+  it('exposes pagination contract fields', () => {
+    expect(shared.blockIdentityAttr).toBe('data-mddm-bid');
+    expect(shared.pageBreakAttr).toBe('data-pagination-page');
+    expect(shared.paginationSLO.maxBreakDeltaPer50Pages).toBe(1);
+    expect(shared.fontFallbackChain[0]).toBe('Carlito');
+  });
 });

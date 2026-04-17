@@ -11,6 +11,12 @@ export type LayoutTokens = Readonly<{
     exportFont: string;
     baseFontSizePt: number;
   }>;
+  paginationSLO: Readonly<{
+    maxBreakDeltaPer50Pages: number;
+  }>;
+  blockIdentityAttr: string;
+  pageBreakAttr: string;
+  fontFallbackChain: readonly string[];
 }>;
 
 export const defaultLayoutTokens: LayoutTokens = {
@@ -26,4 +32,8 @@ export const defaultLayoutTokens: LayoutTokens = {
     exportFont: 'Carlito',
     baseFontSizePt: 11,
   },
+  paginationSLO: { maxBreakDeltaPer50Pages: 1 },
+  blockIdentityAttr: 'data-mddm-bid',
+  pageBreakAttr: 'data-pagination-page',
+  fontFallbackChain: Object.freeze(['Carlito', 'Liberation Sans', 'Arial', 'sans-serif']) as readonly string[],
 } as const;

@@ -20,6 +20,7 @@ export const AUTHOR_TOOLBAR: readonly string[] = [
   'removeFormat',
   '|',
   'restrictedEditingException',
+  'restrictedEditingExceptionBlock',
   '|',
   'undo',
   'redo',

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { PlaywrightPool } from './playwright-pool';
 import { injectSentinels } from './sentinel';
-import { wrapPrintDocument } from '../print-stylesheet/wrap-print-document';
+import { wrapInPrintDocument } from '../print-stylesheet/wrap-print-document';
 import { withWorker, WorkerCrash, PaginatorTimeoutError } from './pool-retry';
 
 export { PaginatorTimeoutError } from './pool-retry';
@@ -16,7 +16,7 @@ export async function paginateWithChromium(
 ): Promise<ServerBreak[]> {
   return withWorker(pool, async (browser: any) => {
     const withSentinels = injectSentinels(rawHtml);
-    const fullHtml = wrapPrintDocument({ bodyHtml: withSentinels });
+    const fullHtml = wrapInPrintDocument(withSentinels);
 
     const ctx = await browser.newContext();
     const page = await ctx.newPage();

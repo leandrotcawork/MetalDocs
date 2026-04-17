@@ -1,9 +1,11 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import { DecoupledEditor } from 'ckeditor5';
+import type { ClassicEditor } from 'ckeditor5';
 import type { DecoupledEditorUIView } from 'ckeditor5';
 import 'ckeditor5/ckeditor5.css';
 import { createAuthorConfig } from '../config/editorConfig';
+import { PageCounter } from './PageCounter';
 import styles from './AuthorEditor.module.css';
 
 export interface AuthorEditorProps {
@@ -15,10 +17,14 @@ export interface AuthorEditorProps {
 
 export function AuthorEditor({ initialHtml, onChange, onReady, language = 'en' }: AuthorEditorProps) {
   const toolbarRef = useRef<HTMLDivElement>(null);
+  const [editor, setEditor] = useState<ClassicEditor | null>(null);
 
   return (
     <div className={styles.shell}>
-      <div className={styles.toolbar} ref={toolbarRef} data-ck5-role="toolbar" />
+      <div className={styles.toolbar} data-ck5-role="toolbar">
+        <div ref={toolbarRef} />
+        <PageCounter editor={editor} />
+      </div>
       <div className={styles.editable} data-ck5-role="editable">
         <CKEditor
           editor={DecoupledEditor}
@@ -30,6 +36,7 @@ export function AuthorEditor({ initialHtml, onChange, onReady, language = 'en' }
             if (toolbarRef.current && view.toolbar.element) {
               toolbarRef.current.replaceChildren(view.toolbar.element);
             }
+            setEditor(editor as unknown as ClassicEditor);
             onReady?.(editor);
           }}
           onChange={(_event, editor) => {

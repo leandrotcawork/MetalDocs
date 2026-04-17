@@ -14,6 +14,11 @@ type ck5DraftResponse struct {
 	HTML string `json:"html"`
 }
 
+type ck5TemplateDraftRequest struct {
+	ContentHTML string         `json:"contentHtml"`
+	Manifest    map[string]any `json:"manifest"`
+}
+
 // handleGetCK5Draft handles GET /api/v1/templates/{key}/ck5-draft
 //
 // Query params:
@@ -69,4 +74,28 @@ func extractCK5ContentHtmlFromJSON(blocksJSON json.RawMessage) string {
 		return ""
 	}
 	return wrapper.CK5.ContentHTML
+}
+
+// handlePutCK5TemplateDraft serves PUT /api/v1/templates/{key}/ck5-draft.
+func (h *Handler) handlePutCK5TemplateDraft(w http.ResponseWriter, r *http.Request, key string) {
+	traceID := requestTraceID(r)
+	if userIDFromContext(r.Context()) == "" {
+		writeAPIError(w, http.StatusUnauthorized, "AUTH_UNAUTHORIZED", "Authentication required", traceID)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxDocumentContentPayloadBytes)
+
+	var req ck5TemplateDraftRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid JSON payload", traceID)
+		return
+	}
+
+	if err := h.service.SaveCK5TemplateDraftAuthorized(r.Context(), key, req.ContentHTML, req.Manifest); err != nil {
+		h.writeDomainError(w, err, traceID)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }

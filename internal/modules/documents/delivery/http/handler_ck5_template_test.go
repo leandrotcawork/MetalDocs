@@ -1,6 +1,7 @@
 package httpdelivery
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -114,5 +115,79 @@ func TestHandleGetCK5Draft_404_NotFound(t *testing.T) {
 
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404; body: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestHandlePutCK5TemplateDraft_200_RoundTrip(t *testing.T) {
+	h, repo := newTemplateTestHandler(t)
+	upsertCK5TemplateDraft(t, repo, "tpl-put-rt", domain.TemplateStatusDraft, "")
+
+	mux := http.NewServeMux()
+	h.RegisterRoutes(mux)
+
+	putBody, _ := json.Marshal(map[string]any{
+		"contentHtml": "<p>CK5</p>",
+		"manifest":    map[string]any{},
+	})
+	putReq := httptest.NewRequest(http.MethodPut, "/api/v1/templates/tpl-put-rt/ck5-draft", bytes.NewReader(putBody))
+	putReq.Header.Set("Content-Type", "application/json")
+	putReq = withAdminCtx(putReq)
+	putW := httptest.NewRecorder()
+	mux.ServeHTTP(putW, putReq)
+
+	if putW.Code != http.StatusOK {
+		t.Fatalf("PUT got %d, want 200; body: %s", putW.Code, putW.Body.String())
+	}
+
+	getReq := httptest.NewRequest(http.MethodGet, "/api/v1/templates/tpl-put-rt/ck5-draft", nil)
+	getReq = withAdminCtx(getReq)
+	getW := httptest.NewRecorder()
+	h.handleGetCK5Draft(getW, getReq, "tpl-put-rt")
+
+	if getW.Code != http.StatusOK {
+		t.Fatalf("GET got %d, want 200; body: %s", getW.Code, getW.Body.String())
+	}
+
+	var resp ck5DraftResponse
+	if err := json.NewDecoder(getW.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode GET response: %v", err)
+	}
+	if resp.HTML != "<p>CK5</p>" {
+		t.Fatalf("html = %q, want <p>CK5</p>", resp.HTML)
+	}
+}
+
+func TestHandlePutCK5TemplateDraft_401_NoAuth(t *testing.T) {
+	h, repo := newTemplateTestHandler(t)
+	upsertCK5TemplateDraft(t, repo, "tpl-put-401", domain.TemplateStatusDraft, "")
+
+	mux := http.NewServeMux()
+	h.RegisterRoutes(mux)
+
+	putBody, _ := json.Marshal(map[string]any{"contentHtml": "<p>x</p>", "manifest": map[string]any{}})
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/templates/tpl-put-401/ck5-draft", bytes.NewReader(putBody))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("got %d, want 401; body: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestHandlePutCK5TemplateDraft_404_NoDraft(t *testing.T) {
+	h, _ := newTemplateTestHandler(t)
+
+	mux := http.NewServeMux()
+	h.RegisterRoutes(mux)
+
+	putBody, _ := json.Marshal(map[string]any{"contentHtml": "<p>x</p>", "manifest": map[string]any{}})
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/templates/missing/ck5-draft", bytes.NewReader(putBody))
+	req = withAdminCtx(req)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("got %d, want 404; body: %s", w.Code, w.Body.String())
 	}
 }

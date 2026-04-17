@@ -126,9 +126,12 @@ func (h *Handler) handleTemplatesSubRoutes(w http.ResponseWriter, r *http.Reques
 				w.WriteHeader(http.StatusMethodNotAllowed)
 			}
 		case "ck5-draft":
-			if r.Method == http.MethodGet {
+			switch r.Method {
+			case http.MethodGet:
 				h.handleGetCK5Draft(w, r, key)
-			} else {
+			case http.MethodPut:
+				h.handlePutCK5TemplateDraft(w, r, key)
+			default:
 				w.WriteHeader(http.StatusMethodNotAllowed)
 			}
 		default:

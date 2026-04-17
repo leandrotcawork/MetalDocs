@@ -172,6 +172,14 @@ func (r *Repository) ListTemplateAuditEvents(_ context.Context, templateKey stri
 	return out, nil
 }
 
+// UpsertTemplateDraftForTest directly inserts a draft for tests (bypasses CAS).
+func (r *Repository) UpsertTemplateDraftForTest(draft *domain.TemplateDraft) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.templateDrafts[draft.TemplateKey] = cloneTemplateDraft(*draft)
+	return nil
+}
+
 // cloneTemplateDraft deep-copies a TemplateDraft to prevent aliasing.
 func cloneTemplateDraft(d domain.TemplateDraft) domain.TemplateDraft {
 	out := d

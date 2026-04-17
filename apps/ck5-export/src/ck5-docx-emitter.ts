@@ -469,6 +469,13 @@ export function emitDocxFromExportTree(
   const children = emitBlocks(nodes, tokens, assetMap)
 
   return new Document({
+    settings: {
+      autoHyphenation: false,
+      defaultTabStop: 720,
+      compatibility: {
+        doNotExpandShiftReturn: true,
+      },
+    },
     numbering: {
       config: [
         {

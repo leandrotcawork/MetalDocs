@@ -8,6 +8,7 @@ import { MddmDataTablePlugin } from '../plugins/MddmDataTablePlugin';
 import { MddmRichBlockPlugin } from '../plugins/MddmRichBlockPlugin';
 import { MddmUploadAdapterPlugin } from '../plugins/MddmUploadAdapter';
 import { MddmBlockIdentityPlugin } from '../plugins/MddmBlockIdentityPlugin';
+import { MddmPaginationPlugin } from '../plugins/MddmPaginationPlugin';
 
 type PluginCtor = NonNullable<EditorConfig['plugins']>[number];
 
@@ -25,6 +26,7 @@ export function createAuthorConfig(opts: ConfigOptions = {}): EditorConfig {
     plugins: [
       ...AUTHOR_PLUGINS,
       MddmBlockIdentityPlugin,
+      MddmPaginationPlugin,
       MddmFieldPlugin,
       MddmSectionPlugin,
       MddmRepeatablePlugin,
@@ -97,6 +99,7 @@ export function createFillConfig(opts: ConfigOptions = {}): EditorConfig {
     plugins: [
       ...FILL_PLUGINS,
       MddmBlockIdentityPlugin,
+      MddmPaginationPlugin,
       MddmFieldPlugin,
       MddmSectionPlugin,
       MddmRepeatablePlugin,

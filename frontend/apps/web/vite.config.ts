@@ -31,6 +31,11 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    resolve: {
+      alias: {
+        '@metaldocs/mddm-layout-tokens': resolve(__dirname, '../../../shared/mddm-layout-tokens/index.ts'),
+      },
+    },
     server: {
       host: "0.0.0.0",
       port: 4173,

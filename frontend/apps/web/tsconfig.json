@@ -15,7 +15,11 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "types": ["vite/client"]
+    "types": ["vite/client"],
+    "baseUrl": ".",
+    "paths": {
+      "@metaldocs/mddm-layout-tokens": ["../../../shared/mddm-layout-tokens/index.ts"]
+    }
   },
   "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]

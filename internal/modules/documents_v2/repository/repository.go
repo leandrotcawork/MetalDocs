@@ -433,7 +433,9 @@ func (r *Repository) CommitUpload(ctx context.Context, sessionID, userID, docID,
 		return nil, domain.ErrMisbound
 	}
 	if p.ConsumedAt != nil {
-		// Idempotent replay - look up the revision previously created for this pending.
+		// Idempotent replay: the upload already committed. Session state is intentionally
+		// not checked — the revision exists regardless of whether the session is still
+		// active. Return the existing revision so the client can ack it safely.
 		var rid string
 		var rnum int64
 		if err := tx.QueryRowContext(ctx,

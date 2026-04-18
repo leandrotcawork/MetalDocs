@@ -191,3 +191,56 @@ paths:
         - { name: rid, in: path, required: true, schema: { type: string, format: uuid } }
       responses:
         '302': { description: redirect to signed URL }
+
+  /api/v2/documents/{id}/export/pdf:
+    post:
+      operationId: exportDocumentPDF
+      tags: [documents-v2]
+      x-rate-limit: { requests_per_minute: 20 }
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                paper_size: { type: string, enum: [A4, Letter], default: A4 }
+                landscape:  { type: boolean, default: false }
+      responses:
+        '200':
+          description: PDF ready (cached or freshly generated)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [storage_key, signed_url, composite_hash, size_bytes, cached, revision_id]
+                properties:
+                  storage_key:    { type: string }
+                  signed_url:     { type: string, format: uri }
+                  composite_hash: { type: string, pattern: '^[0-9a-f]{64}$' }
+                  size_bytes:     { type: integer, format: int64 }
+                  cached:         { type: boolean }
+                  revision_id:    { type: string, format: uuid }
+        '409': { description: docx_missing }
+        '429': { description: rate_limited }
+        '502': { description: gotenberg_failed }
+
+  /api/v2/documents/{id}/export/docx-url:
+    get:
+      operationId: getDocumentDocxURL
+      tags: [documents-v2]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Signed GET URL for current revision .docx
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [signed_url, revision_id]
+                properties:
+                  signed_url:  { type: string, format: uri }
+                  revision_id: { type: string, format: uuid }
+        '409': { description: docx_missing }

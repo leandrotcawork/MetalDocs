@@ -2793,6 +2793,169 @@ paths:
         '405':
           description: Method not allowed
       security: []
+  /api/v2/templates:
+    get:
+      summary: List templates for tenant (docx-v2)
+      tags: [templates-v2]
+      operationId: listTemplatesV2
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [id, key, name, latest_version]
+                  properties:
+                    id: { type: string, format: uuid }
+                    key: { type: string }
+                    name: { type: string }
+                    description: { type: string }
+                    latest_version: { type: integer, minimum: 1 }
+                    updated_at: { type: string, format: date-time }
+        '403': { description: forbidden }
+    post:
+      summary: Create template (docx-v2)
+      tags: [templates-v2]
+      operationId: createTemplateV2
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [key, name]
+              properties:
+                key: { type: string }
+                name: { type: string }
+                description: { type: string }
+      responses:
+        '201':
+          description: created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  version_id: { type: string, format: uuid }
+  /api/v2/templates/{id}/versions/{n}:
+    get:
+      summary: Get template version metadata (docx-v2)
+      tags: [templates-v2]
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string } }
+        - { in: path, name: n, required: true, schema: { type: integer } }
+      responses:
+        '200': { description: ok }
+        '404': { description: not_found }
+  /api/v2/templates/{id}/versions/{n}/docx-upload-url:
+    post:
+      summary: Presign PUT URL for draft .docx upload
+      tags: [templates-v2]
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string } }
+        - { in: path, name: n, required: true, schema: { type: integer } }
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url: { type: string }
+                  storage_key: { type: string }
+  /api/v2/templates/{id}/versions/{n}/schema-upload-url:
+    post:
+      summary: Presign PUT URL for draft schema.json upload
+      tags: [templates-v2]
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string } }
+        - { in: path, name: n, required: true, schema: { type: integer } }
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url: { type: string }
+                  storage_key: { type: string }
+  /api/v2/signed:
+    get:
+      summary: Redirect to presigned GET URL for a stored object
+      tags: [templates-v2]
+      parameters:
+        - { in: query, name: key, required: true, schema: { type: string } }
+      responses:
+        '302': { description: redirect }
+  /api/v2/templates/{id}/versions/{n}/draft:
+    put:
+      summary: Save draft (CAS via expected_lock_version)
+      tags: [templates-v2]
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string } }
+        - { in: path, name: n, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expected_lock_version, docx_storage_key, schema_storage_key, docx_content_hash, schema_content_hash]
+              properties:
+                expected_lock_version: { type: integer }
+                docx_storage_key: { type: string }
+                schema_storage_key: { type: string }
+                docx_content_hash: { type: string }
+                schema_content_hash: { type: string }
+      responses:
+        '204': { description: ok }
+        '409': { description: template_draft_stale }
+  /api/v2/templates/{id}/versions/{n}/publish:
+    post:
+      summary: Publish draft (delegates to docgen-v2 /validate/template)
+      tags: [templates-v2]
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string } }
+        - { in: path, name: n, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [docx_key, schema_key]
+              properties:
+                docx_key: { type: string }
+                schema_key: { type: string }
+      responses:
+        '200':
+          description: published + next draft created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [published_version_id, next_draft_id, next_draft_version_num]
+                properties:
+                  published_version_id: { type: string }
+                  next_draft_id: { type: string }
+                  next_draft_version_num: { type: integer }
+        '422':
+          description: template invalid
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid: { type: boolean }
+                  parse_errors: { type: array, items: { type: object } }
+                  missing_tokens: { type: array, items: { type: string } }
+                  orphan_tokens: { type: array, items: { type: string } }
 components:
   parameters:
     DocumentId:

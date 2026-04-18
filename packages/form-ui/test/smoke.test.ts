@@ -3,6 +3,6 @@ import * as FormUI from "../src/index";
 
 describe("form-ui smoke", () => {
   it("imports module namespace", () => {
-    expect(FormUI).toBeDefined();
+    expect(typeof FormUI).toBe("object");
   });
 });

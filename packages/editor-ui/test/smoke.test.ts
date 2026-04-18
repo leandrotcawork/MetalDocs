@@ -3,6 +3,6 @@ import * as EditorUI from "../src/index";
 
 describe("editor-ui smoke", () => {
   it("imports module namespace", () => {
-    expect(EditorUI).toBeDefined();
+    expect(typeof EditorUI).toBe("object");
   });
 });

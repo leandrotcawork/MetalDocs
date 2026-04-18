@@ -3,6 +3,6 @@ import * as Tokens from "../src/index";
 
 describe("shared-tokens smoke", () => {
   it("imports module namespace", () => {
-    expect(Tokens).toBeDefined();
+    expect(typeof Tokens).toBe("object");
   });
 });

@@ -3,6 +3,6 @@ import * as Types from "../src/index";
 
 describe("shared-types smoke", () => {
   it("imports module namespace", () => {
-    expect(Types).toBeDefined();
+    expect(typeof Types).toBe("object");
   });
 });

@@ -55,14 +55,19 @@ export function DocumentEditorPage({ documentID, onDone }: DocumentEditorPagePro
     })();
   }, [documentID, fetchRevisionBuffer]);
 
+  const sessionPhase = session.state.phase;
+  const sessionID = sessionPhase === 'writer' ? session.state.sessionID : '';
+  const lastAckRevisionID = sessionPhase === 'writer' ? session.state.lastAckRevisionID : '';
+  const { setLastAck } = session;
+
   const autosaveArgs = useMemo(() => {
-    if (session.state.phase === 'writer') {
+    if (sessionPhase === 'writer') {
       return {
         documentID,
-        sessionID: session.state.sessionID,
-        baseRevisionID: session.state.lastAckRevisionID,
+        sessionID,
+        baseRevisionID: lastAckRevisionID,
         onAdvanceBase: (newRevisionID: string) => {
-          session.setLastAck(newRevisionID);
+          setLastAck(newRevisionID);
           setCurrentRevisionID(newRevisionID);
         },
         onSessionLost: () => {
@@ -77,7 +82,7 @@ export function DocumentEditorPage({ documentID, onDone }: DocumentEditorPagePro
       onAdvanceBase: () => {},
       onSessionLost: () => {},
     };
-  }, [documentID, session]);
+  }, [documentID, sessionPhase, sessionID, lastAckRevisionID, setLastAck]);
 
   const autosave = useDocumentAutosave(autosaveArgs);
 
@@ -100,7 +105,6 @@ export function DocumentEditorPage({ documentID, onDone }: DocumentEditorPagePro
       await fetchRevisionBuffer(newRevisionID);
       session.setLastAck(newRevisionID);
       setCurrentRevisionID(newRevisionID);
-      await loadDocument();
     } catch {
       setError('Failed to refresh document after restore.');
     }

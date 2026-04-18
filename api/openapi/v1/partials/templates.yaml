@@ -2,7 +2,7 @@ paths:
   /api/v2/templates:
     get:
       summary: List templates for tenant (docx-v2)
-      tags: [templates-v2]
+      tags: [templates]
       operationId: listTemplatesV2
       responses:
         '200':
@@ -24,7 +24,7 @@ paths:
         '403': { description: forbidden }
     post:
       summary: Create template (docx-v2)
-      tags: [templates-v2]
+      tags: [templates]
       operationId: createTemplateV2
       requestBody:
         required: true
@@ -50,7 +50,7 @@ paths:
   /api/v2/templates/{id}/versions/{n}:
     get:
       summary: Get template version metadata (docx-v2)
-      tags: [templates-v2]
+      tags: [templates]
       parameters:
         - { in: path, name: id, required: true, schema: { type: string } }
         - { in: path, name: n, required: true, schema: { type: integer } }
@@ -60,7 +60,7 @@ paths:
   /api/v2/templates/{id}/versions/{n}/docx-upload-url:
     post:
       summary: Presign PUT URL for draft .docx upload
-      tags: [templates-v2]
+      tags: [templates]
       parameters:
         - { in: path, name: id, required: true, schema: { type: string } }
         - { in: path, name: n, required: true, schema: { type: integer } }
@@ -77,7 +77,7 @@ paths:
   /api/v2/templates/{id}/versions/{n}/schema-upload-url:
     post:
       summary: Presign PUT URL for draft schema.json upload
-      tags: [templates-v2]
+      tags: [templates]
       parameters:
         - { in: path, name: id, required: true, schema: { type: string } }
         - { in: path, name: n, required: true, schema: { type: integer } }
@@ -94,7 +94,7 @@ paths:
   /api/v2/signed:
     get:
       summary: Redirect to presigned GET URL for a stored object
-      tags: [templates-v2]
+      tags: [templates]
       parameters:
         - { in: query, name: key, required: true, schema: { type: string } }
       responses:
@@ -102,7 +102,7 @@ paths:
   /api/v2/templates/{id}/versions/{n}/draft:
     put:
       summary: Save draft (CAS via expected_lock_version)
-      tags: [templates-v2]
+      tags: [templates]
       parameters:
         - { in: path, name: id, required: true, schema: { type: string } }
         - { in: path, name: n, required: true, schema: { type: integer } }
@@ -125,7 +125,7 @@ paths:
   /api/v2/templates/{id}/versions/{n}/publish:
     post:
       summary: Publish draft (delegates to docgen-v2 /validate/template)
-      tags: [templates-v2]
+      tags: [templates]
       parameters:
         - { in: path, name: id, required: true, schema: { type: string } }
         - { in: path, name: n, required: true, schema: { type: integer } }

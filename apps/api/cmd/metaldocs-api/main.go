@@ -9,6 +9,10 @@ import (
 	"strings"
 	"time"
 
+	_ "metaldocs/internal/modules/document_revisions"
+	_ "metaldocs/internal/modules/editor_sessions"
+	_ "metaldocs/internal/modules/templates"
+
 	auditapp "metaldocs/internal/modules/audit/application"
 	auditdelivery "metaldocs/internal/modules/audit/delivery/http"
 	authapp "metaldocs/internal/modules/auth/application"

@@ -63,9 +63,16 @@ func TestCommitAutosave_RejectionBranches(t *testing.T) {
 			if tc.hashReturn != "" {
 				presigner.hashReturn = tc.hashReturn
 			}
-			svc := application.New(repo, fakeDocgen{}, presigner, fakeTplReader{}, fakeFormVal{}, &noopAudit{})
+			svc := application.New(repo, nil, presigner, nil, nil, &noopAudit{})
 
-			result, err := svc.CommitAutosave(context.Background(), "sess_1", "user_1", "doc_1", "pending_1", []byte(`{"a":1}`))
+			result, err := svc.CommitAutosave(context.Background(), application.CommitAutosaveCmd{
+				TenantID:         "tenant_1",
+				ActorUserID:      "user_1",
+				DocumentID:       "doc_1",
+				SessionID:        "sess_1",
+				PendingUploadID:  "pending_1",
+				FormDataSnapshot: []byte(`{"a":1}`),
+			})
 
 			if tc.wantErr == nil {
 				if err != nil {

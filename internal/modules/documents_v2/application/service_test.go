@@ -2,6 +2,7 @@ package application_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -39,6 +40,8 @@ type fakeRepo struct {
 	statusCur   domain.DocumentStatus
 	statusNext  domain.DocumentStatus
 	statusStamp bool
+
+	revisionReturn *domain.Revision
 }
 
 var _ application.Repository = (*fakeRepo)(nil)
@@ -89,6 +92,8 @@ func (f *fakeRepo) ReleaseSession(_ context.Context, _, _ string) error { return
 
 func (f *fakeRepo) ForceReleaseSession(_ context.Context, _ string) error { return nil }
 
+func (f *fakeRepo) ExpireStaleSessions(_ context.Context, _ time.Time) (int, error) { return 0, nil }
+
 func (f *fakeRepo) PresignReserve(_ context.Context, _, _, _, _, _, _ string, _ time.Time) (string, error) {
 	return "pending_1", nil
 }
@@ -135,6 +140,15 @@ func (f *fakeRepo) IsDocumentOwner(_ context.Context, _, _, _ string) (bool, err
 	return f.ownerReturn, nil
 }
 
+func (f *fakeRepo) GetRevision(_ context.Context, _, _ string) (*domain.Revision, error) {
+	if f.revisionReturn == nil {
+		return nil, errors.New("revision not configured")
+	}
+	return f.revisionReturn, nil
+}
+
+func (f *fakeRepo) DeleteExpiredPending(_ context.Context, _ time.Time) (int, error) { return 0, nil }
+
 type fakePresigner struct {
 	hashReturn  string
 	hashErr     error
@@ -143,8 +157,8 @@ type fakePresigner struct {
 	deleteErr   error
 }
 
-func (f *fakePresigner) PresignAutosavePUT(_ context.Context, _, _, _, _ string, _ time.Time) (string, error) {
-	return "https://example/upload", nil
+func (f *fakePresigner) PresignRevisionPUT(_ context.Context, _, _, _ string) (string, string, error) {
+	return "https://example/upload", "documents/doc_1/revisions/rev_1.docx", nil
 }
 
 func (f *fakePresigner) HashObject(_ context.Context, _ string) (string, error) {
@@ -167,29 +181,46 @@ func (f *fakePresigner) PresignObjectGET(_ context.Context, storageKey string) (
 	return "https://example/get/" + storageKey, nil
 }
 
-type fakeDocgen struct{}
+type fakeDocgen struct {
+	hashReturn string
+	err        error
+}
 
-func (fakeDocgen) Render(_ context.Context, _ []byte, _ []byte) (string, string, error) {
-	return "tmp/rendered.docx", "h_initial", nil
+func (f fakeDocgen) RenderDocx(_ context.Context, _, _, _ string, _ json.RawMessage) (string, int64, []string, error) {
+	if f.err != nil {
+		return "", 0, nil, f.err
+	}
+	if f.hashReturn != "" {
+		return f.hashReturn, 100, nil, nil
+	}
+	return "h_initial", 100, nil, nil
 }
 
 type fakeTplReader struct {
 	err error
 }
 
-func (f fakeTplReader) ReadTemplateDocx(_ context.Context, _, _ string) ([]byte, error) {
+func (f fakeTplReader) GetPublishedVersion(_ context.Context, _, _ string) (string, string, string, error) {
 	if f.err != nil {
-		return nil, f.err
+		return "", "", "", f.err
 	}
-	return []byte("docx-template"), nil
+	return "tpl/docx/key.docx", "tpl/schema/key.json", `{"type":"object"}`, nil
 }
 
 type fakeFormVal struct {
-	err error
+	valid bool
+	errs  []string
+	err   error
 }
 
-func (f fakeFormVal) Validate(_ context.Context, _, _ string, _ []byte) error {
-	return f.err
+func (f fakeFormVal) Validate(_ string, _ json.RawMessage) (bool, []string, error) {
+	if f.err != nil {
+		return false, nil, f.err
+	}
+	if !f.valid {
+		return false, f.errs, nil
+	}
+	return true, nil, nil
 }
 
 type noopAudit struct {
@@ -197,23 +228,28 @@ type noopAudit struct {
 	lastAction string
 }
 
-func (n *noopAudit) Record(_ context.Context, action string, _ map[string]string) error {
+func (n *noopAudit) Write(_ context.Context, _, _, action, _ string, _ any) {
 	n.calls++
 	n.lastAction = action
-	return nil
 }
 
 func TestCreateDocument_OK(t *testing.T) {
 	repo := &fakeRepo{createDocIDs: [3]string{"doc_1", "rev_1", "sess_1"}}
 	audit := &noopAudit{}
-	svc := application.New(repo, fakeDocgen{}, &fakePresigner{hashReturn: "h_expected"}, fakeTplReader{}, fakeFormVal{}, audit)
+	svc := application.New(repo, fakeDocgen{}, &fakePresigner{hashReturn: "h_initial"}, fakeTplReader{}, fakeFormVal{valid: true}, audit)
 
-	doc, err := svc.CreateDocument(context.Background(), "tenant_1", "tpl_ver_1", "Contract", []byte(`{"a":1}`), "user_1")
+	res, err := svc.CreateDocument(context.Background(), application.CreateDocumentCmd{
+		TenantID:          "tenant_1",
+		ActorUserID:       "user_1",
+		TemplateVersionID: "tpl_ver_1",
+		Name:              "Contract",
+		FormData:          []byte(`{"a":1}`),
+	})
 	if err != nil {
 		t.Fatalf("CreateDocument() error = %v", err)
 	}
-	if doc.ID != "doc_1" || doc.CurrentRevisionID != "rev_1" || doc.ActiveSessionID != "sess_1" {
-		t.Fatalf("unexpected ids: %+v", doc)
+	if res.DocumentID != "doc_1" || res.InitialRevisionID != "rev_1" || res.SessionID != "sess_1" {
+		t.Fatalf("unexpected ids: %+v", res)
 	}
 	if repo.setStorageRevID != "rev_1" {
 		t.Fatalf("expected storage key to be set for rev_1, got %q", repo.setStorageRevID)
@@ -221,13 +257,18 @@ func TestCreateDocument_OK(t *testing.T) {
 }
 
 func TestCreateDocument_InvalidFormData_Rejects(t *testing.T) {
-	expectedErr := errors.New("invalid form data")
 	repo := &fakeRepo{createDocIDs: [3]string{"doc_1", "rev_1", "sess_1"}}
-	svc := application.New(repo, fakeDocgen{}, &fakePresigner{}, fakeTplReader{}, fakeFormVal{err: expectedErr}, &noopAudit{})
+	svc := application.New(repo, fakeDocgen{}, &fakePresigner{}, fakeTplReader{}, fakeFormVal{valid: false, errs: []string{"invalid"}}, &noopAudit{})
 
-	_, err := svc.CreateDocument(context.Background(), "tenant_1", "tpl_ver_1", "Contract", []byte(`{"a":1}`), "user_1")
-	if !errors.Is(err, expectedErr) {
-		t.Fatalf("expected %v, got %v", expectedErr, err)
+	_, err := svc.CreateDocument(context.Background(), application.CreateDocumentCmd{
+		TenantID:          "tenant_1",
+		ActorUserID:       "user_1",
+		TemplateVersionID: "tpl_ver_1",
+		Name:              "Contract",
+		FormData:          []byte(`{"a":1}`),
+	})
+	if err == nil {
+		t.Fatalf("expected validation error")
 	}
 }
 
@@ -236,7 +277,7 @@ func TestAcquireSession_Readonly_WhenTaken(t *testing.T) {
 		acquireSess: &domain.Session{ID: "sess_taken", DocumentID: "doc_1", UserID: "other"},
 		acquireErr:  domain.ErrSessionTaken,
 	}
-	svc := application.New(repo, fakeDocgen{}, &fakePresigner{}, fakeTplReader{}, fakeFormVal{}, &noopAudit{})
+	svc := application.New(repo, fakeDocgen{}, &fakePresigner{}, fakeTplReader{}, fakeFormVal{valid: true}, &noopAudit{})
 
 	sess, readonly, err := svc.AcquireSession(context.Background(), "tenant_1", "doc_1", "user_1")
 	if err != nil {
@@ -253,7 +294,7 @@ func TestAcquireSession_Readonly_WhenTaken(t *testing.T) {
 func TestAcquireSession_Success_RecordsAudit(t *testing.T) {
 	repo := &fakeRepo{acquireSess: &domain.Session{ID: "sess_1", DocumentID: "doc_1", UserID: "user_1"}}
 	audit := &noopAudit{}
-	svc := application.New(repo, fakeDocgen{}, &fakePresigner{}, fakeTplReader{}, fakeFormVal{}, audit)
+	svc := application.New(repo, fakeDocgen{}, &fakePresigner{}, fakeTplReader{}, fakeFormVal{valid: true}, audit)
 
 	sess, readonly, err := svc.AcquireSession(context.Background(), "tenant_1", "doc_1", "user_1")
 	if err != nil {
@@ -265,16 +306,16 @@ func TestAcquireSession_Success_RecordsAudit(t *testing.T) {
 	if sess == nil || sess.ID != "sess_1" {
 		t.Fatalf("unexpected session: %+v", sess)
 	}
-	if audit.calls == 0 || audit.lastAction != "documents_v2.session.acquire" {
+	if audit.calls == 0 || audit.lastAction != "session.acquired" {
 		t.Fatalf("expected audit record for acquire, got calls=%d action=%q", audit.calls, audit.lastAction)
 	}
 }
 
 func TestCreateCheckpoint_OK(t *testing.T) {
 	repo := &fakeRepo{checkpointResult: &domain.Checkpoint{ID: "cp_1", DocumentID: "doc_1", VersionNum: 3}}
-	svc := application.New(repo, fakeDocgen{}, &fakePresigner{}, fakeTplReader{}, fakeFormVal{}, &noopAudit{})
+	svc := application.New(repo, fakeDocgen{}, &fakePresigner{}, fakeTplReader{}, fakeFormVal{valid: true}, &noopAudit{})
 
-	cp, err := svc.CreateCheckpoint(context.Background(), "doc_1", "user_1", "Milestone")
+	cp, err := svc.CreateCheckpoint(context.Background(), "tenant_1", "doc_1", "user_1", "Milestone")
 	if err != nil {
 		t.Fatalf("CreateCheckpoint() error = %v", err)
 	}
@@ -285,9 +326,9 @@ func TestCreateCheckpoint_OK(t *testing.T) {
 
 func TestFinalize_FromDraft_OK(t *testing.T) {
 	repo := &fakeRepo{docReturn: &domain.Document{ID: "doc_1", Status: domain.DocStatusDraft}}
-	svc := application.New(repo, fakeDocgen{}, &fakePresigner{}, fakeTplReader{}, fakeFormVal{}, &noopAudit{})
+	svc := application.New(repo, fakeDocgen{}, &fakePresigner{}, fakeTplReader{}, fakeFormVal{valid: true}, &noopAudit{})
 
-	err := svc.Finalize(context.Background(), "tenant_1", "doc_1")
+	err := svc.Finalize(context.Background(), "tenant_1", "doc_1", "user_1")
 	if err != nil {
 		t.Fatalf("Finalize() error = %v", err)
 	}
@@ -300,14 +341,14 @@ func TestFinalize_FromDraft_OK(t *testing.T) {
 }
 
 func TestFinalize_FromFinalized_Rejects(t *testing.T) {
-	repo := &fakeRepo{docReturn: &domain.Document{ID: "doc_1", Status: domain.DocStatusFinalized}}
-	svc := application.New(repo, fakeDocgen{}, &fakePresigner{}, fakeTplReader{}, fakeFormVal{}, &noopAudit{})
+	repo := &fakeRepo{updateStatusErr: domain.ErrInvalidStateTransition}
+	svc := application.New(repo, fakeDocgen{}, &fakePresigner{}, fakeTplReader{}, fakeFormVal{valid: true}, &noopAudit{})
 
-	err := svc.Finalize(context.Background(), "tenant_1", "doc_1")
+	err := svc.Finalize(context.Background(), "tenant_1", "doc_1", "user_1")
 	if !errors.Is(err, domain.ErrInvalidStateTransition) {
 		t.Fatalf("expected ErrInvalidStateTransition, got %v", err)
 	}
-	if repo.statusCalls != 0 {
-		t.Fatalf("expected no status update call, got %d", repo.statusCalls)
+	if repo.statusCalls != 1 {
+		t.Fatalf("expected one status update call, got %d", repo.statusCalls)
 	}
 }

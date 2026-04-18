@@ -7,6 +7,8 @@ let app: FastifyInstance;
 beforeAll(async () => {
   process.env.DOCGEN_V2_SERVICE_TOKEN = 'test-token-0123456789';
   process.env.DOCGEN_V2_PORT = '0';
+  process.env.DOCGEN_V2_S3_ACCESS_KEY = 'minioadmin';
+  process.env.DOCGEN_V2_S3_SECRET_KEY = 'minioadmin';
   app = await buildApp();
 });
 

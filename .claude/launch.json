@@ -45,8 +45,8 @@
     },
     {
       "name": "ck5-plan-c-web",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "frontend/apps/web", "exec", "--", "vite", "--port", "4175", "--strictPort"],
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--dir", "frontend/apps/web", "exec", "vite", "--port", "4175", "--strictPort"],
       "port": 4175
     }
   ]

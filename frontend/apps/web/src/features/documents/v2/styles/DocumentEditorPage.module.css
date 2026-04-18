@@ -1,0 +1,45 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 16px;
+  border-bottom: 1px solid #ddd;
+}
+
+.status[data-status="saved"] {
+  color: #2a2;
+}
+
+.status[data-status="saving"] {
+  color: #aa2;
+}
+
+.status[data-status="stale"],
+.status[data-status="session_lost"],
+.status[data-status="error"] {
+  color: #c22;
+}
+
+.banner {
+  background: #fee;
+  color: #900;
+  padding: 8px 16px;
+}
+
+.split {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  min-height: 0;
+  flex: 1;
+}
+
+.editor {
+  overflow: auto;
+  border-right: 1px solid #ddd;
+}

@@ -98,4 +98,5 @@ var (
 	ErrUploadMissing          = errors.New("upload_missing")
 	ErrCheckpointNotFound     = errors.New("checkpoint_not_found")
 	ErrDocumentNotOwner       = errors.New("document_not_owner")
+	ErrNotFound               = errors.New("not_found")
 )

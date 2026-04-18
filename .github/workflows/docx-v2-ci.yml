@@ -126,3 +126,42 @@ jobs:
         working-directory: frontend/apps/web
       - run: npx playwright test author-happy-path.spec.ts
         working-directory: frontend/apps/web
+  e2e-documents:
+    runs-on: ubuntu-latest
+    needs: [e2e-templates]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_USER: metaldocs, POSTGRES_PASSWORD: metaldocs, POSTGRES_DB: metaldocs }
+        options: >-
+          --health-cmd "pg_isready -U metaldocs"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+        ports: [ "5432:5432" ]
+      minio:
+        image: minio/minio:RELEASE.2024-04-18T19-09-19Z
+        env: { MINIO_ROOT_USER: minioadmin, MINIO_ROOT_PASSWORD: minioadmin }
+        ports: [ "9000:9000" ]
+      gotenberg:
+        image: gotenberg/gotenberg:8.4
+        ports: [ "3000:3000" ]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: 1.25.x }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20.11.0, cache: npm }
+      - name: Apply migrations (0101-0110)
+        run: |
+          for f in migrations/0101_*.sql migrations/0102_*.sql migrations/0103_*.sql migrations/0104_*.sql migrations/0105_*.sql migrations/0106_*.sql migrations/0107_*.sql migrations/0108_*.sql migrations/0109_*.sql migrations/0110_*.sql; do
+            PGPASSWORD=metaldocs psql -h 127.0.0.1 -U metaldocs -d metaldocs -v ON_ERROR_STOP=1 -f "$f"
+          done
+      - run: npm ci --include-workspace-root
+      - run: npm ci
+        working-directory: frontend/apps/web
+      - run: METALDOCS_DOCX_V2_ENABLED=true go run ./apps/api/cmd/metaldocs-api &
+        env: { PGCONN: "postgres://metaldocs:metaldocs@127.0.0.1:5432/metaldocs?sslmode=disable" }
+      - run: DOCGEN_V2_SERVICE_TOKEN=test-token-0123456789 DOCGEN_V2_S3_ACCESS_KEY=minioadmin DOCGEN_V2_S3_SECRET_KEY=minioadmin npm run start --workspace @metaldocs/docgen-v2 &
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend/apps/web
+      - run: npx playwright test filler-happy-path.spec.ts conflict-two-tabs.spec.ts autosave-crash.spec.ts
+        working-directory: frontend/apps/web

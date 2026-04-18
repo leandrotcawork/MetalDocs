@@ -15,11 +15,12 @@ func TestCanTransitionDocument(t *testing.T) {
 		{domain.DocStatusDraft, domain.DocStatusArchived, true},
 		{domain.DocStatusFinalized, domain.DocStatusArchived, true},
 		{domain.DocStatusArchived, domain.DocStatusDraft, false},
+		{domain.DocStatusArchived, domain.DocStatusFinalized, false},
 		{domain.DocStatusFinalized, domain.DocStatusDraft, false},
 	}
 	for _, c := range cases {
 		if got := domain.CanTransitionDocument(c.cur, c.next); got != c.ok {
-			t.Fatalf("CanTransitionDocument(%s, %s) = %v, want %v", c.cur, c.next, got, c.ok)
+			t.Errorf("CanTransitionDocument(%s, %s) = %v, want %v", c.cur, c.next, got, c.ok)
 		}
 	}
 }

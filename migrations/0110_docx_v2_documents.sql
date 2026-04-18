@@ -4,6 +4,13 @@
 
 BEGIN;
 
+-- Drop W1 scaffold stubs (0104-0107) that reference documents_v2.
+-- These were placeholders; W3 provides the real schema referencing `documents`.
+DROP TABLE IF EXISTS document_checkpoints CASCADE;
+DROP TABLE IF EXISTS autosave_pending_uploads CASCADE;
+DROP TABLE IF EXISTS document_revisions CASCADE;
+DROP TABLE IF EXISTS editor_sessions CASCADE;
+
 CREATE TABLE documents (
   id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id             UUID NOT NULL,

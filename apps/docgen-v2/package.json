@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@eigenpal/docx-js-editor": "0.0.34",
     "@metaldocs/shared-tokens": "*",
     "ajv": "^8.16.0",
     "fastify": "4.26.2",

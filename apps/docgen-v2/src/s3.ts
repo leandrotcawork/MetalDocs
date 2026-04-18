@@ -18,3 +18,13 @@ export async function getObjectBuffer(client: Client, bucket: string, key: strin
   for await (const c of stream) chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c as Uint8Array));
   return Buffer.concat(chunks);
 }
+
+export async function putObjectBuffer(
+  client: Client,
+  bucket: string,
+  key: string,
+  data: Buffer,
+  contentType: string,
+): Promise<void> {
+  await client.putObject(bucket, key, data, data.byteLength, { 'Content-Type': contentType });
+}

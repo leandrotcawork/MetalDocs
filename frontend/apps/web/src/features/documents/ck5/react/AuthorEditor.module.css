@@ -53,6 +53,7 @@
   padding: 32px 24px;
   display: flex;
   justify-content: center;
+  align-items: flex-start;
 }
 
 .editable :global(.ck.ck-editor__editable.ck-editor__editable_inline) {

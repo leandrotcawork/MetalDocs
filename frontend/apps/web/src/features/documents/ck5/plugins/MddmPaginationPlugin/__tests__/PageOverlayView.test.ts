@@ -25,23 +25,13 @@ describe('PageOverlayView', () => {
   });
 
   it('marks one block per break', () => {
-    editor.setData([
-      '<p data-mddm-bid="aaa">A</p>',
-      '<p data-mddm-bid="bbb">B</p>',
-    ].join(''));
+    editor.setData('<p data-mddm-bid="a">A</p>');
 
-    view.update([
-      { afterBid: 'aaa', pageNumber: 2, yPx: 100 },
-      { afterBid: 'bbb', pageNumber: 3, yPx: 200 },
-    ]);
+    view.update([{ afterBid: 'a', pageNumber: 2 }]);
 
-    const a = document.querySelector('[data-mddm-bid="aaa"]') as HTMLElement | null;
-    const b = document.querySelector('[data-mddm-bid="bbb"]') as HTMLElement | null;
-
-    expect(a?.hasAttribute('data-mddm-page-break-after')).toBe(true);
-    expect(a?.getAttribute('data-mddm-next-page')).toBe('2');
-    expect(b?.hasAttribute('data-mddm-page-break-after')).toBe(true);
-    expect(b?.getAttribute('data-mddm-next-page')).toBe('3');
+    const block = document.querySelector('[data-mddm-bid="a"]') as HTMLElement | null;
+    expect(block?.hasAttribute('data-mddm-page-break-after')).toBe(true);
+    expect(block?.getAttribute('data-mddm-next-page')).toBe('2');
   });
 
   it('overlays do not appear in getData()', () => {
@@ -62,13 +52,13 @@ describe('PageOverlayView', () => {
     const b = document.querySelector('[data-mddm-bid="bbb"]') as HTMLElement | null;
     const c = document.querySelector('[data-mddm-bid="ccc"]') as HTMLElement | null;
 
-    view.update([{ afterBid: 'aaa', pageNumber: 2, yPx: 100 }]);
+    view.update([{ afterBid: 'aaa', pageNumber: 2 }]);
     expect(a?.hasAttribute('data-mddm-page-break-after')).toBe(true);
     expect(a?.getAttribute('data-mddm-next-page')).toBe('2');
 
     view.update([
-      { afterBid: 'bbb', pageNumber: 2, yPx: 100 },
-      { afterBid: 'ccc', pageNumber: 3, yPx: 200 },
+      { afterBid: 'bbb', pageNumber: 2 },
+      { afterBid: 'ccc', pageNumber: 3 },
     ]);
 
     expect(a?.hasAttribute('data-mddm-page-break-after')).toBe(false);

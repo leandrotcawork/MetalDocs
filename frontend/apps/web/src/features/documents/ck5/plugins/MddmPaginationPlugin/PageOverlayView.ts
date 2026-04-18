@@ -14,10 +14,11 @@ export class PageOverlayView {
   }
 
   public update(breaks: readonly Pick<ComputedBreak, 'afterBid' | 'pageNumber'>[]): void {
-    this.host?.replaceChildren();
-
     const editable = this.getEditableElement();
-    if (!editable) return;
+    if (!editable) {
+      this.host?.replaceChildren();
+      return;
+    }
 
     const stale = editable.querySelectorAll<HTMLElement>('[data-mddm-page-break-after]');
     for (const node of stale) {
@@ -31,6 +32,8 @@ export class PageOverlayView {
       target.setAttribute('data-mddm-page-break-after', '');
       target.setAttribute('data-mddm-next-page', String(b.pageNumber));
     }
+
+    this.host?.replaceChildren();
   }
 
   public destroy(): void {

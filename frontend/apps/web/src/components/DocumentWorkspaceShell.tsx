@@ -4,7 +4,7 @@ import type { DocumentProfileItem, ProcessAreaItem, SearchDocumentItem } from ".
 import styles from "./DocumentWorkspaceShell.module.css";
 import { isDocxV2Enabled } from "../features/featureFlags";
 
-export type WorkspaceView = "operations" | "approvals" | "audit" | "library" | "my-docs" | "recent" | "create" | "content-builder" | "registry" | "notifications" | "admin" | "templates-v2";
+export type WorkspaceView = "operations" | "approvals" | "audit" | "library" | "my-docs" | "recent" | "create" | "content-builder" | "registry" | "notifications" | "admin" | "templates-v2" | "documents-v2";
 
 type WorkspaceShellProps = {
   userDisplayName: string;
@@ -215,6 +215,8 @@ function activeTitle(activeView: WorkspaceView): string {
       return "Usuarios Internos";
     case "templates-v2":
       return "Templates";
+    case "documents-v2":
+      return "Documents v2";
     default:
       return "Workspace";
   }

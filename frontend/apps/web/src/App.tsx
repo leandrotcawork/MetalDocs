@@ -23,6 +23,7 @@ import { isPathForView, parseTemplateEditorPath, pathFromView, viewFromPath } fr
 import { TemplateEditorView } from "./features/templates/TemplateEditorView";
 import { isDocxV2Enabled } from "./features/featureFlags";
 import { renderTemplatesV2View, type TemplatesV2Route } from "./features/templates/v2/routes";
+import { renderDocumentsV2View, routeFromPath as docsRouteFromPath, pathFromRoute as docsPathFromRoute, type DocumentsV2Route } from "./features/documents/v2/routes";
 
 type AppErrorBoundaryState = {
   hasError: boolean;
@@ -182,6 +183,28 @@ function AppContent() {
   const locationView = useMemo(() => viewFromPath(location.pathname), [location.pathname]);
   const templateEditorParams = useMemo(() => parseTemplateEditorPath(location.pathname), [location.pathname]);
   const [tplRoute, setTplRoute] = useState<TemplatesV2Route>({ kind: 'list' });
+  const [docsRoute, setDocsRouteState] = useState<DocumentsV2Route>(() => docsRouteFromPath(location.pathname));
+  const setDocsRoute = useCallback((next: DocumentsV2Route) => {
+    setDocsRouteState(next);
+    const nextPath = docsPathFromRoute(next);
+    if (window.location.pathname !== nextPath) {
+      window.history.pushState({}, "", nextPath);
+    }
+  }, []);
+
+  useEffect(() => {
+    setDocsRouteState(docsRouteFromPath(location.pathname));
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const onPopState = () => {
+      setDocsRouteState(docsRouteFromPath(window.location.pathname));
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => {
+      window.removeEventListener("popstate", onPopState);
+    };
+  }, []);
 
   const handleWorkspaceNavigate = useCallback((nextView: Parameters<typeof pathFromView>[0]) => {
     if (nextView === "admin" && !isAdmin) {
@@ -457,6 +480,10 @@ function AppContent() {
       if (!isDocxV2Enabled()) return <div role="alert">Feature not enabled.</div>;
       return renderTemplatesV2View(tplRoute, setTplRoute);
     }
+    if (activeView === "documents-v2") {
+      if (isDocxV2Enabled()) return renderDocumentsV2View(docsRoute, setDocsRoute);
+      return <div role="alert">Feature not enabled.</div>;
+    }
 
     return (
       <WorkspacePlaceholder
@@ -545,4 +572,3 @@ function roleLabelFromRoles(roles: UserRole[]): string {
   if (roles.includes("editor")) return "Editor";
   return "Visualizador";
 }
-

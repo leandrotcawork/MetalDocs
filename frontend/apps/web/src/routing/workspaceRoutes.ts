@@ -40,6 +40,8 @@ export function viewFromPath(pathname: string): WorkspaceView {
   if (path.startsWith("/audit")) return "audit";
   if (path.startsWith("/operations")) return "operations";
   if (path === "/templates-v2" || path.startsWith("/templates-v2/")) return "templates-v2";
+  if (path === "/documents-v2/new" || path === "/documents-v2") return "documents-v2";
+  if (path.startsWith("/documents-v2/")) return "documents-v2";
 
   return "operations";
 }
@@ -70,6 +72,8 @@ export function pathFromView(view: WorkspaceView): string {
       return "/";
     case "templates-v2":
       return "/templates-v2";
+    case "documents-v2":
+      return "/documents-v2/new";
     default:
       return "/";
   }
@@ -93,6 +97,7 @@ export function isPathForView(pathname: string, view: WorkspaceView): boolean {
   if (view === "audit") return path.startsWith("/audit");
   if (view === "operations") return path === "/" || path.startsWith("/operations");
   if (view === "templates-v2") return path === "/templates-v2" || path.startsWith("/templates-v2/");
+  if (view === "documents-v2") return path === "/documents-v2" || path === "/documents-v2/new" || path.startsWith("/documents-v2/");
 
   return false;
 }

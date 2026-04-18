@@ -1,0 +1,13 @@
+.page { display: flex; flex-direction: column; height: 100vh; }
+.header { display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; border-bottom: 1px solid #ddd; }
+.banner { background: #fee; color: #900; padding: 8px 16px; border-bottom: 1px solid #fcc; }
+.split { flex: 1; display: grid; grid-template-columns: 1fr 340px; min-height: 0; }
+.editor { overflow: auto; border-right: 1px solid #ddd; }
+.sidebar { display: flex; flex-direction: column; overflow: hidden; }
+.tabs { display: flex; border-bottom: 1px solid #ddd; }
+.tabs button { flex: 1; padding: 8px; background: transparent; border: 0; cursor: pointer; }
+.tabs button[data-active='true'] { background: #f3f3f3; font-weight: 600; }
+.fieldsSidebar { padding: 8px 16px; overflow: auto; border-top: 1px solid #eee; }
+.fieldsSidebar li[data-state='used'] { color: #060; }
+.fieldsSidebar li[data-state='missing'] { color: #900; }
+.fieldsSidebar li[data-state='orphan'] { color: #a60; }

@@ -10,19 +10,16 @@ type FeatureFlags = {
   MDDM_NATIVE_EXPORT_ROLLOUT_PCT: number;
   /** Always false at module level — use isMddmNativeExportEnabled(userId) for per-user check. */
   MDDM_NATIVE_EXPORT: boolean;
-  /** docx-editor v2 platform gate. Strict boolean; default false. */
-  DOCX_V2_ENABLED: boolean;
 };
 
 function readWindowFlags():
-  | Partial<{ MDDM_NATIVE_EXPORT_ROLLOUT_PCT: number; DOCX_V2_ENABLED: boolean }>
+  | Partial<{ MDDM_NATIVE_EXPORT_ROLLOUT_PCT: number }>
   | undefined {
   if (typeof window === "undefined") return undefined;
   return (
     window as unknown as {
       __METALDOCS_FEATURE_FLAGS?: Partial<{
         MDDM_NATIVE_EXPORT_ROLLOUT_PCT: number;
-        DOCX_V2_ENABLED: boolean;
       }>;
     }
   ).__METALDOCS_FEATURE_FLAGS;
@@ -42,7 +39,6 @@ function readFlags(): FeatureFlags {
   return {
     MDDM_NATIVE_EXPORT_ROLLOUT_PCT: clampPct(injected?.MDDM_NATIVE_EXPORT_ROLLOUT_PCT),
     MDDM_NATIVE_EXPORT: false,
-    DOCX_V2_ENABLED: strictBool(injected?.DOCX_V2_ENABLED),
   };
 }
 
@@ -60,10 +56,8 @@ export async function initFeatureFlags(): Promise<void> {
     if (!res.ok) return;
     const data = (await res.json()) as Partial<{
       MDDM_NATIVE_EXPORT_ROLLOUT_PCT: number;
-      DOCX_V2_ENABLED: boolean;
     }>;
     featureFlags.MDDM_NATIVE_EXPORT_ROLLOUT_PCT = clampPct(data.MDDM_NATIVE_EXPORT_ROLLOUT_PCT);
-    featureFlags.DOCX_V2_ENABLED = strictBool(data.DOCX_V2_ENABLED);
   } catch {
     // Network error or non-JSON body — keep defaults
   }
@@ -74,7 +68,3 @@ export function isMddmNativeExportEnabled(userId: string): boolean {
   return isInRolloutBucket(userId, featureFlags.MDDM_NATIVE_EXPORT_ROLLOUT_PCT);
 }
 
-/** True iff the docx-editor v2 platform is active for this session. */
-export function isDocxV2Enabled(): boolean {
-  return featureFlags.DOCX_V2_ENABLED;
-}

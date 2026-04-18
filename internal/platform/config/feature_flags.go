@@ -13,9 +13,6 @@ type FeatureFlagsConfig struct {
 	// whom the client-side MDDM DOCX export path is active.
 	// Env: METALDOCS_MDDM_NATIVE_EXPORT_ROLLOUT_PCT (default 0)
 	MDDMNativeExportRolloutPercent int
-	// DocxV2Enabled gates the docx-editor v2 platform (W1-W5 rollout).
-	// Defaults to false. Read from METALDOCS_DOCX_V2_ENABLED.
-	DocxV2Enabled bool
 }
 
 // LoadFeatureFlagsConfig reads feature flag config from environment variables.
@@ -33,7 +30,6 @@ func LoadFeatureFlagsConfig() FeatureFlagsConfig {
 	}
 	return FeatureFlagsConfig{
 		MDDMNativeExportRolloutPercent: pct,
-		DocxV2Enabled:                  envBool("METALDOCS_DOCX_V2_ENABLED"),
 	}
 }
 

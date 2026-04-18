@@ -25,8 +25,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 }
 
 type featureFlagsResponse struct {
-	MDDMNativeExportRolloutPct int  `json:"MDDM_NATIVE_EXPORT_ROLLOUT_PCT"`
-	DocxV2Enabled              bool `json:"DOCX_V2_ENABLED"`
+	MDDMNativeExportRolloutPct int `json:"MDDM_NATIVE_EXPORT_ROLLOUT_PCT"`
 }
 
 func (h *Handler) handle(w http.ResponseWriter, r *http.Request) {
@@ -38,6 +37,5 @@ func (h *Handler) handle(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	_ = json.NewEncoder(w).Encode(featureFlagsResponse{
 		MDDMNativeExportRolloutPct: h.cfg.MDDMNativeExportRolloutPercent,
-		DocxV2Enabled:              h.cfg.DocxV2Enabled,
 	})
 }

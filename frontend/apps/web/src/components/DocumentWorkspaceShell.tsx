@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { buildProfileAccordions } from "../features/documents/adapters/catalogSummary";
 import type { DocumentProfileItem, ProcessAreaItem, SearchDocumentItem } from "../lib.types";
 import styles from "./DocumentWorkspaceShell.module.css";
-import { isDocxV2Enabled } from "../features/featureFlags";
 
 export type WorkspaceView = "operations" | "approvals" | "audit" | "library" | "my-docs" | "recent" | "create" | "content-builder" | "registry" | "notifications" | "admin" | "templates-v2" | "documents-v2";
 
@@ -168,23 +167,21 @@ function sections(props: WorkspaceShellProps): NavSection[] {
     });
   }
 
-  if (isDocxV2Enabled()) {
-    tail.push({
-      label: "Templates v2",
-      items: [
-        {
-          key: "templates-v2",
-          label: "Templates",
-          icon: (
-            <svg viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.4">
-              <rect x="1.5" y="1.5" width="12" height="12" rx="1.5" />
-              <path d="M4.5 5h6M4.5 7.5h6M4.5 10h4" strokeLinecap="round" />
-            </svg>
-          ),
-        },
-      ],
-    });
-  }
+  tail.push({
+    label: "Templates v2",
+    items: [
+      {
+        key: "templates-v2",
+        label: "Templates",
+        icon: (
+          <svg viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.4">
+            <rect x="1.5" y="1.5" width="12" height="12" rx="1.5" />
+            <path d="M4.5 5h6M4.5 7.5h6M4.5 10h4" strokeLinecap="round" />
+          </svg>
+        ),
+      },
+    ],
+  });
 
   return [overview, documents, ...tail];
 }

@@ -21,7 +21,6 @@ import { RegistryExplorerView } from "./features/registry/RegistryExplorerView";
 import { WorkspaceShell } from "./features/shell/WorkspaceShell";
 import { isPathForView, parseTemplateEditorPath, pathFromView, viewFromPath } from "./routing/workspaceRoutes";
 import { TemplateEditorView } from "./features/templates/TemplateEditorView";
-import { isDocxV2Enabled } from "./features/featureFlags";
 import { renderTemplatesV2View, type TemplatesV2Route } from "./features/templates/v2/routes";
 import { renderDocumentsV2View, routeFromPath as docsRouteFromPath, pathFromRoute as docsPathFromRoute, type DocumentsV2Route } from "./features/documents/v2/routes";
 
@@ -477,12 +476,10 @@ function AppContent() {
     }
 
     if (activeView === "templates-v2") {
-      if (!isDocxV2Enabled()) return <div role="alert">Feature not enabled.</div>;
       return renderTemplatesV2View(tplRoute, setTplRoute);
     }
     if (activeView === "documents-v2") {
-      if (isDocxV2Enabled()) return renderDocumentsV2View(docsRoute, setDocsRoute);
-      return <div role="alert">Feature not enabled.</div>;
+      return renderDocumentsV2View(docsRoute, setDocsRoute);
     }
 
     return (

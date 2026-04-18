@@ -1,30 +1,30 @@
 import type { Editor } from 'ckeditor5';
 import { defaultLayoutTokens } from '@metaldocs/mddm-layout-tokens';
 import { planBreaks } from './BreakPlanner';
-import { findEnclosingSection } from './SectionScope';
 import type { DirtyRangeTracker } from './DirtyRangeTracker';
 import type { ComputedBreak } from './types';
 
 const MM_PER_INCH = 25.4;
 const PX_PER_INCH = 96;
 const mmToPx = (mm: number) => (mm / MM_PER_INCH) * PX_PER_INCH;
+const PAGE_HEIGHT_PX = mmToPx(defaultLayoutTokens.page.heightMm);
+const PAGE_GAP_PX = 32;
+const STRIDE_PX = PAGE_HEIGHT_PX + PAGE_GAP_PX;
+const MARGIN_TOP_PX = mmToPx(defaultLayoutTokens.page.marginTopMm);
 
 type Listener = (breaks: ComputedBreak[]) => void;
 
-/**
- * Subscribes to view `render` events, debounces, then measures DOM heights
- * for each BreakCandidate and emits ComputedBreak[] via `onBreaks` listeners.
- */
 export class BreakMeasurer {
   private readonly listeners = new Set<Listener>();
   private timer: ReturnType<typeof setTimeout> | null = null;
   private readonly renderHandler: () => void;
   private fontsReady = false;
+  private initialSyncDone = false;
 
   public constructor(
     private readonly editor: Editor,
     private readonly tracker: DirtyRangeTracker,
-    private readonly opts: { debounceMs: number } = { debounceMs: 200 },
+    private readonly opts: { debounceMs: number } = { debounceMs: 50 },
   ) {
     this.renderHandler = () => this.schedule();
     (this.editor.editing.view as unknown as { on: (n: string, f: () => void) => void }).on(
@@ -51,6 +51,11 @@ export class BreakMeasurer {
   }
 
   private schedule(): void {
+    if (!this.initialSyncDone) {
+      this.initialSyncDone = true;
+      void this.measure();
+      return;
+    }
     if (this.timer !== null) clearTimeout(this.timer);
     this.timer = setTimeout(() => {
       this.timer = null;
@@ -73,10 +78,9 @@ export class BreakMeasurer {
     const root = this.editor.model.document.getRoot();
     if (!root) return;
 
-    const dirty = this.tracker.snapshot();
-    const from = dirty ?? this.editor.model.createPositionFromPath(root, [0]);
-    const walkRoot = findEnclosingSection(from) ?? undefined;
-    const candidates = planBreaks(this.editor, from, walkRoot);
+    const from = this.editor.model.createPositionFromPath(root, [0]);
+    void this.tracker.snapshot();
+    const candidates = planBreaks(this.editor, from, undefined);
 
     const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
     const contentHeightPx = mmToPx(
@@ -85,9 +89,12 @@ export class BreakMeasurer {
         defaultLayoutTokens.page.marginBottomMm,
     );
 
+    const page1TopY = MARGIN_TOP_PX;
+
     const breaks: ComputedBreak[] = [];
-    let cursorY = 0;
-    let page = 1;
+    let currentPage = 1;
+    let prevAfterBid: string | null = null;
+    let prevCandidateBot = 0;
 
     for (const c of candidates) {
       const pos = this.editor.model.createPositionFromPath(root, c.modelPath);
@@ -110,14 +117,26 @@ export class BreakMeasurer {
         }
       }
 
-      const h = Math.round(domEl.offsetHeight * dpr) / dpr;
-      cursorY += h;
+      const top = domEl.offsetTop;
+      const bot = Math.round((top + domEl.offsetHeight) * dpr) / dpr;
 
-      if (cursorY > contentHeightPx) {
-        page += 1;
-        breaks.push({ afterBid: c.afterBid, pageNumber: page, yPx: cursorY });
-        cursorY = h;
+      const predictedPageTop = page1TopY + (currentPage - 1) * STRIDE_PX;
+      const predictedPageCap = predictedPageTop + contentHeightPx;
+
+      if (bot > predictedPageCap && prevAfterBid !== null) {
+        currentPage += 1;
+        const targetNextTop = page1TopY + (currentPage - 1) * STRIDE_PX;
+        const spacerPx = Math.max(0, targetNextTop - prevCandidateBot);
+        breaks.push({
+          afterBid: prevAfterBid,
+          pageNumber: currentPage,
+          yPx: prevCandidateBot,
+          spacerPx,
+        });
       }
+
+      prevAfterBid = c.afterBid;
+      prevCandidateBot = bot;
     }
 
     for (const l of this.listeners) l(breaks);

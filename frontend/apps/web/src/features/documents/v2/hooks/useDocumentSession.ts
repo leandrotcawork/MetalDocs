@@ -12,6 +12,8 @@ const HEARTBEAT_MS = 30_000;
 
 export function useDocumentSession(documentID: string) {
   const [state, setState] = useState<SessionState>({ phase: 'idle' });
+  const stateRef = useRef<SessionState>(state);
+  stateRef.current = state;
   const timer = useRef<number | null>(null);
 
   const stopHeartbeat = useCallback(() => {
@@ -52,7 +54,7 @@ export function useDocumentSession(documentID: string) {
     // Acquire on mount.
     acquire();
     // Release on unmount + on page hide (best-effort -- browser may block async fetch).
-    const onHide = () => { if (state.phase === 'writer') navigator.sendBeacon(`/api/v2/documents/${documentID}/session/release`, JSON.stringify({ session_id: (state as any).sessionID })); };
+    const onHide = () => { if (stateRef.current.phase === 'writer') navigator.sendBeacon(`/api/v2/documents/${documentID}/session/release`, JSON.stringify({ session_id: (stateRef.current as any).sessionID })); };
     window.addEventListener('pagehide', onHide);
     return () => { stopHeartbeat(); window.removeEventListener('pagehide', onHide); };
     // eslint-disable-next-line react-hooks/exhaustive-deps

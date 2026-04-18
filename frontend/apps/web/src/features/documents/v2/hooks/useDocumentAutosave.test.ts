@@ -71,6 +71,20 @@ describe('useDocumentAutosave', () => {
     expect(result.current.status).toBe('session_lost');
   });
 
+  it('409 session_not_holder → onSessionLost session_inactive, status session_lost', async () => {
+    const args = baseArgs();
+    vi.mocked(api.presignAutosave).mockRejectedValueOnce(
+      Object.assign(new Error(), { status: 409, body: JSON.stringify({ error: 'session_not_holder' }) })
+    );
+    const { result } = renderHook(() => useDocumentAutosave(args));
+    await act(async () => {
+      await result.current.queue(new ArrayBuffer(4), null);
+      await result.current.flush();
+    });
+    expect(args.onSessionLost).toHaveBeenCalledWith('session_inactive');
+    expect(result.current.status).toBe('session_lost');
+  });
+
   it('410 upload_missing -> status error, IndexedDB deleted, pending cleared', async () => {
     const args = baseArgs();
     vi.mocked(api.commitAutosave).mockRejectedValueOnce(

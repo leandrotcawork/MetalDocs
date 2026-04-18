@@ -79,11 +79,6 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 		if err != nil {
 			return APIDependencies{}, fmt.Errorf("open postgres: %w", err)
 		}
-		if err := pgrepo.NewTemplateSeeder(db).SeedPOTemplate(ctx, pgrepo.DefaultPOTemplateID); err != nil {
-			_ = closeDB(db)
-			return APIDependencies{}, fmt.Errorf("seed canonical po template: %w", err)
-		}
-
 		store, err := buildAttachmentStore(ctx, attachmentsCfg)
 		if err != nil {
 			_ = closeDB(db)

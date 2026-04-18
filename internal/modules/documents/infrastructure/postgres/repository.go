@@ -467,10 +467,8 @@ ORDER BY p.code ASC
 
 func (r *Repository) ListDocumentTypeDefinitions(ctx context.Context) ([]domain.DocumentTypeDefinition, error) {
 	const q = `
-SELECT t.type_key, t.name, t.active_version, s.schema_json
+SELECT t.type_key, t.name, t.active_version
 FROM metaldocs.document_types t
-LEFT JOIN metaldocs.document_type_schema_versions s
-  ON s.type_key = t.type_key AND s.version = t.active_version
 ORDER BY t.type_key ASC
 `
 	rows, err := r.db.QueryContext(ctx, q)
@@ -482,14 +480,8 @@ ORDER BY t.type_key ASC
 	var out []domain.DocumentTypeDefinition
 	for rows.Next() {
 		var item domain.DocumentTypeDefinition
-		var rawSchema []byte
-		if err := rows.Scan(&item.Key, &item.Name, &item.ActiveVersion, &rawSchema); err != nil {
+		if err := rows.Scan(&item.Key, &item.Name, &item.ActiveVersion); err != nil {
 			return nil, fmt.Errorf("scan document type definition: %w", err)
-		}
-		if len(rawSchema) > 0 {
-			if err := json.Unmarshal(rawSchema, &item.Schema); err != nil {
-				return nil, fmt.Errorf("unmarshal document type schema: %w", err)
-			}
 		}
 		out = append(out, item)
 	}
@@ -501,24 +493,16 @@ ORDER BY t.type_key ASC
 
 func (r *Repository) GetDocumentTypeDefinition(ctx context.Context, key string) (domain.DocumentTypeDefinition, error) {
 	const q = `
-SELECT t.type_key, t.name, t.active_version, s.schema_json
-FROM metaldocs.document_types t
-LEFT JOIN metaldocs.document_type_schema_versions s
-  ON s.type_key = t.type_key AND s.version = t.active_version
-WHERE t.type_key = $1
+SELECT type_key, name, active_version
+FROM metaldocs.document_types
+WHERE type_key = $1
 `
 	var item domain.DocumentTypeDefinition
-	var rawSchema []byte
-	if err := r.db.QueryRowContext(ctx, q, strings.ToLower(strings.TrimSpace(key))).Scan(&item.Key, &item.Name, &item.ActiveVersion, &rawSchema); err != nil {
+	if err := r.db.QueryRowContext(ctx, q, strings.ToLower(strings.TrimSpace(key))).Scan(&item.Key, &item.Name, &item.ActiveVersion); err != nil {
 		if err == sql.ErrNoRows {
 			return domain.DocumentTypeDefinition{}, domain.ErrInvalidDocumentType
 		}
 		return domain.DocumentTypeDefinition{}, fmt.Errorf("get document type definition: %w", err)
-	}
-	if len(rawSchema) > 0 {
-		if err := json.Unmarshal(rawSchema, &item.Schema); err != nil {
-			return domain.DocumentTypeDefinition{}, fmt.Errorf("unmarshal document type schema: %w", err)
-		}
 	}
 	return item, nil
 }
@@ -527,11 +511,6 @@ func (r *Repository) UpsertDocumentTypeDefinition(ctx context.Context, item doma
 	normalized, err := normalizeDocumentTypeDefinition(item)
 	if err != nil {
 		return err
-	}
-
-	rawSchema, err := json.Marshal(normalized.Schema)
-	if err != nil {
-		return fmt.Errorf("marshal document type schema: %w", err)
 	}
 
 	const upsertType = `
@@ -543,16 +522,6 @@ SET name = EXCLUDED.name,
     updated_at = NOW()
 `
 	if _, err := r.db.ExecContext(ctx, upsertType, normalized.Key, normalized.Name, normalized.ActiveVersion); err != nil {
-		return mapError(err)
-	}
-
-	const upsertSchema = `
-INSERT INTO metaldocs.document_type_schema_versions (type_key, version, schema_json, governance_json)
-VALUES ($1, $2, $3::jsonb, '{}'::jsonb)
-ON CONFLICT (type_key, version) DO UPDATE
-SET schema_json = EXCLUDED.schema_json
-`
-	if _, err := r.db.ExecContext(ctx, upsertSchema, normalized.Key, normalized.ActiveVersion, string(rawSchema)); err != nil {
 		return mapError(err)
 	}
 
@@ -1172,197 +1141,6 @@ func (r *Repository) SaveVersion(ctx context.Context, version domain.Version) er
 	return nil
 }
 
-func (r *Repository) UpdateVersionValues(ctx context.Context, documentID string, versionNumber int, values domain.DocumentValues) error {
-	const q = `
-UPDATE metaldocs.document_versions
-SET values_json = $3::jsonb
-WHERE document_id = $1 AND version_number = $2
-`
-	rawValues, err := json.Marshal(values)
-	if err != nil {
-		return fmt.Errorf("marshal version values: %w", err)
-	}
-	res, err := r.db.ExecContext(ctx, q, documentID, versionNumber, string(rawValues))
-	if err != nil {
-		return mapError(err)
-	}
-	affected, err := res.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("rows affected update version values: %w", err)
-	}
-	if affected == 0 {
-		return domain.ErrVersionNotFound
-	}
-	return nil
-}
-
-func (r *Repository) GetDocumentTemplateVersion(ctx context.Context, templateKey string, version int) (domain.DocumentTemplateVersion, error) {
-	const q = `
-SELECT template_key, version, profile_code, schema_version, name, editor, content_format, body_html, definition_json, created_at, export_config
-FROM metaldocs.document_template_versions
-WHERE template_key = $1 AND version = $2
-`
-	var item domain.DocumentTemplateVersion
-	var definitionJSON []byte
-	var exportConfigJSON []byte
-	if err := r.db.QueryRowContext(ctx, q, strings.TrimSpace(templateKey), version).Scan(
-		&item.TemplateKey,
-		&item.Version,
-		&item.ProfileCode,
-		&item.SchemaVersion,
-		&item.Name,
-		&item.Editor,
-		&item.ContentFormat,
-		&item.Body,
-		&definitionJSON,
-		&item.CreatedAt,
-		&exportConfigJSON,
-	); err != nil {
-		if err == sql.ErrNoRows {
-			return domain.DocumentTemplateVersion{}, domain.ErrDocumentTemplateNotFound
-		}
-		return domain.DocumentTemplateVersion{}, fmt.Errorf("get document template version: %w", err)
-	}
-	if len(definitionJSON) > 0 {
-		if err := json.Unmarshal(definitionJSON, &item.Definition); err != nil {
-			return domain.DocumentTemplateVersion{}, fmt.Errorf("unmarshal document template version definition: %w", err)
-		}
-	}
-	if item.Definition == nil {
-		item.Definition = map[string]any{}
-	}
-	if len(exportConfigJSON) > 0 {
-		var cfg domain.TemplateExportConfig
-		if err := json.Unmarshal(exportConfigJSON, &cfg); err != nil {
-			return domain.DocumentTemplateVersion{}, fmt.Errorf("unmarshal template export config: %w", err)
-		}
-		item.ExportConfig = &cfg
-	}
-	return item, nil
-}
-
-func (r *Repository) ListDocumentTemplateVersions(ctx context.Context, profileCode string) ([]domain.DocumentTemplateVersion, error) {
-	const q = `
-SELECT template_key, version, profile_code, schema_version, name, editor, content_format, body_html, definition_json, status, created_at, export_config
-FROM metaldocs.document_template_versions
-WHERE ($1 = '' OR profile_code = $1)
-ORDER BY profile_code ASC, template_key ASC, version DESC
-`
-	rows, err := r.db.QueryContext(ctx, q, strings.TrimSpace(profileCode))
-	if err != nil {
-		return nil, fmt.Errorf("list document template versions: %w", err)
-	}
-	defer rows.Close()
-
-	items := make([]domain.DocumentTemplateVersion, 0)
-	for rows.Next() {
-		var item domain.DocumentTemplateVersion
-		var definitionJSON []byte
-		var exportConfigJSON []byte
-		if err := rows.Scan(
-			&item.TemplateKey,
-			&item.Version,
-			&item.ProfileCode,
-			&item.SchemaVersion,
-			&item.Name,
-			&item.Editor,
-			&item.ContentFormat,
-			&item.Body,
-			&definitionJSON,
-			&item.Status,
-			&item.CreatedAt,
-			&exportConfigJSON,
-		); err != nil {
-			return nil, fmt.Errorf("scan document template version: %w", err)
-		}
-		if len(definitionJSON) > 0 {
-			if err := json.Unmarshal(definitionJSON, &item.Definition); err != nil {
-				return nil, fmt.Errorf("unmarshal document template version definition: %w", err)
-			}
-		}
-		if item.Definition == nil {
-			item.Definition = map[string]any{}
-		}
-		if len(exportConfigJSON) > 0 {
-			var cfg domain.TemplateExportConfig
-			if err := json.Unmarshal(exportConfigJSON, &cfg); err != nil {
-				return nil, fmt.Errorf("unmarshal template export config: %w", err)
-			}
-			item.ExportConfig = &cfg
-		}
-		items = append(items, item)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("list document template versions rows: %w", err)
-	}
-
-	return items, nil
-}
-
-func (r *Repository) GetDefaultDocumentTemplate(ctx context.Context, profileCode string) (domain.DocumentTemplateVersion, error) {
-	const q = `
-SELECT template_key, template_version
-FROM metaldocs.document_profile_template_defaults
-WHERE profile_code = $1
-`
-	var templateKey string
-	var templateVersion int
-	if err := r.db.QueryRowContext(ctx, q, strings.TrimSpace(profileCode)).Scan(&templateKey, &templateVersion); err != nil {
-		if err == sql.ErrNoRows {
-			return domain.DocumentTemplateVersion{}, domain.ErrDocumentTemplateNotFound
-		}
-		return domain.DocumentTemplateVersion{}, fmt.Errorf("get default document template: %w", err)
-	}
-	return r.GetDocumentTemplateVersion(ctx, templateKey, templateVersion)
-}
-
-func (r *Repository) GetDocumentTemplateAssignment(ctx context.Context, documentID string) (domain.DocumentTemplateAssignment, error) {
-	const q = `
-SELECT document_id, template_key, template_version, assigned_at
-FROM metaldocs.document_template_assignments
-WHERE document_id = $1
-`
-	var item domain.DocumentTemplateAssignment
-	if err := r.db.QueryRowContext(ctx, q, strings.TrimSpace(documentID)).Scan(
-		&item.DocumentID,
-		&item.TemplateKey,
-		&item.TemplateVersion,
-		&item.AssignedAt,
-	); err != nil {
-		if err == sql.ErrNoRows {
-			return domain.DocumentTemplateAssignment{}, domain.ErrDocumentTemplateAssignmentNotFound
-		}
-		return domain.DocumentTemplateAssignment{}, fmt.Errorf("get document template assignment: %w", err)
-	}
-	return item, nil
-}
-
-func (r *Repository) UpsertDocumentTemplateAssignment(ctx context.Context, item domain.DocumentTemplateAssignment) error {
-	normalizedDocumentID := strings.TrimSpace(item.DocumentID)
-	normalizedTemplateKey := strings.TrimSpace(item.TemplateKey)
-	if normalizedDocumentID == "" || normalizedTemplateKey == "" || item.TemplateVersion <= 0 {
-		return domain.ErrInvalidCommand
-	}
-
-	const q = `
-INSERT INTO metaldocs.document_template_assignments (
-  document_id, template_key, template_version, assigned_at
-)
-VALUES ($1, $2, $3, COALESCE($4, NOW()))
-ON CONFLICT (document_id) DO UPDATE
-SET template_key = EXCLUDED.template_key,
-    template_version = EXCLUDED.template_version,
-    assigned_at = EXCLUDED.assigned_at
-`
-	assignedAt := item.AssignedAt.UTC()
-	if item.AssignedAt.IsZero() {
-		assignedAt = time.Now().UTC()
-	}
-	if _, err := r.db.ExecContext(ctx, q, normalizedDocumentID, normalizedTemplateKey, item.TemplateVersion, assignedAt); err != nil {
-		return mapError(err)
-	}
-	return nil
-}
 
 func (r *Repository) UpdateDraftVersionContentCAS(ctx context.Context, version domain.Version, expectedContentHash string) error {
 	const q = `
@@ -1464,29 +1242,6 @@ WHERE document_id = $1 AND version_number = $2
 	return nil
 }
 
-func (r *Repository) UpdateVersionBodyBlocks(ctx context.Context, documentID string, versionNumber int, bodyBlocks []domain.EtapaBody) error {
-	const q = `
-UPDATE metaldocs.document_versions
-SET body_blocks = COALESCE($3::jsonb, '[]'::jsonb)
-WHERE document_id = $1 AND version_number = $2
-`
-	bodyBlocksJSON, err := serializeBodyBlocks(bodyBlocks)
-	if err != nil {
-		return fmt.Errorf("serialize version body blocks: %w", err)
-	}
-	res, execErr := r.db.ExecContext(ctx, q, documentID, versionNumber, bodyBlocksJSON)
-	if execErr != nil {
-		return mapError(execErr)
-	}
-	affected, err := res.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("rows affected update version body blocks: %w", err)
-	}
-	if affected == 0 {
-		return domain.ErrVersionNotFound
-	}
-	return nil
-}
 
 func (r *Repository) ListVersions(ctx context.Context, documentID string) ([]domain.Version, error) {
 	_, err := r.GetDocument(ctx, documentID)
@@ -1496,9 +1251,8 @@ func (r *Repository) ListVersions(ctx context.Context, documentID string) ([]dom
 
 	const q = `
 	SELECT document_id, version_number, content, content_hash, change_summary,
-	       content_source, native_content, values_json, body_blocks, docx_storage_key, pdf_storage_key, text_content,
-	       file_size_bytes, original_filename, page_count, template_key, template_version, created_at,
-	       renderer_pin
+	       content_source, docx_storage_key, pdf_storage_key, text_content,
+	       file_size_bytes, original_filename, page_count, template_key, template_version, created_at
 	FROM metaldocs.document_versions
 	WHERE document_id = $1
 	ORDER BY version_number ASC
@@ -1512,9 +1266,6 @@ func (r *Repository) ListVersions(ctx context.Context, documentID string) ([]dom
 	var out []domain.Version
 	for rows.Next() {
 		var version domain.Version
-		var nativeContentJSON []byte
-		var valuesJSON []byte
-		var bodyBlocksJSON []byte
 		var docxStorageKey sql.NullString
 		var pdfStorageKey sql.NullString
 		var textContent sql.NullString
@@ -1523,7 +1274,6 @@ func (r *Repository) ListVersions(ctx context.Context, documentID string) ([]dom
 		var pageCount sql.NullInt64
 		var templateKey sql.NullString
 		var templateVersion sql.NullInt64
-		var pinRaw sql.NullString
 		if err := rows.Scan(
 			&version.DocumentID,
 			&version.Number,
@@ -1531,9 +1281,6 @@ func (r *Repository) ListVersions(ctx context.Context, documentID string) ([]dom
 			&version.ContentHash,
 			&version.ChangeSummary,
 			&version.ContentSource,
-			&nativeContentJSON,
-			&valuesJSON,
-			&bodyBlocksJSON,
 			&docxStorageKey,
 			&pdfStorageKey,
 			&textContent,
@@ -1543,22 +1290,16 @@ func (r *Repository) ListVersions(ctx context.Context, documentID string) ([]dom
 			&templateKey,
 			&templateVersion,
 			&version.CreatedAt,
-			&pinRaw,
 		); err != nil {
 			return nil, fmt.Errorf("scan version: %w", err)
 		}
-		applyVersionOptionalFields(&version, nativeContentJSON, valuesJSON, bodyBlocksJSON, docxStorageKey, pdfStorageKey, textContent, fileSizeBytes, originalFilename, pageCount)
+		applyVersionOptionalFields(&version, docxStorageKey, pdfStorageKey, textContent, fileSizeBytes, originalFilename, pageCount)
 		if templateKey.Valid {
 			version.TemplateKey = templateKey.String
 		}
 		if templateVersion.Valid {
 			version.TemplateVersion = int(templateVersion.Int64)
 		}
-		pin, err := scanRendererPin(pinRaw)
-		if err != nil {
-			return nil, fmt.Errorf("scan renderer pin: %w", err)
-		}
-		version.RendererPin = pin
 		out = append(out, version)
 	}
 	if err := rows.Err(); err != nil {
@@ -1576,16 +1317,12 @@ func (r *Repository) GetVersion(ctx context.Context, documentID string, versionN
 
 	const q = `
 	SELECT document_id, version_number, content, content_hash, change_summary,
-	       content_source, native_content, values_json, body_blocks, docx_storage_key, pdf_storage_key, text_content,
-	       file_size_bytes, original_filename, page_count, template_key, template_version, created_at,
-	       renderer_pin
+	       content_source, docx_storage_key, pdf_storage_key, text_content,
+	       file_size_bytes, original_filename, page_count, template_key, template_version, created_at
 	FROM metaldocs.document_versions
 	WHERE document_id = $1 AND version_number = $2
 	`
 	var version domain.Version
-	var nativeContentJSON []byte
-	var valuesJSON []byte
-	var bodyBlocksJSON []byte
 	var docxStorageKey sql.NullString
 	var pdfStorageKey sql.NullString
 	var textContent sql.NullString
@@ -1594,7 +1331,6 @@ func (r *Repository) GetVersion(ctx context.Context, documentID string, versionN
 	var pageCount sql.NullInt64
 	var templateKey sql.NullString
 	var templateVersion sql.NullInt64
-	var pinRaw sql.NullString
 	if err := r.db.QueryRowContext(ctx, q, documentID, versionNumber).Scan(
 		&version.DocumentID,
 		&version.Number,
@@ -1602,9 +1338,6 @@ func (r *Repository) GetVersion(ctx context.Context, documentID string, versionN
 		&version.ContentHash,
 		&version.ChangeSummary,
 		&version.ContentSource,
-		&nativeContentJSON,
-		&valuesJSON,
-		&bodyBlocksJSON,
 		&docxStorageKey,
 		&pdfStorageKey,
 		&textContent,
@@ -1614,25 +1347,19 @@ func (r *Repository) GetVersion(ctx context.Context, documentID string, versionN
 		&templateKey,
 		&templateVersion,
 		&version.CreatedAt,
-		&pinRaw,
 	); err != nil {
 		if err == sql.ErrNoRows {
 			return domain.Version{}, domain.ErrVersionNotFound
 		}
 		return domain.Version{}, fmt.Errorf("get version: %w", err)
 	}
-	applyVersionOptionalFields(&version, nativeContentJSON, valuesJSON, bodyBlocksJSON, docxStorageKey, pdfStorageKey, textContent, fileSizeBytes, originalFilename, pageCount)
+	applyVersionOptionalFields(&version, docxStorageKey, pdfStorageKey, textContent, fileSizeBytes, originalFilename, pageCount)
 	if templateKey.Valid {
 		version.TemplateKey = templateKey.String
 	}
 	if templateVersion.Valid {
 		version.TemplateVersion = int(templateVersion.Int64)
 	}
-	pin, err := scanRendererPin(pinRaw)
-	if err != nil {
-		return domain.Version{}, fmt.Errorf("scan renderer pin: %w", err)
-	}
-	version.RendererPin = pin
 	return version, nil
 }
 
@@ -1743,169 +1470,6 @@ ORDER BY created_at ASC
 	return out, nil
 }
 
-func (r *Repository) UpsertCollaborationPresence(ctx context.Context, item domain.CollaborationPresence) error {
-	const q = `
-INSERT INTO metaldocs.document_collaboration_presence (
-  document_id, user_id, display_name, last_seen_at, created_at, updated_at
-)
-VALUES ($1, $2, $3, $4, NOW(), NOW())
-ON CONFLICT (document_id, user_id) DO UPDATE
-SET display_name = EXCLUDED.display_name,
-    last_seen_at = EXCLUDED.last_seen_at,
-    updated_at = NOW()
-`
-	if _, err := r.db.ExecContext(ctx, q, item.DocumentID, item.UserID, item.DisplayName, item.LastSeenAt.UTC()); err != nil {
-		return mapError(err)
-	}
-	return nil
-}
-
-func (r *Repository) ListCollaborationPresence(ctx context.Context, documentID string, activeSince time.Time) ([]domain.CollaborationPresence, error) {
-	const q = `
-SELECT document_id, user_id, display_name, last_seen_at
-FROM metaldocs.document_collaboration_presence
-WHERE document_id = $1
-  AND last_seen_at >= $2
-ORDER BY last_seen_at DESC
-`
-	rows, err := r.db.QueryContext(ctx, q, documentID, activeSince.UTC())
-	if err != nil {
-		return nil, fmt.Errorf("list collaboration presence: %w", err)
-	}
-	defer rows.Close()
-
-	items := make([]domain.CollaborationPresence, 0)
-	for rows.Next() {
-		var item domain.CollaborationPresence
-		if err := rows.Scan(&item.DocumentID, &item.UserID, &item.DisplayName, &item.LastSeenAt); err != nil {
-			return nil, fmt.Errorf("scan collaboration presence: %w", err)
-		}
-		items = append(items, item)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("list collaboration presence rows: %w", err)
-	}
-	return items, nil
-}
-
-func (r *Repository) AcquireDocumentEditLock(ctx context.Context, item domain.DocumentEditLock, now time.Time) (domain.DocumentEditLock, error) {
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return domain.DocumentEditLock{}, fmt.Errorf("begin tx acquire edit lock: %w", err)
-	}
-	defer func() {
-		_ = tx.Rollback()
-	}()
-
-	const lockQuery = `
-SELECT document_id, locked_by, display_name, lock_reason, acquired_at, expires_at
-FROM metaldocs.document_edit_locks
-WHERE document_id = $1
-FOR UPDATE
-`
-	var current domain.DocumentEditLock
-	lockErr := tx.QueryRowContext(ctx, lockQuery, item.DocumentID).Scan(
-		&current.DocumentID,
-		&current.LockedBy,
-		&current.DisplayName,
-		&current.LockReason,
-		&current.AcquiredAt,
-		&current.ExpiresAt,
-	)
-	if lockErr != nil && lockErr != sql.ErrNoRows {
-		return domain.DocumentEditLock{}, fmt.Errorf("query current edit lock: %w", lockErr)
-	}
-	if lockErr == nil && current.ExpiresAt.After(now.UTC()) && !strings.EqualFold(current.LockedBy, item.LockedBy) {
-		return domain.DocumentEditLock{}, domain.ErrEditLockActive
-	}
-
-	const upsert = `
-INSERT INTO metaldocs.document_edit_locks (
-  document_id, locked_by, display_name, lock_reason, acquired_at, expires_at, updated_at
-)
-VALUES ($1, $2, $3, $4, $5, $6, NOW())
-ON CONFLICT (document_id) DO UPDATE
-SET locked_by = EXCLUDED.locked_by,
-    display_name = EXCLUDED.display_name,
-    lock_reason = EXCLUDED.lock_reason,
-    acquired_at = EXCLUDED.acquired_at,
-    expires_at = EXCLUDED.expires_at,
-    updated_at = NOW()
-`
-	if _, err := tx.ExecContext(ctx, upsert,
-		item.DocumentID,
-		item.LockedBy,
-		item.DisplayName,
-		item.LockReason,
-		item.AcquiredAt.UTC(),
-		item.ExpiresAt.UTC(),
-	); err != nil {
-		return domain.DocumentEditLock{}, mapError(err)
-	}
-	if err := tx.Commit(); err != nil {
-		return domain.DocumentEditLock{}, fmt.Errorf("commit acquire edit lock: %w", err)
-	}
-	return item, nil
-}
-
-func (r *Repository) GetDocumentEditLock(ctx context.Context, documentID string, now time.Time) (domain.DocumentEditLock, error) {
-	const q = `
-SELECT document_id, locked_by, display_name, lock_reason, acquired_at, expires_at
-FROM metaldocs.document_edit_locks
-WHERE document_id = $1
-`
-	var item domain.DocumentEditLock
-	if err := r.db.QueryRowContext(ctx, q, documentID).Scan(
-		&item.DocumentID,
-		&item.LockedBy,
-		&item.DisplayName,
-		&item.LockReason,
-		&item.AcquiredAt,
-		&item.ExpiresAt,
-	); err != nil {
-		if err == sql.ErrNoRows {
-			return domain.DocumentEditLock{}, domain.ErrEditLockNotFound
-		}
-		return domain.DocumentEditLock{}, fmt.Errorf("get document edit lock: %w", err)
-	}
-	if !item.ExpiresAt.After(now.UTC()) {
-		return domain.DocumentEditLock{}, domain.ErrEditLockNotFound
-	}
-	return item, nil
-}
-
-func (r *Repository) ReleaseDocumentEditLock(ctx context.Context, documentID, lockedBy string) error {
-	const selectCurrent = `
-SELECT locked_by, expires_at
-FROM metaldocs.document_edit_locks
-WHERE document_id = $1
-`
-	var currentLockedBy string
-	var expiresAt time.Time
-	if err := r.db.QueryRowContext(ctx, selectCurrent, documentID).Scan(&currentLockedBy, &expiresAt); err != nil {
-		if err == sql.ErrNoRows {
-			return domain.ErrEditLockNotFound
-		}
-		return fmt.Errorf("release document edit lock lookup: %w", err)
-	}
-	if expiresAt.After(time.Now().UTC()) && !strings.EqualFold(currentLockedBy, lockedBy) {
-		return domain.ErrEditLockActive
-	}
-
-	const q = `
-DELETE FROM metaldocs.document_edit_locks
-WHERE document_id = $1
-`
-	result, err := r.db.ExecContext(ctx, q, documentID)
-	if err != nil {
-		return fmt.Errorf("release document edit lock: %w", err)
-	}
-	affected, _ := result.RowsAffected()
-	if affected == 0 {
-		return domain.ErrEditLockNotFound
-	}
-	return nil
-}
 
 func mapError(err error) error {
 	msg := err.Error()
@@ -2007,57 +1571,6 @@ func applyOptionalFields(doc *domain.Document, tagsJSON []byte, metadataJSON []b
 	}
 }
 
-func scanRendererPin(raw sql.NullString) (*domain.RendererPin, error) {
-	if !raw.Valid || strings.TrimSpace(raw.String) == "" {
-		return nil, nil
-	}
-	var pin domain.RendererPin
-	if err := json.Unmarshal([]byte(raw.String), &pin); err != nil {
-		return nil, fmt.Errorf("decode renderer pin: %w", err)
-	}
-	return &pin, nil
-}
-
-func (r *Repository) SetVersionRendererPin(ctx context.Context, documentID string, versionNumber int, pin *domain.RendererPin) error {
-	if pin == nil {
-		result, err := r.db.ExecContext(ctx,
-			`UPDATE metaldocs.document_versions
-             SET renderer_pin = NULL
-             WHERE document_id = $1 AND version_number = $2`,
-			documentID, versionNumber)
-		if err != nil {
-			return fmt.Errorf("clear renderer pin: %w", err)
-		}
-		affected, _ := result.RowsAffected()
-		if affected == 0 {
-			return fmt.Errorf("clear renderer pin: version %d of document %s not found", versionNumber, documentID)
-		}
-		return nil
-	}
-
-	if err := pin.Validate(); err != nil {
-		return fmt.Errorf("invalid renderer pin: %w", err)
-	}
-
-	payload, err := json.Marshal(pin)
-	if err != nil {
-		return fmt.Errorf("marshal renderer pin: %w", err)
-	}
-
-	result, err := r.db.ExecContext(ctx,
-		`UPDATE metaldocs.document_versions
-         SET renderer_pin = $3::jsonb
-         WHERE document_id = $1 AND version_number = $2`,
-		documentID, versionNumber, string(payload))
-	if err != nil {
-		return fmt.Errorf("set renderer pin: %w", err)
-	}
-	affected, _ := result.RowsAffected()
-	if affected == 0 {
-		return fmt.Errorf("set renderer pin: version %d of document %s not found", versionNumber, documentID)
-	}
-	return nil
-}
 
 func serializeVersion(version domain.Version) (string, string, string, string, any, error) {
 	contentSource := strings.TrimSpace(version.ContentSource)
@@ -2065,79 +1578,14 @@ func serializeVersion(version domain.Version) (string, string, string, string, a
 		contentSource = domain.ContentSourceNative
 	}
 
-	nativeContentJSON := "{}"
-	if len(version.NativeContent) > 0 {
-		raw, err := json.Marshal(version.NativeContent)
-		if err != nil {
-			return "", "", "", "", nil, fmt.Errorf("marshal native content: %w", err)
-		}
-		nativeContentJSON = string(raw)
-	}
-
-	valuesJSON := "{}"
-	if len(version.Values) > 0 {
-		raw, err := json.Marshal(version.Values)
-		if err != nil {
-			return "", "", "", "", nil, fmt.Errorf("marshal version values: %w", err)
-		}
-		valuesJSON = string(raw)
-	}
-
-	bodyBlocksJSON := "[]"
-	if len(version.BodyBlocks) > 0 {
-		raw, err := json.Marshal(version.BodyBlocks)
-		if err != nil {
-			return "", "", "", "", nil, fmt.Errorf("marshal body blocks: %w", err)
-		}
-		bodyBlocksJSON = string(raw)
-	}
-
 	var textContent any
 	if strings.TrimSpace(version.TextContent) != "" {
 		textContent = version.TextContent
 	}
-	return contentSource, nativeContentJSON, valuesJSON, bodyBlocksJSON, textContent, nil
+	return contentSource, "{}", "{}", "[]", textContent, nil
 }
 
-func serializeBodyBlocks(bodyBlocks []domain.EtapaBody) (string, error) {
-	if len(bodyBlocks) == 0 {
-		return "[]", nil
-	}
-	raw, err := json.Marshal(bodyBlocks)
-	if err != nil {
-		return "", fmt.Errorf("marshal body blocks: %w", err)
-	}
-	return string(raw), nil
-}
-
-func applyVersionOptionalFields(version *domain.Version, nativeContentJSON []byte, valuesJSON []byte, bodyBlocksJSON []byte, docxStorageKey sql.NullString, pdfStorageKey sql.NullString, textContent sql.NullString, fileSizeBytes sql.NullInt64, originalFilename sql.NullString, pageCount sql.NullInt64) {
-	if len(nativeContentJSON) > 0 {
-		var nativeContent map[string]any
-		if err := json.Unmarshal(nativeContentJSON, &nativeContent); err == nil {
-			version.NativeContent = nativeContent
-		}
-	}
-	if version.NativeContent == nil {
-		version.NativeContent = map[string]any{}
-	}
-	if len(valuesJSON) > 0 {
-		var values map[string]any
-		if err := json.Unmarshal(valuesJSON, &values); err == nil {
-			version.Values = values
-		}
-	}
-	if version.Values == nil {
-		version.Values = map[string]any{}
-	}
-	if len(bodyBlocksJSON) > 0 {
-		var bodyBlocks []domain.EtapaBody
-		if err := json.Unmarshal(bodyBlocksJSON, &bodyBlocks); err == nil {
-			version.BodyBlocks = bodyBlocks
-		}
-	}
-	if version.BodyBlocks == nil {
-		version.BodyBlocks = []domain.EtapaBody{}
-	}
+func applyVersionOptionalFields(version *domain.Version, docxStorageKey sql.NullString, pdfStorageKey sql.NullString, textContent sql.NullString, fileSizeBytes sql.NullInt64, originalFilename sql.NullString, pageCount sql.NullInt64) {
 	if docxStorageKey.Valid {
 		version.DocxStorageKey = docxStorageKey.String
 	}

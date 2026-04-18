@@ -65,9 +65,6 @@ type Version struct {
 	ContentHash      string
 	ChangeSummary    string
 	ContentSource    string
-	NativeContent    DocumentValues
-	Values           DocumentValues
-	BodyBlocks       []EtapaBody
 	DocxStorageKey   string
 	PdfStorageKey    string
 	TextContent      string
@@ -77,9 +74,6 @@ type Version struct {
 	TemplateKey      string
 	TemplateVersion  int
 	CreatedAt        time.Time
-
-	// RendererPin is set at DRAFT→RELEASED transition. Nil for draft versions.
-	RendererPin *RendererPin
 }
 
 type Attachment struct {
@@ -132,14 +126,6 @@ type AddVersionCommand struct {
 	DocumentID    string
 	Content       string
 	ChangeSummary string
-	TraceID       string
-}
-
-type SaveEtapaBodyCommand struct {
-	DocumentID    string
-	VersionNumber int
-	StepIndex     int
-	Blocks        []RichBlock
 	TraceID       string
 }
 
@@ -201,7 +187,6 @@ type DocumentTypeDefinition struct {
 	Key           string
 	Name          string
 	ActiveVersion int
-	Schema        DocumentTypeSchema
 }
 
 type DocumentFamily struct {

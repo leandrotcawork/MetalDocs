@@ -2,7 +2,6 @@ package memory
 
 import (
 	"context"
-	"fmt"
 	"sort"
 	"strings"
 	"sync"
@@ -26,15 +25,8 @@ type Repository struct {
 	subjects            []domain.Subject
 	types               []domain.DocumentType
 	typeDefinitions     []domain.DocumentTypeDefinition
-	templateVersions    map[string]map[int]domain.DocumentTemplateVersion
-	templateDefaults    map[string]domain.DocumentTemplateVersion
-	templateAssignments map[string]domain.DocumentTemplateAssignment
 	policies            map[string][]domain.AccessPolicy
-	collabPresence      map[string]map[string]domain.CollaborationPresence
-	editLocks           map[string]domain.DocumentEditLock
 	documentSequences   map[string]int
-	templateDrafts      map[string]domain.TemplateDraft
-	templateAuditLog    []domain.TemplateAuditEvent
 }
 
 func NewRepository() *Repository {
@@ -51,26 +43,9 @@ func NewRepository() *Repository {
 		departments:         domain.DefaultDocumentDepartments(),
 		subjects:            domain.DefaultSubjects(),
 		types:               domain.DefaultDocumentTypes(),
-		typeDefinitions:     domain.DefaultDocumentTypeDefinitions(),
-		templateVersions:    map[string]map[int]domain.DocumentTemplateVersion{},
-		templateDefaults:    map[string]domain.DocumentTemplateVersion{},
-		templateAssignments: map[string]domain.DocumentTemplateAssignment{},
+		typeDefinitions:     []domain.DocumentTypeDefinition{},
 		policies:            map[string][]domain.AccessPolicy{},
-		collabPresence:      map[string]map[string]domain.CollaborationPresence{},
-		editLocks:           map[string]domain.DocumentEditLock{},
 		documentSequences:   map[string]int{},
-		templateDrafts:      map[string]domain.TemplateDraft{},
-		templateAuditLog:    nil,
-	}
-
-	for _, item := range domain.DefaultDocumentTemplateVersions() {
-		if _, ok := repo.templateVersions[item.TemplateKey]; !ok {
-			repo.templateVersions[item.TemplateKey] = map[int]domain.DocumentTemplateVersion{}
-		}
-		repo.templateVersions[item.TemplateKey][item.Version] = cloneDocumentTemplateVersion(item)
-		if item.ProfileCode != "" {
-			repo.templateDefaults[item.ProfileCode] = cloneDocumentTemplateVersion(item)
-		}
 	}
 
 	return repo
@@ -589,146 +564,6 @@ func (r *Repository) UpdateVersionPDF(_ context.Context, documentID string, vers
 	return domain.ErrVersionNotFound
 }
 
-func (r *Repository) UpdateVersionBodyBlocks(_ context.Context, documentID string, versionNumber int, bodyBlocks []domain.EtapaBody) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	if _, exists := r.documents[documentID]; !exists {
-		return domain.ErrDocumentNotFound
-	}
-	versions := r.versions[documentID]
-	for i := range versions {
-		if versions[i].Number == versionNumber {
-			versions[i].BodyBlocks = bodyBlocks
-			r.versions[documentID] = versions
-			return nil
-		}
-	}
-	return domain.ErrVersionNotFound
-}
-
-func (r *Repository) UpdateVersionValues(_ context.Context, documentID string, versionNumber int, values domain.DocumentValues) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	if _, exists := r.documents[documentID]; !exists {
-		return domain.ErrDocumentNotFound
-	}
-	versions := r.versions[documentID]
-	for i := range versions {
-		if versions[i].Number == versionNumber {
-			versions[i].Values = cloneRuntimeValues(values)
-			r.versions[documentID] = versions
-			return nil
-		}
-	}
-	return domain.ErrVersionNotFound
-}
-
-func (r *Repository) GetDocumentTemplateVersion(_ context.Context, templateKey string, version int) (domain.DocumentTemplateVersion, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	key := strings.TrimSpace(templateKey)
-	if key == "" || version <= 0 {
-		return domain.DocumentTemplateVersion{}, domain.ErrDocumentTemplateNotFound
-	}
-	versions, ok := r.templateVersions[key]
-	if !ok {
-		return domain.DocumentTemplateVersion{}, domain.ErrDocumentTemplateNotFound
-	}
-	item, ok := versions[version]
-	if !ok {
-		return domain.DocumentTemplateVersion{}, domain.ErrDocumentTemplateNotFound
-	}
-	return cloneDocumentTemplateVersion(item), nil
-}
-
-func (r *Repository) ListDocumentTemplateVersions(_ context.Context, profileCode string) ([]domain.DocumentTemplateVersion, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	normalizedProfileCode := strings.ToLower(strings.TrimSpace(profileCode))
-	templateKeys := make([]string, 0, len(r.templateVersions))
-	for templateKey := range r.templateVersions {
-		templateKeys = append(templateKeys, templateKey)
-	}
-	sort.Strings(templateKeys)
-
-	items := make([]domain.DocumentTemplateVersion, 0)
-	for _, templateKey := range templateKeys {
-		versions := r.templateVersions[templateKey]
-		versionNumbers := make([]int, 0, len(versions))
-		for version := range versions {
-			versionNumbers = append(versionNumbers, version)
-		}
-		sort.Sort(sort.Reverse(sort.IntSlice(versionNumbers)))
-		for _, version := range versionNumbers {
-			item := versions[version]
-			if normalizedProfileCode != "" && !strings.EqualFold(item.ProfileCode, normalizedProfileCode) {
-				continue
-			}
-			items = append(items, cloneDocumentTemplateVersion(item))
-		}
-	}
-	return items, nil
-}
-
-func (r *Repository) GetDefaultDocumentTemplate(_ context.Context, profileCode string) (domain.DocumentTemplateVersion, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	item, ok := r.templateDefaults[strings.TrimSpace(profileCode)]
-	if !ok {
-		return domain.DocumentTemplateVersion{}, domain.ErrDocumentTemplateNotFound
-	}
-	return cloneDocumentTemplateVersion(item), nil
-}
-
-func (r *Repository) GetDocumentTemplateAssignment(_ context.Context, documentID string) (domain.DocumentTemplateAssignment, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	item, ok := r.templateAssignments[strings.TrimSpace(documentID)]
-	if !ok {
-		return domain.DocumentTemplateAssignment{}, domain.ErrDocumentTemplateAssignmentNotFound
-	}
-	return item, nil
-}
-
-func (r *Repository) UpsertDocumentTemplateAssignment(_ context.Context, item domain.DocumentTemplateAssignment) error {
-	normalized := domain.DocumentTemplateAssignment{
-		DocumentID:      strings.TrimSpace(item.DocumentID),
-		TemplateKey:     strings.TrimSpace(item.TemplateKey),
-		TemplateVersion: item.TemplateVersion,
-		AssignedAt:      item.AssignedAt,
-	}
-	if normalized.DocumentID == "" || normalized.TemplateKey == "" || normalized.TemplateVersion <= 0 {
-		return domain.ErrInvalidCommand
-	}
-
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	r.templateAssignments[normalized.DocumentID] = normalized
-	return nil
-}
-
-func (r *Repository) UpsertDocumentTemplateVersionForTest(_ context.Context, item domain.DocumentTemplateVersion) error {
-	normalized := cloneDocumentTemplateVersion(item)
-	if strings.TrimSpace(normalized.TemplateKey) == "" || normalized.Version <= 0 || strings.TrimSpace(normalized.ProfileCode) == "" {
-		return domain.ErrInvalidCommand
-	}
-
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	if _, ok := r.templateVersions[normalized.TemplateKey]; !ok {
-		r.templateVersions[normalized.TemplateKey] = map[int]domain.DocumentTemplateVersion{}
-	}
-	r.templateVersions[normalized.TemplateKey][normalized.Version] = normalized
-	return nil
-}
 
 func (r *Repository) UpdateDraftVersionContentCAS(_ context.Context, version domain.Version, expectedContentHash string) error {
 	r.mu.Lock()
@@ -770,28 +605,6 @@ func (r *Repository) UpdateVersionDocx(_ context.Context, documentID string, ver
 	return domain.ErrVersionNotFound
 }
 
-func (r *Repository) SetVersionRendererPin(_ context.Context, documentID string, versionNumber int, pin *domain.RendererPin) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	versions, ok := r.versions[documentID]
-	if !ok {
-		return fmt.Errorf("document %s not found", documentID)
-	}
-	for i, v := range versions {
-		if v.Number == versionNumber {
-			if pin != nil {
-				if err := pin.Validate(); err != nil {
-					return fmt.Errorf("invalid renderer pin: %w", err)
-				}
-			}
-			versions[i].RendererPin = pin
-			r.versions[documentID] = versions
-			return nil
-		}
-	}
-	return fmt.Errorf("version %d of document %s not found", versionNumber, documentID)
-}
 
 func (r *Repository) saveVersionLocked(_ context.Context, version domain.Version) error {
 	if _, exists := r.documents[version.DocumentID]; !exists {
@@ -813,10 +626,6 @@ func (r *Repository) ListVersions(_ context.Context, documentID string) ([]domai
 	sort.Slice(versions, func(i, j int) bool {
 		return versions[i].Number < versions[j].Number
 	})
-	for i := range versions {
-		versions[i].Values = cloneRuntimeValues(versions[i].Values)
-		versions[i].NativeContent = cloneRuntimeValues(versions[i].NativeContent)
-	}
 
 	return versions, nil
 }
@@ -830,8 +639,6 @@ func (r *Repository) GetVersion(_ context.Context, documentID string, versionNum
 	}
 	for _, version := range r.versions[documentID] {
 		if version.Number == versionNumber {
-			version.Values = cloneRuntimeValues(version.Values)
-			version.NativeContent = cloneRuntimeValues(version.NativeContent)
 			return version, nil
 		}
 	}
@@ -886,84 +693,6 @@ func (r *Repository) ListAttachments(_ context.Context, documentID string) ([]do
 	return items, nil
 }
 
-func (r *Repository) UpsertCollaborationPresence(_ context.Context, item domain.CollaborationPresence) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	if _, exists := r.documents[item.DocumentID]; !exists {
-		return domain.ErrDocumentNotFound
-	}
-	if _, ok := r.collabPresence[item.DocumentID]; !ok {
-		r.collabPresence[item.DocumentID] = map[string]domain.CollaborationPresence{}
-	}
-	r.collabPresence[item.DocumentID][item.UserID] = item
-	return nil
-}
-
-func (r *Repository) ListCollaborationPresence(_ context.Context, documentID string, activeSince time.Time) ([]domain.CollaborationPresence, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	if _, exists := r.documents[documentID]; !exists {
-		return nil, domain.ErrDocumentNotFound
-	}
-	items := make([]domain.CollaborationPresence, 0)
-	for _, presence := range r.collabPresence[documentID] {
-		if presence.LastSeenAt.Before(activeSince) {
-			continue
-		}
-		items = append(items, presence)
-	}
-	sort.Slice(items, func(i, j int) bool {
-		return items[i].LastSeenAt.After(items[j].LastSeenAt)
-	})
-	return items, nil
-}
-
-func (r *Repository) AcquireDocumentEditLock(_ context.Context, item domain.DocumentEditLock, now time.Time) (domain.DocumentEditLock, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	if _, exists := r.documents[item.DocumentID]; !exists {
-		return domain.DocumentEditLock{}, domain.ErrDocumentNotFound
-	}
-	if current, ok := r.editLocks[item.DocumentID]; ok {
-		if current.ExpiresAt.After(now) && !strings.EqualFold(current.LockedBy, item.LockedBy) {
-			return domain.DocumentEditLock{}, domain.ErrEditLockActive
-		}
-	}
-	r.editLocks[item.DocumentID] = item
-	return item, nil
-}
-
-func (r *Repository) GetDocumentEditLock(_ context.Context, documentID string, now time.Time) (domain.DocumentEditLock, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	if _, exists := r.documents[documentID]; !exists {
-		return domain.DocumentEditLock{}, domain.ErrDocumentNotFound
-	}
-	lock, ok := r.editLocks[documentID]
-	if !ok || !lock.ExpiresAt.After(now) {
-		return domain.DocumentEditLock{}, domain.ErrEditLockNotFound
-	}
-	return lock, nil
-}
-
-func (r *Repository) ReleaseDocumentEditLock(_ context.Context, documentID, lockedBy string) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	lock, ok := r.editLocks[documentID]
-	if !ok {
-		return domain.ErrEditLockNotFound
-	}
-	if !strings.EqualFold(lock.LockedBy, lockedBy) {
-		return domain.ErrEditLockActive
-	}
-	delete(r.editLocks, documentID)
-	return nil
-}
 
 func normalizeDocumentTypeDefinition(item domain.DocumentTypeDefinition) (domain.DocumentTypeDefinition, error) {
 	item.Key = strings.ToLower(strings.TrimSpace(item.Key))
@@ -974,108 +703,13 @@ func normalizeDocumentTypeDefinition(item domain.DocumentTypeDefinition) (domain
 	if item.ActiveVersion <= 0 {
 		item.ActiveVersion = 1
 	}
-	item.Schema = cloneDocumentTypeSchema(item.Schema)
 	return item, nil
 }
 
 func cloneDocumentTypeDefinition(item domain.DocumentTypeDefinition) domain.DocumentTypeDefinition {
-	item.Schema = cloneDocumentTypeSchema(item.Schema)
 	return item
-}
-
-func cloneDocumentTypeSchema(schema domain.DocumentTypeSchema) domain.DocumentTypeSchema {
-	if len(schema.Sections) == 0 {
-		return domain.DocumentTypeSchema{}
-	}
-	out := domain.DocumentTypeSchema{Sections: make([]domain.SectionDef, len(schema.Sections))}
-	for i, section := range schema.Sections {
-		out.Sections[i] = cloneSectionDef(section)
-	}
-	return out
-}
-
-func cloneSectionDef(section domain.SectionDef) domain.SectionDef {
-	out := domain.SectionDef{
-		Key:   section.Key,
-		Num:   section.Num,
-		Title: section.Title,
-		Color: section.Color,
-	}
-	if len(section.Fields) > 0 {
-		out.Fields = make([]domain.FieldDef, len(section.Fields))
-		for i, field := range section.Fields {
-			out.Fields[i] = cloneFieldDef(field)
-		}
-	}
-	return out
-}
-
-func cloneFieldDef(field domain.FieldDef) domain.FieldDef {
-	out := domain.FieldDef{
-		Key:   field.Key,
-		Label: field.Label,
-		Type:  field.Type,
-	}
-	if len(field.Options) > 0 {
-		out.Options = append([]string(nil), field.Options...)
-	}
-	if len(field.Columns) > 0 {
-		out.Columns = make([]domain.FieldDef, len(field.Columns))
-		for i, column := range field.Columns {
-			out.Columns[i] = cloneFieldDef(column)
-		}
-	}
-	if len(field.ItemFields) > 0 {
-		out.ItemFields = make([]domain.FieldDef, len(field.ItemFields))
-		for i, itemField := range field.ItemFields {
-			out.ItemFields[i] = cloneFieldDef(itemField)
-		}
-	}
-	return out
-}
-
-func cloneRuntimeValues(values map[string]any) map[string]any {
-	if len(values) == 0 {
-		return map[string]any{}
-	}
-	out := make(map[string]any, len(values))
-	for key, value := range values {
-		out[key] = cloneRuntimeValue(value)
-	}
-	return out
-}
-
-func cloneRuntimeValue(value any) any {
-	switch typed := value.(type) {
-	case map[string]any:
-		return cloneRuntimeValues(typed)
-	case []any:
-		out := make([]any, len(typed))
-		for i, item := range typed {
-			out[i] = cloneRuntimeValue(item)
-		}
-		return out
-	case []map[string]any:
-		out := make([]map[string]any, len(typed))
-		for i, item := range typed {
-			out[i] = cloneRuntimeValues(item)
-		}
-		return out
-	default:
-		return typed
-	}
 }
 
 func cloneVersion(item domain.Version) domain.Version {
-	item.NativeContent = cloneRuntimeValues(item.NativeContent)
-	item.Values = cloneRuntimeValues(item.Values)
-	if len(item.BodyBlocks) > 0 {
-		item.BodyBlocks = append([]domain.EtapaBody(nil), item.BodyBlocks...)
-	}
-	return item
-}
-
-func cloneDocumentTemplateVersion(item domain.DocumentTemplateVersion) domain.DocumentTemplateVersion {
-	item.Definition = cloneRuntimeValues(item.Definition)
 	return item
 }

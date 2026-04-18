@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"net/http"
 	"os"
@@ -12,6 +13,9 @@ import (
 	_ "metaldocs/internal/modules/document_revisions"
 	_ "metaldocs/internal/modules/editor_sessions"
 
+	auditdomain "metaldocs/internal/modules/audit/domain"
+	documents_v2 "metaldocs/internal/modules/documents_v2"
+	"metaldocs/internal/modules/documents_v2/jobs"
 	templatesmod "metaldocs/internal/modules/templates"
 
 	auditapp "metaldocs/internal/modules/audit/application"
@@ -32,7 +36,10 @@ import (
 	"metaldocs/internal/platform/authn"
 	"metaldocs/internal/platform/bootstrap"
 	"metaldocs/internal/platform/config"
+	docgenv2 "metaldocs/internal/platform/docgenv2"
 	"metaldocs/internal/platform/featureflags"
+	"metaldocs/internal/platform/formval"
+	"metaldocs/internal/platform/objectstore"
 	"metaldocs/internal/platform/observability"
 	"metaldocs/internal/platform/security"
 )
@@ -132,6 +139,24 @@ func main() {
 		tplMod := templatesmod.New(deps.SQLDB, deps.DocgenV2Client, nil)
 		tplMod.RegisterRoutes(mux)
 		log.Printf("docx-v2 templates module enabled")
+
+		// TODO(docx-v2): APIDependencies currently does not expose S3Client/S3Bucket.
+		// Pass nil placeholders until bootstrap wiring is added.
+		docMod := documents_v2.New(documents_v2.Dependencies{
+			DB:      deps.SQLDB,
+			Docgen:  nil, // TODO(docx-v2): adapt DocgenV2Client to application.DocgenRenderer
+			Presign: objectstore.NewDocumentPresigner(nil, "", 15*time.Minute, 25*1024*1024),
+			TplRead: docgenv2.NewTemplateReader(deps.SQLDB, nil, ""),
+			FormVal: formval.NewGojsonschema(),
+			Audit:   newDocumentsV2AuditAdapter(deps.AuditWriter),
+		})
+		docMod.RegisterRoutes(mux)
+		log.Printf("docx-v2 documents module enabled")
+
+		stopSessions := jobs.StartSessionSweeper(context.Background(), docMod.Repo(), 60*time.Second)
+		stopOrphans := jobs.StartOrphanPendingSweeper(context.Background(), docMod.Repo(), time.Hour)
+		defer stopSessions()
+		defer stopOrphans()
 	}
 	mux.Handle("/api/v1/metrics", httpObs.MetricsHandler())
 
@@ -157,4 +182,35 @@ func main() {
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("server failed: %v", err)
 	}
+}
+
+type documentsV2AuditAdapter struct {
+	writer auditdomain.Writer
+}
+
+func newDocumentsV2AuditAdapter(writer auditdomain.Writer) *documentsV2AuditAdapter {
+	return &documentsV2AuditAdapter{writer: writer}
+}
+
+func (a *documentsV2AuditAdapter) Write(ctx context.Context, tenantID, actorID, action, docID string, meta any) {
+	if a == nil || a.writer == nil {
+		return
+	}
+
+	payload := map[string]any{"tenant_id": tenantID}
+	if meta != nil {
+		payload["meta"] = meta
+	}
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		raw = []byte("{}")
+	}
+
+	_ = a.writer.Record(ctx, auditdomain.Event{
+		ActorID:      actorID,
+		Action:       action,
+		ResourceType: "document",
+		ResourceID:   docID,
+		PayloadJSON:  string(raw),
+	})
 }

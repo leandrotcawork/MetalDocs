@@ -20,6 +20,7 @@ async function sha256Hex(buf: ArrayBuffer): Promise<string> {
 }
 
 export function useDocumentAutosave(args: AutosaveArgs) {
+  const { documentID, sessionID, baseRevisionID, onAdvanceBase, onSessionLost } = args;
   const pending = useRef<ArrayBuffer | null>(null);
   const pendingHash = useRef<string>('');
   const formSnapshot = useRef<unknown>(null);
@@ -34,16 +35,16 @@ export function useDocumentAutosave(args: AutosaveArgs) {
     try {
       // Persist to IndexedDB BEFORE hitting network -- crash recovery.
       await putPending({
-        document_id: args.documentID,
-        session_id: args.sessionID,
-        base_revision_id: args.baseRevisionID,
+        document_id: documentID,
+        session_id: sessionID,
+        base_revision_id: baseRevisionID,
         content_hash: hash,
         buffer: buf,
         created_at: Date.now(),
       });
-      const presigned = await presignAutosave(args.documentID, {
-        session_id: args.sessionID,
-        base_revision_id: args.baseRevisionID,
+      const presigned = await presignAutosave(documentID, {
+        session_id: sessionID,
+        base_revision_id: baseRevisionID,
         content_hash: hash,
       });
       await fetch(presigned.UploadURL, {
@@ -52,38 +53,38 @@ export function useDocumentAutosave(args: AutosaveArgs) {
         body: buf,
       });
       // Server re-computes content_hash from S3; client does NOT send a hash.
-      const commit = await commitAutosave(args.documentID, {
-        session_id: args.sessionID,
+      const commit = await commitAutosave(documentID, {
+        session_id: sessionID,
         pending_upload_id: presigned.PendingUploadID,
         form_data_snapshot: formSnapshot.current,
       });
-      await deletePending(args.documentID, hash);
+      await deletePending(documentID, hash);
       pending.current = null; pendingHash.current = '';
-      args.onAdvanceBase(commit.revision_id);
+      onAdvanceBase(commit.revision_id);
       setStatus('saved');
     } catch (e: any) {
       if (e?.status === 409) {
         const body = e?.body ? (() => { try { return JSON.parse(e.body); } catch { return {}; } })() : {};
-        if (body?.error === 'stale_base') { args.onSessionLost('stale_base'); setStatus('stale'); return; }
+        if (body?.error === 'stale_base') { onSessionLost('stale_base'); setStatus('stale'); return; }
         if (body?.error === 'session_inactive' || body?.error === 'session_not_holder') {
-          args.onSessionLost('session_inactive'); setStatus('session_lost'); return;
+          onSessionLost('session_inactive'); setStatus('session_lost'); return;
         }
       }
       if (e?.status === 410) {
         // upload_missing or expired_upload: the S3 object is gone.
-        try { await deletePending(args.documentID, hash); } catch { /* ignore */ }
+        try { await deletePending(documentID, hash); } catch { /* ignore */ }
         pending.current = null; pendingHash.current = '';
         setStatus('error'); return;
       }
       if (e?.status === 422) {
         // content_hash_mismatch: discard local pending.
-        try { await deletePending(args.documentID, hash); } catch { /* ignore */ }
+        try { await deletePending(documentID, hash); } catch { /* ignore */ }
         pending.current = null; pendingHash.current = '';
         setStatus('error'); return;
       }
       setStatus('error');
     }
-  }, [args]);
+  }, [documentID, sessionID, baseRevisionID, onAdvanceBase, onSessionLost]);
 
   const schedule = useCallback(() => {
     if (timer.current) window.clearTimeout(timer.current);
@@ -102,16 +103,16 @@ export function useDocumentAutosave(args: AutosaveArgs) {
   // replay it (if session matches base we still hold).
   useEffect(() => {
     (async () => {
-      const leftovers = await getAllPending(args.documentID);
+      const leftovers = await getAllPending(documentID);
       for (const p of leftovers) {
-        if (p.session_id !== args.sessionID) continue;
+        if (p.session_id !== sessionID) continue;
         pending.current = p.buffer;
         pendingHash.current = p.content_hash;
         await flush();
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [args.documentID, args.sessionID]);
+  }, [documentID, sessionID]);
 
   useEffect(() => () => { if (timer.current) window.clearTimeout(timer.current); }, []);
 

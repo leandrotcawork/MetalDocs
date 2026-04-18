@@ -34,12 +34,16 @@ export function useDocumentSession(documentID: string) {
 
   const acquire = useCallback(async () => {
     setState({ phase: 'acquiring' });
-    const res: AcquireResult = await acquireSession(documentID);
-    if (res.mode === 'writer') {
-      setState({ phase: 'writer', sessionID: res.session_id, lastAckRevisionID: res.last_ack_revision_id });
-      startHeartbeat(res.session_id);
-    } else {
-      setState({ phase: 'readonly', heldBy: res.held_by, heldUntil: res.held_until });
+    try {
+      const res: AcquireResult = await acquireSession(documentID);
+      if (res.mode === 'writer') {
+        setState({ phase: 'writer', sessionID: res.session_id, lastAckRevisionID: res.last_ack_revision_id });
+        startHeartbeat(res.session_id);
+      } else {
+        setState({ phase: 'readonly', heldBy: res.held_by, heldUntil: res.held_until });
+      }
+    } catch {
+      setState({ phase: 'lost', reason: 'network' });
     }
   }, [documentID, startHeartbeat]);
 

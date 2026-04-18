@@ -153,11 +153,13 @@ func (r *Repository) ListDocumentsForUser(ctx context.Context, tenantID, userID 
 
 func (r *Repository) UpdateDocumentStatus(ctx context.Context, tenantID, id string, cur, next domain.DocumentStatus, stampTime bool) error {
 	col := ""
-	if next == domain.DocStatusFinalized {
-		col = "finalized_at = now(),"
-	}
-	if next == domain.DocStatusArchived {
-		col = "archived_at  = now(),"
+	if stampTime {
+		if next == domain.DocStatusFinalized {
+			col = "finalized_at = now(),"
+		}
+		if next == domain.DocStatusArchived {
+			col = "archived_at  = now(),"
+		}
 	}
 	res, err := r.db.ExecContext(ctx,
 		fmt.Sprintf(`UPDATE documents SET status=$1, %s updated_at=now() WHERE id=$2 AND tenant_id=$3 AND status=$4`, col),
@@ -291,20 +293,22 @@ func (r *Repository) ForceReleaseSession(ctx context.Context, sessionID string) 
 }
 
 func (r *Repository) ExpireStaleSessions(ctx context.Context, now time.Time) (int, error) {
-	res, err := r.db.ExecContext(ctx,
-		`UPDATE editor_sessions SET status='expired' WHERE status='active' AND expires_at < $1`, now)
+	// Single atomic CTE: expire sessions and clear document pointers in one tx.
+	var n int
+	err := r.db.QueryRowContext(ctx, `
+		WITH expired AS (
+			UPDATE editor_sessions SET status='expired'
+			WHERE status='active' AND expires_at < $1
+			RETURNING id
+		)
+		UPDATE documents SET active_session_id=NULL, updated_at=now()
+		WHERE active_session_id IN (SELECT id FROM expired)
+		RETURNING (SELECT count(*) FROM expired)`, now,
+	).Scan(&n)
 	if err != nil {
 		return 0, err
 	}
-	n, _ := res.RowsAffected()
-	if n > 0 {
-		if _, err := r.db.ExecContext(ctx,
-			`UPDATE documents SET active_session_id=NULL, updated_at=now()
-			 WHERE active_session_id IN (SELECT id FROM editor_sessions WHERE status='expired' AND released_at IS NULL)`); err != nil {
-			return 0, err
-		}
-	}
-	return int(n), nil
+	return n, nil
 }
 
 func (r *Repository) PresignReserve(ctx context.Context, sessionID, userID, docID, baseRevisionID, contentHash, storageKey string, expiresAt time.Time) (pendingID string, err error) {

@@ -11,6 +11,7 @@ import (
 	"metaldocs/internal/modules/documents_v2/application"
 	"metaldocs/internal/modules/documents_v2/domain"
 	iamdomain "metaldocs/internal/modules/iam/domain"
+	"metaldocs/internal/platform/ratelimit"
 )
 
 const (
@@ -58,6 +59,35 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 
 	mux.HandleFunc("POST /api/v2/documents/{id}/autosave/presign", h.presignAutosave)
 	mux.HandleFunc("POST /api/v2/documents/{id}/autosave/commit", h.commitAutosave)
+
+	mux.HandleFunc("GET /api/v2/documents/{id}/checkpoints", h.listCheckpoints)
+	mux.HandleFunc("POST /api/v2/documents/{id}/checkpoints", h.createCheckpoint)
+	mux.HandleFunc("POST /api/v2/documents/{id}/checkpoints/{version}/restore", h.restoreCheckpoint)
+
+	mux.HandleFunc("GET /api/v2/documents/{id}/revisions/{rid}/url", h.signedRevisionURL)
+}
+
+func (h *Handler) RegisterRoutesWithRateLimit(mux *http.ServeMux, rl *ratelimit.Middleware, userFn func(*http.Request) string) {
+	mux.HandleFunc("GET /api/v2/documents", h.listDocuments)
+	mux.HandleFunc("POST /api/v2/documents", h.createDocument)
+
+	mux.HandleFunc("GET /api/v2/documents/{id}", h.getDocument)
+	mux.HandleFunc("POST /api/v2/documents/{id}/finalize", h.finalizeDocument)
+	mux.HandleFunc("POST /api/v2/documents/{id}/archive", h.archiveDocument)
+
+	mux.HandleFunc("POST /api/v2/documents/{id}/sessions/acquire", h.acquireSession)
+	mux.HandleFunc("POST /api/v2/documents/{id}/sessions/heartbeat", h.heartbeatSession)
+	mux.HandleFunc("POST /api/v2/documents/{id}/sessions/release", h.releaseSession)
+	mux.HandleFunc("POST /api/v2/documents/{id}/sessions/force-release", h.forceReleaseSession)
+
+	mux.Handle(
+		"POST /api/v2/documents/{id}/autosave/presign",
+		rl.Limit(ratelimit.RouteAutosavePresign, userFn, http.HandlerFunc(h.presignAutosave)),
+	)
+	mux.Handle(
+		"POST /api/v2/documents/{id}/autosave/commit",
+		rl.Limit(ratelimit.RouteAutosaveCommit, userFn, http.HandlerFunc(h.commitAutosave)),
+	)
 
 	mux.HandleFunc("GET /api/v2/documents/{id}/checkpoints", h.listCheckpoints)
 	mux.HandleFunc("POST /api/v2/documents/{id}/checkpoints", h.createCheckpoint)

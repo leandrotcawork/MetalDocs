@@ -7,28 +7,66 @@ import (
 	"metaldocs/internal/modules/documents_v2/application"
 	dhttp "metaldocs/internal/modules/documents_v2/delivery/http"
 	"metaldocs/internal/modules/documents_v2/repository"
+	"metaldocs/internal/platform/ratelimit"
 )
 
 type Module struct {
-	Handler *dhttp.Handler
-	repo    *repository.Repository
+	Handler       *dhttp.Handler
+	ExportHandler *dhttp.ExportHandler
+	repo          *repository.Repository
 }
 
 type Dependencies struct {
-	DB      *sql.DB
-	Docgen  application.DocgenRenderer
-	Presign application.Presigner
-	TplRead application.TemplateReader
-	FormVal application.FormValidator
-	Audit   application.Audit
+	DB            *sql.DB
+	Docgen        application.DocgenRenderer
+	Presign       application.Presigner
+	TplRead       application.TemplateReader
+	FormVal       application.FormValidator
+	Audit         application.Audit
+	ExportPresign application.ExportPresigner
+	ExportDocgen  application.DocgenPDFClient
+	DocgenVer     string
+	GrammarVer    string
 }
 
 func New(deps Dependencies) *Module {
 	repo := repository.New(deps.DB)
 	svc := application.New(repo, deps.Docgen, deps.Presign, deps.TplRead, deps.FormVal, deps.Audit)
-	return &Module{Handler: dhttp.NewHandler(svc), repo: repo}
+	h := dhttp.NewHandler(svc)
+
+	var exportHandler *dhttp.ExportHandler
+	if deps.ExportPresign != nil && deps.ExportDocgen != nil {
+		docgenVer := deps.DocgenVer
+		if docgenVer == "" {
+			docgenVer = "docgen-v2@0.4.0"
+		}
+		grammarVer := deps.GrammarVer
+		if grammarVer == "" {
+			grammarVer = "grammar-v1"
+		}
+		exportSvc := application.NewExportService(repo, deps.ExportPresign, deps.ExportDocgen, deps.Audit, docgenVer, grammarVer)
+		exportHandler = dhttp.NewExportHandler(exportSvc)
+	}
+
+	return &Module{
+		Handler:       h,
+		ExportHandler: exportHandler,
+		repo:          repo,
+	}
 }
 
-func (m *Module) RegisterRoutes(mux *http.ServeMux) { m.Handler.RegisterRoutes(mux) }
+func (m *Module) RegisterRoutes(mux *http.ServeMux) {
+	m.Handler.RegisterRoutes(mux)
+	if m.ExportHandler != nil {
+		m.ExportHandler.RegisterRoutes(mux)
+	}
+}
+
+func (m *Module) RegisterRoutesWithRateLimit(mux *http.ServeMux, rl *ratelimit.Middleware, userFn func(*http.Request) string) {
+	m.Handler.RegisterRoutesWithRateLimit(mux, rl, userFn)
+	if m.ExportHandler != nil {
+		m.ExportHandler.RegisterRoutesWithRateLimit(mux, rl, userFn)
+	}
+}
 
 func (m *Module) Repo() *repository.Repository { return m.repo }

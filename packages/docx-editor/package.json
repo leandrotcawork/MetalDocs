@@ -1,0 +1,11 @@
+{
+  "name": "@metaldocs/docx-editor-fork",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "echo noop",
+    "test": "echo noop"
+  }
+}

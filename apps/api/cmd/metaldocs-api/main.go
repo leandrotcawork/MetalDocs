@@ -127,7 +127,8 @@ func main() {
 	workflowHandler.RegisterRoutes(mux)
 	iamAdminHandler.RegisterRoutes(mux)
 	if featureFlagsCfg.DocxV2Enabled {
-		// presigner is wired in Task 21; nil is safe until objectstore is implemented.
+		// TODO(Task 22): wire real presigner once APIDependencies exposes S3Client + S3Bucket.
+		// presigner := objectstore.NewTemplatePresigner(deps.S3Client, deps.S3Bucket, 15*time.Minute, 10*1024*1024)
 		tplMod := templatesmod.New(deps.SQLDB, deps.DocgenV2Client, nil)
 		tplMod.RegisterRoutes(mux)
 		log.Printf("docx-v2 templates module enabled")

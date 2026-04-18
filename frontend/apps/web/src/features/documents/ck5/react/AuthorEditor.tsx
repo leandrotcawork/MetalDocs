@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import { DecoupledEditor } from 'ckeditor5';
 import type { ClassicEditor } from 'ckeditor5';
@@ -6,6 +6,8 @@ import type { DecoupledEditorUIView } from 'ckeditor5';
 import 'ckeditor5/ckeditor5.css';
 import { createAuthorConfig } from '../config/editorConfig';
 import { PageCounter } from './PageCounter';
+import { PageFooters } from './PageFooters';
+import { usePredictivePageCount } from './usePredictivePageCount';
 import { PaginationDebugOverlay } from './PaginationDebugOverlay';
 import styles from './AuthorEditor.module.css';
 
@@ -23,6 +25,17 @@ export function AuthorEditor({ initialHtml, onChange, onReady, language = 'en' }
   // and trip CKEditor's "unexpected-error" in DataController.set.
   const config = useMemo(() => createAuthorConfig({ language }), [language]);
   const [editor, setEditor] = useState<ClassicEditor | null>(null);
+  const paperWrapperRef = useRef<HTMLDivElement | null>(null);
+  const [editorRoot, setEditorRoot] = useState<HTMLElement | null>(null);
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+  const pages = usePredictivePageCount(editorRoot);
+
+  useEffect(() => {
+    if (!editor) return;
+    const root = editor.editing?.view?.getDomRoot?.() as HTMLElement | null | undefined;
+    setEditorRoot(root ?? null);
+    setPortalTarget(paperWrapperRef.current);
+  }, [editor]);
   const debugFlag = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === 'pagination';
 
   return (
@@ -36,6 +49,7 @@ export function AuthorEditor({ initialHtml, onChange, onReady, language = 'en' }
         />
       </div>
       <div className={styles.editable} data-ck5-role="editable">
+        <div ref={paperWrapperRef} className={styles.paperWrapper}>
         <CKEditor
           editor={DecoupledEditor}
           data={initialHtml}
@@ -52,6 +66,8 @@ export function AuthorEditor({ initialHtml, onChange, onReady, language = 'en' }
             onChange(editor.getData());
           }}
         />
+          <PageFooters pages={pages} portalTarget={portalTarget} />
+        </div>
       </div>
     </div>
   );

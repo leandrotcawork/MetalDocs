@@ -175,9 +175,14 @@ func (h *Handler) archiveDocument(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
-	errSecond := h.svc.Archive(r.Context(), tenantID, docID, userID, false)
-	if errSecond != nil {
-		status, msg := mapErr(errSecond)
+	// Only fall back to draft→archived when the doc is not in finalized state.
+	if !errors.Is(errFirst, domain.ErrInvalidStateTransition) {
+		status, msg := mapErr(errFirst)
+		httpErr(w, status, msg)
+		return
+	}
+	if err := h.svc.Archive(r.Context(), tenantID, docID, userID, false); err != nil {
+		status, msg := mapErr(err)
 		httpErr(w, status, msg)
 		return
 	}
@@ -422,9 +427,9 @@ func (h *Handler) restoreCheckpoint(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"new_revision_id":   res.NewRevisionID,
-		"new_revision_num":  res.NewRevisionNum,
-		"checkpoint_rev_id": res.CheckpointRevID,
+		"new_revision_id":               res.NewRevisionID,
+		"new_revision_num":              res.NewRevisionNum,
+		"source_checkpoint_version_num": versionNum,
 		"idempotent":        res.Idempotent,
 	})
 }
@@ -528,10 +533,14 @@ func mapErr(err error) (int, string) {
 		return http.StatusOK, ""
 	case errors.Is(err, domain.ErrForbidden), errors.Is(err, domain.ErrDocumentNotOwner):
 		return http.StatusForbidden, "forbidden"
-	case errors.Is(err, domain.ErrPendingNotFound), errors.Is(err, domain.ErrCheckpointNotFound):
-		return http.StatusNotFound, "not_found"
+	case errors.Is(err, domain.ErrPendingNotFound):
+		return http.StatusNotFound, "pending_not_found"
+	case errors.Is(err, domain.ErrCheckpointNotFound):
+		return http.StatusNotFound, "checkpoint_not_found"
 	case errors.Is(err, domain.ErrExpiredUpload):
-		return http.StatusGone, "upload_expired"
+		return http.StatusGone, "expired_upload"
+	case errors.Is(err, domain.ErrUploadMissing):
+		return http.StatusGone, "upload_missing"
 	case errors.Is(err, domain.ErrContentHashMismatch):
 		return http.StatusUnprocessableEntity, "content_hash_mismatch"
 	case errors.Is(err, domain.ErrSessionTaken):

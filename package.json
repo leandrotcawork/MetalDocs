@@ -1,0 +1,17 @@
+{
+  "name": "metaldocs-monorepo",
+  "private": true,
+  "version": "0.0.0",
+  "workspaces": [
+    "apps/docgen-v2",
+    "packages/*"
+  ],
+  "scripts": {
+    "build:docx-v2": "npm -ws --if-present run build",
+    "test:docx-v2": "npm -ws --if-present run test",
+    "typecheck:docx-v2": "npm -ws --if-present run typecheck"
+  },
+  "engines": {
+    "node": ">=20.11.0"
+  }
+}

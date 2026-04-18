@@ -155,6 +155,8 @@ func newPermissionResolver() iamdelivery.PermissionResolver {
 				return iamdomain.PermDocumentEdit, true
 			case method == http.MethodPost && strings.Contains(path, "/checkpoints"):
 				return iamdomain.PermDocumentEdit, true
+			case method == http.MethodPost && strings.HasSuffix(path, "/export/pdf"):
+				return iamdomain.PermDocumentRead, true
 			}
 		}
 		if method == http.MethodGet && path == "/api/v2/signed" {

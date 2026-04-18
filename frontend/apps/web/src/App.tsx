@@ -1,4 +1,4 @@
-import { Component, useCallback, useEffect, useMemo, useRef } from "react";
+import { Component, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "./lib.api";
 import { AuthShell } from "./components/AuthShell";
@@ -21,6 +21,8 @@ import { RegistryExplorerView } from "./features/registry/RegistryExplorerView";
 import { WorkspaceShell } from "./features/shell/WorkspaceShell";
 import { isPathForView, parseTemplateEditorPath, pathFromView, viewFromPath } from "./routing/workspaceRoutes";
 import { TemplateEditorView } from "./features/templates/TemplateEditorView";
+import { isDocxV2Enabled } from "./features/featureFlags";
+import { renderTemplatesV2View, type TemplatesV2Route } from "./features/templates/v2/routes";
 
 type AppErrorBoundaryState = {
   hasError: boolean;
@@ -179,6 +181,7 @@ function AppContent() {
 
   const locationView = useMemo(() => viewFromPath(location.pathname), [location.pathname]);
   const templateEditorParams = useMemo(() => parseTemplateEditorPath(location.pathname), [location.pathname]);
+  const [tplRoute, setTplRoute] = useState<TemplatesV2Route>({ kind: 'list' });
 
   const handleWorkspaceNavigate = useCallback((nextView: Parameters<typeof pathFromView>[0]) => {
     if (nextView === "admin" && !isAdmin) {
@@ -448,6 +451,11 @@ function AppContent() {
       return (
         <AdminCenterView />
       );
+    }
+
+    if (activeView === "templates-v2") {
+      if (!isDocxV2Enabled()) return <div role="alert">Feature not enabled.</div>;
+      return renderTemplatesV2View(tplRoute, setTplRoute);
     }
 
     return (

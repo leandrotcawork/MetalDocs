@@ -19,3 +19,22 @@ jobs:
       - name: Run governance checks (PowerShell)
         shell: pwsh
         run: ./scripts/check-governance.ps1 -BaseRef "origin/${{ github.base_ref }}"
+
+  docx-v2-isolation:
+    name: docx-v2 PR must not touch CK5 paths
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.title, 'docx-v2') || startsWith(github.event.pull_request.head.ref, 'feat/docx-v2-')
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Fail if PR edits CK5 paths
+        run: |
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+          bad=$(git diff --name-only "$base" "$head" | grep -E '^(frontend/apps/web/src/features/documents/ck5/|apps/ck5-export/|apps/ck5-studio/|apps/docgen/|internal/modules/documents/application/service_ck5_|internal/modules/documents/delivery/http/handler_ck5_)' || true)
+          if [[ -n "$bad" ]]; then
+            echo "::error::docx-v2 PR must not touch CK5 paths:"
+            echo "$bad"
+            exit 1
+          fi
+          echo "OK: no CK5 paths touched"

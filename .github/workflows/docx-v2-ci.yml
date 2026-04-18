@@ -1,0 +1,94 @@
+name: docx-v2 CI
+
+on:
+  pull_request:
+    paths:
+      - 'apps/docgen-v2/**'
+      - 'packages/**'
+      - 'migrations/0101_*'
+      - 'migrations/0102_*'
+      - 'migrations/0103_*'
+      - 'migrations/0104_*'
+      - 'migrations/0105_*'
+      - 'migrations/0106_*'
+      - 'migrations/0107_*'
+      - 'migrations/0108_*'
+      - 'internal/platform/config/feature_flags*.go'
+      - 'internal/platform/featureflags/**'
+      - 'internal/platform/servicebus/docgen_v2_client*.go'
+      - 'internal/modules/templates/**'
+      - 'internal/modules/editor_sessions/**'
+      - 'internal/modules/document_revisions/**'
+      - 'frontend/apps/web/src/features/featureFlags.ts'
+      - 'frontend/apps/web/src/features/__tests__/featureFlags.docxV2.test.ts'
+      - 'tests/docx_v2/**'
+      - 'scripts/docx-v2-*'
+      - '.github/workflows/docx-v2-ci.yml'
+
+jobs:
+  node:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20.11.0, cache: npm }
+      - run: npm ci --include-workspace-root
+      - run: npm run typecheck:docx-v2
+      - run: npm run test:docx-v2
+      - run: npm run build:docx-v2
+  frontend-docxv2-flag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20.11.0, cache: npm, cache-dependency-path: frontend/apps/web/package-lock.json }
+      - run: npm ci
+        working-directory: frontend/apps/web
+      - run: npm run test -- featureFlags.docxV2.test.ts
+        working-directory: frontend/apps/web
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: 1.25.x, cache: true }
+      - run: go build ./...
+      - run: go test ./internal/platform/config/... ./internal/platform/featureflags/... ./internal/platform/servicebus/... ./internal/modules/templates/... ./internal/modules/editor_sessions/... ./internal/modules/document_revisions/... ./tests/docx_v2/...
+  migration-smoke:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: metaldocs
+          POSTGRES_PASSWORD: metaldocs
+          POSTGRES_DB: metaldocs
+        options: >-
+          --health-cmd "pg_isready -U metaldocs"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+        ports: [ "5432:5432" ]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply docx-v2 migrations
+        env:
+          PGPASSWORD: metaldocs
+        run: |
+          for f in migrations/0101_*.sql migrations/0102_*.sql migrations/0103_*.sql \
+                   migrations/0104_*.sql migrations/0105_*.sql migrations/0106_*.sql \
+                   migrations/0107_*.sql migrations/0108_*.sql; do
+            echo "==> $f"
+            psql -h 127.0.0.1 -U metaldocs -d metaldocs -v ON_ERROR_STOP=1 -f "$f"
+          done
+      - name: Verify tables + indexes
+        env:
+          PGPASSWORD: metaldocs
+          SERVICE: 127.0.0.1
+        run: |
+          for t in templates template_versions documents_v2 editor_sessions document_revisions autosave_pending_uploads document_checkpoints template_audit_log; do
+            psql -h 127.0.0.1 -U metaldocs -d metaldocs -tAc "SELECT to_regclass('public.$t')" | grep -qx "$t"
+          done
+          for idx in idx_one_draft_per_template idx_one_active_session_per_doc idx_pending_expired idx_documents_v2_form_data_gin; do
+            psql -h 127.0.0.1 -U metaldocs -d metaldocs -tAc "SELECT 1 FROM pg_indexes WHERE indexname='$idx'" | grep -qx 1
+          done

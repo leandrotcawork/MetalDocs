@@ -12,6 +12,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@metaldocs/shared-tokens": "*",
+    "ajv": "^8.16.0",
     "fastify": "4.26.2",
     "minio": "^7.1.3",
     "zod": "3.23.8"

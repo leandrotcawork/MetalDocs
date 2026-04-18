@@ -1,6 +1,8 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import { loadEnv } from './env.js';
 import { registerServiceAuth } from './service-auth.js';
+import { registerRoutes } from './routes/index.js';
+import { makeS3Client } from './s3.js';
 
 export async function buildApp(): Promise<FastifyInstance> {
   const env = loadEnv();
@@ -10,6 +12,10 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   app.get('/health', async () => ({ status: 'ok', version: env.VERSION }));
 
+  let cachedClient: ReturnType<typeof makeS3Client> | null = null;
+  const s3Factory = () => (cachedClient ??= makeS3Client(env));
+
+  registerRoutes(app, env, s3Factory);
   return app;
 }
 

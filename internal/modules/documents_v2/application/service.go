@@ -111,10 +111,12 @@ func (s *Service) CreateDocument(ctx context.Context, cmd CreateDocumentCmd) (re
 		return nil, fmt.Errorf("render: %w", err)
 	}
 
-	cleanupTmp := true
+	// cleanupKey tracks which S3 key to delete on failure.
+	// Starts as tmpKey; shifts to finalKey after AdoptTempObject; clears on full success.
+	cleanupKey := tmpKey
 	defer func() {
-		if cleanupTmp {
-			_ = s.presigner.DeleteObject(context.Background(), tmpKey)
+		if cleanupKey != "" {
+			_ = s.presigner.DeleteObject(context.Background(), cleanupKey)
 		}
 	}()
 
@@ -134,11 +136,12 @@ func (s *Service) CreateDocument(ctx context.Context, cmd CreateDocumentCmd) (re
 	if err := s.presigner.AdoptTempObject(ctx, tmpKey, finalKey); err != nil {
 		return nil, fmt.Errorf("adopt tmp: %w", err)
 	}
-	cleanupTmp = false
+	cleanupKey = finalKey // tmpKey already renamed to finalKey by AdoptTempObject
 
 	if err := s.repo.SetRevisionStorageKey(ctx, revID, finalKey); err != nil {
 		return nil, fmt.Errorf("set revision key: %w", err)
 	}
+	cleanupKey = "" // both operations succeeded
 
 	s.audit.Write(ctx, cmd.TenantID, cmd.ActorUserID, "document.created", docID, map[string]any{"template_version_id": cmd.TemplateVersionID})
 	return &CreateDocumentResult{DocumentID: docID, InitialRevisionID: revID, SessionID: sessionID}, nil

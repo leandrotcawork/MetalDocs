@@ -47,6 +47,12 @@
   border-bottom: 1px solid var(--ck5-toolbar-border, #ddd);
 }
 
+.paperWrapper {
+  position: relative;
+  width: 210mm;
+  flex: 0 0 auto;
+}
+
 .editable {
   flex: 1;
   overflow: auto;
@@ -54,21 +60,31 @@
   display: flex;
   justify-content: center;
   align-items: flex-start;
+  position: relative;
 }
 
 .editable :global(.ck.ck-editor__editable.ck-editor__editable_inline) {
   width: 210mm;
-  min-height: 297mm;
+  min-height: calc(var(--mddm-pages, 1) * (297mm + 32px) - 32px);
   padding: 25mm 20mm;
   font-family: Carlito, 'Liberation Sans', Arial, sans-serif;
-  background: #fff;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 2px;
   box-sizing: border-box;
   margin: 0;
   flex: 0 0 auto;
   overflow: visible;
+  position: relative;
+  z-index: 1;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  border-radius: 2px;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      #ffffff 0,
+      #ffffff 297mm,
+      #e8eaed 297mm,
+      #e8eaed calc(297mm + 32px)
+    );
 }
 
 .editable :global(.ck.ck-editor__editable.ck-editor__editable_inline:focus),
@@ -76,42 +92,4 @@
   border: 1px solid rgba(0, 0, 0, 0.08);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
   outline: none;
-}
-
-.editable :global(.ck.ck-editor__editable.ck-editor__editable_inline [data-mddm-page-break-after]) {
-  position: relative;
-  margin-bottom: 32px;
-}
-
-.editable :global(.ck.ck-editor__editable.ck-editor__editable_inline [data-mddm-page-break-after]::before) {
-  content: '';
-  position: absolute;
-  bottom: -32px;
-  left: -20mm;
-  right: -20mm;
-  height: 32px;
-  background: #e8eaed;
-  pointer-events: none;
-}
-
-.editable :global(.ck.ck-editor__editable.ck-editor__editable_inline [data-mddm-page-break-after]::after) {
-  content: 'Page ' attr(data-mddm-next-page);
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(100% + 8px);
-  text-align: right;
-  color: #6b7280;
-  font: 11px/1 Carlito, sans-serif;
-  pointer-events: none;
-}
-
-.editable :global(.mddm-page-overlay) {
-  background: #e8eaed;
-  color: #5f6368;
-  font: 11px/1 Carlito, sans-serif;
-  padding: 6px 12px;
-  text-align: right;
-  box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.08);
-  pointer-events: none;
 }

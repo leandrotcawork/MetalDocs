@@ -11,7 +11,8 @@ import (
 
 	_ "metaldocs/internal/modules/document_revisions"
 	_ "metaldocs/internal/modules/editor_sessions"
-	_ "metaldocs/internal/modules/templates"
+
+	templatesmod "metaldocs/internal/modules/templates"
 
 	auditapp "metaldocs/internal/modules/audit/application"
 	auditdelivery "metaldocs/internal/modules/audit/delivery/http"
@@ -125,6 +126,12 @@ func main() {
 	notificationHandler.RegisterRoutes(mux)
 	workflowHandler.RegisterRoutes(mux)
 	iamAdminHandler.RegisterRoutes(mux)
+	if featureFlagsCfg.DocxV2Enabled {
+		// presigner is wired in Task 21; nil is safe until objectstore is implemented.
+		tplMod := templatesmod.New(deps.SQLDB, deps.DocgenV2Client, nil)
+		tplMod.RegisterRoutes(mux)
+		log.Printf("docx-v2 templates module enabled")
+	}
 	mux.Handle("/api/v1/metrics", httpObs.MetricsHandler())
 
 	handler := cors.Wrap(originProtection.Wrap(authMiddleware.Wrap(iamMiddleware.Wrap(httpObs.Wrap(rateLimiter.Wrap(mux))))))

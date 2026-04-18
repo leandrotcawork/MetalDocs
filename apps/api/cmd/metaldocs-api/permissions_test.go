@@ -40,6 +40,14 @@ func TestPermissionResolver(t *testing.T) {
 		{name: "template create", method: http.MethodPost, path: "/api/v1/templates", wantPerm: iamdomain.PermTemplateView, wantGuard: true},
 		{name: "template draft sub-route", method: http.MethodGet, path: "/api/v1/templates/my-key/draft", wantPerm: iamdomain.PermTemplateView, wantGuard: true},
 		{name: "template publish sub-route", method: http.MethodPost, path: "/api/v1/templates/my-key/publish", wantPerm: iamdomain.PermTemplateView, wantGuard: true},
+		// docx-v2 template routes (W2+).
+		{name: "v2 templates list", method: http.MethodGet, path: "/api/v2/templates", wantPerm: iamdomain.PermTemplateView, wantGuard: true},
+		{name: "v2 templates create", method: http.MethodPost, path: "/api/v2/templates", wantPerm: iamdomain.PermTemplateEdit, wantGuard: true},
+		{name: "v2 templates version draft", method: http.MethodPut, path: "/api/v2/templates/t1/versions/1/draft", wantPerm: iamdomain.PermTemplateEdit, wantGuard: true},
+		{name: "v2 templates publish", method: http.MethodPost, path: "/api/v2/templates/t1/versions/1/publish", wantPerm: iamdomain.PermTemplatePublish, wantGuard: true},
+		{name: "v2 docx-upload-url", method: http.MethodPost, path: "/api/v2/templates/t1/versions/1/docx-upload-url", wantPerm: iamdomain.PermTemplateEdit, wantGuard: true},
+		{name: "v2 schema-upload-url", method: http.MethodPost, path: "/api/v2/templates/t1/versions/1/schema-upload-url", wantPerm: iamdomain.PermTemplateEdit, wantGuard: true},
+		{name: "v2 signed download", method: http.MethodGet, path: "/api/v2/signed", wantPerm: iamdomain.PermTemplateView, wantGuard: true},
 	}
 
 	for _, tc := range testCases {

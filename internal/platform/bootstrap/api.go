@@ -28,6 +28,7 @@ import (
 	"metaldocs/internal/platform/config"
 	pgdb "metaldocs/internal/platform/db/postgres"
 	"metaldocs/internal/platform/messaging"
+	"metaldocs/internal/platform/servicebus"
 	nooppub "metaldocs/internal/platform/messaging/noop"
 	outboxpg "metaldocs/internal/platform/messaging/outbox/postgres"
 	"metaldocs/internal/platform/observability"
@@ -49,7 +50,12 @@ type APIDependencies struct {
 	Publisher         messaging.Publisher
 	GotenbergClient   *gotenberg.Client
 	StatusProvider    observability.RuntimeStatusProvider
-	Cleanup           func()
+	// SQLDB is the raw *sql.DB used by modules that manage their own queries
+	// (e.g. the templates module). Nil in memory/test mode.
+	SQLDB *sql.DB
+	// DocgenV2Client is the docgen-v2 service client. Nil when not configured.
+	DocgenV2Client *servicebus.DocgenV2Client
+	Cleanup        func()
 }
 
 type bucketEnsurer interface {
@@ -85,6 +91,15 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 		}
 
 		authRepo := authpg.NewRepository(db)
+		docgenV2Cfg := config.LoadDocgenV2Config()
+		var docgenV2Client *servicebus.DocgenV2Client
+		if docgenV2Cfg.Enabled {
+			docgenV2Client = servicebus.NewDocgenV2Client(
+				docgenV2Cfg.APIURL,
+				docgenV2Cfg.ServiceToken,
+				time.Duration(docgenV2Cfg.RequestTimeoutSeconds)*time.Second,
+			)
+		}
 		return APIDependencies{
 			DocumentsRepo:     pgrepo.NewRepository(db),
 			WorkflowApprovals: workflowpg.NewApprovalRepository(db),
@@ -98,6 +113,8 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 			Publisher:         outboxpg.NewPublisher(db),
 			GotenbergClient:   gotenbergClient,
 			StatusProvider:    observability.NewPostgresRuntimeStatusProvider(db, repoMode, attachmentsCfg.Provider, authn.Enabled(), gotenbergHealthCheck(gotenbergCfg)),
+			SQLDB:             db,
+			DocgenV2Client:    docgenV2Client,
 			Cleanup:           func() { _ = closeDB(db) },
 		}, nil
 	default:

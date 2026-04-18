@@ -118,6 +118,27 @@ func newPermissionResolver() iamdelivery.PermissionResolver {
 			return iamdomain.PermTemplateView, true
 		}
 
+		// docx-v2 templates (W2+): fine-grained per-method RBAC.
+		if strings.HasPrefix(path, "/api/v2/templates") {
+			switch {
+			case method == http.MethodGet:
+				return iamdomain.PermTemplateView, true
+			case method == http.MethodPost && path == "/api/v2/templates":
+				return iamdomain.PermTemplateEdit, true
+			case method == http.MethodPut && strings.HasSuffix(path, "/draft"):
+				return iamdomain.PermTemplateEdit, true
+			case method == http.MethodPost && strings.HasSuffix(path, "/publish"):
+				return iamdomain.PermTemplatePublish, true
+			case method == http.MethodPost && strings.HasSuffix(path, "/docx-upload-url"):
+				return iamdomain.PermTemplateEdit, true
+			case method == http.MethodPost && strings.HasSuffix(path, "/schema-upload-url"):
+				return iamdomain.PermTemplateEdit, true
+			}
+		}
+		if method == http.MethodGet && path == "/api/v2/signed" {
+			return iamdomain.PermTemplateView, true
+		}
+
 		return "", false
 	}
 }

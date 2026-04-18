@@ -135,6 +135,28 @@ func newPermissionResolver() iamdelivery.PermissionResolver {
 				return iamdomain.PermTemplateEdit, true
 			}
 		}
+		if strings.HasPrefix(path, "/api/v2/documents") {
+			switch {
+			case method == http.MethodGet:
+				return iamdomain.PermDocumentRead, true
+			case method == http.MethodPost && path == "/api/v2/documents":
+				return iamdomain.PermDocumentCreate, true
+			case method == http.MethodPost && strings.HasSuffix(path, "/finalize"):
+				return iamdomain.PermWorkflowTransition, true
+			case method == http.MethodPost && strings.HasSuffix(path, "/archive"):
+				return iamdomain.PermDocumentEdit, true
+			case method == http.MethodPost && strings.Contains(path, "/session/force-release"):
+				return iamdomain.PermDocumentManagePermissions, true
+			case method == http.MethodPost && strings.Contains(path, "/session/"):
+				return iamdomain.PermDocumentEdit, true
+			case method == http.MethodPost && strings.Contains(path, "/autosave/"):
+				return iamdomain.PermDocumentEdit, true
+			case method == http.MethodPost && strings.Contains(path, "/checkpoints/") && strings.HasSuffix(path, "/restore"):
+				return iamdomain.PermDocumentEdit, true
+			case method == http.MethodPost && strings.Contains(path, "/checkpoints"):
+				return iamdomain.PermDocumentEdit, true
+			}
+		}
 		if method == http.MethodGet && path == "/api/v2/signed" {
 			return iamdomain.PermTemplateView, true
 		}

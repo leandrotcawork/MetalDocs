@@ -1,0 +1,10 @@
+.paged-editor__pages .layout-page {
+  min-height: var(--docx-page-min-h, 1123px) !important;
+}
+
+.metaldocs-editor {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}

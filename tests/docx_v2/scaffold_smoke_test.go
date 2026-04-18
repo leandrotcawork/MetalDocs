@@ -14,7 +14,7 @@ import (
 )
 
 func TestScaffoldCompiles(t *testing.T) {
-	if templates.New() == nil {
+	if templates.New(nil, nil, nil) == nil {
 		t.Fatal("templates.New() returned nil")
 	}
 	if editor_sessions.New() == nil {

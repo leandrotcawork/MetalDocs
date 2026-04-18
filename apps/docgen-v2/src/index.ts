@@ -4,11 +4,11 @@ import { registerServiceAuth } from './service-auth.js';
 
 export async function buildApp(): Promise<FastifyInstance> {
   const env = loadEnv();
-  const app = Fastify({ logger: { level: env.DOCGEN_V2_LOG_LEVEL } });
+  const app = Fastify({ logger: { level: env.LOG_LEVEL } });
 
   registerServiceAuth(app, env.DOCGEN_V2_SERVICE_TOKEN);
 
-  app.get('/health', async () => ({ status: 'ok', version: env.DOCGEN_V2_VERSION }));
+  app.get('/health', async () => ({ status: 'ok', version: env.VERSION }));
 
   return app;
 }

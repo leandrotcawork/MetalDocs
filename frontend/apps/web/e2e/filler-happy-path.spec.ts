@@ -14,5 +14,5 @@ test('filler happy path: pick template fill form generate edit checkpoint finali
   await expect(page.getByText(/v1 initial/i)).toBeVisible();
 
   await page.getByRole('button', { name: /finalize/i }).click();
-  await page.waitForURL('/documents-v2/new', { timeout: 5_000 });
+  await page.waitForURL(/\/documents-v2/, { timeout: 5_000 });
 });

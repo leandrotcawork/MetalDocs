@@ -100,6 +100,7 @@ func (h *Handler) listTemplates(w http.ResponseWriter, r *http.Request) {
 			"name":           t.Name,
 			"description":    t.Description,
 			"latest_version": t.LatestVersion,
+			"latest_version_id": t.LatestVersionID,
 			"updated_at":     t.UpdatedAt,
 		})
 	}

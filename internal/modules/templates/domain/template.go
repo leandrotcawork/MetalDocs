@@ -24,4 +24,5 @@ type TemplateListItem struct {
 	UpdatedAt     time.Time
 	CreatedBy     string
 	LatestVersion int
+	LatestVersionID string
 }

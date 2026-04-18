@@ -50,7 +50,8 @@ func (r *Repository) ListTemplates(ctx context.Context, tenantID string) ([]doma
 	const q = `
 SELECT t.id, t.tenant_id, t.key, t.name, coalesce(t.description,''),
        t.created_at, t.updated_at, t.created_by,
-       coalesce((SELECT MAX(version_num) FROM template_versions WHERE template_id=t.id), 1) AS latest_version
+       coalesce((SELECT MAX(version_num) FROM template_versions WHERE template_id=t.id), 1) AS latest_version,
+       coalesce((SELECT id FROM template_versions WHERE template_id=t.id ORDER BY version_num DESC LIMIT 1), '00000000-0000-0000-0000-000000000000'::uuid)::text AS latest_version_id
 FROM templates t
 WHERE t.tenant_id=$1
 ORDER BY t.updated_at DESC`
@@ -63,7 +64,7 @@ ORDER BY t.updated_at DESC`
 	for rows.Next() {
 		var t domain.TemplateListItem
 		if err := rows.Scan(&t.ID, &t.TenantID, &t.Key, &t.Name, &t.Description,
-			&t.CreatedAt, &t.UpdatedAt, &t.CreatedBy, &t.LatestVersion); err != nil {
+			&t.CreatedAt, &t.UpdatedAt, &t.CreatedBy, &t.LatestVersion, &t.LatestVersionID); err != nil {
 			return nil, err
 		}
 		out = append(out, t)

@@ -1,5 +1,5 @@
 {
-  "name": "@metaldocs/docx-editor-fork",
+  "name": "@metaldocs/docx-editor",
   "private": true,
   "type": "module",
   "main": "./src/index.ts",

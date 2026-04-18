@@ -21,6 +21,8 @@ frontend/apps/web/playwright-report/
 frontend/apps/web/.cache/
 apps/docgen/node_modules/
 apps/docgen/dist/
+apps/docgen-v2/node_modules/
+apps/docgen-v2/dist/
 shared/schemas/node_modules/
 
 .worktrees/

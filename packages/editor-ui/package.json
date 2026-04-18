@@ -26,6 +26,7 @@
     "vitest": "1.6.0"
   },
   "dependencies": {
-    "@eigenpal/docx-js-editor": "0.0.34"
+    "@eigenpal/docx-js-editor": "0.0.34",
+    "@metaldocs/shared-tokens": "*"
   }
 }

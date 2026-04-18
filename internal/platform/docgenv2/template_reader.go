@@ -47,9 +47,14 @@ func (t *TemplateReader) GetPublishedVersion(ctx context.Context, tenantID, temp
 	if _, err := obj.Stat(); err != nil {
 		return "", "", "", err
 	}
-	payload, err := io.ReadAll(obj)
+	const maxSchemaBytes int64 = 1 * 1024 * 1024
+	lr := io.LimitReader(obj, maxSchemaBytes+1)
+	payload, err := io.ReadAll(lr)
 	if err != nil {
 		return "", "", "", fmt.Errorf("read schema object: %w", err)
+	}
+	if int64(len(payload)) > maxSchemaBytes {
+		return "", "", "", fmt.Errorf("schema object exceeds max size (%d bytes)", maxSchemaBytes)
 	}
 	return docxKey, schemaKey, string(payload), nil
 }

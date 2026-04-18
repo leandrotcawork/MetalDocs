@@ -13,7 +13,8 @@ export function loadEnv(): Env {
   const parsed = EnvSchema.safeParse(process.env);
   if (!parsed.success) {
     const flat = parsed.error.flatten().fieldErrors;
-    throw new Error(`invalid env: ${JSON.stringify(flat)}`);
+    const safe = { ...flat, DOCGEN_V2_SERVICE_TOKEN: flat.DOCGEN_V2_SERVICE_TOKEN ? ['[redacted]'] : undefined };
+    throw new Error(`invalid env: ${JSON.stringify(safe)}`);
   }
   return parsed.data;
 }

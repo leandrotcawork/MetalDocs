@@ -3,6 +3,7 @@ import { useDocumentSession } from './hooks/useDocumentSession';
 import { useDocumentAutosave } from './hooks/useDocumentAutosave';
 import { getDocument, finalizeDocument, signedRevisionURL } from './api/documentsV2';
 import { CheckpointsPanel } from './CheckpointsPanel';
+import { ExportMenu } from './ExportMenu';
 import styles from './styles/DocumentEditorPage.module.css';
 
 export type DocumentEditorPageProps = {
@@ -139,6 +140,10 @@ export function DocumentEditorPage({ documentID, onDone }: DocumentEditorPagePro
           }}
         />
       </div>
+      <ExportMenu
+        documentID={documentID}
+        canExport={session.state.phase === 'writer' || session.state.phase === 'readonly'}
+      />
     </div>
   );
 }

@@ -2956,6 +2956,199 @@ paths:
                   parse_errors: { type: array, items: { type: object } }
                   missing_tokens: { type: array, items: { type: string } }
                   orphan_tokens: { type: array, items: { type: string } }
+  /api/v2/documents:
+    get:
+      summary: List documents for tenant
+      tags: [documents-v2]
+      operationId: listDocumentsV2
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [id, name, status, template_version_id, updated_at]
+                  properties:
+                    id: { type: string, format: uuid }
+                    name: { type: string }
+                    status: { type: string, enum: [draft, finalized, archived] }
+                    template_version_id: { type: string, format: uuid }
+                    updated_at: { type: string, format: date-time }
+                    current_revision_id: { type: string, format: uuid }
+        '403': { description: forbidden }
+    post:
+      summary: Create document from published template
+      tags: [documents-v2]
+      operationId: createDocumentV2
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [template_version_id, name, form_data]
+              properties:
+                template_version_id: { type: string, format: uuid }
+                name: { type: string }
+                form_data: { type: object, additionalProperties: true }
+      responses:
+        '201':
+          description: created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [DocumentID, InitialRevisionID, SessionID]
+                properties:
+                  DocumentID: { type: string, format: uuid }
+                  InitialRevisionID: { type: string, format: uuid }
+                  SessionID: { type: string, format: uuid }
+        '403': { description: forbidden }
+        '422': { description: form_data_invalid or template parse error }
+
+  /api/v2/documents/{id}:
+    get:
+      tags: [documents-v2]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { '200': { description: ok }, '404': { description: not_found } }
+
+  /api/v2/documents/{id}/finalize:
+    post:
+      tags: [documents-v2]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { '200': { description: ok }, '409': { description: invalid_state_transition } }
+  /api/v2/documents/{id}/archive:
+    post:
+      tags: [documents-v2]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { '200': { description: ok } }
+
+  /api/v2/documents/{id}/session/acquire:
+    post:
+      tags: [documents-v2]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        '201': { description: writer acquired }
+        '200': { description: readonly (another user holds session) }
+  /api/v2/documents/{id}/session/heartbeat:
+    post:
+      tags: [documents-v2]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { '200': { description: ok }, '409': { description: session_inactive } }
+  /api/v2/documents/{id}/session/release:
+    post:
+      tags: [documents-v2]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { '200': { description: ok } }
+  /api/v2/documents/{id}/session/force-release:
+    post:
+      tags: [documents-v2]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { '200': { description: ok }, '403': { description: forbidden } }
+
+  /api/v2/documents/{id}/autosave/presign:
+    post:
+      tags: [documents-v2]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [session_id, base_revision_id, content_hash]
+              properties:
+                session_id: { type: string, format: uuid }
+                base_revision_id: { type: string, format: uuid }
+                content_hash: { type: string, minLength: 64, maxLength: 64 }
+      responses:
+        '200': { description: presigned url }
+        '409': { description: session_inactive | session_not_holder | stale_base }
+  /api/v2/documents/{id}/autosave/commit:
+    post:
+      tags: [documents-v2]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [session_id, pending_upload_id]
+              properties:
+                session_id: { type: string, format: uuid }
+                pending_upload_id: { type: string, format: uuid }
+                form_data_snapshot: { type: object }
+              # NOTE: content_hash is NOT a request field. The server streams
+              # S3 -> SHA256 and compares to the expected hash captured at
+              # presign time. Client cannot forge the hash.
+      responses:
+        '200':
+          description: revision committed or idempotent replay
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [revision_id, revision_num]
+                properties:
+                  revision_id: { type: string, format: uuid }
+                  revision_num: { type: integer, minimum: 1 }
+                  idempotent_replay: { type: boolean }
+        '403': { description: session_not_holder | document_not_owner }
+        '404': { description: pending_not_found }
+        '409': { description: misbound | session_inactive | stale_base }
+        '410': { description: expired_upload | upload_missing }
+        '422': { description: content_hash_mismatch }
+
+  /api/v2/documents/{id}/checkpoints:
+    get:
+      tags: [documents-v2]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { '200': { description: ok } }
+    post:
+      tags: [documents-v2]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object, properties: { label: { type: string } } }
+      responses: { '201': { description: created } }
+
+  /api/v2/documents/{id}/checkpoints/{versionNum}/restore:
+    post:
+      tags: [documents-v2]
+      summary: Forward-only restore - clones the checkpoint rev into a new head revision
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: versionNum, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        '200':
+          description: restored (new head revision appended) OR idempotent no-op (if current head already equals the checkpoint hash)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [new_revision_id, new_revision_num, idempotent]
+                properties:
+                  new_revision_id: { type: string, format: uuid }
+                  new_revision_num: { type: integer, minimum: 1 }
+                  source_checkpoint_version_num: { type: integer, minimum: 1 }
+                  idempotent: { type: boolean, description: "true when ON CONFLICT (document_id, content_hash) fired - current head already matches" }
+        '403': { description: session_not_holder | document_not_owner | session_inactive }
+        '404': { description: checkpoint_not_found }
+
+  /api/v2/documents/{id}/revisions/{rid}/url:
+    get:
+      tags: [documents-v2]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: rid, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '302': { description: redirect to signed URL }
+
 components:
   parameters:
     DocumentId:

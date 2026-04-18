@@ -67,13 +67,40 @@
   box-sizing: border-box;
   margin: 0;
   flex: 0 0 auto;
+  overflow: visible;
 }
 
 .editable :global(.ck.ck-editor__editable.ck-editor__editable_inline:focus),
 .editable :global(.ck.ck-editor__editable.ck-editor__editable_inline.ck-focused) {
-  border-color: rgba(59, 130, 246, 0.4);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15), 0 0 0 2px rgba(59, 130, 246, 0.15);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
   outline: none;
+}
+
+.editable :global(.ck.ck-editor__editable.ck-editor__editable_inline [data-mddm-page-break-after]) {
+  position: relative;
+  margin-bottom: 32px;
+}
+
+.editable :global(.ck.ck-editor__editable.ck-editor__editable_inline [data-mddm-page-break-after]::before) {
+  content: '';
+  position: absolute;
+  left: -20mm;
+  width: calc(100% + 40mm);
+  top: calc(100% + 16px);
+  height: 1px;
+  background: #cfd4dc;
+  pointer-events: none;
+}
+
+.editable :global(.ck.ck-editor__editable.ck-editor__editable_inline [data-mddm-page-break-after]::after) {
+  content: 'Page ' attr(data-mddm-next-page);
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  color: #5f6368;
+  font: 11px/1 Carlito, sans-serif;
+  pointer-events: none;
 }
 
 .editable :global(.mddm-page-overlay) {

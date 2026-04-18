@@ -13,5 +13,11 @@ export default defineConfig({
     setupFiles: ['./vitest.setup.ts'],
     testTimeout: 15000,
     globals: true,
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      // Playwright specs; vitest cannot run @playwright/test.
+      '**/*.spec.ts',
+    ],
   },
 });

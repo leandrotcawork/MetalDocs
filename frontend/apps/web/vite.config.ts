@@ -46,6 +46,11 @@ export default defineConfig(({ mode }) => {
           changeOrigin: false,
           secure: false,
         },
+        "/api/v2": {
+          target: proxyTarget,
+          changeOrigin: false,
+          secure: false,
+        },
         "/__gotenberg": {
           target: env.GOTENBERG_URL || process.env.GOTENBERG_URL || "http://localhost:3000",
           changeOrigin: true,

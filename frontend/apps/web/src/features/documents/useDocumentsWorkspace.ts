@@ -83,16 +83,18 @@ export function useDocumentsWorkspace(applyDocumentProfile: (profileCode: string
     async (currentUser: CurrentUser) => {
       setLoadState("loading");
       try {
+        const empty = { items: [] };
+        const safe = <T,>(p: Promise<T>, fallback: T) => p.catch(() => fallback);
         const [profilesResponse, processAreasResponse, departmentsResponse, subjectsResponse, docsResponse, usersResponse, notificationsResponse] = await Promise.all([
-          api.listDocumentProfiles(),
-          api.listProcessAreas(),
-          api.listDocumentDepartments(),
-          api.listSubjects(),
-          api.searchDocuments(new URLSearchParams({ limit: "25" })),
+          safe(api.listDocumentProfiles(), empty as never),
+          safe(api.listProcessAreas(), empty as never),
+          safe(api.listDocumentDepartments(), empty as never),
+          safe(api.listSubjects(), empty as never),
+          safe(api.searchDocuments(new URLSearchParams({ limit: "25" })), empty as never),
           (Array.isArray(currentUser.roles) ? currentUser.roles : []).includes("admin")
-            ? api.listUsers()
+            ? safe(api.listUsers(), empty as never)
             : Promise.resolve({ items: [] as ManagedUserItem[] }),
-          api.listNotifications(new URLSearchParams({ limit: "10" })),
+          safe(api.listNotifications(new URLSearchParams({ limit: "10" })), empty as never),
         ]);
         const profiles = Array.isArray(profilesResponse.items) ? profilesResponse.items : [];
         const areas = Array.isArray(processAreasResponse.items) ? processAreasResponse.items : [];

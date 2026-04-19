@@ -10,6 +10,7 @@ import (
 
 	"metaldocs/internal/modules/templates/application"
 	"metaldocs/internal/modules/templates/domain"
+	iamdomain "metaldocs/internal/modules/iam/domain"
 )
 
 const (
@@ -19,6 +20,15 @@ const (
 )
 
 func requireRole(r *http.Request, want ...string) bool {
+	roles := iamdomain.RolesFromContext(r.Context())
+	for _, role := range roles {
+		for _, w := range want {
+			if string(role) == w {
+				return true
+			}
+		}
+	}
+	// fallback: legacy X-User-Roles header (spike/dev bypass)
 	hdr := r.Header.Get("X-User-Roles")
 	if hdr == "" {
 		return false
@@ -69,8 +79,11 @@ func (h *Handler) createTemplate(w http.ResponseWriter, r *http.Request) {
 		httpErr(w, 400, "invalid_body")
 		return
 	}
-	tenant := r.Header.Get("X-Tenant-ID")
-	actor := r.Header.Get("X-User-ID")
+	tenant := tenantFromRequest(r)
+	actor := iamdomain.UserIDFromContext(r.Context())
+	if actor == "" {
+		actor = r.Header.Get("X-User-ID")
+	}
 	tpl, ver, err := h.svc.CreateTemplate(r.Context(), application.CreateTemplateCmd{
 		TenantID: tenant, Key: req.Key, Name: req.Name, Description: req.Description, CreatedBy: actor,
 	})
@@ -81,12 +94,21 @@ func (h *Handler) createTemplate(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 201, createTemplateResponse{ID: tpl.ID, VersionID: ver.ID})
 }
 
+const devTenantID = "00000000-0000-0000-0000-000000000001"
+
+func tenantFromRequest(r *http.Request) string {
+	if t := strings.TrimSpace(r.Header.Get("X-Tenant-ID")); t != "" {
+		return t
+	}
+	return devTenantID
+}
+
 func (h *Handler) listTemplates(w http.ResponseWriter, r *http.Request) {
 	if !requireRole(r, roleAdmin, roleTemplateAuthor, rolePublisher) {
 		httpErr(w, 403, "forbidden")
 		return
 	}
-	tenant := r.Header.Get("X-Tenant-ID")
+	tenant := tenantFromRequest(r)
 	tpls, err := h.svc.ListTemplates(r.Context(), tenant)
 	if err != nil {
 		httpErr(w, 500, err.Error())

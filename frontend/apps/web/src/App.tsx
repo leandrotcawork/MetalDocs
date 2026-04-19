@@ -21,7 +21,7 @@ import { RegistryExplorerView } from "./features/registry/RegistryExplorerView";
 import { WorkspaceShell } from "./features/shell/WorkspaceShell";
 import { isPathForView, parseTemplateEditorPath, pathFromView, viewFromPath } from "./routing/workspaceRoutes";
 import { TemplateEditorView } from "./features/templates/TemplateEditorView";
-import { renderTemplatesV2View, type TemplatesV2Route } from "./features/templates/v2/routes";
+import { TemplatesV2View, type TemplatesV2Route } from "./features/templates/v2/routes";
 import { renderDocumentsV2View, routeFromPath as docsRouteFromPath, pathFromRoute as docsPathFromRoute, type DocumentsV2Route } from "./features/documents/v2/routes";
 
 type AppErrorBoundaryState = {
@@ -476,7 +476,7 @@ function AppContent() {
     }
 
     if (activeView === "templates-v2") {
-      return renderTemplatesV2View(tplRoute, setTplRoute);
+      return <TemplatesV2View route={tplRoute} onNavigate={setTplRoute} />;
     }
     if (activeView === "documents-v2") {
       return renderDocumentsV2View(docsRoute, setDocsRoute);

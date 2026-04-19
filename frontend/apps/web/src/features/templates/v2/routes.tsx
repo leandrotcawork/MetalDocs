@@ -8,10 +8,13 @@ export type TemplatesV2Route =
   | { kind: 'list' }
   | { kind: 'author'; templateId: string; versionNum: number };
 
-export function renderTemplatesV2View(
-  route: TemplatesV2Route,
-  onNavigate: (next: TemplatesV2Route) => void,
-): React.ReactElement {
+export function TemplatesV2View({
+  route,
+  onNavigate,
+}: {
+  route: TemplatesV2Route;
+  onNavigate: (next: TemplatesV2Route) => void;
+}) {
   const [showCreate, setShowCreate] = useState(false);
 
   if (route.kind === 'list') {

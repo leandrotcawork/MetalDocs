@@ -7,6 +7,9 @@ import (
 	"net/http"
 	"time"
 
+	miniogo "github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
+
 	auditdomain "metaldocs/internal/modules/audit/domain"
 	auditmemory "metaldocs/internal/modules/audit/infrastructure/memory"
 	auditpg "metaldocs/internal/modules/audit/infrastructure/postgres"
@@ -55,7 +58,10 @@ type APIDependencies struct {
 	SQLDB *sql.DB
 	// DocgenV2Client is the docgen-v2 service client. Nil when not configured.
 	DocgenV2Client *servicebus.DocgenV2Client
-	Cleanup        func()
+	// MinioClient is the minio client for presigning. Nil when storage is not minio.
+	MinioClient *miniogo.Client
+	MinioBucket string
+	Cleanup     func()
 }
 
 type bucketEnsurer interface {
@@ -95,6 +101,18 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 				time.Duration(docgenV2Cfg.RequestTimeoutSeconds)*time.Second,
 			)
 		}
+		var minioClient *miniogo.Client
+		var minioBucket string
+		if attachmentsCfg.Provider == config.StorageProviderMinIO {
+			mc, mcErr := miniogo.New(attachmentsCfg.MinIOEndpoint, &miniogo.Options{
+				Creds:  credentials.NewStaticV4(attachmentsCfg.MinIOAccessKey, attachmentsCfg.MinIOSecretKey, ""),
+				Secure: attachmentsCfg.MinIOUseSSL,
+			})
+			if mcErr == nil {
+				minioClient = mc
+				minioBucket = attachmentsCfg.MinIOBucket
+			}
+		}
 		return APIDependencies{
 			DocumentsRepo:     pgrepo.NewRepository(db),
 			WorkflowApprovals: workflowpg.NewApprovalRepository(db),
@@ -110,6 +128,8 @@ func BuildAPIDependencies(ctx context.Context, repoMode string, attachmentsCfg c
 			StatusProvider:    observability.NewPostgresRuntimeStatusProvider(db, repoMode, attachmentsCfg.Provider, authn.Enabled(), gotenbergHealthCheck(gotenbergCfg)),
 			SQLDB:             db,
 			DocgenV2Client:    docgenV2Client,
+			MinioClient:       minioClient,
+			MinioBucket:       minioBucket,
 			Cleanup:           func() { _ = closeDB(db) },
 		}, nil
 	default:

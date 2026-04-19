@@ -17,6 +17,7 @@ import (
 	documents_v2 "metaldocs/internal/modules/documents_v2"
 	"metaldocs/internal/modules/documents_v2/jobs"
 	templatesmod "metaldocs/internal/modules/templates"
+	templatesapp "metaldocs/internal/modules/templates/application"
 
 	auditapp "metaldocs/internal/modules/audit/application"
 	auditdelivery "metaldocs/internal/modules/audit/delivery/http"
@@ -123,7 +124,11 @@ func main() {
 	workflowHandler.RegisterRoutes(mux)
 	iamAdminHandler.RegisterRoutes(mux)
 
-	tplMod := templatesmod.New(deps.SQLDB, deps.DocgenV2Client, nil)
+	var tplDocgen templatesapp.DocgenValidator
+	if deps.DocgenV2Client != nil {
+		tplDocgen = deps.DocgenV2Client
+	}
+	tplMod := templatesmod.New(deps.SQLDB, tplDocgen, objectstore.NewTemplatePresigner(deps.MinioClient, deps.MinioBucket, 15*time.Minute, 25*1024*1024))
 	tplMod.RegisterRoutes(mux)
 
 	docMod := documents_v2.New(documents_v2.Dependencies{

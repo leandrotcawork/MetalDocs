@@ -26,12 +26,14 @@ type ValidationError struct {
 func (v ValidationError) Error() string { return fmt.Sprintf("template invalid: %s", string(v.Raw)) }
 
 func (s *Service) PublishVersion(ctx context.Context, cmd PublishCmd) (PublishResult, error) {
-	valid, errs, err := s.docgen.ValidateTemplate(ctx, cmd.DocxKey, cmd.SchemaKey)
-	if err != nil {
-		return PublishResult{}, fmt.Errorf("docgen-v2 validate: %w", err)
-	}
-	if !valid {
-		return PublishResult{}, ValidationError{Raw: errs}
+	if s.docgen != nil {
+		valid, errs, err := s.docgen.ValidateTemplate(ctx, cmd.DocxKey, cmd.SchemaKey)
+		if err != nil {
+			return PublishResult{}, fmt.Errorf("docgen-v2 validate: %w", err)
+		}
+		if !valid {
+			return PublishResult{}, ValidationError{Raw: errs}
+		}
 	}
 
 	newDraftID, newNum, err := s.repo.PublishVersion(ctx, cmd.VersionID, cmd.ActorUserID)

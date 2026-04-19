@@ -100,4 +100,6 @@ var (
 	ErrDocumentNotOwner       = errors.New("document_not_owner")
 	ErrNotFound               = errors.New("not_found")
 	ErrInvalidName            = errors.New("invalid_name")
+	ErrCommentNotFound        = errors.New("comment_not_found")
+	ErrCommentInvalid         = errors.New("comment_invalid")
 )

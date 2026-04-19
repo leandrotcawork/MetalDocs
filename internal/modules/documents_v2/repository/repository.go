@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
+
 	"metaldocs/internal/modules/documents_v2/domain"
 )
 
@@ -707,4 +709,132 @@ func (r *Repository) IsDocumentOwner(ctx context.Context, tenantID, docID, userI
 		docID, tenantID, userID,
 	).Scan(&ok)
 	return ok, err
+}
+
+func (r *Repository) CreateComment(ctx context.Context, tenantID, documentID, authorID string, in domain.CommentCreateInput) (*domain.Comment, error) {
+	row := r.db.QueryRowContext(ctx,
+		`INSERT INTO document_comments (
+			tenant_id, document_id, library_comment_id, parent_library_id, author_id, author_display, content_json
+		) VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING id::text, tenant_id::text, document_id::text, library_comment_id, parent_library_id, author_id, author_display,
+		          content_json, resolved_at, resolved_by, created_at, updated_at`,
+		tenantID, documentID, in.LibraryCommentID, in.ParentLibraryID, authorID, in.AuthorDisplay, in.ContentJSON,
+	)
+	comment, err := scanComment(row)
+	if err != nil {
+		return nil, err
+	}
+	return comment, nil
+}
+
+func (r *Repository) ListComments(ctx context.Context, tenantID, documentID string) ([]domain.Comment, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id::text, tenant_id::text, document_id::text, library_comment_id, parent_library_id, author_id, author_display,
+		        content_json, resolved_at, resolved_by, created_at, updated_at
+		 FROM document_comments
+		 WHERE tenant_id=$1 AND document_id=$2
+		 ORDER BY created_at ASC`,
+		tenantID, documentID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := make([]domain.Comment, 0)
+	for rows.Next() {
+		comment, err := scanComment(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, *comment)
+	}
+	return out, rows.Err()
+}
+
+func (r *Repository) UpdateComment(ctx context.Context, tenantID, documentID string, libraryID int, userID string, in domain.CommentUpdateInput) (*domain.Comment, error) {
+	now := time.Now().UTC()
+	q := `
+		UPDATE document_comments
+		SET content_json = COALESCE($5, content_json),
+		    resolved_at = CASE
+		      WHEN $6 IS NULL THEN resolved_at
+		      WHEN $6 THEN $7
+		      ELSE NULL
+		    END,
+		    resolved_by = CASE
+		      WHEN $6 IS NULL THEN resolved_by
+		      WHEN $6 THEN $8
+		      ELSE NULL
+		    END,
+		    updated_at = $7
+		WHERE tenant_id=$1 AND document_id=$2 AND library_comment_id=$3
+		RETURNING id::text, tenant_id::text, document_id::text, library_comment_id, parent_library_id, author_id, author_display,
+		          content_json, resolved_at, resolved_by, created_at, updated_at`
+
+	var content any
+	if in.ContentJSON != nil {
+		content = *in.ContentJSON
+	}
+	comment, err := scanComment(r.db.QueryRowContext(ctx, q, tenantID, documentID, libraryID, userID, content, in.Done, now, userID))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, domain.ErrCommentNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return comment, nil
+}
+
+func (r *Repository) DeleteComment(ctx context.Context, tenantID, documentID string, libraryID int) error {
+	res, err := r.db.ExecContext(ctx,
+		`DELETE FROM document_comments
+		 WHERE tenant_id=$1 AND document_id=$2 AND (library_comment_id=$3 OR parent_library_id=$3)`,
+		tenantID, documentID, libraryID,
+	)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return domain.ErrCommentNotFound
+	}
+	return nil
+}
+
+type commentScanner interface {
+	Scan(dest ...any) error
+}
+
+func scanComment(row commentScanner) (*domain.Comment, error) {
+	var (
+		idText       string
+		tenantText   string
+		documentText string
+		content      []byte
+		c            domain.Comment
+	)
+	if err := row.Scan(
+		&idText, &tenantText, &documentText, &c.LibraryCommentID, &c.ParentLibraryID, &c.AuthorID, &c.AuthorDisplay,
+		&content, &c.ResolvedAt, &c.ResolvedBy, &c.CreatedAt, &c.UpdatedAt,
+	); err != nil {
+		return nil, err
+	}
+	id, err := uuid.Parse(idText)
+	if err != nil {
+		return nil, fmt.Errorf("parse comment id: %w", err)
+	}
+	tenantID, err := uuid.Parse(tenantText)
+	if err != nil {
+		return nil, fmt.Errorf("parse tenant id: %w", err)
+	}
+	documentID, err := uuid.Parse(documentText)
+	if err != nil {
+		return nil, fmt.Errorf("parse document id: %w", err)
+	}
+	c.ID = id
+	c.TenantID = tenantID
+	c.DocumentID = documentID
+	c.ContentJSON = content
+	return &c, nil
 }

@@ -129,6 +129,22 @@ func (f *fakeSvc) SignedRevisionURL(_ context.Context, _, _, _ string) (string, 
 	return "https://example/rev", nil
 }
 
+func (f *fakeSvc) ListDocumentComments(_ context.Context, _, _, _ string) ([]domain.Comment, error) {
+	return nil, nil
+}
+
+func (f *fakeSvc) AddDocumentComment(_ context.Context, _, _, _, _ string, _ domain.CommentCreateInput) (*domain.Comment, error) {
+	return &domain.Comment{}, nil
+}
+
+func (f *fakeSvc) UpdateDocumentComment(_ context.Context, _, _, _ string, _ int, _ domain.CommentUpdateInput) (*domain.Comment, error) {
+	return &domain.Comment{}, nil
+}
+
+func (f *fakeSvc) DeleteDocumentComment(_ context.Context, _, _, _ string, _ int) error {
+	return nil
+}
+
 func newMux(t *testing.T, svc *fakeSvc) *http.ServeMux {
 	t.Helper()
 	h := httphandler.NewHandler(svc)

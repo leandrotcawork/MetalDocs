@@ -160,6 +160,22 @@ func (f *fakeRepo) GetRevision(_ context.Context, _, _ string) (*domain.Revision
 
 func (f *fakeRepo) DeleteExpiredPending(_ context.Context, _ time.Time) (int, error) { return 0, nil }
 
+func (f *fakeRepo) CreateComment(_ context.Context, _, _, _ string, _ domain.CommentCreateInput) (*domain.Comment, error) {
+	return &domain.Comment{}, nil
+}
+
+func (f *fakeRepo) ListComments(_ context.Context, _, _ string) ([]domain.Comment, error) {
+	return nil, nil
+}
+
+func (f *fakeRepo) UpdateComment(_ context.Context, _, _ string, _ int, _ string, _ domain.CommentUpdateInput) (*domain.Comment, error) {
+	return &domain.Comment{}, nil
+}
+
+func (f *fakeRepo) DeleteComment(_ context.Context, _, _ string, _ int) error {
+	return nil
+}
+
 type fakePresigner struct {
 	hashReturn  string
 	hashErr     error

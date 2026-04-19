@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"metaldocs/internal/modules/documents_v2/application"
 	"metaldocs/internal/modules/documents_v2/domain"
@@ -39,6 +40,10 @@ type Service interface {
 	Finalize(ctx context.Context, tenantID, docID, actorID string) error
 	Archive(ctx context.Context, tenantID, docID, actorID string, fromFinalized bool) error
 	SignedRevisionURL(ctx context.Context, tenantID, docID, revID string) (string, error)
+	ListDocumentComments(ctx context.Context, tenantID, userID, documentID string) ([]domain.Comment, error)
+	AddDocumentComment(ctx context.Context, tenantID, userID, authorDisplay, documentID string, in domain.CommentCreateInput) (*domain.Comment, error)
+	UpdateDocumentComment(ctx context.Context, tenantID, userID, documentID string, libraryID int, in domain.CommentUpdateInput) (*domain.Comment, error)
+	DeleteDocumentComment(ctx context.Context, tenantID, userID, documentID string, libraryID int) error
 }
 
 type Handler struct{ svc Service }
@@ -67,6 +72,10 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v2/documents/{id}/checkpoints/{version}/restore", h.restoreCheckpoint)
 
 	mux.HandleFunc("GET /api/v2/documents/{id}/revisions/{rid}/url", h.signedRevisionURL)
+	mux.HandleFunc("GET /api/v2/documents/{id}/comments", h.listComments)
+	mux.HandleFunc("POST /api/v2/documents/{id}/comments", h.createComment)
+	mux.HandleFunc("PATCH /api/v2/documents/{id}/comments/{libraryID}", h.updateComment)
+	mux.HandleFunc("DELETE /api/v2/documents/{id}/comments/{libraryID}", h.deleteComment)
 }
 
 func (h *Handler) RegisterRoutesWithRateLimit(mux *http.ServeMux, rl *ratelimit.Middleware, userFn func(*http.Request) string) {
@@ -97,6 +106,10 @@ func (h *Handler) RegisterRoutesWithRateLimit(mux *http.ServeMux, rl *ratelimit.
 	mux.HandleFunc("POST /api/v2/documents/{id}/checkpoints/{version}/restore", h.restoreCheckpoint)
 
 	mux.HandleFunc("GET /api/v2/documents/{id}/revisions/{rid}/url", h.signedRevisionURL)
+	mux.HandleFunc("GET /api/v2/documents/{id}/comments", h.listComments)
+	mux.HandleFunc("POST /api/v2/documents/{id}/comments", h.createComment)
+	mux.HandleFunc("PATCH /api/v2/documents/{id}/comments/{libraryID}", h.updateComment)
+	mux.HandleFunc("DELETE /api/v2/documents/{id}/comments/{libraryID}", h.deleteComment)
 }
 
 func (h *Handler) createDocument(w http.ResponseWriter, r *http.Request) {
@@ -526,6 +539,143 @@ func (h *Handler) signedRevisionURL(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"url": url})
 }
 
+func (h *Handler) listComments(w http.ResponseWriter, r *http.Request) {
+	r = withAdminCtx(r)
+	docID := r.PathValue("id")
+	tenantID, userID, ok := h.authorizeDocumentScope(w, r, docID)
+	if !ok {
+		return
+	}
+
+	comments, err := h.svc.ListDocumentComments(r.Context(), tenantID, userID, docID)
+	if err != nil {
+		status, msg := mapErr(err)
+		httpErr(w, status, msg)
+		return
+	}
+	resp := make([]commentResponse, 0, len(comments))
+	for i := range comments {
+		resp = append(resp, toCommentResponse(comments[i]))
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+func (h *Handler) createComment(w http.ResponseWriter, r *http.Request) {
+	r = withAdminCtx(r)
+	docID := r.PathValue("id")
+	tenantID, userID, ok := h.authorizeDocumentScope(w, r, docID)
+	if !ok {
+		return
+	}
+
+	var req struct {
+		LibraryCommentID int             `json:"library_comment_id"`
+		ParentLibraryID  *int            `json:"parent_library_id"`
+		AuthorDisplay    string          `json:"author_display"`
+		Content          json.RawMessage `json:"content"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httpErr(w, http.StatusBadRequest, "invalid_body")
+		return
+	}
+
+	comment, err := h.svc.AddDocumentComment(r.Context(), tenantID, userID, req.AuthorDisplay, docID, domain.CommentCreateInput{
+		LibraryCommentID: req.LibraryCommentID,
+		ParentLibraryID:  req.ParentLibraryID,
+		AuthorDisplay:    req.AuthorDisplay,
+		ContentJSON:      req.Content,
+	})
+	if err != nil {
+		status, msg := mapErr(err)
+		httpErr(w, status, msg)
+		return
+	}
+	writeJSON(w, http.StatusCreated, toCommentResponse(*comment))
+}
+
+func (h *Handler) updateComment(w http.ResponseWriter, r *http.Request) {
+	r = withAdminCtx(r)
+	docID := r.PathValue("id")
+	tenantID, userID, ok := h.authorizeDocumentScope(w, r, docID)
+	if !ok {
+		return
+	}
+
+	libraryID, err := strconv.Atoi(r.PathValue("libraryID"))
+	if err != nil {
+		httpErr(w, http.StatusBadRequest, "invalid_library_comment_id")
+		return
+	}
+	var req struct {
+		Content *json.RawMessage `json:"content"`
+		Done    *bool            `json:"done"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httpErr(w, http.StatusBadRequest, "invalid_body")
+		return
+	}
+
+	comment, err := h.svc.UpdateDocumentComment(r.Context(), tenantID, userID, docID, libraryID, domain.CommentUpdateInput{
+		ContentJSON: req.Content,
+		Done:        req.Done,
+	})
+	if err != nil {
+		status, msg := mapErr(err)
+		httpErr(w, status, msg)
+		return
+	}
+	writeJSON(w, http.StatusOK, toCommentResponse(*comment))
+}
+
+func (h *Handler) deleteComment(w http.ResponseWriter, r *http.Request) {
+	r = withAdminCtx(r)
+	docID := r.PathValue("id")
+	tenantID, userID, ok := h.authorizeDocumentScope(w, r, docID)
+	if !ok {
+		return
+	}
+
+	libraryID, err := strconv.Atoi(r.PathValue("libraryID"))
+	if err != nil {
+		httpErr(w, http.StatusBadRequest, "invalid_library_comment_id")
+		return
+	}
+	if err := h.svc.DeleteDocumentComment(r.Context(), tenantID, userID, docID, libraryID); err != nil {
+		status, msg := mapErr(err)
+		httpErr(w, status, msg)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+type commentResponse struct {
+	ID               string          `json:"id"`
+	LibraryCommentID int             `json:"library_comment_id"`
+	ParentLibraryID  *int            `json:"parent_library_id"`
+	Author           string          `json:"author"`
+	AuthorID         string          `json:"author_id"`
+	Content          json.RawMessage `json:"content"`
+	Done             bool            `json:"done"`
+	CreatedAt        string          `json:"created_at"`
+	UpdatedAt        string          `json:"updated_at"`
+	ResolvedAt       *time.Time      `json:"resolved_at"`
+}
+
+func toCommentResponse(c domain.Comment) commentResponse {
+	return commentResponse{
+		ID:               c.ID.String(),
+		LibraryCommentID: c.LibraryCommentID,
+		ParentLibraryID:  c.ParentLibraryID,
+		Author:           c.AuthorDisplay,
+		AuthorID:         c.AuthorID,
+		Content:          c.ContentJSON,
+		Done:             c.ResolvedAt != nil,
+		CreatedAt:        c.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:        c.UpdatedAt.UTC().Format(time.RFC3339),
+		ResolvedAt:       c.ResolvedAt,
+	}
+}
+
 func (h *Handler) authorizeDocumentScope(w http.ResponseWriter, r *http.Request, docID string) (tenantID string, userID string, ok bool) {
 	if !hasAnyRole(r, roleAdmin, roleDocumentFiller) {
 		httpErr(w, http.StatusForbidden, "forbidden")
@@ -632,10 +782,14 @@ func mapErr(err error) (int, string) {
 		return http.StatusNotFound, "pending_not_found"
 	case errors.Is(err, domain.ErrCheckpointNotFound):
 		return http.StatusNotFound, "checkpoint_not_found"
+	case errors.Is(err, domain.ErrCommentNotFound):
+		return http.StatusNotFound, "comment_not_found"
 	case errors.Is(err, domain.ErrNotFound):
 		return http.StatusNotFound, "not_found"
 	case errors.Is(err, domain.ErrInvalidName):
 		return http.StatusBadRequest, "invalid_name"
+	case errors.Is(err, domain.ErrCommentInvalid):
+		return http.StatusBadRequest, "comment_invalid"
 	case errors.Is(err, domain.ErrExpiredUpload):
 		return http.StatusGone, "expired_upload"
 	case errors.Is(err, domain.ErrUploadMissing):

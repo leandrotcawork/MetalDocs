@@ -42,6 +42,10 @@ type Repository interface {
 	RestoreCheckpoint(ctx context.Context, docID, actorUserID string, versionNum int) (*RestoreResult, error)
 	GetRevision(ctx context.Context, docID, revID string) (*domain.Revision, error)
 	DeleteExpiredPending(ctx context.Context, olderThan time.Time) (int, error)
+	CreateComment(ctx context.Context, tenantID, documentID, authorID string, in domain.CommentCreateInput) (*domain.Comment, error)
+	ListComments(ctx context.Context, tenantID, documentID string) ([]domain.Comment, error)
+	UpdateComment(ctx context.Context, tenantID, documentID string, libraryID int, userID string, in domain.CommentUpdateInput) (*domain.Comment, error)
+	DeleteComment(ctx context.Context, tenantID, documentID string, libraryID int) error
 }
 
 type DocgenRenderer interface {
@@ -204,6 +208,42 @@ func (s *Service) RenameDocument(ctx context.Context, tenantID, userID, docID, n
 
 func (s *Service) IsDocumentOwner(ctx context.Context, tenantID, docID, userID string) (bool, error) {
 	return s.repo.IsDocumentOwner(ctx, tenantID, docID, userID)
+}
+
+func (s *Service) ListDocumentComments(ctx context.Context, tenantID, userID, documentID string) ([]domain.Comment, error) {
+	return s.repo.ListComments(ctx, tenantID, documentID)
+}
+
+func (s *Service) AddDocumentComment(ctx context.Context, tenantID, userID, authorDisplay, documentID string, in domain.CommentCreateInput) (*domain.Comment, error) {
+	if in.LibraryCommentID <= 0 {
+		return nil, domain.ErrCommentInvalid
+	}
+	if len(in.ContentJSON) == 0 {
+		return nil, domain.ErrCommentInvalid
+	}
+	trimmedAuthor := strings.TrimSpace(authorDisplay)
+	if trimmedAuthor == "" || len(trimmedAuthor) > 255 {
+		return nil, domain.ErrCommentInvalid
+	}
+	in.AuthorDisplay = trimmedAuthor
+	return s.repo.CreateComment(ctx, tenantID, documentID, userID, in)
+}
+
+func (s *Service) UpdateDocumentComment(ctx context.Context, tenantID, userID, documentID string, libraryID int, in domain.CommentUpdateInput) (*domain.Comment, error) {
+	if libraryID <= 0 {
+		return nil, domain.ErrCommentInvalid
+	}
+	if in.ContentJSON != nil && len(*in.ContentJSON) == 0 {
+		return nil, domain.ErrCommentInvalid
+	}
+	return s.repo.UpdateComment(ctx, tenantID, documentID, libraryID, userID, in)
+}
+
+func (s *Service) DeleteDocumentComment(ctx context.Context, tenantID, userID, documentID string, libraryID int) error {
+	if libraryID <= 0 {
+		return domain.ErrCommentInvalid
+	}
+	return s.repo.DeleteComment(ctx, tenantID, documentID, libraryID)
 }
 
 type PresignAutosaveCmd struct {

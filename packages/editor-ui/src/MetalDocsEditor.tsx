@@ -1,7 +1,8 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
-import { DocxEditor, type DocxEditorRef } from '@eigenpal/docx-js-editor';
+import { DocxEditor, PluginHost, templatePlugin, type DocxEditorRef, type ReactEditorPlugin } from '@eigenpal/docx-js-editor';
 import '@eigenpal/docx-js-editor/styles.css';
 import type { MetalDocsEditorProps, MetalDocsEditorRef } from './types';
+import { buildSidebarModelPlugin } from './plugins/sidebarModelBridge';
 
 const AUTOSAVE_DEBOUNCE_MS = 1500;
 
@@ -46,30 +47,37 @@ export const MetalDocsEditor = forwardRef<MetalDocsEditorRef, MetalDocsEditorPro
     };
 
     const libMode = props.mode === 'readonly' ? 'viewing' : 'editing';
+    const plugins: ReactEditorPlugin[] = [
+      templatePlugin,
+      ...(props.sidebarModel ? [buildSidebarModelPlugin(props.sidebarModel)] : []),
+      ...(props.externalPlugins ?? []),
+    ];
 
     return (
-      <DocxEditor
-        ref={inner}
-        documentBuffer={props.documentBuffer}
-        mode={libMode}
-        author={props.author ?? props.userId}
-        documentName={props.documentName}
-        documentNameEditable={props.documentNameEditable ?? (libMode === 'editing')}
-        onDocumentNameChange={props.onDocumentNameChange}
-        comments={props.comments}
-        onCommentsChange={props.onCommentsChange}
-        onCommentAdd={props.onCommentAdd}
-        onCommentResolve={props.onCommentResolve}
-        onCommentDelete={props.onCommentDelete}
-        onCommentReply={props.onCommentReply}
-        renderTitleBarRight={props.renderTitleBarRight}
-        showRuler
-        showMarginGuides
-        showOutlineButton
-        showPrintButton
-        showZoomControl
-        onChange={handleChange}
-      />
+      <PluginHost plugins={plugins}>
+        <DocxEditor
+          ref={inner}
+          documentBuffer={props.documentBuffer}
+          mode={libMode}
+          author={props.author ?? props.userId}
+          documentName={props.documentName}
+          documentNameEditable={props.documentNameEditable ?? (libMode === 'editing')}
+          onDocumentNameChange={props.onDocumentNameChange}
+          comments={props.comments}
+          onCommentsChange={props.onCommentsChange}
+          onCommentAdd={props.onCommentAdd}
+          onCommentResolve={props.onCommentResolve}
+          onCommentDelete={props.onCommentDelete}
+          onCommentReply={props.onCommentReply}
+          renderTitleBarRight={props.renderTitleBarRight}
+          showRuler
+          showMarginGuides
+          showOutlineButton
+          showPrintButton
+          showZoomControl
+          onChange={handleChange}
+        />
+      </PluginHost>
     );
   }
 );

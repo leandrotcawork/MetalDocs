@@ -6,6 +6,8 @@ afterEach(cleanup);
 import { MetalDocsEditor } from '../src/MetalDocsEditor';
 
 vi.mock('@eigenpal/docx-js-editor', () => ({
+  templatePlugin: { id: 'template', name: 'template' },
+  PluginHost: ({ children }: { children: ReactNode }) => <>{children}</>,
   DocxEditor: ({
     documentBuffer,
     mode,

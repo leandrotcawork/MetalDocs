@@ -24,7 +24,7 @@ describe('useDocumentSession (phase 3)', () => {
   let hidden = false;
 
   beforeEach(() => {
-    vi.useFakeTimers();
+    vi.useFakeTimers({ shouldAdvanceTime: true, shouldAdvanceTimeDelta: 20 });
     vi.setSystemTime(new Date('2026-04-19T00:00:00.000Z'));
     hidden = false;
     Object.defineProperty(document, 'hidden', {
@@ -72,14 +72,14 @@ describe('useDocumentSession (phase 3)', () => {
     await waitFor(() => expect(result.current.state.phase).toBe('writer'));
 
     await act(async () => {
-      vi.advanceTimersByTime(30_000);
+      await vi.advanceTimersByTimeAsync(30_000);
     });
 
     await waitFor(() => expect(api.acquireSession).toHaveBeenCalledTimes(2));
     expect(result.current.state.phase).toBe('writer');
 
     await act(async () => {
-      vi.advanceTimersByTime(30_000);
+      await vi.advanceTimersByTimeAsync(30_000);
     });
 
     await waitFor(() => expect(api.heartbeatSession).toHaveBeenLastCalledWith('doc-1', 'sess-2'));
@@ -94,14 +94,14 @@ describe('useDocumentSession (phase 3)', () => {
     await waitFor(() => expect(result.current.state.phase).toBe('writer'));
 
     await act(async () => {
-      vi.advanceTimersByTime(30_000);
+      await vi.advanceTimersByTimeAsync(30_000);
     });
 
     await waitFor(() => expect(api.acquireSession).toHaveBeenCalledTimes(2));
     expect(result.current.state.phase).toBe('writer');
 
     await act(async () => {
-      vi.advanceTimersByTime(30_000);
+      await vi.advanceTimersByTimeAsync(30_000);
     });
 
     await waitFor(() => expect(result.current.state).toEqual({ phase: 'lost', reason: 'force_released' }));
@@ -120,7 +120,7 @@ describe('useDocumentSession (phase 3)', () => {
     });
 
     await act(async () => {
-      vi.advanceTimersByTime(120_001);
+      await vi.advanceTimersByTimeAsync(120_001);
     });
 
     hidden = false;

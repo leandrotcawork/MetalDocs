@@ -1,4 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('@metaldocs/editor-ui', () => ({ MetalDocsEditor: () => null }));
+
 import { pathFromRoute, routeFromPath } from './routes';
 
 describe('documents-v2 routeFromPath', () => {

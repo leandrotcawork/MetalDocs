@@ -1,26 +1,51 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
+import type { ReactNode } from 'react';
 
 afterEach(cleanup);
 import { MetalDocsEditor } from '../src/MetalDocsEditor';
 
 vi.mock('@eigenpal/docx-js-editor', () => ({
-  DocxEditor: ({ documentBuffer }: { documentBuffer?: ArrayBuffer }) => (
-    <div data-testid="docx-editor-mock" data-has-buffer={documentBuffer ? 'yes' : 'no'} />
+  DocxEditor: ({
+    documentBuffer,
+    mode,
+    renderTitleBarRight,
+  }: {
+    documentBuffer?: ArrayBuffer;
+    mode?: 'editing' | 'viewing';
+    renderTitleBarRight?: () => ReactNode;
+  }) => (
+    <div data-testid="docx-editor-mock" data-has-buffer={documentBuffer ? 'yes' : 'no'}>
+      {mode === 'editing' ? <div role="toolbar" data-testid="toolbar" /> : null}
+      {renderTitleBarRight ? renderTitleBarRight() : null}
+    </div>
   ),
 }));
 
 describe('MetalDocsEditor', () => {
-  it('mounts with documentBuffer and template-draft mode', () => {
+  it('shows toolbar in document-edit mode', () => {
     const buf = new ArrayBuffer(8);
-    render(<MetalDocsEditor mode="template-draft" documentBuffer={buf} userId="u1" />);
+    render(<MetalDocsEditor mode="document-edit" documentBuffer={buf} userId="u1" />);
     const el = screen.getByTestId('docx-editor-mock');
     expect(el.getAttribute('data-has-buffer')).toBe('yes');
+    expect(screen.getByRole('toolbar')).toBeInTheDocument();
   });
 
-  it('renders readonly mode without buffer', () => {
+  it('hides toolbar in readonly mode', () => {
     render(<MetalDocsEditor mode="readonly" userId="u1" />);
     const el = screen.getByTestId('docx-editor-mock');
     expect(el.getAttribute('data-has-buffer')).toBe('no');
+    expect(screen.queryByRole('toolbar')).toBeNull();
+  });
+
+  it('renders renderTitleBarRight slot', () => {
+    render(
+      <MetalDocsEditor
+        mode="document-edit"
+        userId="u1"
+        renderTitleBarRight={() => <span data-testid="sentinel" />}
+      />
+    );
+    expect(screen.getByTestId('sentinel')).toBeInTheDocument();
   });
 });

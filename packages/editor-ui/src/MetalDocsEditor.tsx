@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { DocxEditor, type DocxEditorRef } from '@eigenpal/docx-js-editor';
-import './overrides.css';
+import '@eigenpal/docx-js-editor/styles.css';
 import type { MetalDocsEditorProps, MetalDocsEditorRef } from './types';
 
 const AUTOSAVE_DEBOUNCE_MS = 1500;
@@ -45,16 +45,31 @@ export const MetalDocsEditor = forwardRef<MetalDocsEditorRef, MetalDocsEditorPro
       }, AUTOSAVE_DEBOUNCE_MS);
     };
 
+    const libMode = props.mode === 'readonly' ? 'viewing' : 'editing';
+
     return (
-      <div className="metaldocs-editor" data-mode={props.mode}>
-        <DocxEditor
-          ref={inner}
-          documentBuffer={props.documentBuffer}
-          showToolbar={props.mode !== 'readonly'}
-          showRuler
-          onChange={handleChange}
-        />
-      </div>
+      <DocxEditor
+        ref={inner}
+        documentBuffer={props.documentBuffer}
+        mode={libMode}
+        author={props.author ?? props.userId}
+        documentName={props.documentName}
+        documentNameEditable={props.documentNameEditable ?? (libMode === 'editing')}
+        onDocumentNameChange={props.onDocumentNameChange}
+        comments={props.comments}
+        onCommentsChange={props.onCommentsChange}
+        onCommentAdd={props.onCommentAdd}
+        onCommentResolve={props.onCommentResolve}
+        onCommentDelete={props.onCommentDelete}
+        onCommentReply={props.onCommentReply}
+        renderTitleBarRight={props.renderTitleBarRight}
+        showRuler
+        showMarginGuides
+        showOutlineButton
+        showPrintButton
+        showZoomControl
+        onChange={handleChange}
+      />
     );
   }
 );

@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { MetalDocsEditor, type MetalDocsEditorRef } from '@metaldocs/editor-ui';
+import { toast } from 'sonner';
 import { useDocumentSession } from './hooks/useDocumentSession';
 import { useDocumentAutosave } from './hooks/useDocumentAutosave';
-import { getDocument, finalizeDocument, signedRevisionURL } from './api/documentsV2';
-import { CheckpointsPanel } from './CheckpointsPanel';
-import { ExportMenu } from './ExportMenu';
+import { getDocument, finalizeDocument, renameDocument, signedRevisionURL } from './api/documentsV2';
+import { CheckpointsDialog } from './CheckpointsDialog';
+import { ExportMenuButton } from './ExportMenuButton';
 import styles from './styles/DocumentEditorPage.module.css';
 
 export type DocumentEditorPageProps = {
@@ -13,16 +15,11 @@ export type DocumentEditorPageProps = {
 
 export function DocumentEditorPage({ documentID, onDone }: DocumentEditorPageProps): React.ReactElement {
   const session = useDocumentSession(documentID);
+  const [doc, setDoc] = useState<any>(null);
   const [documentName, setDocumentName] = useState('');
-  const [currentRevisionID, setCurrentRevisionID] = useState('');
-  const [buffer, setBuffer] = useState<ArrayBuffer | null>(null);
-  const [error, setError] = useState('');
-
-  const loadDocument = useCallback(async () => {
-    const doc = await getDocument(documentID);
-    setDocumentName(doc.Name ?? doc.name ?? 'Document');
-    setCurrentRevisionID(doc.CurrentRevisionID ?? doc.current_revision_id ?? '');
-  }, [documentID]);
+  const [buffer, setBuffer] = useState<ArrayBuffer | null | undefined>(undefined);
+  const [checkpointsOpen, setCheckpointsOpen] = useState(false);
+  const editorRef = useRef<MetalDocsEditorRef>(null);
 
   const fetchRevisionBuffer = useCallback(async (revisionID: string) => {
     if (!revisionID) {
@@ -43,15 +40,15 @@ export function DocumentEditorPage({ documentID, onDone }: DocumentEditorPagePro
   useEffect(() => {
     void (async () => {
       try {
-        setError('');
-        const doc = await getDocument(documentID);
-        const name = doc.Name ?? doc.name ?? 'Document';
-        const revisionID = doc.CurrentRevisionID ?? doc.current_revision_id ?? '';
+        setBuffer(undefined);
+        const loadedDoc = await getDocument(documentID);
+        const name = loadedDoc.Name ?? loadedDoc.name ?? 'Document';
+        const revisionID = loadedDoc.CurrentRevisionID ?? loadedDoc.current_revision_id ?? '';
+        setDoc(loadedDoc);
         setDocumentName(name);
-        setCurrentRevisionID(revisionID);
         await fetchRevisionBuffer(revisionID);
       } catch {
-        setError('Failed to load document.');
+        toast.error('Failed to load document.');
       }
     })();
   }, [documentID, fetchRevisionBuffer]);
@@ -69,10 +66,9 @@ export function DocumentEditorPage({ documentID, onDone }: DocumentEditorPagePro
         baseRevisionID: lastAckRevisionID,
         onAdvanceBase: (newRevisionID: string) => {
           setLastAck(newRevisionID);
-          setCurrentRevisionID(newRevisionID);
         },
         onSessionLost: () => {
-          setError('Writer session lost.');
+          toast.error('Writer session lost.');
         },
       };
     }
@@ -87,62 +83,114 @@ export function DocumentEditorPage({ documentID, onDone }: DocumentEditorPagePro
 
   const autosave = useDocumentAutosave(autosaveArgs);
 
+  const prevAutosaveStatus = useRef(autosave.status);
+  useEffect(() => {
+    if (autosave.status === prevAutosaveStatus.current) {
+      return;
+    }
+    prevAutosaveStatus.current = autosave.status;
+    if (autosave.status === 'error' || autosave.status === 'session_lost' || autosave.status === 'stale') {
+      toast.error(`Autosave ${autosave.status.replace('_', ' ')}.`);
+    }
+  }, [autosave.status]);
+
+  const prevSessionPhase = useRef(sessionPhase);
+  useEffect(() => {
+    if (sessionPhase !== prevSessionPhase.current && (sessionPhase === 'readonly' || sessionPhase === 'lost')) {
+      toast.warning(
+        sessionPhase === 'readonly'
+          ? 'Readonly session. Another user is editing this document.'
+          : 'Session lost. Reload to reacquire writer access.',
+      );
+    }
+    prevSessionPhase.current = sessionPhase;
+  }, [sessionPhase]);
+
+  const handleRename = useCallback((name: string) => {
+    setDocumentName(name);
+    void renameDocument(documentID, name).catch(() => {
+      toast.error('Failed to rename document.');
+    });
+  }, [documentID]);
+
+  async function handleSave() {
+    if (!editorRef.current) return;
+    if (!doc) return;
+    const buf = await editorRef.current.getDocumentBuffer();
+    if (!buf) return;
+    await autosave.queue(buf, doc.FormDataJSON ?? doc.form_data ?? null);
+  }
+
   async function handleFinalize() {
-    if (session.state.phase !== 'writer') return;
+    if (session.state.phase !== 'writer' || !doc) return;
     try {
-      setError('');
       await autosave.flush();
       await finalizeDocument(documentID);
       await session.release();
       onDone();
     } catch {
-      setError('Failed to finalize document.');
+      toast.error('Failed to finalize document.');
     }
   }
 
   async function handleRestored(newRevisionID: string) {
     try {
-      setError('');
       await fetchRevisionBuffer(newRevisionID);
+      const refreshedDoc = await getDocument(documentID);
+      setDoc(refreshedDoc);
+      setDocumentName(refreshedDoc.Name ?? refreshedDoc.name ?? 'Document');
       session.setLastAck(newRevisionID);
-      setCurrentRevisionID(newRevisionID);
     } catch {
-      setError('Failed to refresh document after restore.');
+      toast.error('Failed to refresh document after restore.');
     }
   }
 
+  const docStatus = doc?.Status ?? doc?.status ?? '';
+  const userID = doc?.CreatedBy ?? doc?.created_by ?? '';
+  const canMountEditor = !!doc
+    && session.state.phase !== 'idle'
+    && session.state.phase !== 'acquiring'
+    && buffer !== undefined;
+
   return (
     <div className={styles.page} data-editor-root>
-      <header className={styles.header}>
-        <strong>{documentName || 'Document'}</strong>
-        <span className={styles.status} data-status={autosave.status}>{autosave.status}</span>
-        <button type="button" onClick={() => void handleFinalize()} disabled={session.state.phase !== 'writer'}>
-          Finalize
-        </button>
-      </header>
-      {session.state.phase === 'readonly' && (
-        <div className={styles.banner}>Readonly session. Another user is editing this document.</div>
-      )}
-      {session.state.phase === 'lost' && (
-        <div className={styles.banner}>Session lost. Reload to reacquire writer access.</div>
-      )}
-      {error && <div className={styles.banner}>{error}</div>}
-      <div className={styles.split}>
-        <div className={styles.editor} data-editor-placeholder>
-          Document editor surface (W4)
-          {buffer ? <div>Revision loaded: {currentRevisionID}</div> : null}
-        </div>
-        <CheckpointsPanel
-          documentID={documentID}
-          disabled={session.state.phase !== 'writer'}
-          onRestored={(newRevisionID) => {
-            void handleRestored(newRevisionID);
-          }}
+      {canMountEditor ? (
+        <MetalDocsEditor
+          ref={editorRef}
+          mode={session.state.phase === 'writer' ? 'document-edit' : 'readonly'}
+          documentBuffer={buffer ?? undefined}
+          userId={String(userID)}
+          documentName={documentName}
+          documentNameEditable={session.state.phase === 'writer'}
+          onDocumentNameChange={handleRename}
+          onAutoSave={handleSave}
+          renderTitleBarRight={() => (
+            <>
+              <button type="button" onClick={() => setCheckpointsOpen(true)}>Checkpoints</button>
+              <ExportMenuButton
+                documentID={documentID}
+                canExport={sessionPhase === 'writer' || sessionPhase === 'readonly'}
+              />
+              <button
+                type="button"
+                onClick={() => void handleFinalize()}
+                disabled={session.state.phase !== 'writer' || docStatus !== 'draft'}
+              >
+                Finalize
+              </button>
+            </>
+          )}
         />
-      </div>
-      <ExportMenu
+      ) : null}
+      <CheckpointsDialog
+        open={checkpointsOpen}
+        onClose={() => setCheckpointsOpen(false)}
         documentID={documentID}
-        canExport={session.state.phase === 'writer' || session.state.phase === 'readonly'}
+        disabled={session.state.phase !== 'writer'}
+        onRestored={(rev) => {
+          setCheckpointsOpen(false);
+          void handleRestored(rev);
+        }}
       />
     </div>
   );

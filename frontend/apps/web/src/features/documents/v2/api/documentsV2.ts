@@ -30,6 +30,13 @@ export async function listDocuments(): Promise<DocumentRow[]> {
 export async function getDocument(id: string): Promise<any> {
   return json(await fetch(`/api/v2/documents/${id}`));
 }
+export async function renameDocument(id: string, name: string): Promise<any> {
+  return json(await fetch(`/api/v2/documents/${id}`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name }),
+  }));
+}
 export async function createDocument(req: { template_version_id: string; name: string; form_data: unknown }): Promise<CreateDocumentResult> {
   return json(await fetch('/api/v2/documents', {
     method: 'POST', headers: { 'content-type': 'application/json' },

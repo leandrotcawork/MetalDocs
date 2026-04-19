@@ -1,45 +1,16 @@
 .page {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
+  position: fixed;
+  inset: 0;
 }
 
-.header {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  padding: 8px 16px;
-  border-bottom: 1px solid #ddd;
+.checkpointsDialog {
+  width: min(560px, calc(100vw - 32px));
+  max-width: 560px;
+  border: 1px solid #d0d7de;
+  border-radius: 12px;
+  padding: 16px;
 }
 
-.status[data-status="saved"] {
-  color: #2a2;
-}
-
-.status[data-status="saving"] {
-  color: #aa2;
-}
-
-.status[data-status="stale"],
-.status[data-status="session_lost"],
-.status[data-status="error"] {
-  color: #c22;
-}
-
-.banner {
-  background: #fee;
-  color: #900;
-  padding: 8px 16px;
-}
-
-.split {
-  display: grid;
-  grid-template-columns: 1fr 320px;
-  min-height: 0;
-  flex: 1;
-}
-
-.editor {
-  overflow: auto;
-  border-right: 1px solid #ddd;
+.checkpointsDialog::backdrop {
+  background: rgba(0, 0, 0, 0.4);
 }

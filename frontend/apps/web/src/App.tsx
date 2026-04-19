@@ -23,6 +23,7 @@ import { isPathForView, parseTemplateEditorPath, pathFromView, viewFromPath } fr
 import { TemplateEditorView } from "./features/templates/TemplateEditorView";
 import { TemplatesV2View, type TemplatesV2Route } from "./features/templates/v2/routes";
 import { renderDocumentsV2View, routeFromPath as docsRouteFromPath, pathFromRoute as docsPathFromRoute, type DocumentsV2Route } from "./features/documents/v2/routes";
+import { Toaster } from "sonner";
 
 type AppErrorBoundaryState = {
   hasError: boolean;
@@ -66,6 +67,7 @@ export default function App() {
   return (
     <AppErrorBoundary>
       <AppContent />
+      <Toaster position="bottom-right" richColors closeButton />
     </AppErrorBoundary>
   );
 }

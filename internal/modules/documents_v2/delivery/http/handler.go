@@ -23,6 +23,7 @@ const (
 type Service interface {
 	CreateDocument(ctx context.Context, cmd application.CreateDocumentCmd) (*application.CreateDocumentResult, error)
 	GetDocument(ctx context.Context, tenantID, id string) (*domain.Document, error)
+	RenameDocument(ctx context.Context, tenantID, userID, docID, newName string) error
 	ListDocuments(ctx context.Context, tenantID string) ([]domain.Document, error)
 	ListDocumentsForUser(ctx context.Context, tenantID, userID string) ([]domain.Document, error)
 	IsDocumentOwner(ctx context.Context, tenantID, docID, userID string) (bool, error)
@@ -49,13 +50,14 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v2/documents", h.createDocument)
 
 	mux.HandleFunc("GET /api/v2/documents/{id}", h.getDocument)
+	mux.HandleFunc("PATCH /api/v2/documents/{id}", h.renameDocument)
 	mux.HandleFunc("POST /api/v2/documents/{id}/finalize", h.finalizeDocument)
 	mux.HandleFunc("POST /api/v2/documents/{id}/archive", h.archiveDocument)
 
-	mux.HandleFunc("POST /api/v2/documents/{id}/sessions/acquire", h.acquireSession)
-	mux.HandleFunc("POST /api/v2/documents/{id}/sessions/heartbeat", h.heartbeatSession)
-	mux.HandleFunc("POST /api/v2/documents/{id}/sessions/release", h.releaseSession)
-	mux.HandleFunc("POST /api/v2/documents/{id}/sessions/force-release", h.forceReleaseSession)
+	mux.HandleFunc("POST /api/v2/documents/{id}/session/acquire", h.acquireSession)
+	mux.HandleFunc("POST /api/v2/documents/{id}/session/heartbeat", h.heartbeatSession)
+	mux.HandleFunc("POST /api/v2/documents/{id}/session/release", h.releaseSession)
+	mux.HandleFunc("POST /api/v2/documents/{id}/session/force-release", h.forceReleaseSession)
 
 	mux.HandleFunc("POST /api/v2/documents/{id}/autosave/presign", h.presignAutosave)
 	mux.HandleFunc("POST /api/v2/documents/{id}/autosave/commit", h.commitAutosave)
@@ -72,13 +74,14 @@ func (h *Handler) RegisterRoutesWithRateLimit(mux *http.ServeMux, rl *ratelimit.
 	mux.HandleFunc("POST /api/v2/documents", h.createDocument)
 
 	mux.HandleFunc("GET /api/v2/documents/{id}", h.getDocument)
+	mux.HandleFunc("PATCH /api/v2/documents/{id}", h.renameDocument)
 	mux.HandleFunc("POST /api/v2/documents/{id}/finalize", h.finalizeDocument)
 	mux.HandleFunc("POST /api/v2/documents/{id}/archive", h.archiveDocument)
 
-	mux.HandleFunc("POST /api/v2/documents/{id}/sessions/acquire", h.acquireSession)
-	mux.HandleFunc("POST /api/v2/documents/{id}/sessions/heartbeat", h.heartbeatSession)
-	mux.HandleFunc("POST /api/v2/documents/{id}/sessions/release", h.releaseSession)
-	mux.HandleFunc("POST /api/v2/documents/{id}/sessions/force-release", h.forceReleaseSession)
+	mux.HandleFunc("POST /api/v2/documents/{id}/session/acquire", h.acquireSession)
+	mux.HandleFunc("POST /api/v2/documents/{id}/session/heartbeat", h.heartbeatSession)
+	mux.HandleFunc("POST /api/v2/documents/{id}/session/release", h.releaseSession)
+	mux.HandleFunc("POST /api/v2/documents/{id}/session/force-release", h.forceReleaseSession)
 
 	mux.Handle(
 		"POST /api/v2/documents/{id}/autosave/presign",
@@ -121,6 +124,11 @@ func (h *Handler) createDocument(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		status, msg := mapErr(err)
+		if status == http.StatusInternalServerError {
+			_ = err // logged below
+			http.Error(w, `{"error":"`+msg+`","detail":"`+err.Error()+`"}`, status)
+			return
+		}
 		httpErr(w, status, msg)
 		return
 	}
@@ -164,6 +172,37 @@ func (h *Handler) getDocument(w http.ResponseWriter, r *http.Request) {
 	docID := r.PathValue("id")
 	tenantID, _, ok := h.authorizeDocumentScope(w, r, docID)
 	if !ok {
+		return
+	}
+
+	doc, err := h.svc.GetDocument(r.Context(), tenantID, docID)
+	if err != nil {
+		status, msg := mapErr(err)
+		httpErr(w, status, msg)
+		return
+	}
+	writeJSON(w, http.StatusOK, doc)
+}
+
+func (h *Handler) renameDocument(w http.ResponseWriter, r *http.Request) {
+	r = withAdminCtx(r)
+	docID := r.PathValue("id")
+	tenantID, userID, ok := h.authorizeDocumentScope(w, r, docID)
+	if !ok {
+		return
+	}
+
+	var req struct {
+		Name string `json:"name"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httpErr(w, http.StatusBadRequest, "invalid_body")
+		return
+	}
+
+	if err := h.svc.RenameDocument(r.Context(), tenantID, userID, docID, req.Name); err != nil {
+		status, msg := mapErr(err)
+		httpErr(w, status, msg)
 		return
 	}
 
@@ -234,13 +273,19 @@ func (h *Handler) acquireSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	status := http.StatusCreated
 	if readonly {
-		status = http.StatusOK
+		writeJSON(w, http.StatusOK, map[string]any{
+			"mode":       "readonly",
+			"held_by":    sess.UserID,
+			"held_until": sess.ExpiresAt,
+		})
+		return
 	}
-	writeJSON(w, status, map[string]any{
-		"session":  sess,
-		"readonly": readonly,
+	writeJSON(w, http.StatusCreated, map[string]any{
+		"mode":                 "writer",
+		"session_id":           sess.ID,
+		"expires_at":           sess.ExpiresAt,
+		"last_ack_revision_id": sess.LastAcknowledgedRevisionID,
 	})
 }
 
@@ -375,12 +420,12 @@ func (h *Handler) commitAutosave(w http.ResponseWriter, r *http.Request) {
 	}
 
 	res, err := h.svc.CommitAutosave(r.Context(), application.CommitAutosaveCmd{
-		TenantID:          tenantID,
-		ActorUserID:       userID,
-		DocumentID:        docID,
-		SessionID:         req.SessionID,
-		PendingUploadID:   req.PendingUploadID,
-		FormDataSnapshot:  req.FormDataSnapshot,
+		TenantID:         tenantID,
+		ActorUserID:      userID,
+		DocumentID:       docID,
+		SessionID:        req.SessionID,
+		PendingUploadID:  req.PendingUploadID,
+		FormDataSnapshot: req.FormDataSnapshot,
 	})
 	if err != nil {
 		status, msg := mapErr(err)
@@ -460,7 +505,7 @@ func (h *Handler) restoreCheckpoint(w http.ResponseWriter, r *http.Request) {
 		"new_revision_id":               res.NewRevisionID,
 		"new_revision_num":              res.NewRevisionNum,
 		"source_checkpoint_version_num": versionNum,
-		"idempotent":        res.Idempotent,
+		"idempotent":                    res.Idempotent,
 	})
 }
 
@@ -512,6 +557,9 @@ func withAdminCtx(r *http.Request) *http.Request {
 	}
 
 	roles := rolesFromHeader(r.Header.Get("X-User-Roles"))
+	if len(roles) == 0 {
+		return r
+	}
 	ctxRoles := make([]iamdomain.Role, 0, len(roles))
 	for _, role := range roles {
 		ctxRoles = append(ctxRoles, iamdomain.Role(role))
@@ -535,6 +583,11 @@ func hasRole(r *http.Request, want string) bool {
 			return true
 		}
 	}
+	for _, role := range iamdomain.RolesFromContext(r.Context()) {
+		if string(role) == want {
+			return true
+		}
+	}
 	return false
 }
 
@@ -553,9 +606,21 @@ func rolesFromHeader(header string) []string {
 	return roles
 }
 
-func tenantIDFromReq(r *http.Request) string { return strings.TrimSpace(r.Header.Get("X-Tenant-ID")) }
+const devTenantID = "00000000-0000-0000-0000-000000000001"
 
-func userIDFromReq(r *http.Request) string { return strings.TrimSpace(r.Header.Get("X-User-ID")) }
+func tenantIDFromReq(r *http.Request) string {
+	if t := strings.TrimSpace(r.Header.Get("X-Tenant-ID")); t != "" {
+		return t
+	}
+	return devTenantID
+}
+
+func userIDFromReq(r *http.Request) string {
+	if u := strings.TrimSpace(r.Header.Get("X-User-ID")); u != "" {
+		return u
+	}
+	return iamdomain.UserIDFromContext(r.Context())
+}
 
 func mapErr(err error) (int, string) {
 	switch {
@@ -567,6 +632,10 @@ func mapErr(err error) (int, string) {
 		return http.StatusNotFound, "pending_not_found"
 	case errors.Is(err, domain.ErrCheckpointNotFound):
 		return http.StatusNotFound, "checkpoint_not_found"
+	case errors.Is(err, domain.ErrNotFound):
+		return http.StatusNotFound, "not_found"
+	case errors.Is(err, domain.ErrInvalidName):
+		return http.StatusBadRequest, "invalid_name"
 	case errors.Is(err, domain.ErrExpiredUpload):
 		return http.StatusGone, "expired_upload"
 	case errors.Is(err, domain.ErrUploadMissing):

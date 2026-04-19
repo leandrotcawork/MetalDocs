@@ -102,6 +102,20 @@ func (r *Repository) GetDocument(ctx context.Context, tenantID, id string) (*dom
 	return &d, nil
 }
 
+func (r *Repository) UpdateDocumentName(ctx context.Context, tenantID, docID, name string) error {
+	res, err := r.db.ExecContext(ctx,
+		`UPDATE documents SET name=$2, updated_at=now() WHERE id=$1 AND tenant_id=$3`,
+		docID, name, tenantID)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
+}
+
 func (r *Repository) ListDocuments(ctx context.Context, tenantID string) ([]domain.Document, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, tenant_id, template_version_id, name, status, form_data_json,

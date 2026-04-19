@@ -23,30 +23,30 @@ const (
 )
 
 type Document struct {
-	ID                  string
-	TenantID            string
-	TemplateVersionID   string
-	Name                string
-	Status              DocumentStatus
-	FormDataJSON        []byte
-	CurrentRevisionID   string
-	ActiveSessionID     string
-	FinalizedAt         *time.Time
-	ArchivedAt          *time.Time
-	CreatedAt           time.Time
-	UpdatedAt           time.Time
-	CreatedBy           string
+	ID                string
+	TenantID          string
+	TemplateVersionID string
+	Name              string
+	Status            DocumentStatus
+	FormDataJSON      []byte
+	CurrentRevisionID string
+	ActiveSessionID   string
+	FinalizedAt       *time.Time
+	ArchivedAt        *time.Time
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	CreatedBy         string
 }
 
 type Session struct {
-	ID                          string
-	DocumentID                  string
-	UserID                      string
-	AcquiredAt                  time.Time
-	ExpiresAt                   time.Time
-	ReleasedAt                  *time.Time
-	LastAcknowledgedRevisionID  string
-	Status                      SessionStatus
+	ID                         string
+	DocumentID                 string
+	UserID                     string
+	AcquiredAt                 time.Time
+	ExpiresAt                  time.Time
+	ReleasedAt                 *time.Time
+	LastAcknowledgedRevisionID string
+	Status                     SessionStatus
 }
 
 type Revision struct {
@@ -99,4 +99,5 @@ var (
 	ErrCheckpointNotFound     = errors.New("checkpoint_not_found")
 	ErrDocumentNotOwner       = errors.New("document_not_owner")
 	ErrNotFound               = errors.New("not_found")
+	ErrInvalidName            = errors.New("invalid_name")
 )

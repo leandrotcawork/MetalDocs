@@ -2,9 +2,11 @@ package application
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -22,6 +24,7 @@ type Repository interface {
 	CreateDocument(ctx context.Context, d *domain.Document, initialContentHash string) (docID, revID, sessionID string, err error)
 	SetRevisionStorageKey(ctx context.Context, revID, storageKey string) error
 	GetDocument(ctx context.Context, tenantID, id string) (*domain.Document, error)
+	UpdateDocumentName(ctx context.Context, tenantID, docID, name string) error
 	ListDocuments(ctx context.Context, tenantID string) ([]domain.Document, error)
 	ListDocumentsForUser(ctx context.Context, tenantID, userID string) ([]domain.Document, error)
 	UpdateDocumentStatus(ctx context.Context, tenantID, id string, cur, next domain.DocumentStatus, stampTime bool) error
@@ -97,28 +100,62 @@ func (s *Service) CreateDocument(ctx context.Context, cmd CreateDocumentCmd) (re
 	if err != nil {
 		return nil, fmt.Errorf("template lookup: %w", err)
 	}
-	ok, verrs, err := s.fv.Validate(schemaJSON, cmd.FormData)
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return nil, fmt.Errorf("form_data_invalid: %v", verrs)
-	}
-
-	tmpKey := fmt.Sprintf("tenants/%s/documents/tmp/%s.docx", cmd.TenantID, uuid.New().String())
-	contentHash, _, _, err := s.docgen.RenderDocx(ctx, docxKey, schemaKey, tmpKey, cmd.FormData)
-	if err != nil {
-		return nil, fmt.Errorf("render: %w", err)
-	}
-
-	// cleanupKey tracks which S3 key to delete on failure.
-	// Starts as tmpKey; shifts to finalKey after AdoptTempObject; clears on full success.
-	cleanupKey := tmpKey
-	defer func() {
-		if cleanupKey != "" {
-			_ = s.presigner.DeleteObject(context.Background(), cleanupKey)
+	if schemaJSON != "" {
+		ok, verrs, err := s.fv.Validate(schemaJSON, cmd.FormData)
+		if err != nil {
+			return nil, err
 		}
-	}()
+		if !ok {
+			return nil, fmt.Errorf("form_data_invalid: %v", verrs)
+		}
+	}
+
+	var contentHash, finalKey string
+	if s.docgen != nil {
+		tmpKey := fmt.Sprintf("tenants/%s/documents/tmp/%s.docx", cmd.TenantID, uuid.New().String())
+		var err error
+		contentHash, _, _, err = s.docgen.RenderDocx(ctx, docxKey, schemaKey, tmpKey, cmd.FormData)
+		if err != nil {
+			return nil, fmt.Errorf("render: %w", err)
+		}
+
+		cleanupKey := tmpKey
+		defer func() {
+			if cleanupKey != "" {
+				_ = s.presigner.DeleteObject(context.Background(), cleanupKey)
+			}
+		}()
+
+		doc := &domain.Document{
+			TenantID:          cmd.TenantID,
+			TemplateVersionID: cmd.TemplateVersionID,
+			Name:              cmd.Name,
+			FormDataJSON:      cmd.FormData,
+			CreatedBy:         cmd.ActorUserID,
+		}
+		docID, revID, sessionID, err := s.repo.CreateDocument(ctx, doc, contentHash)
+		if err != nil {
+			return nil, err
+		}
+
+		finalKey = fmt.Sprintf("tenants/%s/documents/%s/revisions/%s.docx", cmd.TenantID, docID, contentHash)
+		if err := s.presigner.AdoptTempObject(ctx, tmpKey, finalKey); err != nil {
+			return nil, fmt.Errorf("adopt tmp: %w", err)
+		}
+		cleanupKey = ""
+
+		if err := s.repo.SetRevisionStorageKey(ctx, revID, finalKey); err != nil {
+			return nil, fmt.Errorf("set revision key: %w", err)
+		}
+
+		s.audit.Write(ctx, cmd.TenantID, cmd.ActorUserID, "document.created", docID, map[string]any{"template_version_id": cmd.TemplateVersionID})
+		return &CreateDocumentResult{DocumentID: docID, InitialRevisionID: revID, SessionID: sessionID}, nil
+	}
+
+	// docgen not configured: bootstrap document with template docx as initial revision
+	h := sha256.New()
+	h.Write([]byte(docxKey))
+	contentHash = fmt.Sprintf("%x", h.Sum(nil))
 
 	doc := &domain.Document{
 		TenantID:          cmd.TenantID,
@@ -132,16 +169,10 @@ func (s *Service) CreateDocument(ctx context.Context, cmd CreateDocumentCmd) (re
 		return nil, err
 	}
 
-	finalKey := fmt.Sprintf("tenants/%s/documents/%s/revisions/%s.docx", cmd.TenantID, docID, contentHash)
-	if err := s.presigner.AdoptTempObject(ctx, tmpKey, finalKey); err != nil {
-		return nil, fmt.Errorf("adopt tmp: %w", err)
-	}
-	cleanupKey = finalKey // tmpKey already renamed to finalKey by AdoptTempObject
-
+	finalKey = docxKey // point to template docx directly
 	if err := s.repo.SetRevisionStorageKey(ctx, revID, finalKey); err != nil {
 		return nil, fmt.Errorf("set revision key: %w", err)
 	}
-	cleanupKey = "" // both operations succeeded
 
 	s.audit.Write(ctx, cmd.TenantID, cmd.ActorUserID, "document.created", docID, map[string]any{"template_version_id": cmd.TemplateVersionID})
 	return &CreateDocumentResult{DocumentID: docID, InitialRevisionID: revID, SessionID: sessionID}, nil
@@ -157,6 +188,18 @@ func (s *Service) ListDocuments(ctx context.Context, tenantID string) ([]domain.
 
 func (s *Service) ListDocumentsForUser(ctx context.Context, tenantID, userID string) ([]domain.Document, error) {
 	return s.repo.ListDocumentsForUser(ctx, tenantID, userID)
+}
+
+func (s *Service) RenameDocument(ctx context.Context, tenantID, userID, docID, newName string) error {
+	name := strings.TrimSpace(newName)
+	if name == "" || len(name) > 255 {
+		return domain.ErrInvalidName
+	}
+	if err := s.repo.UpdateDocumentName(ctx, tenantID, docID, name); err != nil {
+		return err
+	}
+	s.audit.Write(ctx, tenantID, userID, "document.renamed", docID, map[string]any{"name": name})
+	return nil
 }
 
 func (s *Service) IsDocumentOwner(ctx context.Context, tenantID, docID, userID string) (bool, error) {
@@ -188,7 +231,7 @@ func (s *Service) PresignAutosave(ctx context.Context, cmd PresignAutosaveCmd) (
 
 type CommitAutosaveCmd struct {
 	TenantID, ActorUserID, DocumentID, SessionID, PendingUploadID string
-	FormDataSnapshot json.RawMessage
+	FormDataSnapshot                                              json.RawMessage
 }
 
 func (s *Service) CommitAutosave(ctx context.Context, cmd CommitAutosaveCmd) (*CommitResult, error) {

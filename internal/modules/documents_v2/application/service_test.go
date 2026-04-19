@@ -42,6 +42,10 @@ type fakeRepo struct {
 	statusStamp bool
 
 	revisionReturn *domain.Revision
+	renameErr      error
+	renameName     string
+	renameDocID    string
+	renameTenantID string
 }
 
 var _ application.Repository = (*fakeRepo)(nil)
@@ -64,6 +68,13 @@ func (f *fakeRepo) GetDocument(_ context.Context, _, _ string) (*domain.Document
 		return nil, errors.New("document not configured")
 	}
 	return f.docReturn, nil
+}
+
+func (f *fakeRepo) UpdateDocumentName(_ context.Context, tenantID, docID, name string) error {
+	f.renameTenantID = tenantID
+	f.renameDocID = docID
+	f.renameName = name
+	return f.renameErr
 }
 
 func (f *fakeRepo) ListDocuments(_ context.Context, _ string) ([]domain.Document, error) {
@@ -350,5 +361,28 @@ func TestFinalize_FromFinalized_Rejects(t *testing.T) {
 	}
 	if repo.statusCalls != 1 {
 		t.Fatalf("expected one status update call, got %d", repo.statusCalls)
+	}
+}
+
+func TestRenameDocument_OK(t *testing.T) {
+	repo := &fakeRepo{}
+	svc := application.New(repo, fakeDocgen{}, &fakePresigner{}, fakeTplReader{}, fakeFormVal{valid: true}, &noopAudit{})
+
+	err := svc.RenameDocument(context.Background(), "tenant_1", "user_1", "doc_1", "  New Name  ")
+	if err != nil {
+		t.Fatalf("RenameDocument() error = %v", err)
+	}
+	if repo.renameTenantID != "tenant_1" || repo.renameDocID != "doc_1" || repo.renameName != "New Name" {
+		t.Fatalf("unexpected rename args: tenant=%q doc=%q name=%q", repo.renameTenantID, repo.renameDocID, repo.renameName)
+	}
+}
+
+func TestRenameDocument_InvalidName(t *testing.T) {
+	repo := &fakeRepo{}
+	svc := application.New(repo, fakeDocgen{}, &fakePresigner{}, fakeTplReader{}, fakeFormVal{valid: true}, &noopAudit{})
+
+	err := svc.RenameDocument(context.Background(), "tenant_1", "user_1", "doc_1", "   ")
+	if !errors.Is(err, domain.ErrInvalidName) {
+		t.Fatalf("expected ErrInvalidName, got %v", err)
 	}
 }

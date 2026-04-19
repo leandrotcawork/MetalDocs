@@ -29,6 +29,9 @@ type fakeSvc struct {
 
 	commitResult *application.CommitResult
 	commitErr    error
+
+	renameErr  error
+	renameName string
 }
 
 var _ httphandler.Service = (*fakeSvc)(nil)
@@ -45,6 +48,11 @@ func (f *fakeSvc) CreateDocument(_ context.Context, _ application.CreateDocument
 
 func (f *fakeSvc) GetDocument(_ context.Context, _, _ string) (*domain.Document, error) {
 	return &domain.Document{ID: "doc_1", Name: "Doc"}, nil
+}
+
+func (f *fakeSvc) RenameDocument(_ context.Context, _, _, _, newName string) error {
+	f.renameName = newName
+	return f.renameErr
 }
 
 func (f *fakeSvc) ListDocuments(_ context.Context, _ string) ([]domain.Document, error) {
@@ -191,9 +199,9 @@ func TestListDocuments_Forbidden(t *testing.T) {
 }
 
 func TestAcquireSession_Happy(t *testing.T) {
-	mux := newMux(t, &fakeSvc{})
+	mux := newMux(t, &fakeSvc{acquireSession: &domain.Session{ID: "sess_1"}})
 
-	req := httptest.NewRequest(http.MethodPost, "/api/v2/documents/doc_1/sessions/acquire", bytes.NewReader([]byte(`{}`)))
+	req := httptest.NewRequest(http.MethodPost, "/api/v2/documents/doc_1/session/acquire", bytes.NewReader([]byte(`{}`)))
 	withAuthHeaders(req, "document_filler")
 	rr := httptest.NewRecorder()
 
@@ -206,7 +214,7 @@ func TestAcquireSession_Happy(t *testing.T) {
 func TestAcquireSession_Forbidden(t *testing.T) {
 	mux := newMux(t, &fakeSvc{})
 
-	req := httptest.NewRequest(http.MethodPost, "/api/v2/documents/doc_1/sessions/acquire", bytes.NewReader([]byte(`{}`)))
+	req := httptest.NewRequest(http.MethodPost, "/api/v2/documents/doc_1/session/acquire", bytes.NewReader([]byte(`{}`)))
 	withAuthHeaders(req, "template_author")
 	rr := httptest.NewRecorder()
 
@@ -242,12 +250,45 @@ func TestForceReleaseSession_RequiresAdmin(t *testing.T) {
 	mux := newMux(t, &fakeSvc{})
 
 	body := []byte(`{"session_id":"sess_1"}`)
-	req := httptest.NewRequest(http.MethodPost, "/api/v2/documents/doc_1/sessions/force-release", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/api/v2/documents/doc_1/session/force-release", bytes.NewReader(body))
 	withAuthHeaders(req, "document_filler")
 	rr := httptest.NewRecorder()
 
 	mux.ServeHTTP(rr, req)
 	if rr.Code != http.StatusForbidden {
 		t.Fatalf("expected 403, got %d", rr.Code)
+	}
+}
+
+func TestRenameDocument_Happy(t *testing.T) {
+	svc := &fakeSvc{}
+	mux := newMux(t, svc)
+
+	body := []byte(`{"name":"Updated Name"}`)
+	req := httptest.NewRequest(http.MethodPatch, "/api/v2/documents/doc_1", bytes.NewReader(body))
+	withAuthHeaders(req, "document_filler")
+	rr := httptest.NewRecorder()
+
+	mux.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rr.Code)
+	}
+	if svc.renameName != "Updated Name" {
+		t.Fatalf("expected rename name to be passed to service, got %q", svc.renameName)
+	}
+}
+
+func TestRenameDocument_EmptyName_Returns400(t *testing.T) {
+	svc := &fakeSvc{renameErr: domain.ErrInvalidName}
+	mux := newMux(t, svc)
+
+	body := []byte(`{"name":"   "}`)
+	req := httptest.NewRequest(http.MethodPatch, "/api/v2/documents/doc_1", bytes.NewReader(body))
+	withAuthHeaders(req, "document_filler")
+	rr := httptest.NewRecorder()
+
+	mux.ServeHTTP(rr, req)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", rr.Code)
 	}
 }

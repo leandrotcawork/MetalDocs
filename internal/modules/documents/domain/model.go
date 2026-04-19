@@ -24,7 +24,6 @@ const (
 	ContentSourceNative        = "native"
 	ContentSourceDocxUpload    = "docx_upload"
 	ContentSourceBrowserEditor = "browser_editor"
-	ContentSourceCK5Browser    = "ck5_browser"
 )
 
 const (
@@ -140,12 +139,6 @@ type SaveBrowserContentCommand struct {
 	DocumentID string
 	DraftToken string
 	Body       string
-	TraceID    string
-}
-
-type SaveDocumentValuesCommand struct {
-	DocumentID string
-	Values     map[string]any
 	TraceID    string
 }
 

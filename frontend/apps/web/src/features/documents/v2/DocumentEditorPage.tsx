@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MetalDocsEditor, type MetalDocsEditorRef } from '@metaldocs/editor-ui';
+import type { Comment } from '@metaldocs/editor-ui';
 import { toast } from 'sonner';
 import { useDocumentSession } from './hooks/useDocumentSession';
 import { useDocumentAutosave } from './hooks/useDocumentAutosave';
+import { useDocumentComments } from './hooks/useDocumentComments';
 import { getDocument, finalizeDocument, renameDocument, signedRevisionURL } from './api/documentsV2';
 import { CheckpointsDialog } from './CheckpointsDialog';
 import { ExportMenuButton } from './ExportMenuButton';
@@ -147,6 +149,8 @@ export function DocumentEditorPage({ documentID, onDone }: DocumentEditorPagePro
 
   const docStatus = doc?.Status ?? doc?.status ?? '';
   const userID = doc?.CreatedBy ?? doc?.created_by ?? '';
+  const authorDisplay = String(userID);
+  const commentsHook = useDocumentComments(documentID, authorDisplay);
   const canMountEditor = !!doc
     && session.state.phase !== 'idle'
     && session.state.phase !== 'acquiring'
@@ -160,6 +164,12 @@ export function DocumentEditorPage({ documentID, onDone }: DocumentEditorPagePro
           mode={session.state.phase === 'writer' ? 'document-edit' : 'readonly'}
           documentBuffer={buffer ?? undefined}
           userId={String(userID)}
+          comments={commentsHook.comments}
+          onCommentsChange={commentsHook.setComments}
+          onCommentAdd={(c: Comment) => void commentsHook.add(c)}
+          onCommentResolve={(c: Comment) => void (c.done ? commentsHook.resolve(c) : commentsHook.reopen(c))}
+          onCommentDelete={(c: Comment) => void commentsHook.remove(c)}
+          onCommentReply={(reply: Comment, parent: Comment) => void commentsHook.reply(reply, parent)}
           documentName={documentName}
           documentNameEditable={session.state.phase === 'writer'}
           onDocumentNameChange={handleRename}

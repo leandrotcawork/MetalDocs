@@ -110,3 +110,48 @@ export async function restoreCheckpoint(id: string, versionNum: number): Promise
 export function signedRevisionURL(documentID: string, revisionID: string): string {
   return `/api/v2/documents/${documentID}/revisions/${revisionID}/url`;
 }
+
+export type CommentRow = {
+  id: string;
+  library_comment_id: number;
+  parent_library_id: number | null;
+  author: string;
+  author_id: string;
+  content: unknown[];
+  done: boolean;
+  created_at: string;
+  updated_at: string;
+  resolved_at: string | null;
+};
+
+export async function listComments(documentID: string): Promise<CommentRow[]> {
+  return json(await fetch(`/api/v2/documents/${documentID}/comments`));
+}
+
+export async function createComment(
+  documentID: string,
+  body: { library_comment_id: number; parent_library_id?: number; author_display: string; content: unknown[] },
+): Promise<CommentRow> {
+  return json(await fetch(`/api/v2/documents/${documentID}/comments`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  }));
+}
+
+export async function patchComment(
+  documentID: string,
+  libraryID: number,
+  body: { content?: unknown[]; done?: boolean },
+): Promise<CommentRow> {
+  return json(await fetch(`/api/v2/documents/${documentID}/comments/${libraryID}`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  }));
+}
+
+export async function deleteComment(documentID: string, libraryID: number): Promise<void> {
+  const res = await fetch(`/api/v2/documents/${documentID}/comments/${libraryID}`, { method: 'DELETE' });
+  if (!res.ok) throw Object.assign(new Error(`http_${res.status}`), { status: res.status, body: await res.text() });
+}

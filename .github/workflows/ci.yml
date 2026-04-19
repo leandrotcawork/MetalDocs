@@ -123,7 +123,7 @@ jobs:
       - run: npm ci --include-workspace-root
       - run: npm ci
         working-directory: frontend/apps/web
-      - run: METALDOCS_DOCX_V2_ENABLED=true go run ./apps/api/cmd/metaldocs-api &
+      - run: go run ./apps/api/cmd/metaldocs-api &
         env: { PGCONN: "postgres://metaldocs:metaldocs@127.0.0.1:5432/metaldocs?sslmode=disable" }
       - run: DOCGEN_V2_SERVICE_TOKEN=test-token-0123456789 DOCGEN_V2_S3_ACCESS_KEY=minioadmin DOCGEN_V2_S3_SECRET_KEY=minioadmin npm run start --workspace @metaldocs/docgen-v2 &
       - run: npx playwright install --with-deps chromium
@@ -162,7 +162,7 @@ jobs:
       - run: npm ci --include-workspace-root
       - run: npm ci
         working-directory: frontend/apps/web
-      - run: METALDOCS_DOCX_V2_ENABLED=true go run ./apps/api/cmd/metaldocs-api &
+      - run: go run ./apps/api/cmd/metaldocs-api &
         env: { PGCONN: "postgres://metaldocs:metaldocs@127.0.0.1:5432/metaldocs?sslmode=disable" }
       - run: DOCGEN_V2_SERVICE_TOKEN=test-token-0123456789 DOCGEN_V2_S3_ACCESS_KEY=minioadmin DOCGEN_V2_S3_SECRET_KEY=minioadmin npm run start --workspace @metaldocs/docgen-v2 &
       - run: npx playwright install --with-deps chromium
@@ -204,7 +204,7 @@ jobs:
       - run: npm ci --include-workspace-root
       - run: npm ci
         working-directory: frontend/apps/web
-      - run: METALDOCS_DOCX_V2_ENABLED=true go run ./apps/api/cmd/metaldocs-api &
+      - run: go run ./apps/api/cmd/metaldocs-api &
         env:
           PGCONN: "postgres://metaldocs:metaldocs@127.0.0.1:5432/metaldocs?sslmode=disable"
           DOCGEN_V2_URL: "http://127.0.0.1:4000"

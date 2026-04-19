@@ -22,8 +22,6 @@ import (
 	auditdelivery "metaldocs/internal/modules/audit/delivery/http"
 	authapp "metaldocs/internal/modules/auth/application"
 	authdelivery "metaldocs/internal/modules/auth/delivery/http"
-	docapp "metaldocs/internal/modules/documents/application"
-	docdelivery "metaldocs/internal/modules/documents/delivery/http"
 	iamapp "metaldocs/internal/modules/iam/application"
 	iamdelivery "metaldocs/internal/modules/iam/delivery/http"
 	notificationapp "metaldocs/internal/modules/notifications/application"
@@ -79,16 +77,8 @@ func main() {
 	}
 
 	auditService := auditapp.NewService(deps.AuditReader)
-	docService := docapp.NewService(deps.DocumentsRepo, deps.Publisher, nil).
-		WithAttachmentStore(deps.AttachmentStore).
-		WithAuditWriter(deps.AuditWriter).
-		WithGotenberg(deps.GotenbergClient).
-		WithApprovalReader(docapp.NewWorkflowApprovalAdapter(deps.WorkflowApprovals))
 
 	auditHandler := auditdelivery.NewHandler(auditService)
-	docHandler := docdelivery.NewHandler(docService).
-		WithAttachmentDownloads(security.NewAttachmentSigner(attachmentsCfg.DownloadSecret), time.Duration(attachmentsCfg.DownloadTTLSeconds)*time.Second).
-		WithPDFConverter(deps.GotenbergClient)
 	searchService := searchapp.NewService(searchdocs.NewReader(deps.DocumentsRepo))
 	searchHandler := searchdelivery.NewHandler(searchService)
 	notificationService := notificationapp.NewService(deps.NotificationsRepo, deps.DocumentsRepo, nil)
@@ -128,36 +118,28 @@ func main() {
 	healthHandler.RegisterRoutes(mux)
 	featureFlagsHandler.RegisterRoutes(mux)
 	auditHandler.RegisterRoutes(mux)
-	docHandler.RegisterRoutes(mux)
 	searchHandler.RegisterRoutes(mux)
 	notificationHandler.RegisterRoutes(mux)
 	workflowHandler.RegisterRoutes(mux)
 	iamAdminHandler.RegisterRoutes(mux)
-	if featureFlagsCfg.DocxV2Enabled {
-		// TODO(Task 22): wire real presigner once APIDependencies exposes S3Client + S3Bucket.
-		// presigner := objectstore.NewTemplatePresigner(deps.S3Client, deps.S3Bucket, 15*time.Minute, 10*1024*1024)
-		tplMod := templatesmod.New(deps.SQLDB, deps.DocgenV2Client, nil)
-		tplMod.RegisterRoutes(mux)
-		log.Printf("docx-v2 templates module enabled")
 
-		// TODO(docx-v2): APIDependencies currently does not expose S3Client/S3Bucket.
-		// Pass nil placeholders until bootstrap wiring is added.
-		docMod := documents_v2.New(documents_v2.Dependencies{
-			DB:      deps.SQLDB,
-			Docgen:  nil, // TODO(docx-v2): adapt DocgenV2Client to application.DocgenRenderer
-			Presign: objectstore.NewDocumentPresigner(nil, "", 15*time.Minute, 25*1024*1024),
-			TplRead: docgenv2.NewTemplateReader(deps.SQLDB, nil, ""),
-			FormVal: formval.NewGojsonschema(),
-			Audit:   newDocumentsV2AuditAdapter(deps.AuditWriter),
-		})
-		docMod.RegisterRoutes(mux)
-		log.Printf("docx-v2 documents module enabled")
+	tplMod := templatesmod.New(deps.SQLDB, deps.DocgenV2Client, nil)
+	tplMod.RegisterRoutes(mux)
 
-		stopSessions := jobs.StartSessionSweeper(context.Background(), docMod.Repo(), 60*time.Second)
-		stopOrphans := jobs.StartOrphanPendingSweeper(context.Background(), docMod.Repo(), time.Hour)
-		defer stopSessions()
-		defer stopOrphans()
-	}
+	docMod := documents_v2.New(documents_v2.Dependencies{
+		DB:      deps.SQLDB,
+		Docgen:  nil,
+		Presign: objectstore.NewDocumentPresigner(nil, "", 15*time.Minute, 25*1024*1024),
+		TplRead: docgenv2.NewTemplateReader(deps.SQLDB, nil, ""),
+		FormVal: formval.NewGojsonschema(),
+		Audit:   newDocumentsV2AuditAdapter(deps.AuditWriter),
+	})
+	docMod.RegisterRoutes(mux)
+
+	stopSessions := jobs.StartSessionSweeper(context.Background(), docMod.Repo(), 60*time.Second)
+	stopOrphans := jobs.StartOrphanPendingSweeper(context.Background(), docMod.Repo(), time.Hour)
+	defer stopSessions()
+	defer stopOrphans()
 	mux.Handle("/api/v1/metrics", httpObs.MetricsHandler())
 
 	handler := cors.Wrap(originProtection.Wrap(authMiddleware.Wrap(iamMiddleware.Wrap(httpObs.Wrap(rateLimiter.Wrap(mux))))))

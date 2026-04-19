@@ -185,11 +185,11 @@ func (r *Repository) AcquireSession(ctx context.Context, tenantID, docID, userID
 	}
 	defer tx.Rollback()
 
-	var existingID, existingUser, existingStatus string
+	var existingID, existingUser, existingStatus, existingAck string
 	err = tx.QueryRowContext(ctx,
-		`SELECT id::text, user_id::text, status FROM editor_sessions
+		`SELECT id::text, user_id::text, status, coalesce(last_acknowledged_revision_id::text,'') FROM editor_sessions
 		 WHERE document_id=$1 AND status='active' FOR UPDATE`, docID,
-	).Scan(&existingID, &existingUser, &existingStatus)
+	).Scan(&existingID, &existingUser, &existingStatus, &existingAck)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
 	}
@@ -199,7 +199,7 @@ func (r *Repository) AcquireSession(ctx context.Context, tenantID, docID, userID
 			if _, err := tx.ExecContext(ctx, `UPDATE editor_sessions SET expires_at = now() + interval '5 minutes' WHERE id=$1`, existingID); err != nil {
 				return nil, err
 			}
-			s := &domain.Session{ID: existingID, DocumentID: docID, UserID: userID, Status: domain.SessionActive}
+			s := &domain.Session{ID: existingID, DocumentID: docID, UserID: userID, LastAcknowledgedRevisionID: existingAck, Status: domain.SessionActive}
 			return s, tx.Commit()
 		}
 		// Someone else owns it.

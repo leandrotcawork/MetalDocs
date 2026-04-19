@@ -47,7 +47,7 @@ export function useDocumentAutosave(args: AutosaveArgs) {
         base_revision_id: baseRevisionID,
         content_hash: hash,
       });
-      await fetch(presigned.UploadURL, {
+      await fetch(presigned.upload_url, {
         method: 'PUT',
         headers: { 'content-type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' },
         body: buf,
@@ -55,7 +55,7 @@ export function useDocumentAutosave(args: AutosaveArgs) {
       // Server re-computes content_hash from S3; client does NOT send a hash.
       const commit = await commitAutosave(documentID, {
         session_id: sessionID,
-        pending_upload_id: presigned.PendingUploadID,
+        pending_upload_id: presigned.pending_upload_id,
         form_data_snapshot: formSnapshot.current,
       });
       await deletePending(documentID, hash);

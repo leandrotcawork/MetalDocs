@@ -15,7 +15,7 @@ export type CreateDocumentResult = { DocumentID: string; InitialRevisionID: stri
 export type AcquireWriter = { mode: 'writer'; session_id: string; expires_at: string; last_ack_revision_id: string };
 export type AcquireReadonly = { mode: 'readonly'; held_by: string; held_until: string };
 export type AcquireResult = AcquireWriter | AcquireReadonly;
-export type PresignResult = { UploadURL: string; PendingUploadID: string; ExpiresAt: string };
+export type PresignResult = { upload_url: string; pending_upload_id: string; expires_at: string };
 export type CommitResult = { revision_id: string; revision_num: number; idempotent_replay?: boolean };
 export type Checkpoint = { ID: string; DocumentID: string; RevisionID: string; VersionNum: number; Label: string; CreatedAt: string; CreatedBy: string };
 

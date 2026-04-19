@@ -1,11 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
-import { MetalDocsEditor, computeSidebarModel, type MetalDocsEditorRef } from '@metaldocs/editor-ui';
-import { SchemaEditor, FormRenderer, validateJsonSchema } from '@metaldocs/form-ui';
-import { parseDocxTokens } from '@metaldocs/shared-tokens';
+import { useEffect, useState } from 'react';
 import { useTemplateDraft } from './hooks/useTemplateDraft';
 import { useTemplateAutosave } from './hooks/useTemplateAutosave';
 import { publishVersion, type PublishError, type PublishSuccess } from './api/templatesV2';
-import styles from './TemplateAuthorPage.module.css';
 
 export type TemplateAuthorPageProps = {
   templateId: string;
@@ -15,11 +11,7 @@ export type TemplateAuthorPageProps = {
 
 export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion }: TemplateAuthorPageProps) {
   const draft = useTemplateDraft(templateId, versionNum);
-  const editorRef = useRef<MetalDocsEditorRef>(null);
-  const [tab, setTab] = useState<'schema' | 'preview'>('schema');
   const [schemaText, setSchemaText] = useState(draft.schemaText);
-  const [tokens, setTokens] = useState<any[]>([]);
-  const [parseErrors, setParseErrors] = useState<any[]>([]);
   const [publishErr, setPublishErr] = useState<PublishError | null>(null);
 
   useEffect(() => { setSchemaText(draft.schemaText); }, [draft.schemaText]);
@@ -31,22 +23,15 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
     schemaStorageKey: draft.schemaKey,
   });
 
-  async function handleDocxChange(buf: ArrayBuffer) {
-    const r = await parseDocxTokens(buf);
-    setTokens(r.tokens);
-    setParseErrors(r.errors);
-    autosave.queueDocx(buf);
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    file.arrayBuffer().then((buf) => autosave.queueDocx(buf));
   }
-
-  const schemaValidation = validateJsonSchema(schemaText);
-  const schemaObj = schemaValidation.valid ? JSON.parse(schemaText) : {};
-  const sidebar = computeSidebarModel(tokens, parseErrors, schemaObj);
 
   async function handlePublish() {
     setPublishErr(null);
-    if (autosave.hasPending()) {
-      await autosave.flush();
-    }
+    if (autosave.hasPending()) await autosave.flush();
     const persisted = autosave.getPersisted();
     const result = await publishVersion(templateId, versionNum, persisted.docxStorageKey, persisted.schemaStorageKey);
     if ('parse_errors' in result) { setPublishErr(result as PublishError); return; }
@@ -57,48 +42,45 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
   if (draft.loading) return <div>Loading…</div>;
   if (draft.error) return <div role="alert">{draft.error}</div>;
 
+  const schemaValid = (() => { try { JSON.parse(schemaText); return true; } catch { return false; } })();
+
   return (
-    <div className={styles.page}>
-      <header className={styles.header}>
-        <h1>{draft.name}</h1>
-        <button onClick={handlePublish} disabled={sidebar.bannerError || sidebar.missing.length > 0 || !schemaValidation.valid}>
-          Publish
-        </button>
-      </header>
-      {sidebar.bannerError && (
-        <div role="alert" className={styles.banner}>
-          Template contains unsupported OOXML: {sidebar.errorCategories.join(', ')}
-        </div>
-      )}
+    <div style={{ padding: '1.5rem', maxWidth: 800 }}>
+      <h1 style={{ marginBottom: '1rem' }}>{draft.name} <small style={{ fontWeight: 400, fontSize: '0.75em', opacity: 0.6 }}>v{versionNum}</small></h1>
+
+      <section style={{ marginBottom: '1.5rem' }}>
+        <h2 style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>DOCX template</h2>
+        <p style={{ opacity: 0.6, fontSize: '0.85rem', marginBottom: '0.5rem' }}>
+          {draft.docxKey ? `Saved: ${draft.docxKey}` : 'No file uploaded yet.'}
+        </p>
+        <input type="file" accept=".docx" onChange={handleFileChange} />
+        <span style={{ marginLeft: '1rem', opacity: 0.6, fontSize: '0.85rem' }}>
+          Autosave: {autosave.status}
+        </span>
+      </section>
+
+      <section style={{ marginBottom: '1.5rem' }}>
+        <h2 style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>Schema JSON</h2>
+        <textarea
+          value={schemaText}
+          onChange={(e) => { setSchemaText(e.target.value); autosave.queueSchema(e.target.value); }}
+          rows={10}
+          style={{ width: '100%', fontFamily: 'monospace', fontSize: '0.85rem' }}
+        />
+        {!schemaValid && <p style={{ color: 'red', fontSize: '0.8rem' }}>Invalid JSON</p>}
+      </section>
+
       {publishErr && (
-        <div role="alert" className={styles.banner}>
-          Publish rejected. Parse errors: {publishErr.parse_errors.length}, missing: {publishErr.missing_tokens.join(', ')}, orphans: {publishErr.orphan_tokens.join(', ')}
+        <div role="alert" style={{ color: 'red', marginBottom: '1rem' }}>
+          Publish rejected. Parse errors: {publishErr.parse_errors.length},
+          missing: {publishErr.missing_tokens.join(', ')},
+          orphans: {publishErr.orphan_tokens.join(', ')}
         </div>
       )}
-      <div className={styles.split}>
-        <div className={styles.editor}>
-          <MetalDocsEditor ref={editorRef} mode="template-draft" documentBuffer={draft.docxBuffer} userId={draft.userId} onAutoSave={handleDocxChange} />
-        </div>
-        <aside className={styles.sidebar}>
-          <div className={styles.tabs}>
-            <button data-active={tab==='schema'} onClick={() => setTab('schema')}>Schema</button>
-            <button data-active={tab==='preview'} onClick={() => setTab('preview')}>Preview</button>
-          </div>
-          {tab === 'schema' ? (
-            <SchemaEditor value={schemaText} onChange={(v) => { setSchemaText(v); autosave.queueSchema(v); }} height={500} />
-          ) : (
-            <FormRenderer schema={schemaObj} formData={{}} onChange={() => {}} />
-          )}
-          <section className={styles.fieldsSidebar}>
-            <h3>Fields</h3>
-            <ul>
-              {sidebar.used.map((i) => <li key={i} data-state="used">{i}</li>)}
-              {sidebar.missing.map((i) => <li key={i} data-state="missing">missing: {i}</li>)}
-              {sidebar.orphans.map((i) => <li key={i} data-state="orphan">orphan: {i}</li>)}
-            </ul>
-          </section>
-        </aside>
-      </div>
+
+      <button onClick={handlePublish} disabled={!schemaValid}>
+        Publish version {versionNum}
+      </button>
     </div>
   );
 }

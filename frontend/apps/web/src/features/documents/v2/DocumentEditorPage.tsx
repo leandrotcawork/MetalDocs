@@ -163,7 +163,7 @@ export function DocumentEditorPage({ documentID, onDone }: DocumentEditorPagePro
           ref={editorRef}
           mode={session.state.phase === 'writer' ? 'document-edit' : 'readonly'}
           documentBuffer={buffer ?? undefined}
-          userId={String(userID)}
+          author={authorDisplay}
           comments={commentsHook.comments}
           onCommentsChange={commentsHook.setComments}
           onCommentAdd={(c: Comment) => void commentsHook.add(c)}

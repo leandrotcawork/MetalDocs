@@ -27,7 +27,7 @@ vi.mock('@eigenpal/docx-js-editor', () => ({
 
 describe('template plugin wiring', () => {
   it('includes template plugin when no sidebar model is provided', () => {
-    render(<MetalDocsEditor mode="document-edit" userId="u1" />);
+    render(<MetalDocsEditor mode="document-edit" author="u1" />);
     const host = screen.getByTestId('plugin-host');
     expect(host.getAttribute('data-plugins')).toBe('1');
     expect(host.getAttribute('data-plugin-names')).toContain('template');
@@ -37,7 +37,7 @@ describe('template plugin wiring', () => {
     render(
       <MetalDocsEditor
         mode="document-edit"
-        userId="u1"
+        author="u1"
         sidebarModel={{
           used: ['a'],
           missing: [],
@@ -58,7 +58,7 @@ describe('template plugin wiring', () => {
     render(
       <MetalDocsEditor
         mode="document-edit"
-        userId="u1"
+        author="u1"
         externalPlugins={[{ id: 'custom', name: 'custom' }]}
       />
     );

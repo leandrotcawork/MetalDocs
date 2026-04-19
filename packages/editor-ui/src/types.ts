@@ -8,8 +8,7 @@ export interface MetalDocsEditorProps {
   documentId?: string;
   documentBuffer?: ArrayBuffer;
   mode: EditorMode;
-  userId: string;
-  author?: string;
+  author: string;
   documentName?: string;
   documentNameEditable?: boolean;
   onDocumentNameChange?: (name: string) => void;

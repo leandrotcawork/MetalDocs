@@ -59,7 +59,7 @@ export const MetalDocsEditor = forwardRef<MetalDocsEditorRef, MetalDocsEditorPro
           ref={inner}
           documentBuffer={props.documentBuffer}
           mode={libMode}
-          author={props.author ?? props.userId}
+          author={props.author}
           documentName={props.documentName}
           documentNameEditable={props.documentNameEditable ?? (libMode === 'editing')}
           onDocumentNameChange={props.onDocumentNameChange}

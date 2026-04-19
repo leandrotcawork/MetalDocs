@@ -27,14 +27,14 @@ vi.mock('@eigenpal/docx-js-editor', () => ({
 describe('MetalDocsEditor', () => {
   it('shows toolbar in document-edit mode', () => {
     const buf = new ArrayBuffer(8);
-    render(<MetalDocsEditor mode="document-edit" documentBuffer={buf} userId="u1" />);
+    render(<MetalDocsEditor mode="document-edit" documentBuffer={buf} author="u1" />);
     const el = screen.getByTestId('docx-editor-mock');
     expect(el.getAttribute('data-has-buffer')).toBe('yes');
     expect(screen.getByRole('toolbar')).toBeInTheDocument();
   });
 
   it('hides toolbar in readonly mode', () => {
-    render(<MetalDocsEditor mode="readonly" userId="u1" />);
+    render(<MetalDocsEditor mode="readonly" author="u1" />);
     const el = screen.getByTestId('docx-editor-mock');
     expect(el.getAttribute('data-has-buffer')).toBe('no');
     expect(screen.queryByRole('toolbar')).toBeNull();
@@ -44,7 +44,7 @@ describe('MetalDocsEditor', () => {
     render(
       <MetalDocsEditor
         mode="document-edit"
-        userId="u1"
+        author="u1"
         renderTitleBarRight={() => <span data-testid="sentinel" />}
       />
     );

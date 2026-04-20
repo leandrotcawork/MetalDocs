@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	_ "metaldocs/internal/modules/document_revisions"
 	_ "metaldocs/internal/modules/editor_sessions"
 
@@ -199,11 +201,16 @@ func (a *documentsV2AuditAdapter) Write(ctx context.Context, tenantID, actorID, 
 		raw = []byte("{}")
 	}
 
-	_ = a.writer.Record(ctx, auditdomain.Event{
+	if err := a.writer.Record(ctx, auditdomain.Event{
+		ID:           uuid.NewString(),
+		OccurredAt:   time.Now().UTC(),
 		ActorID:      actorID,
 		Action:       action,
 		ResourceType: "document",
 		ResourceID:   docID,
 		PayloadJSON:  string(raw),
-	})
+		TraceID:      "trace-local",
+	}); err != nil {
+		log.Printf("documents_v2 audit write failed: %v", err)
+	}
 }

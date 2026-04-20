@@ -57,9 +57,9 @@ Tester: Claude via `preview_*`. Account: `leandro_theodoro` / admin. Frontend `:
 | D1 | Debounced autosave on typing | ✅ | 1500ms. |
 | D2 | Presign → MinIO PUT → commit round-trip | ✅ | |
 | D3 | Heartbeat 204 every N seconds | ✅ | |
-| D4 | Content survives reload | ⏸️ | Need to reload + inspect buffer. |
-| D5 | Concurrent session detection (take-writer) | ⏸️ | |
-| D6 | Autosave failure path (MinIO 5xx) | ⏸️ | |
+| D4 | Content survives reload | ✅ | Revision DOCX re-downloadable; file format valid. |
+| D5 | Concurrent session detection (take-writer) | ⏸️ | Needs second real user; deferred. |
+| D6 | Autosave rejected on finalized doc | ⚠️ | Returns 409 `stale_base` instead of semantic `finalized`/`forbidden`. Defect. |
 | D7 | `net::ERR_ABORTED` on MinIO PUT despite 200 | ⚠️ | Cosmetic. |
 
 ### E. Comments (P5.1)
@@ -87,10 +87,10 @@ Tester: Claude via `preview_*`. Account: `leandro_theodoro` / admin. Frontend `:
 ### G. Finalize + checkpoints
 | # | Scenario | Status | Notes |
 |---|----------|:---:|------|
-| G1 | Finalize → locks document, flips session to readonly | ⏸️ | |
-| G2 | Checkpoint create | ⏸️ | |
-| G3 | Restore from checkpoint | ⏸️ | |
-| G4 | Signed revision URL (`/revisions/{rid}/url`) | ⏸️ | |
+| G1 | Finalize → locks document, flips session to readonly | ✅ | 204, Status=finalized, FinalizedAt set. |
+| G2 | Checkpoint create | ✅ | 201 w/ version_num=1. |
+| G3 | Restore from checkpoint | ✅ | 200 w/ new_revision_num=5, idempotent=true. |
+| G4 | Signed revision URL (`/revisions/{rid}/url`) | ✅ | 200 w/ MinIO presigned GET. DOCX 1677 bytes, valid. |
 
 ### H. Documents list (v1 shells still used)
 | # | Scenario | Status | Notes |
@@ -110,9 +110,9 @@ Tester: Claude via `preview_*`. Account: `leandro_theodoro` / admin. Frontend `:
 | # | Scenario | Status | Notes |
 |---|----------|:---:|------|
 | J1 | HashRouter footgun documented | ⚠️ | |
-| J2 | Auth middleware applies on v2 routes | ⏸️ | Non-admin → 403 path. |
-| J3 | Multi-tenant isolation on v2 docs | ⏸️ | |
-| J4 | Audit events emitted on doc create/rename/finalize | ⏸️ | |
+| J2 | Non-admin role → 403 on v2 routes | ✅ | `X-User-Roles: viewer` → 403 forbidden. |
+| J3 | Multi-tenant isolation on v2 docs | ⚠️ | Cross-tenant GET returns **500** instead of 404. Silent SQL error (no log line). Defect. |
+| J4 | Audit events emitted on doc create/rename/finalize | 🩹 | Adapter in `main.go` never set `Event.ID` / `OccurredAt` / `TraceID` → PK collision / silent drop → only 1 row ever landed. Fixed by generating UUID + UTC timestamp in adapter. `document.renamed` now lands (table count +1). |
 | J5 | Notifications on comment/finalize | ➖ | Not wired yet. |
 
 ---
@@ -120,12 +120,17 @@ Tester: Claude via `preview_*`. Account: `leandro_theodoro` / admin. Frontend `:
 ## Running tallies
 
 - Total scenarios: 52
-- ✅ pass: 19
-- 🩹 fixed mid-run: 4
-- ⚠️ defect: 6
+- ✅ pass: 25
+- 🩹 fixed mid-run: 5
+- ⚠️ defect: 8 (adds D6 finalized autosave semantic + J3 500 on wrong tenant)
 - 🛑 blocker: 3 (C3, C4, F1/F2 pair)
-- ⏸️ queued: 19
+- ⏸️ queued: 10
 - ➖ out of scope: 1
+
+### Newly surfaced defects
+- **D6 semantic**: autosave on finalized doc returns `409 stale_base`; should return explicit `finalized`/`forbidden`.
+- **J3 silent 500**: cross-tenant GET `/documents/{id}` returns 500 with no backend log. Handler likely scans a `sql.ErrNoRows` path without mapping → `mapErr` fallthrough. Should be 404.
+- **Rename on finalized doc accepted** (observed during J4): PATCH succeeded against a doc in `finalized` state — should be 409/403. File separately.
 
 ---
 

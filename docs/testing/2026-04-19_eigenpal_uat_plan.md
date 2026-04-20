@@ -46,8 +46,8 @@ Tester: Claude via `preview_*`. Account: `leandro_theodoro` / admin. Frontend `:
 |---|----------|:---:|------|
 | C1 | `POST /api/v2/documents` → 201 | ✅ | |
 | C2 | Initial revision + session returned | ✅ | |
-| C3 | Sidebar "Novo documento" routes to v2 | 🛑 | Routes to legacy `/create`. |
-| C4 | `DocumentCreatePage` reachable from UI | 🛑 | No entry point. |
+| C3 | Sidebar "Novo documento" routes to v2 | 🩹 | `pathFromView("create")` now returns `/documents-v2/new`. Verified click lands on v2 create view. |
+| C4 | `DocumentCreatePage` reachable from UI | 🩹 | Same fix as C3 — sidebar item + top-bar primary button both route to v2. |
 | C5 | Editor mounts at `#/documents-v2/{id}` | ✅ | |
 | C6 | Merge-field sidebar populated | ✅ | |
 
@@ -121,9 +121,9 @@ Tester: Claude via `preview_*`. Account: `leandro_theodoro` / admin. Frontend `:
 
 - Total scenarios: 52
 - ✅ pass: 25
-- 🩹 fixed mid-run: 9 (+ J3 full mapping including 22P02)
+- 🩹 fixed mid-run: 11 (+ C3, C4 sidebar routing)
 - ⚠️ defect: 4 (cosmetic/pre-existing only)
-- 🛑 blocker: 3 (C3, C4, F1/F2 pair)
+- 🛑 blocker: 1 (F1/F2 exports pair, ops-gated)
 - ⏸️ queued: 10
 - ➖ out of scope: 1
 

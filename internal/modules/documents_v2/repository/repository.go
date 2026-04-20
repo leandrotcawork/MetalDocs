@@ -756,18 +756,18 @@ func (r *Repository) UpdateComment(ctx context.Context, tenantID, documentID str
 	now := time.Now().UTC()
 	q := `
 		UPDATE document_comments
-		SET content_json = COALESCE($5, content_json),
+		SET content_json = COALESCE($4::jsonb, content_json),
 		    resolved_at = CASE
-		      WHEN $6 IS NULL THEN resolved_at
-		      WHEN $6 THEN $7
+		      WHEN $5::bool IS NULL THEN resolved_at
+		      WHEN $5::bool THEN $6
 		      ELSE NULL
 		    END,
 		    resolved_by = CASE
-		      WHEN $6 IS NULL THEN resolved_by
-		      WHEN $6 THEN $8
+		      WHEN $5::bool IS NULL THEN resolved_by
+		      WHEN $5::bool THEN $7
 		      ELSE NULL
 		    END,
-		    updated_at = $7
+		    updated_at = $6
 		WHERE tenant_id=$1 AND document_id=$2 AND library_comment_id=$3
 		RETURNING id::text, tenant_id::text, document_id::text, library_comment_id, parent_library_id, author_id, author_display,
 		          content_json, resolved_at, resolved_by, created_at, updated_at`
@@ -776,7 +776,7 @@ func (r *Repository) UpdateComment(ctx context.Context, tenantID, documentID str
 	if in.ContentJSON != nil {
 		content = *in.ContentJSON
 	}
-	comment, err := scanComment(r.db.QueryRowContext(ctx, q, tenantID, documentID, libraryID, userID, content, in.Done, now, userID))
+	comment, err := scanComment(r.db.QueryRowContext(ctx, q, tenantID, documentID, libraryID, content, in.Done, now, userID))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, domain.ErrCommentNotFound
 	}

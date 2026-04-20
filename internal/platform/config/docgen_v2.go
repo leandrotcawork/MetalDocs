@@ -15,9 +15,9 @@ type DocgenV2Config struct {
 }
 
 // LoadDocgenV2Config reads docgen-v2 config from environment variables.
-// The service is considered disabled when METALDOCS_DOCGEN_V2_API_URL is empty.
+// The service is considered disabled when METALDOCS_DOCGEN_V2_URL is empty.
 func LoadDocgenV2Config() DocgenV2Config {
-	apiURL := strings.TrimSpace(os.Getenv("METALDOCS_DOCGEN_V2_API_URL"))
+	apiURL := strings.TrimSpace(os.Getenv("METALDOCS_DOCGEN_V2_URL"))
 	if apiURL == "" {
 		return DocgenV2Config{}
 	}

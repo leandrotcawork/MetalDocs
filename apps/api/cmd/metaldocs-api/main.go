@@ -131,14 +131,20 @@ func main() {
 	tplMod := templatesmod.New(deps.SQLDB, tplDocgen, objectstore.NewTemplatePresigner(deps.MinioClient, deps.MinioBucket, 15*time.Minute, 25*1024*1024))
 	tplMod.RegisterRoutes(mux)
 
-	docMod := documents_v2.New(documents_v2.Dependencies{
-		DB:      deps.SQLDB,
-		Docgen:  nil,
-		Presign: objectstore.NewDocumentPresigner(deps.MinioClient, deps.MinioBucket, 15*time.Minute, 25*1024*1024),
-		TplRead: docgenv2.NewTemplateReader(deps.SQLDB, deps.MinioClient, deps.MinioBucket),
-		FormVal: formval.NewGojsonschema(),
-		Audit:   newDocumentsV2AuditAdapter(deps.AuditWriter),
-	})
+	docPresigner := objectstore.NewDocumentPresigner(deps.MinioClient, deps.MinioBucket, 15*time.Minute, 25*1024*1024)
+	docDeps := documents_v2.Dependencies{
+		DB:            deps.SQLDB,
+		Docgen:        nil,
+		Presign:       docPresigner,
+		TplRead:       docgenv2.NewTemplateReader(deps.SQLDB, deps.MinioClient, deps.MinioBucket),
+		FormVal:       formval.NewGojsonschema(),
+		Audit:         newDocumentsV2AuditAdapter(deps.AuditWriter),
+		ExportPresign: docPresigner,
+	}
+	if deps.DocgenV2Client != nil {
+		docDeps.ExportDocgen = deps.DocgenV2Client
+	}
+	docMod := documents_v2.New(docDeps)
 	docMod.RegisterRoutes(mux)
 
 	stopSessions := jobs.StartSessionSweeper(context.Background(), docMod.Repo(), 60*time.Second)

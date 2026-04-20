@@ -18,8 +18,6 @@ import (
 	auditdomain "metaldocs/internal/modules/audit/domain"
 	documents_v2 "metaldocs/internal/modules/documents_v2"
 	"metaldocs/internal/modules/documents_v2/jobs"
-	templatesmod "metaldocs/internal/modules/templates"
-	templatesapp "metaldocs/internal/modules/templates/application"
 	tv2app "metaldocs/internal/modules/templates_v2/application"
 	tv2http "metaldocs/internal/modules/templates_v2/delivery/http"
 	tv2repo "metaldocs/internal/modules/templates_v2/repository"
@@ -129,12 +127,7 @@ func main() {
 	workflowHandler.RegisterRoutes(mux)
 	iamAdminHandler.RegisterRoutes(mux)
 
-	var tplDocgen templatesapp.DocgenValidator
-	if deps.DocgenV2Client != nil {
-		tplDocgen = deps.DocgenV2Client
-	}
-	tplMod := templatesmod.New(deps.SQLDB, tplDocgen, objectstore.NewTemplatePresigner(deps.MinioClient, deps.MinioBucket, 15*time.Minute, 25*1024*1024))
-	tplMod.RegisterRoutes(mux)
+	// Legacy templates module routes removed — templates_v2 owns /api/v2/templates/*
 
 	docPresigner := objectstore.NewDocumentPresigner(deps.MinioClient, deps.MinioBucket, 15*time.Minute, 25*1024*1024)
 	docDeps := documents_v2.Dependencies{

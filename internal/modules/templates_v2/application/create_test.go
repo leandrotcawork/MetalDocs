@@ -117,6 +117,47 @@ func TestCreateTemplate_InvalidVisibility(t *testing.T) {
 	}
 }
 
+func TestCreateTemplate_SpecificNoAreas(t *testing.T) {
+	repo := newFakeRepo()
+	svc := application.New(repo, &fakePresigner{}, fakeClock{}, &fakeUUID{})
+
+	_, err := svc.CreateTemplate(context.Background(), application.CreateTemplateCmd{
+		TenantID:      "tenant-a",
+		ActorUserID:   "user-a",
+		DocTypeCode:   "CONTRACT",
+		Key:           "contract-default",
+		Name:          "Contract Template",
+		Visibility:    domain.VisibilitySpecific,
+		SpecificAreas: nil,
+		ApproverRole:  "approver",
+	})
+	if !errors.Is(err, domain.ErrInvalidVisibility) {
+		t.Fatalf("expected ErrInvalidVisibility, got %v", err)
+	}
+}
+
+func TestCreateTemplate_NonSpecificWithAreas(t *testing.T) {
+	repo := newFakeRepo()
+	svc := application.New(repo, &fakePresigner{}, fakeClock{}, &fakeUUID{})
+
+	got, err := svc.CreateTemplate(context.Background(), application.CreateTemplateCmd{
+		TenantID:      "tenant-a",
+		ActorUserID:   "user-a",
+		DocTypeCode:   "CONTRACT",
+		Key:           "contract-default",
+		Name:          "Contract Template",
+		Visibility:    domain.VisibilityPublic,
+		SpecificAreas: []string{"restricted"},
+		ApproverRole:  "approver",
+	})
+	if err != nil {
+		t.Fatalf("CreateTemplate returned error: %v", err)
+	}
+	if len(got.Template.SpecificAreas) != 0 {
+		t.Fatalf("expected empty SpecificAreas, got %v", got.Template.SpecificAreas)
+	}
+}
+
 func TestCreateNextVersion_FromPublished(t *testing.T) {
 	repo := newFakeRepo()
 	publishedID := "v1"
@@ -237,4 +278,3 @@ func TestCreateNextVersion_Archived(t *testing.T) {
 func strPtr(v string) *string {
 	return &v
 }
-

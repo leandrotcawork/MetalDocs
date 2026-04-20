@@ -31,6 +31,12 @@ func (s *Service) CreateTemplate(ctx context.Context, cmd CreateTemplateCmd) (*C
 	if !isValidVisibility(cmd.Visibility) {
 		return nil, domain.ErrInvalidVisibility
 	}
+	if cmd.Visibility == domain.VisibilitySpecific && len(cmd.SpecificAreas) == 0 {
+		return nil, fmt.Errorf("%w: specific_visibility_requires_areas", domain.ErrInvalidVisibility)
+	}
+	if cmd.Visibility != domain.VisibilitySpecific && len(cmd.SpecificAreas) > 0 {
+		cmd.SpecificAreas = nil
+	}
 
 	if _, err := s.repo.GetTemplateByKey(ctx, cmd.TenantID, cmd.Key); !errors.Is(err, domain.ErrNotFound) {
 		return nil, domain.ErrKeyConflict

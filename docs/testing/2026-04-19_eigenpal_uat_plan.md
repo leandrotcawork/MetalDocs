@@ -37,9 +37,9 @@ Tester: Claude via `preview_*`. Account: `leandro_theodoro` / admin. Frontend `:
 |---|----------|:---:|------|
 | B1 | List page renders | ✅ | |
 | B2 | Open template → editor panel (DOCX URL + schema) | ✅ | |
-| B3 | Publish new version | ⏸️ | Not yet exercised. |
-| B4 | New template creation flow | ⏸️ | |
-| B5 | Template audit log view | ⏸️ | |
+| B3 | Publish new version | ✅ | Contrato Padrao published: `latest_version` 5 → 6 via API, button re-renders "Publish version 6". |
+| B4 | New template creation flow | ✅ | `uat-b4` template created via UI, exists in list with `latest_version: 1`. |
+| B5 | Template audit log view | ⚠️ | Table `template_audit_log` exists (mig 0108) but no Go writer in templates module — no rows ever inserted. Separate backend sprint. |
 
 ### C. Documents V2 — create + open
 | # | Scenario | Status | Notes |
@@ -120,11 +120,11 @@ Tester: Claude via `preview_*`. Account: `leandro_theodoro` / admin. Frontend `:
 ## Running tallies
 
 - Total scenarios: 52
-- ✅ pass: 25
-- 🩹 fixed mid-run: 11 (+ C3, C4 sidebar routing)
-- ⚠️ defect: 4 (cosmetic/pre-existing only)
+- ✅ pass: 27 (+B3, B4)
+- 🩹 fixed mid-run: 11
+- ⚠️ defect: 5 (+B5 no-writer — cosmetic/sprint-gated)
 - 🛑 blocker: 1 (F1/F2 exports pair, ops-gated)
-- ⏸️ queued: 10
+- ⏸️ queued: 7 (D5 multi-user, F3-F5 export UI)
 - ➖ out of scope: 1
 
 ### Newly surfaced defects

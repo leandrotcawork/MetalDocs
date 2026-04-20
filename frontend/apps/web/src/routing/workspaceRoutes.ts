@@ -42,6 +42,8 @@ export function viewFromPath(pathname: string): WorkspaceView {
   if (path.startsWith("/audit")) return "audit";
   if (path.startsWith("/operations")) return "operations";
   if (path === "/templates-v2" || path.startsWith("/templates-v2/")) return "templates-v2";
+  // Legacy /templates path redirects to templates-v2
+  if (path === "/templates" || path.startsWith("/templates/")) return "templates-v2";
 
   return "operations";
 }

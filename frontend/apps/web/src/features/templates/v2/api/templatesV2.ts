@@ -230,7 +230,7 @@ export async function getDocxURL(templateId: string, versionNum: number): Promis
   return body.data.url;
 }
 
-export async function submitForReview(templateId: string, versionNum: number): Promise<void> {
+export async function submitForReview(templateId: string, versionNum: number): Promise<VersionDTO> {
   const res = await fetch(`/api/v2/templates/${templateId}/versions/${versionNum}/submit`, {
     method: 'POST',
   });
@@ -238,6 +238,8 @@ export async function submitForReview(templateId: string, versionNum: number): P
     const body = await res.json().catch(() => ({}));
     throw new Error((body as any)?.error?.message || `HTTP ${res.status}`);
   }
+  const data = (await res.json()) as { data: { version: VersionDTO } };
+  return data.data.version;
 }
 
 export async function reviewVersion(

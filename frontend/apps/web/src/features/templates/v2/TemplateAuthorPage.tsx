@@ -30,7 +30,8 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
     setSubmitting(true);
     try {
       if (autosave.hasPending()) await autosave.flush();
-      await submitForReview(templateId, versionNum);
+      const updated = await submitForReview(templateId, versionNum);
+      setLiveVersion(updated);
       setSubmitErr('Submitted for review.');
     } catch (e) {
       setSubmitErr(e instanceof Error ? e.message : String(e));

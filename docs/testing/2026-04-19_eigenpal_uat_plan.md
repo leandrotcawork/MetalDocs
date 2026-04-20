@@ -121,16 +121,65 @@ Tester: Claude via `preview_*`. Account: `leandro_theodoro` / admin. Frontend `:
 
 - Total scenarios: 52
 - ✅ pass: 25
-- 🩹 fixed mid-run: 8 (+ J3 cross-tenant 500→404, + rename-on-finalized, + D6 autosave-on-finalized semantic)
-- ⚠️ defect: 5 (drops J3, rename-on-finalized, D6)
+- 🩹 fixed mid-run: 9 (+ J3 full mapping including 22P02)
+- ⚠️ defect: 4 (cosmetic/pre-existing only)
 - 🛑 blocker: 3 (C3, C4, F1/F2 pair)
 - ⏸️ queued: 10
 - ➖ out of scope: 1
 
 ### Newly surfaced defects
 - ~~**D6 semantic**~~ 🩹 Fixed. Autosave presign/commit now 409 `invalid_state_transition` on finalized doc.
-- **J3 silent 500**: cross-tenant GET `/documents/{id}` returns 500 with no backend log. Handler likely scans a `sql.ErrNoRows` path without mapping → `mapErr` fallthrough. Should be 404.
+- ~~**J3 silent 500**~~ 🩹 Fixed. Repo `GetDocument`/`GetRevision` map `sql.ErrNoRows` + Postgres 22P02 (invalid UUID) → `domain.ErrNotFound` → 404.
 - ~~**Rename on finalized doc accepted**~~ 🩹 Fixed. `Service.RenameDocument` now loads doc, returns `ErrInvalidStateTransition` if status ≠ draft → 409 `invalid_state_transition`. Test updated. Verified via preview.
+
+---
+
+## Wrap-up (2026-04-19)
+
+### Shipped fixes (this UAT pass)
+| Commit | Scope |
+|--------|-------|
+| `3076100` | wire minio + published_version_id + retire legacy editor shells |
+| `61d701d` | wire export deps + align docgen-v2 env var name |
+| `c160178` | UpdateComment SQL param mismatch ($4 unused → 42P18) |
+| `798d680` | audit adapter Event.ID + OccurredAt stamping |
+| *(this session)* | finalize-guards (rename + autosave) + `sql.ErrNoRows`/22P02 → NotFound |
+| *(this session)* | vite eigenpal alias array form (subpath resolution) |
+
+Plus one-shot repairs (no commits): migrations 0114-0118 applied manually, backend rebuilt.
+
+### Stakeholder summary
+- **Editor core**: DocxEditor mounts, autosave round-trip (presign → MinIO PUT → commit) works, heartbeat fires, content survives reload, DOCX re-downloadable and valid.
+- **Comments**: full CRUD working (create, reply, resolve, unresolve, delete-cascades). Frontend polling hook wired.
+- **Finalize + checkpoints**: finalize locks doc + flips session readonly, checkpoint create + restore idempotent, signed revision URL returns valid presigned GET.
+- **Hardened**: multi-tenant isolation (cross-tenant + malformed tenant → 404 instead of 500), finalize-state enforced on rename + autosave (explicit 409 instead of misleading `stale_base`), audit pipeline persists document.* events.
+- **Templates V2**: list, open, publish-new-version, create-new-template all work end-to-end.
+
+### Remaining blockers (ops / next sprint)
+| # | Scope | Owner |
+|---|-------|-------|
+| F1–F5 | Exports (DOCX + PDF) — code wired, needs `METALDOCS_DOCGEN_V2_URL` + `METALDOCS_DOCGEN_V2_SERVICE_TOKEN` pointed at running docgen-v2 | Ops |
+| C3, C4 | Sidebar "Novo documento" routes to legacy `/create` wizard; no v2 entry point | Frontend |
+| B5 | `template_audit_log` table exists but no Go writer — needs audit adapter in templates module | Backend sprint |
+| D5 | Concurrent-session detection — needs two real authenticated users to exercise | QA |
+| H4 | "Tipos de documento" panel empty — downstream of v1 profile 404s | Backend (v1 cleanup) |
+
+### Residual cosmetics
+- MinIO PUT logs `[FAILED: net::ERR_ABORTED]` alongside 200 (commit succeeds; fetch-abort race).
+- `fonts.googleapis.com/css2?family=Calibri%20Light` blocked by ORB; Carlito fallback loads.
+- `ExportMenuButton` unthemed `<details>`/`<summary>`; no PT label.
+- HashRouter footgun: `window.location.pathname` pushes are silently no-ops; must use `#/...`.
+
+### Final tally
+- Total scenarios: **52**
+- ✅ pass: **25**
+- 🩹 fixed mid-run: **9** (+22P02 mapping)
+- ⚠️ defect open: **4** (cosmetic/pre-existing)
+- 🛑 blocker: **3** (ops-gated or separate sprint)
+- ⏸️ deferred: **10** (ops or multi-user)
+- ➖ out of scope: **1**
+
+UAT status: **PASS with documented gating items**. Ship recommendation: land current main; unblock exports via ops; schedule separate sprints for template audit writer + v1 profile cleanup.
 
 ---
 

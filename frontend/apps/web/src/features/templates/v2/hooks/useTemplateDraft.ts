@@ -1,30 +1,61 @@
 import { useEffect, useState } from 'react';
+import { getVersion, getTemplate, getDocxURL, type VersionDTO, type TemplateDTO } from '../api/templatesV2';
 
-export function useTemplateDraft(templateId: string, versionNum: number) {
-  const [state, setState] = useState({
-    loading: true, error: null as string | null,
-    name: '', docxBuffer: undefined as ArrayBuffer | undefined,
-    schemaText: '{}', docxKey: '', schemaKey: '', lockVersion: 0, userId: '',
+type DraftState = {
+  loading: boolean;
+  error: string | null;
+  template: TemplateDTO | null;
+  version: VersionDTO | null;
+  docxBytes: ArrayBuffer | null;
+};
+
+export function useTemplateDraft(templateId: string, versionNum: number): DraftState {
+  const [state, setState] = useState<DraftState>({
+    loading: true,
+    error: null,
+    template: null,
+    version: null,
+    docxBytes: null,
   });
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       try {
-        const meta = await fetch(`/api/v2/templates/${templateId}/versions/${versionNum}`).then((r) => r.json());
-        const [docxRes, schemaRes] = await Promise.all([
-          meta.docx_storage_key ? fetch(`/api/v2/signed?key=${encodeURIComponent(meta.docx_storage_key)}`).then(r => r.arrayBuffer()) : Promise.resolve(undefined),
-          meta.schema_storage_key ? fetch(`/api/v2/signed?key=${encodeURIComponent(meta.schema_storage_key)}`).then(r => r.text()) : Promise.resolve('{}'),
-        ]);
-        setState({
-          loading: false, error: null, name: meta.name,
-          docxBuffer: docxRes, schemaText: schemaRes,
-          docxKey: meta.docx_storage_key, schemaKey: meta.schema_storage_key,
-          lockVersion: meta.lock_version, userId: meta.viewer_user_id,
-        });
+        const [template, version] = await Promise.all([getTemplate(templateId), getVersion(templateId, versionNum)]);
+
+        let docxBytes: ArrayBuffer | null = null;
+        if (version.docx_storage_key) {
+          const url = await getDocxURL(templateId, versionNum);
+          const res = await fetch(url);
+          if (res.ok) {
+            docxBytes = await res.arrayBuffer();
+          }
+        }
+
+        if (!cancelled) {
+          setState({
+            loading: false,
+            error: null,
+            template: template.template,
+            version,
+            docxBytes,
+          });
+        }
       } catch (e) {
-        setState((s) => ({ ...s, loading: false, error: String(e) }));
+        if (!cancelled) {
+          setState((s) => ({
+            ...s,
+            loading: false,
+            error: e instanceof Error ? e.message : String(e),
+          }));
+        }
       }
     })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [templateId, versionNum]);
 
   return state;

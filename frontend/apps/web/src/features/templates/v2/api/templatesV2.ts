@@ -219,3 +219,23 @@ export async function publishVersion(
   }
   return (await res.json()) as PublishSuccess;
 }
+
+export async function getDocxURL(templateId: string, versionNum: number): Promise<string> {
+  const res = await fetch(`/api/v2/templates/${templateId}/versions/${versionNum}/docx-url`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error((body as any)?.error?.message || `HTTP ${res.status}`);
+  }
+  const body = (await res.json()) as { data: { url: string } };
+  return body.data.url;
+}
+
+export async function submitForReview(templateId: string, versionNum: number): Promise<void> {
+  const res = await fetch(`/api/v2/templates/${templateId}/versions/${versionNum}/submit`, {
+    method: 'POST',
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error((body as any)?.error?.message || `HTTP ${res.status}`);
+  }
+}

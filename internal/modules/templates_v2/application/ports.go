@@ -29,6 +29,7 @@ type Repository interface {
 
 type Presigner interface {
 	PresignPUT(ctx context.Context, key string, expires time.Duration) (url string, err error)
+	PresignGET(ctx context.Context, key string, expires time.Duration) (url string, err error)
 	HeadContentHash(ctx context.Context, key string) (string, error)
 	Delete(ctx context.Context, key string) error
 }

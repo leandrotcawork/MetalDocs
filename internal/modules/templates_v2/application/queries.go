@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"time"
 
 	"metaldocs/internal/modules/templates_v2/domain"
 )
@@ -33,4 +34,25 @@ func (s *Service) ListAudit(ctx context.Context, tenantID, templateID string, li
 		return nil, err
 	}
 	return s.repo.ListAudit(ctx, templateID, limit, offset)
+}
+
+const docxDownloadTTL = 15 * time.Minute
+
+type GetDocxURLCmd struct {
+	TenantID, TemplateID string
+	VersionNumber        int
+}
+
+func (s *Service) GetDocxURL(ctx context.Context, cmd GetDocxURLCmd) (string, error) {
+	if _, err := s.GetTemplate(ctx, cmd.TenantID, cmd.TemplateID); err != nil {
+		return "", err
+	}
+	v, err := s.repo.GetVersion(ctx, cmd.TemplateID, cmd.VersionNumber)
+	if err != nil {
+		return "", err
+	}
+	if v.DocxStorageKey == "" {
+		return "", domain.ErrUploadMissing
+	}
+	return s.presign.PresignGET(ctx, v.DocxStorageKey, docxDownloadTTL)
 }

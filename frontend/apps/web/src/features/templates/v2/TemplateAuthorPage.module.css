@@ -1,13 +1,14 @@
-.page { display: flex; flex-direction: column; height: 100vh; }
-.header { display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; border-bottom: 1px solid #ddd; }
-.banner { background: #fee; color: #900; padding: 8px 16px; border-bottom: 1px solid #fcc; }
-.split { flex: 1; display: grid; grid-template-columns: 1fr 340px; min-height: 0; }
-.editor { overflow: auto; border-right: 1px solid #ddd; }
-.sidebar { display: flex; flex-direction: column; overflow: hidden; }
-.tabs { display: flex; border-bottom: 1px solid #ddd; }
-.tabs button { flex: 1; padding: 8px; background: transparent; border: 0; cursor: pointer; }
-.tabs button[data-active='true'] { background: #f3f3f3; font-weight: 600; }
-.fieldsSidebar { padding: 8px 16px; overflow: auto; border-top: 1px solid #eee; }
-.fieldsSidebar li[data-state='used'] { color: #060; }
-.fieldsSidebar li[data-state='missing'] { color: #900; }
-.fieldsSidebar li[data-state='orphan'] { color: #a60; }
+.page { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+.header { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; border-bottom: 1px solid #e5e7eb; flex-shrink: 0; background: #fff; }
+.title { margin: 0; font-size: 1.125rem; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.versionBadge { font-size: 0.75rem; font-weight: 400; color: #6b7280; background: #f3f4f6; padding: 2px 8px; border-radius: 12px; }
+.statusLabel { font-size: 0.75rem; color: #6b7280; margin-top: 2px; display: block; text-transform: capitalize; }
+.actions { display: flex; align-items: center; gap: 12px; }
+.autosaveStatus { font-size: 0.8125rem; color: #6b7280; min-width: 60px; text-align: right; }
+.submitBtn { padding: 8px 18px; background: #2563eb; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; }
+.submitBtn:hover:not(:disabled) { background: #1d4ed8; }
+.submitBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+.submitAlert { padding: 8px 20px; font-size: 0.875rem; border-bottom: 1px solid #e5e7eb; }
+.editorWrapper { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+.loading { padding: 32px 20px; color: #6b7280; }
+.error { padding: 16px 20px; color: #dc2626; background: #fef2f2; border: 1px solid #fca5a5; margin: 16px; border-radius: 6px; }

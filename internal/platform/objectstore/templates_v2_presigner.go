@@ -32,6 +32,14 @@ func (p *TemplatesV2Presigner) PresignPUT(ctx context.Context, key string, expir
 	return u.String(), nil
 }
 
+func (p *TemplatesV2Presigner) PresignGET(ctx context.Context, key string, expires time.Duration) (string, error) {
+	u, err := p.client.PresignedGetObject(ctx, p.bucket, key, expires, nil)
+	if err != nil {
+		return "", err
+	}
+	return u.String(), nil
+}
+
 func (p *TemplatesV2Presigner) HeadContentHash(ctx context.Context, key string) (string, error) {
 	obj, err := p.client.GetObject(ctx, p.bucket, key, minio.GetObjectOptions{})
 	if err != nil {

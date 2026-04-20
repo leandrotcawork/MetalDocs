@@ -169,7 +169,11 @@ type fakePresigner struct {
 }
 
 func (p *fakePresigner) PresignPUT(_ context.Context, key string, _ time.Duration) (string, error) {
-	return "https://presigned/" + key, nil
+	return "https://presigned/put/" + key, nil
+}
+
+func (p *fakePresigner) PresignGET(_ context.Context, key string, _ time.Duration) (string, error) {
+	return "https://presigned/get/" + key, nil
 }
 
 func (p *fakePresigner) HeadContentHash(_ context.Context, _ string) (string, error) {

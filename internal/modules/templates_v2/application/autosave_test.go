@@ -40,7 +40,7 @@ func TestPresignAutosave_Happy(t *testing.T) {
 	if got == nil {
 		t.Fatal("expected non-nil result")
 	}
-	if got.UploadURL != "https://presigned/templates/tpl-1/versions/3.docx" {
+	if got.UploadURL != "https://presigned/put/templates/tpl-1/versions/3.docx" {
 		t.Fatalf("unexpected upload url: %q", got.UploadURL)
 	}
 	if got.StorageKey != "templates/tpl-1/versions/3.docx" {

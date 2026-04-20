@@ -116,6 +116,34 @@ func (h *Handler) getVersion(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (h *Handler) getDocxURL(w http.ResponseWriter, r *http.Request) {
+	tenantID := tenantIDFromReq(r)
+	templateID := r.PathValue("id")
+	if err := h.authz(r, tenantID, "*", "template.view"); err != nil {
+		writeMappedErr(w, err)
+		return
+	}
+	versionNum, err := strconv.Atoi(r.PathValue("n"))
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid_version_number", "version must be an integer")
+		return
+	}
+
+	url, err := h.svc.GetDocxURL(r.Context(), application.GetDocxURLCmd{
+		TenantID:      tenantID,
+		TemplateID:    templateID,
+		VersionNumber: versionNum,
+	})
+	if err != nil {
+		writeMappedErr(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"data": map[string]any{"url": url},
+	})
+}
+
 func (h *Handler) listAudit(w http.ResponseWriter, r *http.Request) {
 	tenantID := tenantIDFromReq(r)
 	templateID := r.PathValue("id")

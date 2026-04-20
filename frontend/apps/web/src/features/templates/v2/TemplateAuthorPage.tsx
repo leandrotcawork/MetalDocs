@@ -1,9 +1,10 @@
 import '@eigenpal/docx-js-editor/styles.css';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DocxEditor, type DocxEditorRef } from '@eigenpal/docx-js-editor/react';
-import { submitForReview } from './api/templatesV2';
+import { type VersionDTO, submitForReview } from './api/templatesV2';
 import { useTemplateDraft } from './hooks/useTemplateDraft';
 import { useTemplateAutosave } from './hooks/useTemplateAutosave';
+import { VersionActionPanel } from './VersionActionPanel';
 import styles from './TemplateAuthorPage.module.css';
 
 export type TemplateAuthorPageProps = {
@@ -18,6 +19,11 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
   const editorRef = useRef<DocxEditorRef>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitErr, setSubmitErr] = useState<string | null>(null);
+  const [liveVersion, setLiveVersion] = useState<VersionDTO | null>(null);
+
+  useEffect(() => {
+    setLiveVersion(draft.version ?? null);
+  }, [draft.version]);
 
   async function handleSubmitForReview() {
     setSubmitErr(null);
@@ -36,7 +42,8 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
   if (draft.loading) return <div className={styles.loading}>Loading template...</div>;
   if (draft.error) return <div role="alert" className={styles.error}>{draft.error}</div>;
 
-  const isDraft = draft.version?.status === 'draft';
+  const currentVersion = liveVersion ?? draft.version ?? null;
+  const isDraft = currentVersion?.status === 'draft';
 
   return (
     <div className={styles.page}>
@@ -46,7 +53,7 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
             {draft.template?.name}
             <span className={styles.versionBadge}>v{versionNum}</span>
           </h2>
-          <span className={styles.statusLabel}>{draft.version?.status}</span>
+          <span className={styles.statusLabel}>{currentVersion?.status}</span>
         </div>
         <div className={styles.actions}>
           <span className={styles.autosaveStatus}>{autosave.status === 'saving' ? 'Saving...' : autosave.status === 'saved' ? 'Saved' : autosave.status === 'error' ? 'Save failed' : ''}</span>
@@ -84,6 +91,12 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
           }}
         />
       </div>
+      {currentVersion && ['in_review', 'approved', 'published'].includes(currentVersion.status) && (
+        <VersionActionPanel
+          version={currentVersion}
+          onVersionUpdate={(v) => setLiveVersion(v)}
+        />
+      )}
     </div>
   );
 }

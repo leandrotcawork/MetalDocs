@@ -239,3 +239,41 @@ export async function submitForReview(templateId: string, versionNum: number): P
     throw new Error((body as any)?.error?.message || `HTTP ${res.status}`);
   }
 }
+
+export async function reviewVersion(
+  templateId: string,
+  versionNum: number,
+  accept: boolean,
+  reason?: string,
+): Promise<VersionDTO> {
+  const res = await fetch(`/api/v2/templates/${templateId}/versions/${versionNum}/review`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ accept, reason: reason || '' }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error((body as any)?.error?.message || `HTTP ${res.status}`);
+  }
+  const data = (await res.json()) as { data: { version: VersionDTO } };
+  return data.data.version;
+}
+
+export async function approveVersion(
+  templateId: string,
+  versionNum: number,
+  accept: boolean,
+  reason?: string,
+): Promise<VersionDTO> {
+  const res = await fetch(`/api/v2/templates/${templateId}/versions/${versionNum}/approve`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ accept, reason: reason || '' }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error((body as any)?.error?.message || `HTTP ${res.status}`);
+  }
+  const data = (await res.json()) as { data: { version: VersionDTO } };
+  return data.data.version;
+}

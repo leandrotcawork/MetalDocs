@@ -38,6 +38,7 @@ This spec defines a new `templates_v2` module that builds WYSIWYG template autho
 - Conditional placeholder visibility (show field X if field Y equals Z).
 - Digital signatures on approval (can be added later).
 - Auto-porting of legacy `modules/templates` templates into `templates_v2` (operators manually re-author the ones they want).
+- Automated retention enforcement. v1 persists `metadata_schema.retention_days` but does NOT schedule/execute deletion when versions obsolete. Retention job ships in a later sprint.
 
 ## Vision decisions (locked via brainstorming 2026-04-20)
 
@@ -148,9 +149,11 @@ CREATE TABLE templates_v2_template_version (
   metadata_schema     jsonb NOT NULL,        -- { doc_code_pattern, retention_days, distribution_default, required_metadata[] }
   placeholder_schema  jsonb NOT NULL,        -- [{ id, label, type, required, default }]
   editable_zones      jsonb NOT NULL,        -- [{ id, label, required }]
-  author_id           text NOT NULL,
-  reviewer_id         text NULL,
-  approver_id         text NULL,
+  author_id               text NOT NULL,
+  pending_reviewer_role   text NULL,   -- snapshot of approval_config at submit
+  pending_approver_role   text NOT NULL DEFAULT '',
+  reviewer_id             text NULL,
+  approver_id             text NULL,
   submitted_at        timestamptz NULL,
   reviewed_at         timestamptz NULL,
   approved_at         timestamptz NULL,
@@ -237,12 +240,12 @@ Identical shape. Publishing a new document version auto-obsoletes the prior publ
 ## Approval flow details
 
 - `approval_config` is created with the template and editable by admins or the template's author (before first publish). Once a template version has published, changing `approver_role` requires admin.
-- Reviewer / approver are **resolved at submit time** — the system records the specific `reviewer_id` / `approver_id` of the user who acted, not the role.
+- At submit time, the system **snapshots** the active `approval_config` onto the version (persisted as `pending_reviewer_role`, `pending_approver_role`). Later edits to `approval_config` do not retroactively affect pending versions. Actors attempting review/approve must possess the snapshotted role. The `reviewer_id` and `approver_id` columns capture who actually acted.
 - ISO segregation-of-duties checks:
   - At submit: `author_id != reviewer_id` when reviewer is chosen.
   - At approve: `approver_id != author_id` AND `approver_id != reviewer_id` (if a reviewer acted).
   - Violations return `403` with error code `iso_segregation_violation`.
-- Document approval uses the same `approval_config` as its source template version (can be overridden per document later; out of scope v1).
+- Document approval snapshots the template version's `approval_config` at document creation time, persisted on the document (overridable per document is out of scope v1). Document review/approve enforces the snapshotted roles + segregation rules, independent of later template config edits.
 
 ## RBAC
 

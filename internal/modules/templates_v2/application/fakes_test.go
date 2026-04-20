@@ -156,21 +156,24 @@ func (r *fakeRepo) ListAudit(_ context.Context, templateID string, limit, offset
 }
 
 type fakePresigner struct {
-	hashByKey map[string]string
+	HeadResult   string
+	HeadErr      error
+	DeleteCalled int
 }
 
 func (p *fakePresigner) PresignPUT(_ context.Context, key string, _ time.Duration) (string, error) {
 	return "https://presigned/" + key, nil
 }
 
-func (p *fakePresigner) HeadContentHash(_ context.Context, key string) (string, error) {
-	if p.hashByKey == nil {
-		return "", nil
+func (p *fakePresigner) HeadContentHash(_ context.Context, _ string) (string, error) {
+	if p.HeadResult == "" {
+		return "hash_abc", p.HeadErr
 	}
-	return p.hashByKey[key], nil
+	return p.HeadResult, p.HeadErr
 }
 
 func (p *fakePresigner) Delete(_ context.Context, _ string) error {
+	p.DeleteCalled++
 	return nil
 }
 
@@ -188,4 +191,3 @@ func (u *fakeUUID) New() string {
 	u.counter++
 	return fmt.Sprintf("id_%d", u.counter)
 }
-

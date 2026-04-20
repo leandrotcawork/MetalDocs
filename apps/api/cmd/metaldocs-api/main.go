@@ -20,6 +20,9 @@ import (
 	"metaldocs/internal/modules/documents_v2/jobs"
 	templatesmod "metaldocs/internal/modules/templates"
 	templatesapp "metaldocs/internal/modules/templates/application"
+	tv2app "metaldocs/internal/modules/templates_v2/application"
+	tv2http "metaldocs/internal/modules/templates_v2/delivery/http"
+	tv2repo "metaldocs/internal/modules/templates_v2/repository"
 
 	auditapp "metaldocs/internal/modules/audit/application"
 	auditdelivery "metaldocs/internal/modules/audit/delivery/http"
@@ -149,6 +152,10 @@ func main() {
 	docMod := documents_v2.New(docDeps)
 	docMod.RegisterRoutes(mux)
 
+	tv2Presigner := objectstore.NewTemplatesV2Presigner(deps.MinioClient, deps.MinioBucket, 25*1024*1024)
+	tv2Svc := tv2app.New(tv2repo.New(deps.SQLDB), tv2Presigner, realClock{}, realUUIDGen{})
+	tv2http.New(tv2Svc, nil).Register(mux)
+
 	stopSessions := jobs.StartSessionSweeper(context.Background(), docMod.Repo(), 60*time.Second)
 	stopOrphans := jobs.StartOrphanPendingSweeper(context.Background(), docMod.Repo(), time.Hour)
 	defer stopSessions()
@@ -178,6 +185,14 @@ func main() {
 		log.Fatalf("server failed: %v", err)
 	}
 }
+
+type realClock struct{}
+
+func (realClock) Now() time.Time { return time.Now().UTC() }
+
+type realUUIDGen struct{}
+
+func (realUUIDGen) New() string { return uuid.NewString() }
 
 type documentsV2AuditAdapter struct {
 	writer auditdomain.Writer

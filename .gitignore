@@ -16,6 +16,7 @@ frontend/apps/web/vite.config.js
 frontend/apps/web/vite.config.d.ts
 carbone/renders/
 .tmp/
+.superpowers/
 frontend/apps/web/test-results/
 frontend/apps/web/playwright-report/
 frontend/apps/web/.cache/

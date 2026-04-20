@@ -141,7 +141,10 @@ func main() {
 		DB:            deps.SQLDB,
 		Docgen:        nil,
 		Presign:       docPresigner,
-		TplRead:       docgenv2.NewTemplateReader(deps.SQLDB, deps.MinioClient, deps.MinioBucket),
+		TplRead: docgenv2.NewFanoutTemplateReader(
+			docgenv2.NewTemplateReader(deps.SQLDB, deps.MinioClient, deps.MinioBucket),
+			docgenv2.NewTemplatesV2TemplateReader(deps.SQLDB),
+		),
 		FormVal:       formval.NewGojsonschema(),
 		Audit:         newDocumentsV2AuditAdapter(deps.AuditWriter),
 		ExportPresign: docPresigner,

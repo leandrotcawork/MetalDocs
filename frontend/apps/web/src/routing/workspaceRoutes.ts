@@ -55,7 +55,10 @@ export function pathFromView(view: WorkspaceView): string {
     case "recent":
       return documentsBaseByView["recent"];
     case "create":
-      return "/create";
+      // Legacy wizard `/create` depends on v1 profile/area endpoints that
+      // are not wired. Redirect sidebar + primary-button "Novo documento"
+      // clicks to the v2 create flow instead.
+      return "/documents-v2/new";
     case "content-builder":
       return "/content-builder";
     case "registry":

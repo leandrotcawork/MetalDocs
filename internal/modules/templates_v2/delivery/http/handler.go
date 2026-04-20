@@ -27,6 +27,14 @@ func New(svc *application.Service, authz AuthzFunc) *Handler {
 func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v2/templates", h.createTemplate)
 	mux.HandleFunc("POST /api/v2/templates/{id}/versions", h.createNextVersion)
+	mux.HandleFunc("PUT /api/v2/templates/{id}/versions/{n}/schema", h.updateSchemas)
+	mux.HandleFunc("POST /api/v2/templates/{id}/versions/{n}/autosave/presign", h.presignAutosave)
+	mux.HandleFunc("POST /api/v2/templates/{id}/versions/{n}/autosave/commit", h.commitAutosave)
+	mux.HandleFunc("POST /api/v2/templates/{id}/versions/{n}/submit", h.submitForReview)
+	mux.HandleFunc("POST /api/v2/templates/{id}/versions/{n}/review", h.review)
+	mux.HandleFunc("POST /api/v2/templates/{id}/versions/{n}/approve", h.approve)
+	mux.HandleFunc("POST /api/v2/templates/{id}/archive", h.archiveTemplate)
+	mux.HandleFunc("PUT /api/v2/templates/{id}/approval-config", h.upsertApprovalConfig)
 
 	mux.HandleFunc("GET /api/v2/templates", h.listTemplates)
 	mux.HandleFunc("GET /api/v2/templates/{id}", h.getTemplate)

@@ -6,3 +6,4 @@ var ErrISOSegregationViolation = errors.New("templates_v2: iso_segregation_viola
 var ErrForbidden = errors.New("templates_v2: forbidden")
 var ErrForbiddenRole = errors.New("templates_v2: forbidden_role")
 var ErrUploadMissing = errors.New("templates_v2: upload_missing")
+var ErrInvalidApprovalConfig = errors.New("templates_v2: invalid_approval_config")

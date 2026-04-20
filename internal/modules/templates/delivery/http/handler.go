@@ -117,13 +117,14 @@ func (h *Handler) listTemplates(w http.ResponseWriter, r *http.Request) {
 	out := make([]map[string]any, 0, len(tpls))
 	for _, t := range tpls {
 		out = append(out, map[string]any{
-			"id":             t.ID,
-			"key":            t.Key,
-			"name":           t.Name,
-			"description":    t.Description,
-			"latest_version": t.LatestVersion,
-			"latest_version_id": t.LatestVersionID,
-			"updated_at":     t.UpdatedAt,
+			"id":                   t.ID,
+			"key":                  t.Key,
+			"name":                 t.Name,
+			"description":          t.Description,
+			"latest_version":       t.LatestVersion,
+			"latest_version_id":    t.LatestVersionID,
+			"published_version_id": t.PublishedVersionID,
+			"updated_at":           t.UpdatedAt,
 		})
 	}
 	writeJSON(w, 200, out)

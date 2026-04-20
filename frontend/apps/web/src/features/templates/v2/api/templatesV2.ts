@@ -17,6 +17,7 @@ export type TemplateListRow = {
   description?: string;
   latest_version: number;
   latest_version_id: string;
+  published_version_id?: string;
   updated_at?: string;
 };
 

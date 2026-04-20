@@ -18,8 +18,10 @@
     "types": ["vite/client"],
     "baseUrl": ".",
     "paths": {
+      "@metaldocs/editor-ui": ["../../../packages/editor-ui/src/index.ts"],
       "@metaldocs/mddm-layout-tokens": ["../../../shared/mddm-layout-tokens/index.ts"],
-      "@metaldocs/mddm-pagination-types": ["../../../shared/mddm-pagination-types/index.ts"]
+      "@metaldocs/mddm-pagination-types": ["../../../shared/mddm-pagination-types/index.ts"],
+      "@metaldocs/shared-tokens": ["../../../packages/shared-tokens/src/index.ts"]
     }
   },
   "include": ["src"],

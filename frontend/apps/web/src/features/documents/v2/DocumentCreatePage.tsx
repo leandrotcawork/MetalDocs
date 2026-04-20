@@ -37,8 +37,9 @@ export function DocumentCreatePage({ onCreated }: DocumentCreatePageProps): Reac
     setSubmitting(true);
     setErr('');
     try {
+      const versionId = pick.published_version_id || pick.latest_version_id;
       const res = await createDocument({
-        template_version_id: pick.latest_version_id,
+        template_version_id: versionId,
         name: name.trim(),
         form_data: {},
       });

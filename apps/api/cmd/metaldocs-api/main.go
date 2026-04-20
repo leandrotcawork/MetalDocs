@@ -134,8 +134,8 @@ func main() {
 	docMod := documents_v2.New(documents_v2.Dependencies{
 		DB:      deps.SQLDB,
 		Docgen:  nil,
-		Presign: objectstore.NewDocumentPresigner(nil, "", 15*time.Minute, 25*1024*1024),
-		TplRead: docgenv2.NewTemplateReader(deps.SQLDB, nil, ""),
+		Presign: objectstore.NewDocumentPresigner(deps.MinioClient, deps.MinioBucket, 15*time.Minute, 25*1024*1024),
+		TplRead: docgenv2.NewTemplateReader(deps.SQLDB, deps.MinioClient, deps.MinioBucket),
 		FormVal: formval.NewGojsonschema(),
 		Audit:   newDocumentsV2AuditAdapter(deps.AuditWriter),
 	})

@@ -23,6 +23,7 @@ type TemplateListItem struct {
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	CreatedBy     string
-	LatestVersion int
-	LatestVersionID string
+	LatestVersion      int
+	LatestVersionID    string
+	PublishedVersionID string
 }

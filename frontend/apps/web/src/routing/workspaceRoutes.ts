@@ -28,6 +28,8 @@ type DocumentsRoute =
 export function viewFromPath(pathname: string): WorkspaceView {
   const path = normalizePath(pathname);
 
+  if (path === "/documents-v2/new" || path === "/documents-v2") return "documents-v2";
+  if (path.startsWith("/documents-v2/")) return "documents-v2";
   if (path.startsWith("/documents/mine")) return "my-docs";
   if (path.startsWith("/documents/recent")) return "recent";
   if (path.startsWith("/documents")) return "library";
@@ -40,8 +42,6 @@ export function viewFromPath(pathname: string): WorkspaceView {
   if (path.startsWith("/audit")) return "audit";
   if (path.startsWith("/operations")) return "operations";
   if (path === "/templates-v2" || path.startsWith("/templates-v2/")) return "templates-v2";
-  if (path === "/documents-v2/new" || path === "/documents-v2") return "documents-v2";
-  if (path.startsWith("/documents-v2/")) return "documents-v2";
 
   return "operations";
 }

@@ -1,11 +1,9 @@
-import { AuthorPage } from "../documents/ck5/react/AuthorPage";
-
-type TemplateEditorViewProps = {
-  profileCode: string;
-  templateKey: string;
-};
-
-export function TemplateEditorView({ profileCode, templateKey }: TemplateEditorViewProps) {
-  void profileCode;
-  return <AuthorPage tplId={templateKey} />;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function TemplateEditorView(_props: any) {
+  return (
+    <section style={{ padding: 24 }}>
+      <strong>Editor de templates legado removido.</strong>
+      <p>Use a rota /templates-v2 para editar templates.</p>
+    </section>
+  );
 }

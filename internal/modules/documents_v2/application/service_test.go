@@ -381,7 +381,7 @@ func TestFinalize_FromFinalized_Rejects(t *testing.T) {
 }
 
 func TestRenameDocument_OK(t *testing.T) {
-	repo := &fakeRepo{}
+	repo := &fakeRepo{docReturn: &domain.Document{ID: "doc_1", TenantID: "tenant_1", Status: domain.DocStatusDraft}}
 	svc := application.New(repo, fakeDocgen{}, &fakePresigner{}, fakeTplReader{}, fakeFormVal{valid: true}, &noopAudit{})
 
 	err := svc.RenameDocument(context.Background(), "tenant_1", "user_1", "doc_1", "  New Name  ")

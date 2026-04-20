@@ -44,6 +44,7 @@ func TestCommitAutosave_RejectionBranches(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			repo := &fakeRepo{
+				docReturn: &domain.Document{ID: "doc_1", TenantID: "tenant_1", Status: domain.DocStatusDraft},
 				pendingMeta: &application.PendingCommitMeta{
 					SessionID:           baseMeta.SessionID,
 					DocumentID:          baseMeta.DocumentID,

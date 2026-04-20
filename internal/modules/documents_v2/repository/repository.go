@@ -98,6 +98,9 @@ func (r *Repository) GetDocument(ctx context.Context, tenantID, id string) (*dom
 	).Scan(&d.ID, &d.TenantID, &d.TemplateVersionID, &d.Name, &d.Status, &d.FormDataJSON,
 		&d.CurrentRevisionID, &d.ActiveSessionID, &d.FinalizedAt, &d.ArchivedAt,
 		&d.CreatedAt, &d.UpdatedAt, &d.CreatedBy)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, domain.ErrNotFound
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -595,6 +598,9 @@ func (r *Repository) GetRevision(ctx context.Context, docID, revID string) (*dom
 		`SELECT id::text, document_id::text, revision_num, coalesce(parent_revision_id::text,''), session_id::text, storage_key, content_hash, form_data_snapshot, created_at
 		 FROM document_revisions WHERE id=$1 AND document_id=$2`, revID, docID,
 	).Scan(&rv.ID, &rv.DocumentID, &rv.RevisionNum, &rv.ParentRevisionID, &rv.SessionID, &rv.StorageKey, &rv.ContentHash, &rv.FormDataSnapshot, &rv.CreatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, domain.ErrNotFound
+	}
 	if err != nil {
 		return nil, err
 	}

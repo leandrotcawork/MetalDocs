@@ -199,6 +199,13 @@ func (s *Service) RenameDocument(ctx context.Context, tenantID, userID, docID, n
 	if name == "" || len(name) > 255 {
 		return domain.ErrInvalidName
 	}
+	doc, err := s.repo.GetDocument(ctx, tenantID, docID)
+	if err != nil {
+		return err
+	}
+	if doc.Status != domain.DocStatusDraft {
+		return domain.ErrInvalidStateTransition
+	}
 	if err := s.repo.UpdateDocumentName(ctx, tenantID, docID, name); err != nil {
 		return err
 	}
@@ -257,6 +264,13 @@ type PresignAutosaveResult struct {
 }
 
 func (s *Service) PresignAutosave(ctx context.Context, cmd PresignAutosaveCmd) (*PresignAutosaveResult, error) {
+	doc, err := s.repo.GetDocument(ctx, cmd.TenantID, cmd.DocumentID)
+	if err != nil {
+		return nil, err
+	}
+	if doc.Status != domain.DocStatusDraft {
+		return nil, domain.ErrInvalidStateTransition
+	}
 	url, storageKey, err := s.presigner.PresignRevisionPUT(ctx, cmd.TenantID, cmd.DocumentID, cmd.ContentHash)
 	if err != nil {
 		return nil, err
@@ -275,6 +289,13 @@ type CommitAutosaveCmd struct {
 }
 
 func (s *Service) CommitAutosave(ctx context.Context, cmd CommitAutosaveCmd) (*CommitResult, error) {
+	doc, err := s.repo.GetDocument(ctx, cmd.TenantID, cmd.DocumentID)
+	if err != nil {
+		return nil, err
+	}
+	if doc.Status != domain.DocStatusDraft {
+		return nil, domain.ErrInvalidStateTransition
+	}
 	meta, err := s.repo.GetPendingForCommit(ctx, cmd.PendingUploadID)
 	if err != nil {
 		return nil, err

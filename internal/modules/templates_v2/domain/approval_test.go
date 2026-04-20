@@ -60,6 +60,13 @@ func TestCheckSegregation(t *testing.T) {
 			actorID:  "approver-1",
 			authorID: "author-1",
 		},
+		{
+			name:     "unknown role returns ErrForbiddenRole",
+			role:     "admin",
+			actorID:  "actor-1",
+			authorID: "author-1",
+			wantErr:  domain.ErrForbiddenRole,
+		},
 	}
 
 	for _, tt := range tests {

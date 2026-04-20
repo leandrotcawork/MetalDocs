@@ -33,8 +33,8 @@ type Template struct {
 func (t *Template) IsArchived() bool { return t.ArchivedAt != nil }
 
 var (
-	ErrNotFound          = errors.New("not_found")
-	ErrKeyConflict       = errors.New("key_conflict")
-	ErrInvalidVisibility = errors.New("invalid_visibility")
-	ErrArchived          = errors.New("archived")
+	ErrNotFound          = errors.New("templates_v2: not_found")
+	ErrKeyConflict       = errors.New("templates_v2: key_conflict")
+	ErrInvalidVisibility = errors.New("templates_v2: invalid_visibility")
+	ErrArchived          = errors.New("templates_v2: archived")
 )

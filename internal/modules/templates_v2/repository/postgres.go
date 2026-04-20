@@ -94,11 +94,25 @@ FROM templates_v2_template
 WHERE tenant_id = $1
   AND ($2::text IS NULL OR doc_type_code = $2)
   AND (cardinality($3::text[]) = 0 OR areas && $3::text[])
+  AND (
+    visibility = 'public'
+    OR (visibility = 'internal' AND NOT $6::boolean)
+    OR (visibility = 'specific' AND cardinality($7::text[]) > 0 AND specific_areas && $7::text[])
+  )
 ORDER BY created_at DESC
 LIMIT $4 OFFSET $5`
 
-	// TODO(phase-3.1a): apply visibility filtering using ActorAreas and IsExternalViewer.
-	rows, err := r.db.QueryContext(ctx, q, f.TenantID, f.DocTypeCode, normalizedTextArray(f.AreaAny), f.Limit, f.Offset)
+	rows, err := r.db.QueryContext(
+		ctx,
+		q,
+		f.TenantID,
+		f.DocTypeCode,
+		normalizedTextArray(f.AreaAny),
+		f.Limit,
+		f.Offset,
+		f.IsExternalViewer,
+		normalizedTextArray(f.ActorAreas),
+	)
 	if err != nil {
 		return nil, err
 	}

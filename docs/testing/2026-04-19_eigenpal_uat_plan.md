@@ -59,7 +59,7 @@ Tester: Claude via `preview_*`. Account: `leandro_theodoro` / admin. Frontend `:
 | D3 | Heartbeat 204 every N seconds | ✅ | |
 | D4 | Content survives reload | ✅ | Revision DOCX re-downloadable; file format valid. |
 | D5 | Concurrent session detection (take-writer) | ⏸️ | Needs second real user; deferred. |
-| D6 | Autosave rejected on finalized doc | ⚠️ | Returns 409 `stale_base` instead of semantic `finalized`/`forbidden`. Defect. |
+| D6 | Autosave rejected on finalized doc | 🩹 | Now 409 `invalid_state_transition` (was `stale_base`). Guard in `Service.PresignAutosave` + `CommitAutosave` loads doc, returns `ErrInvalidStateTransition` if status ≠ draft. |
 | D7 | `net::ERR_ABORTED` on MinIO PUT despite 200 | ⚠️ | Cosmetic. |
 
 ### E. Comments (P5.1)
@@ -72,7 +72,7 @@ Tester: Claude via `preview_*`. Account: `leandro_theodoro` / admin. Frontend `:
 | E5 | Resolve toggles `resolved_at` + `resolved_by` | 🩹 | UpdateComment SQL had unused `$4` (pgx SQLSTATE 42P18). Renumbered params + removed duplicate userID arg. Now PATCH `{"done":true}` → 200 w/ `resolved_at`. |
 | E6 | Unresolve clears both | ✅ | |
 | E7 | Delete cascades replies | ✅ | |
-| E8 | `useDocumentComments` hook polls + renders | ⏸️ | UI flow deferred. |
+| E8 | `useDocumentComments` hook polls + renders | ✅ | After reload, GET `/comments` → 200 OK on session load + on polling cadence. |
 
 ### F. Exports (P4)
 | # | Scenario | Status | Notes |
@@ -111,7 +111,7 @@ Tester: Claude via `preview_*`. Account: `leandro_theodoro` / admin. Frontend `:
 |---|----------|:---:|------|
 | J1 | HashRouter footgun documented | ⚠️ | |
 | J2 | Non-admin role → 403 on v2 routes | ✅ | `X-User-Roles: viewer` → 403 forbidden. |
-| J3 | Multi-tenant isolation on v2 docs | ⚠️ | Cross-tenant GET returns **500** instead of 404. Silent SQL error (no log line). Defect. |
+| J3 | Multi-tenant isolation on v2 docs | 🩹 | Valid-UUID cross-tenant GET now **404** (was 500). Root cause: `GetDocument`/`GetRevision` returned raw `sql.ErrNoRows` → `mapErr` default → 500. Fixed by mapping to `domain.ErrNotFound` in repo. Edge: non-UUID `X-Tenant-ID` header still 500 (Postgres 22P02); separate flag. |
 | J4 | Audit events emitted on doc create/rename/finalize | 🩹 | Adapter in `main.go` never set `Event.ID` / `OccurredAt` / `TraceID` → PK collision / silent drop → only 1 row ever landed. Fixed by generating UUID + UTC timestamp in adapter. `document.renamed` now lands (table count +1). |
 | J5 | Notifications on comment/finalize | ➖ | Not wired yet. |
 
@@ -121,16 +121,16 @@ Tester: Claude via `preview_*`. Account: `leandro_theodoro` / admin. Frontend `:
 
 - Total scenarios: 52
 - ✅ pass: 25
-- 🩹 fixed mid-run: 5
-- ⚠️ defect: 8 (adds D6 finalized autosave semantic + J3 500 on wrong tenant)
+- 🩹 fixed mid-run: 8 (+ J3 cross-tenant 500→404, + rename-on-finalized, + D6 autosave-on-finalized semantic)
+- ⚠️ defect: 5 (drops J3, rename-on-finalized, D6)
 - 🛑 blocker: 3 (C3, C4, F1/F2 pair)
 - ⏸️ queued: 10
 - ➖ out of scope: 1
 
 ### Newly surfaced defects
-- **D6 semantic**: autosave on finalized doc returns `409 stale_base`; should return explicit `finalized`/`forbidden`.
+- ~~**D6 semantic**~~ 🩹 Fixed. Autosave presign/commit now 409 `invalid_state_transition` on finalized doc.
 - **J3 silent 500**: cross-tenant GET `/documents/{id}` returns 500 with no backend log. Handler likely scans a `sql.ErrNoRows` path without mapping → `mapErr` fallthrough. Should be 404.
-- **Rename on finalized doc accepted** (observed during J4): PATCH succeeded against a doc in `finalized` state — should be 409/403. File separately.
+- ~~**Rename on finalized doc accepted**~~ 🩹 Fixed. `Service.RenameDocument` now loads doc, returns `ErrInvalidStateTransition` if status ≠ draft → 409 `invalid_state_transition`. Test updated. Verified via preview.
 
 ---
 

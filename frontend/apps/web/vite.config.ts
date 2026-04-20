@@ -32,15 +32,17 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     resolve: {
-      alias: {
-        '@metaldocs/editor-ui': resolve(__dirname, '../../../packages/editor-ui/src/index.ts'),
-        '@metaldocs/mddm-layout-tokens': resolve(__dirname, '../../../shared/mddm-layout-tokens/index.ts'),
-        '@metaldocs/mddm-pagination-types': resolve(__dirname, '../../../shared/mddm-pagination-types/index.ts'),
-        '@metaldocs/shared-tokens': resolve(__dirname, '../../../packages/shared-tokens/src/index.ts'),
-        '@eigenpal/docx-js-editor': resolve(__dirname, 'node_modules/@eigenpal/docx-js-editor'),
-        'jszip': resolve(__dirname, 'node_modules/jszip'),
-        'fast-xml-parser': resolve(__dirname, 'node_modules/fast-xml-parser'),
-      },
+      alias: [
+        { find: '@metaldocs/editor-ui', replacement: resolve(__dirname, '../../../packages/editor-ui/src/index.ts') },
+        { find: '@metaldocs/mddm-layout-tokens', replacement: resolve(__dirname, '../../../shared/mddm-layout-tokens/index.ts') },
+        { find: '@metaldocs/mddm-pagination-types', replacement: resolve(__dirname, '../../../shared/mddm-pagination-types/index.ts') },
+        { find: '@metaldocs/shared-tokens', replacement: resolve(__dirname, '../../../packages/shared-tokens/src/index.ts') },
+        { find: /^@eigenpal\/docx-js-editor\/styles\.css$/, replacement: resolve(__dirname, 'node_modules/@eigenpal/docx-js-editor/dist/styles.css') },
+        { find: /^@eigenpal\/docx-js-editor$/, replacement: resolve(__dirname, 'node_modules/@eigenpal/docx-js-editor') },
+        { find: /^@eigenpal\/docx-js-editor\/(.*)$/, replacement: resolve(__dirname, 'node_modules/@eigenpal/docx-js-editor/$1') },
+        { find: 'jszip', replacement: resolve(__dirname, 'node_modules/jszip') },
+        { find: 'fast-xml-parser', replacement: resolve(__dirname, 'node_modules/fast-xml-parser') },
+      ],
     },
     server: {
       host: "0.0.0.0",

@@ -28,9 +28,17 @@ export function VersionActionPanel({ version, onVersionUpdate }: Props) {
   }
 
   if (version.status === 'in_review') {
+    const hasReviewer = version.pending_reviewer_role != null;
+    const acceptLabel = hasReviewer ? 'Approve Review' : 'Publish';
+    const acceptAction = hasReviewer
+      ? () => act(() => reviewVersion(version.template_id, version.version_number, true, reason), 'Review approved')
+      : () => act(() => approveVersion(version.template_id, version.version_number, true, reason), 'Published');
+    const rejectAction = hasReviewer
+      ? () => act(() => reviewVersion(version.template_id, version.version_number, false, reason), 'Review rejected')
+      : () => act(() => approveVersion(version.template_id, version.version_number, false, reason), 'Rejected - back to draft');
     return (
       <div style={panelStyle}>
-        <strong style={{ fontSize: '0.875rem' }}>Reviewer actions</strong>
+        <strong style={{ fontSize: '0.875rem' }}>{hasReviewer ? 'Reviewer actions' : 'Approver actions'}</strong>
         <textarea
           placeholder="Reason (optional)"
           value={reason}
@@ -43,14 +51,14 @@ export function VersionActionPanel({ version, onVersionUpdate }: Props) {
         {success && <div style={{ color: '#065f46', fontSize: '0.8125rem' }}>{success}</div>}
         <div style={{ display: 'flex', gap: 8 }}>
           <button
-            onClick={() => act(() => reviewVersion(version.template_id, version.version_number, true, reason), 'Review approved')}
+            onClick={acceptAction}
             disabled={busy}
-            style={{ ...btnStyle, background: '#16a34a', color: '#fff' }}
+            style={{ ...btnStyle, background: hasReviewer ? '#16a34a' : '#2563eb', color: '#fff' }}
           >
-            Approve Review
+            {acceptLabel}
           </button>
           <button
-            onClick={() => act(() => reviewVersion(version.template_id, version.version_number, false, reason), 'Review rejected')}
+            onClick={rejectAction}
             disabled={busy}
             style={{ ...btnStyle, background: '#fff', color: '#dc2626', border: '1px solid #dc2626' }}
           >

@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	iamdomain "metaldocs/internal/modules/iam/domain"
 	"metaldocs/internal/modules/templates_v2/application"
 )
 
@@ -202,11 +203,19 @@ func (h *Handler) upsertApprovalConfig(w http.ResponseWriter, r *http.Request) {
 }
 
 func actorRolesFromReq(r *http.Request) []string {
+	// Prefer IAM-middleware roles from context (set by iamMiddleware from DB).
+	if ctxRoles := iamdomain.RolesFromContext(r.Context()); len(ctxRoles) > 0 {
+		out := make([]string, len(ctxRoles))
+		for i, role := range ctxRoles {
+			out[i] = string(role)
+		}
+		return out
+	}
+	// Fallback: explicit header (used in tests / service-to-service calls).
 	vals := r.Header.Values("X-Actor-Roles")
 	if len(vals) == 0 {
 		return nil
 	}
-
 	roles := make([]string, 0, len(vals))
 	for _, v := range vals {
 		for _, role := range strings.Split(v, ",") {

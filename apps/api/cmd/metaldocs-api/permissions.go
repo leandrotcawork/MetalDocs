@@ -133,6 +133,14 @@ func newPermissionResolver() iamdelivery.PermissionResolver {
 				return iamdomain.PermTemplateEdit, true
 			case method == http.MethodPost && strings.HasSuffix(path, "/schema-upload-url"):
 				return iamdomain.PermTemplateEdit, true
+			case method == http.MethodPost && strings.HasSuffix(path, "/submit"):
+				return iamdomain.PermTemplateEdit, true
+			case method == http.MethodPost && strings.HasSuffix(path, "/review"):
+				return iamdomain.PermTemplatePublish, true
+			case method == http.MethodPost && strings.HasSuffix(path, "/approve"):
+				return iamdomain.PermTemplatePublish, true
+			case method == http.MethodPost && strings.HasSuffix(path, "/approval-config"):
+				return iamdomain.PermTemplateEdit, true
 			}
 		}
 		if strings.HasPrefix(path, "/api/v2/documents") {

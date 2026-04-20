@@ -52,7 +52,7 @@ INSERT INTO templates_v2_template (
 func (r *Repository) GetTemplate(ctx context.Context, tenantID, id string) (*domain.Template, error) {
 	const q = `
 SELECT
-	id::text, tenant_id, doc_type_code, key, name, description, areas, visibility, specific_areas,
+	id::text, tenant_id, doc_type_code, key, name, description, array_to_json(areas)::text, visibility, array_to_json(specific_areas)::text,
 	latest_version, published_version_id::text, created_by, created_at, archived_at
 FROM templates_v2_template
 WHERE id = $1 AND tenant_id = $2`
@@ -70,7 +70,7 @@ WHERE id = $1 AND tenant_id = $2`
 func (r *Repository) GetTemplateByKey(ctx context.Context, tenantID, key string) (*domain.Template, error) {
 	const q = `
 SELECT
-	id::text, tenant_id, doc_type_code, key, name, description, areas, visibility, specific_areas,
+	id::text, tenant_id, doc_type_code, key, name, description, array_to_json(areas)::text, visibility, array_to_json(specific_areas)::text,
 	latest_version, published_version_id::text, created_by, created_at, archived_at
 FROM templates_v2_template
 WHERE tenant_id = $1 AND key = $2`
@@ -88,7 +88,7 @@ WHERE tenant_id = $1 AND key = $2`
 func (r *Repository) ListTemplates(ctx context.Context, f application.ListFilter) ([]*domain.Template, error) {
 	const q = `
 SELECT
-	id::text, tenant_id, doc_type_code, key, name, description, areas, visibility, specific_areas,
+	id::text, tenant_id, doc_type_code, key, name, description, array_to_json(areas)::text, visibility, array_to_json(specific_areas)::text,
 	latest_version, published_version_id::text, created_by, created_at, archived_at
 FROM templates_v2_template
 WHERE tenant_id = $1

@@ -56,7 +56,7 @@ describe("eigenpal zone bookmark spike", () => {
     const paragraph3 = paragraphWithText("Paragraph 3");
 
     const documentModel = createEmptyDocument();
-    const wrappedZoneBlocks = wrapZone(zone, [paragraph2]);
+    const wrappedZoneBlocks = wrapZone(zone, [paragraph2], 1);
 
     documentModel.package.document.content = [
       paragraph1,

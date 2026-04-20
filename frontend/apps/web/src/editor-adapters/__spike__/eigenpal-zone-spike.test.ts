@@ -13,7 +13,8 @@ import {
   type Run,
 } from "@eigenpal/docx-js-editor/core";
 
-import { extractZone, wrapZone } from "../eigenpal-template-mode";
+// Stale import — extractZone/wrapZone renamed in bookmark-pair pivot. This file is kept RED for documentation only.
+import { extractZones, wrapZone } from "../eigenpal-template-mode";
 
 function paragraphWithText(text: string): Paragraph {
   return {

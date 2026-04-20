@@ -9,7 +9,6 @@ type EigenpalInlineSdtNode = Extract<EigenpalInlineRunNode, { type: "inlineSdt" 
 
 const PLACEHOLDER_TAG_PREFIX = "placeholder:";
 const ZONE_START_BOOKMARK_PREFIX = "zone-start:";
-const MAX_BOOKMARK_ID = 2147483646;
 
 export function placeholderToRun(p: PlaceholderRun): EigenpalInlineSdtNode {
   return {
@@ -63,14 +62,6 @@ export function runToPlaceholder(node: EigenpalInlineRunNode): PlaceholderRun | 
   };
 }
 
-function createZoneBookmarkId(zoneId: string): number {
-  let hash = 0;
-  for (const char of zoneId) {
-    hash = ((hash * 31) + char.charCodeAt(0)) >>> 0;
-  }
-  return (hash % MAX_BOOKMARK_ID) + 1;
-}
-
 function buildZoneStartMarkerParagraph(zoneId: string, bookmarkId: number): Paragraph {
   return {
     type: "paragraph",
@@ -114,13 +105,14 @@ function hasMatchingZoneEndMarker(paragraph: Paragraph, bookmarkId: number): boo
   return paragraph.content.some((node) => node.type === "bookmarkEnd" && node.id === bookmarkId);
 }
 
-export function wrapZone(zone: EditableZone, blocks: BlockNode[]): BlockNode[] {
+// bookmarkId must be a document-unique sequential integer supplied by the caller.
+// Do NOT compute it from zone.id — hash collisions would silently corrupt multi-zone documents.
+export function wrapZone(zone: EditableZone, blocks: BlockNode[], bookmarkId: number): BlockNode[] {
   const id = zone.id.trim();
   if (!id) {
     throw new Error("Zone id is required.");
   }
 
-  const bookmarkId = createZoneBookmarkId(id);
   return [buildZoneStartMarkerParagraph(id, bookmarkId), ...blocks, buildZoneEndMarkerParagraph(bookmarkId)];
 }
 
@@ -160,6 +152,7 @@ export function extractZones(content: BlockNode[]): Array<{
     }
 
     zones.push({
+      // label is not stored in DOCX — caller must resolve from template schema DB.
       zone: { id: startMarker.zoneId, label: startMarker.zoneId },
       startIndex: index,
       endIndex,

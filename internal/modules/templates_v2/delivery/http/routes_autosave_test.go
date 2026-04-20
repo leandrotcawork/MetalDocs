@@ -97,8 +97,8 @@ func TestPresignAutosave_Happy(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	mux.ServeHTTP(rr, req)
-	if rr.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d body=%s", rr.Code, rr.Body.String())
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d body=%s", rr.Code, rr.Body.String())
 	}
 	if gotAction != "template.edit" {
 		t.Fatalf("expected authz action template.edit, got %q", gotAction)

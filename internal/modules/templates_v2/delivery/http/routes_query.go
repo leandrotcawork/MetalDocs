@@ -11,6 +11,10 @@ import (
 
 func (h *Handler) listTemplates(w http.ResponseWriter, r *http.Request) {
 	tenantID := tenantIDFromReq(r)
+	if err := h.authz(r, tenantID, "*", "template.view"); err != nil {
+		writeMappedErr(w, err)
+		return
+	}
 	q := r.URL.Query()
 
 	limit, ok := readQueryInt(q.Get("limit"), 50)
@@ -61,6 +65,10 @@ func (h *Handler) listTemplates(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) getTemplate(w http.ResponseWriter, r *http.Request) {
 	tenantID := tenantIDFromReq(r)
 	templateID := r.PathValue("id")
+	if err := h.authz(r, tenantID, "*", "template.view"); err != nil {
+		writeMappedErr(w, err)
+		return
+	}
 
 	tpl, err := h.svc.GetTemplate(r.Context(), tenantID, templateID)
 	if err != nil {
@@ -85,6 +93,10 @@ func (h *Handler) getTemplate(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) getVersion(w http.ResponseWriter, r *http.Request) {
 	tenantID := tenantIDFromReq(r)
 	templateID := r.PathValue("id")
+	if err := h.authz(r, tenantID, "*", "template.view"); err != nil {
+		writeMappedErr(w, err)
+		return
+	}
 	versionNum, err := strconv.Atoi(r.PathValue("n"))
 	if err != nil {
 		writeErr(w, http.StatusBadRequest, "invalid_version_number", "version must be an integer")
@@ -107,6 +119,10 @@ func (h *Handler) getVersion(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) listAudit(w http.ResponseWriter, r *http.Request) {
 	tenantID := tenantIDFromReq(r)
 	templateID := r.PathValue("id")
+	if err := h.authz(r, tenantID, "*", "template.view"); err != nil {
+		writeMappedErr(w, err)
+		return
+	}
 	q := r.URL.Query()
 
 	limit, ok := readQueryInt(q.Get("limit"), 50)

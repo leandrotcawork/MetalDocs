@@ -34,7 +34,7 @@ func (h *Handler) presignAutosave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	writeJSON(w, http.StatusCreated, map[string]any{
 		"data": map[string]any{
 			"upload_url":  res.UploadURL,
 			"storage_key": res.StorageKey,

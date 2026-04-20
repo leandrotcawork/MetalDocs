@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"time"
 
@@ -53,11 +54,15 @@ func (p *TemplatesV2Presigner) HeadContentHash(ctx context.Context, key string) 
 		limit = 25 * 1024 * 1024
 	}
 	h := sha256.New()
-	if _, err := io.Copy(h, io.LimitReader(obj, limit)); err != nil {
+	n, err := io.Copy(h, io.LimitReader(obj, limit+1))
+	if err != nil {
 		if isNoSuchKeyErr(err) {
 			return "", domain.ErrUploadMissing
 		}
 		return "", err
+	}
+	if n > limit {
+		return "", fmt.Errorf("object exceeds max size (%d bytes)", limit)
 	}
 	return hex.EncodeToString(h.Sum(nil)), nil
 }

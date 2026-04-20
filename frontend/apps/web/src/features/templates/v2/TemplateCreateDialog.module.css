@@ -1,0 +1,15 @@
+﻿.overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.modal { background: #fff; border-radius: 12px; padding: 24px; width: min(480px, calc(100vw - 32px)); box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+.title { margin: 0 0 20px 0; font-size: 1.125rem; font-weight: 600; }
+.field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
+.label { font-size: 0.8125rem; font-weight: 500; color: #374151; }
+.input, .select, .textarea { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem; width: 100%; box-sizing: border-box; }
+.input:focus, .select:focus, .textarea:focus { outline: 2px solid #2563eb; outline-offset: 1px; border-color: transparent; }
+.textarea { resize: vertical; }
+.error { color: #dc2626; font-size: 0.8125rem; margin-top: 8px; }
+.actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+.cancelBtn { padding: 8px 16px; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; cursor: pointer; font-size: 0.875rem; }
+.cancelBtn:hover { background: #f3f4f6; }
+.submitBtn { padding: 8px 16px; background: #2563eb; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; }
+.submitBtn:hover:not(:disabled) { background: #1d4ed8; }
+.submitBtn:disabled { opacity: 0.6; cursor: not-allowed; }

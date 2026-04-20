@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { listTemplates, type TemplateListRow } from '../../templates/v2/api/templatesV2';
+import { listTemplates, type TemplateDTO } from '../../templates/v2/api/templatesV2';
 import { createDocument } from './api/documentsV2';
 
 export type DocumentCreatePageProps = {
@@ -7,8 +7,8 @@ export type DocumentCreatePageProps = {
 };
 
 export function DocumentCreatePage({ onCreated }: DocumentCreatePageProps): React.ReactElement {
-  const [templates, setTemplates] = useState<TemplateListRow[]>([]);
-  const [pick, setPick] = useState<TemplateListRow | null>(null);
+  const [templates, setTemplates] = useState<TemplateDTO[]>([]);
+  const [pick, setPick] = useState<TemplateDTO | null>(null);
   const [name, setName] = useState('');
   const [err, setErr] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -17,7 +17,7 @@ export function DocumentCreatePage({ onCreated }: DocumentCreatePageProps): Reac
     let cancelled = false;
     void (async () => {
       try {
-        const rows = await listTemplates();
+        const { templates: rows } = await listTemplates();
         if (!cancelled) {
           setTemplates(rows);
         }
@@ -37,7 +37,11 @@ export function DocumentCreatePage({ onCreated }: DocumentCreatePageProps): Reac
     setSubmitting(true);
     setErr('');
     try {
-      const versionId = pick.published_version_id || pick.latest_version_id;
+      const versionId = pick.published_version_id;
+      if (!versionId) {
+        setErr('Template has no published version.');
+        return;
+      }
       const res = await createDocument({
         template_version_id: versionId,
         name: name.trim(),

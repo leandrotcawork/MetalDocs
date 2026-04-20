@@ -1,5 +1,6 @@
-import { useState } from 'react';
+﻿import { type FormEvent, useState } from 'react';
 import { createTemplate } from './api/templatesV2';
+import styles from './TemplateCreateDialog.module.css';
 
 export type TemplateCreateDialogProps = {
   onClose: () => void;
@@ -10,32 +11,128 @@ export function TemplateCreateDialog({ onClose, onCreated }: TemplateCreateDialo
   const [key, setKey] = useState('');
   const [name, setName] = useState('');
   const [desc, setDesc] = useState('');
+  const [visibility, setVisibility] = useState('public');
+  const [approverRole, setApproverRole] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  async function submit(e: React.FormEvent) {
+  async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setBusy(true); setErr(null);
+    setBusy(true);
+    setErr(null);
+
     try {
-      const r = await createTemplate(key, name, desc || undefined);
-      onCreated(r.id, 1);
-    } catch (e) {
-      setErr(String(e));
+      const { template, version } = await createTemplate({
+        key,
+        name,
+        description: desc || undefined,
+        visibility,
+        approver_role: approverRole,
+      });
+      onCreated(template.id, version.version_number);
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : String(error));
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <dialog open onClose={onClose}>
-      <form onSubmit={submit}>
-        <label>Key <input required value={key} onChange={(e) => setKey(e.target.value)} /></label>
-        <label>Name <input required value={name} onChange={(e) => setName(e.target.value)} /></label>
-        <label>Description <textarea value={desc} onChange={(e) => setDesc(e.target.value)} /></label>
-        {err && <div role="alert">{err}</div>}
-        <button type="button" onClick={onClose} disabled={busy}>Cancel</button>
-        <button type="submit" disabled={busy}>Create</button>
-      </form>
-    </dialog>
+    <div className={styles.overlay}>
+      <div className={styles.modal}>
+        <h3 className={styles.title}>New Template</h3>
+        <form onSubmit={submit}>
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="template-key">
+              Key*
+            </label>
+            <input
+              id="template-key"
+              className={styles.input}
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+              required
+              pattern="[a-z0-9_-]+"
+              placeholder="e.g. nda-standard"
+            />
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="template-name">
+              Name*
+            </label>
+            <input
+              id="template-name"
+              className={styles.input}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="template-description">
+              Description
+            </label>
+            <textarea
+              id="template-description"
+              className={styles.textarea}
+              value={desc}
+              onChange={(e) => setDesc(e.target.value)}
+              rows={3}
+            />
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="template-visibility">
+              Visibility
+            </label>
+            <select
+              id="template-visibility"
+              className={styles.select}
+              value={visibility}
+              onChange={(e) => setVisibility(e.target.value)}
+            >
+              <option value="public">public</option>
+              <option value="internal">internal</option>
+              <option value="specific">specific</option>
+            </select>
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="template-approver-role">
+              Approver Role
+            </label>
+            <input
+              id="template-approver-role"
+              className={styles.input}
+              value={approverRole}
+              onChange={(e) => setApproverRole(e.target.value)}
+              required
+              placeholder="e.g. legal-approver"
+            />
+          </div>
+
+          {err && (
+            <div role="alert" className={styles.error}>
+              {err}
+            </div>
+          )}
+
+          <div className={styles.actions}>
+            <button type="button" className={styles.cancelBtn} onClick={onClose} disabled={busy}>
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className={styles.submitBtn}
+              disabled={busy || !key || !name || !approverRole}
+            >
+              {busy ? 'Creating…' : 'Create Template'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }

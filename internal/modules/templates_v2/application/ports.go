@@ -37,10 +37,12 @@ type Clock interface{ Now() time.Time }
 type UUIDGen interface{ New() string }
 
 type ListFilter struct {
-	TenantID    string
-	AreaAny     []string
-	DocTypeCode *string
-	Status      *domain.VersionStatus
-	Limit       int
-	Offset      int
+	TenantID         string
+	AreaAny          []string
+	ActorAreas       []string
+	IsExternalViewer bool
+	DocTypeCode      *string
+	Status           *domain.VersionStatus
+	Limit            int
+	Offset           int
 }

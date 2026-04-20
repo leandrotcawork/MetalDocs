@@ -14,6 +14,9 @@ type fakeRepo struct {
 	versions        map[string]*domain.TemplateVersion
 	audit           []*domain.AuditEvent
 	approvalConfigs map[string]*domain.ApprovalConfig
+	receivedFilter  application.ListFilter
+
+	ignoreTenantOnGetTemplate bool
 }
 
 func newFakeRepo() *fakeRepo {
@@ -32,7 +35,10 @@ func (r *fakeRepo) CreateTemplate(_ context.Context, t *domain.Template) error {
 
 func (r *fakeRepo) GetTemplate(_ context.Context, tenantID, id string) (*domain.Template, error) {
 	t, ok := r.templates[id]
-	if !ok || t.TenantID != tenantID {
+	if !ok {
+		return nil, domain.ErrNotFound
+	}
+	if !r.ignoreTenantOnGetTemplate && t.TenantID != tenantID {
 		return nil, domain.ErrNotFound
 	}
 	return t, nil
@@ -48,6 +54,7 @@ func (r *fakeRepo) GetTemplateByKey(_ context.Context, tenantID, key string) (*d
 }
 
 func (r *fakeRepo) ListTemplates(_ context.Context, f application.ListFilter) ([]*domain.Template, error) {
+	r.receivedFilter = f
 	out := make([]*domain.Template, 0, len(r.templates))
 	for _, t := range r.templates {
 		if f.TenantID != "" && t.TenantID != f.TenantID {

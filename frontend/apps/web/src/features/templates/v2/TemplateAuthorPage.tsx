@@ -1,6 +1,7 @@
 import '@eigenpal/docx-js-editor/styles.css';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { DocxEditor, type DocxEditorRef } from '@eigenpal/docx-js-editor/react';
+import { createEmptyDocument } from '@eigenpal/docx-js-editor/core';
 import { type VersionDTO, submitForReview } from './api/templatesV2';
 import { useTemplateDraft } from './hooks/useTemplateDraft';
 import { useTemplateAutosave } from './hooks/useTemplateAutosave';
@@ -17,6 +18,7 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
   const draft = useTemplateDraft(templateId, versionNum);
   const autosave = useTemplateAutosave(templateId, versionNum);
   const editorRef = useRef<DocxEditorRef>(null);
+  const blankDoc = useMemo(() => createEmptyDocument(), []);
   const [submitting, setSubmitting] = useState(false);
   const [submitErr, setSubmitErr] = useState<string | null>(null);
   const [liveVersion, setLiveVersion] = useState<VersionDTO | null>(null);
@@ -80,6 +82,7 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
         <DocxEditor
           ref={editorRef}
           documentBuffer={draft.docxBytes ?? undefined}
+          document={draft.docxBytes ? undefined : blankDoc}
           readOnly={!isDraft}
           onChange={() => {
             editorRef.current?.save().then((buffer) => {

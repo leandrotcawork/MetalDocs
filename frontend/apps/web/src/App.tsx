@@ -550,7 +550,8 @@ function AppContent() {
           onPrimaryAction={handlePrimaryAction}
           onRefreshWorkspace={refreshWorkspace}
           isRefreshing={loadState === "loading"}
-          flushContent={Boolean(templateEditorParams)}
+          flushContent={Boolean(templateEditorParams) || tplRoute.kind === 'author'}
+          editMode={tplRoute.kind === 'author'}
           onLogout={handleLogout}
         >
           {workspaceView}

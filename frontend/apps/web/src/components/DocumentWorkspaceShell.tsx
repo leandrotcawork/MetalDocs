@@ -17,6 +17,7 @@ type WorkspaceShellProps = {
   registryCount: number;
   showAdmin: boolean;
   flushContent?: boolean;
+  editMode?: boolean;
   documentProfiles: DocumentProfileItem[];
   processAreas: ProcessAreaItem[];
   documents: SearchDocumentItem[];
@@ -380,7 +381,7 @@ export function DocumentWorkspaceShell(props: WorkspaceShellProps) {
       </header>
 
       <div className={styles["workspace-layout"]}>
-        <aside className={`${styles["workspace-sidebar"]} ${sidebarCollapsed ? styles["is-collapsed"] : ""}`}>
+        <aside className={`${styles["workspace-sidebar"]} ${sidebarCollapsed ? styles["is-collapsed"] : ""} ${props.editMode ? styles["is-edit-mode"] : ""}`}>
           <div className={styles["workspace-sidebar-header"]}>
             {!sidebarCollapsed && (
               <span className={styles["workspace-sidebar-header-title"]}>Navegacao</span>

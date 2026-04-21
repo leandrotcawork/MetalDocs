@@ -43,6 +43,7 @@ export function TemplatesV2View({
         templateId={route.templateId}
         versionNum={route.versionNum}
         onNavigateToVersion={(templateId, versionNum) => onNavigate({ kind: 'author', templateId, versionNum })}
+        onBack={() => onNavigate({ kind: 'list' })}
       />
     </Suspense>
   );

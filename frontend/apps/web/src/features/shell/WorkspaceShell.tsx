@@ -17,6 +17,7 @@ type WorkspaceShellProps = {
   documents: SearchDocumentItem[];
   isRefreshing: boolean;
   flushContent?: boolean;
+  editMode?: boolean;
   onSearchChange: (value: string) => void;
   onNavigate: (view: WorkspaceView) => void;
   onPrimaryAction: () => void;
@@ -47,6 +48,7 @@ export function WorkspaceShell(props: WorkspaceShellProps) {
       onRefreshWorkspace={props.onRefreshWorkspace}
       isRefreshing={props.isRefreshing}
       flushContent={props.flushContent}
+      editMode={props.editMode}
       onLogout={props.onLogout}
     >
       {props.children}

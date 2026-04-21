@@ -324,6 +324,7 @@
   border: 0;
   border-right: 1px solid rgba(255, 255, 255, 0.08);
   background: linear-gradient(180deg, #5b1825 0%, #4a141f 100%);
+  transition: width 220ms ease-in-out, border-color 220ms ease-in-out;
 }
 
 .workspace-sidebar-scroll,
@@ -911,6 +912,11 @@
 .workspace-sidebar.is-collapsed {
   width: 44px;
   grid-template-rows: auto;
+}
+
+.workspace-sidebar.is-edit-mode {
+  width: 0;
+  border-right-color: transparent;
 }
 
 .workspace-sidebar-toggle {

@@ -68,7 +68,7 @@ If Gotenberg fails → return 503, no ledger row (no uncontrolled copy created).
 
 ### Membership-change hook (new)
 
-App-level hook on `user_process_areas` INSERT/UPDATE:
+App-level hook on `user_process_areas` INSERT/UPDATE. Implemented as a service-layer interceptor inside `iam.area_membership_service.Grant()` and `.Revoke()` — **not** a DB trigger. This placement is required because Spec 2's `SECURITY DEFINER` `grant_area_membership()` function owns the actual INSERT; the hook enqueues outbox rows after the membership transaction commits in the application layer, ensuring ordering guarantees without competing with DB-side authz.
 
 - **User added to area** → enqueue one `distribution_outbox` row of type `membership_added` per `status='published'` doc in that area, targeting the single new user. Worker fans out scoped obligation rows.
 - **User removed from area** → synchronously UPDATE all non-revoked, unacked obligations for that user in docs owned by the area: `revoked_at = NOW(), revoke_reason = 'area_removed'`. Acked obligations preserved as historical evidence.
@@ -80,9 +80,9 @@ Convergence bound from membership change to obligation visibility: p99 ≤ 5 min
 Extends `doc_status_enum` with one new state: `scheduled` (approved + waiting for `effective_date` to elapse). Full lifecycle becomes:
 
 ```
-draft → in_review → approved → scheduled → published → superseded → archived
-                             ↘                       ↗
-                              (effective_date NULL or past)
+draft → under_review → approved → scheduled → published → superseded → archived
+                               ↘                       ↗
+                                (effective_from NULL or past)
 ```
 
 `approved → scheduled` if the approver set `effective_date > NOW()` at approval time; otherwise `approved → published` directly (existing Spec 2 path).
@@ -112,9 +112,9 @@ CREATE TYPE criticality_tier_enum AS ENUM (
 CREATE TABLE document_distributions (
   id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id             UUID NOT NULL REFERENCES tenants(id),
-  doc_version_id        UUID NOT NULL REFERENCES document_versions(id),
+  doc_version_id        UUID NOT NULL REFERENCES documents_v2.documents(id),  -- FK to documents_v2.documents (one row per revision)
   user_id               UUID NOT NULL REFERENCES users(id),
-  resolved_via_area_id  UUID NOT NULL REFERENCES process_areas(id),
+  resolved_via_area_id  UUID NOT NULL REFERENCES process_areas(id),           -- UUID PK of the process_area; area_code readable via JOIN
   resolved_at           TIMESTAMPTZ NOT NULL,
   ack_type              ack_type_enum NOT NULL,
   ack_nonce             TEXT,
@@ -138,9 +138,9 @@ CREATE INDEX idx_dist_pending_per_user
 CREATE TABLE distribution_outbox (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id         UUID NOT NULL REFERENCES tenants(id),
-  doc_version_id    UUID NOT NULL REFERENCES document_versions(id),
+  doc_version_id    UUID NOT NULL REFERENCES documents_v2.documents(id),
   event_type        TEXT NOT NULL,        -- publish | membership_added
-  prior_version_id  UUID REFERENCES document_versions(id),
+  prior_version_id  UUID REFERENCES documents_v2.documents(id),
   target_user_id    UUID REFERENCES users(id),  -- only for membership_added
   enqueued_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   processed_at      TIMESTAMPTZ,
@@ -161,7 +161,7 @@ CREATE TABLE distribution_outbox_dlq (
 CREATE TABLE document_exports (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id       UUID NOT NULL REFERENCES tenants(id),
-  doc_version_id  UUID NOT NULL REFERENCES document_versions(id),
+  doc_version_id  UUID NOT NULL REFERENCES documents_v2.documents(id),
   user_id         UUID NOT NULL REFERENCES users(id),
   exported_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   format          TEXT NOT NULL,         -- pdf | docx
@@ -185,11 +185,14 @@ CREATE TABLE reconciliation_run_summary (
 
 ```sql
 -- Spec 2
-ALTER TYPE doc_status_enum ADD VALUE 'scheduled';
+-- Note: documents_v2.documents.status CHECK constraint already extended with 'scheduled' by this spec
+-- (see Status lifecycle extension above). ALTER TYPE is only needed if status is a PostgreSQL ENUM type;
+-- if it is a TEXT CHECK constraint as defined in Spec 2, no ALTER TYPE is required.
 
-ALTER TABLE document_versions
+ALTER TABLE documents_v2.documents
   ADD COLUMN ack_type           ack_type_enum,             -- NULL → inherit from policy chain
-  ADD COLUMN effective_date     TIMESTAMPTZ,               -- NULL → effective on publish
+  -- effective_from TIMESTAMPTZ already defined by Spec 2; no new column added.
+  -- Spec 4 prose refers to this as "effective_date"; the actual DB column is effective_from.
   ADD COLUMN distribution_mode  TEXT NOT NULL DEFAULT 'active'
     CHECK (distribution_mode IN ('active', 'passive'));
 
@@ -263,12 +266,12 @@ This keeps casual reference reads ungated while preserving the ISO control bound
 3. FanoutWorker picks up outbox row (SKIP LOCKED, ORDER BY enqueued_at)
 4. Worker acquires advisory lock on controlled_document_id
 5. Worker resolves recipients:
-     SELECT DISTINCT upa.user_id, upa.area_id
+     SELECT DISTINCT upa.user_id, upa.area_code
      FROM user_process_areas upa
-     JOIN controlled_documents cd ON cd.area_id = upa.area_id
+     JOIN controlled_documents cd ON cd.process_area_code = upa.area_code
      WHERE cd.id = :controlled_doc_id
        AND upa.tenant_id = :tenant_id
-       AND upa.revoked_at IS NULL
+       AND upa.effective_to IS NULL
 6. Worker resolves ack_type via policy chain (version > criticality force > area > tenant)
 7. INSERT document_distributions rows (one per recipient) with resolved_via_area_id + resolved_at
 8. UPDATE distribution_outbox SET processed_at = NOW()
@@ -300,10 +303,11 @@ This keeps casual reference reads ungated while preserving the ISO control bound
 2. Spec 2 transitions: approved → scheduled (NO outbox row)
 3. Prior rev remains current and visible; new rev is invisible to recipients
 4. Every 15 min, CutoverJob runs per tenant:
-     SELECT id FROM document_versions
+     SELECT id FROM documents_v2.documents
      WHERE tenant_id = :t
        AND status = 'scheduled'
-       AND effective_date <= NOW() AT TIME ZONE t.timezone
+       AND effective_from <= NOW() AT TIME ZONE t.timezone
+       -- effective_from is the Spec 2 column name; Spec 4 prose calls it "effective_date"
 5. For each matching row:
      BEGIN;
        UPDATE status = 'published';
@@ -384,9 +388,9 @@ fan-out. resolved_at on each obligation row records this timestamp.
        SET revoked_at = NOW(), revoke_reason = 'area_removed'
        WHERE user_id = :maria
          AND doc_version_id IN (
-               SELECT dv.id FROM document_versions dv
+               SELECT dv.id FROM documents_v2.documents dv
                JOIN controlled_documents cd ON cd.id = dv.controlled_document_id
-               WHERE cd.area_id = :welding_area
+               WHERE cd.process_area_code = :welding_area_code
                  AND dv.status = 'published')
          AND acked_at IS NULL
          AND revoked_at IS NULL
@@ -401,14 +405,18 @@ fan-out. resolved_at on each obligation row records this timestamp.
 2. For each status='published' doc_version in tenant:
      expected = SELECT DISTINCT upa.user_id
                 FROM user_process_areas upa
-                JOIN controlled_documents cd ON cd.area_id = upa.area_id
+                JOIN controlled_documents cd ON cd.process_area_code = upa.area_code
                 WHERE cd.id = :controlled_doc_id
-                  AND upa.revoked_at IS NULL
+                  AND upa.effective_to IS NULL
      actual   = SELECT user_id FROM document_distributions
                 WHERE doc_version_id = :v AND revoked_at IS NULL
 3. missing = expected - actual → INSERT obligation rows
              (ack_type resolved via same policy chain; resolved_via_area_id set
-              from current RBAC; resolved_at = NOW(); audit_log reason='reconciliation_gap')
+              from current RBAC; resolved_at = NOW())
+             INSERT governance_events (event_type='distribution.reconciliation_gap',
+               actor_user_id='system:reconciliation', entity_type='document_distribution',
+               reason='membership resolved via nightly reconciliation', resource_id=doc_version_id)
+             -- Allows auditors to distinguish live fan-out vs catch-up obligations
 4. orphans = (actual - expected) WHERE acked_at IS NULL
              → UPDATE revoked_at = NOW(), revoke_reason = 'orphan_cleanup'
              (acked rows preserved regardless)
@@ -427,7 +435,7 @@ Reconciliation is a **safety net**, not the primary convergence path. The `Membe
 ```
 On user_process_areas INSERT (user added to area):
   For each status='published' doc_version dv
-  WHERE dv.controlled_document.area_id = :new_area:
+  WHERE dv.controlled_document.process_area_code = :new_area_code:
     INSERT distribution_outbox (
       event_type='membership_added',
       doc_version_id = dv.id,
@@ -549,7 +557,7 @@ Ordering enforced by: (a) advisory lock per controlled_document in worker,
 
 - **Metrics:** `fan_out_latency_p50/p99`, `outbox_lag`, `fan_out_failure_rate`, `ack_rate`, `overdue_count_per_tenant`, `reconciliation_gaps_per_tenant`
 - **Alerts:** outbox lag > 5 min, DLQ non-empty, cutover job failure, watermark failure, reconciliation gap spike
-- **Audit log:** every obligation state change (created, delivered, acked, revoked) written to Spec 2's `audit_log` with `entity_type = 'document_distribution'` and diff payload
+- **Audit log:** every obligation state change (created, delivered, acked, revoked) written to Spec 1's `governance_events` table with `entity_type = 'document_distribution'` and diff payload. Event types emitted by Spec 4: `distribution.obligation_created`, `distribution.obligation_delivered`, `distribution.obligation_acked`, `distribution.obligation_revoked`, `distribution.reconciliation_gap`.
 
 ## Testing Approach
 

@@ -172,6 +172,8 @@ type ResolvedValue struct {
 
 v1 resolvers: `doc_code`, `revision_number`, `effective_date`, `controlled_by_area`, `author`, `approvers`, `approval_date`.
 
+Computed placeholder resolution runs at document freeze time (Spec 2 approval transition), with the approver's authorization context. If a resolver reads sensitive data (e.g., prior approvers list), that read is authorized by the approver's `workflow.approve` capability. Document view does not re-resolve computed placeholders — frozen values are immutable post-approval.
+
 Module location: `internal/modules/render/resolvers/`.
 
 ### Editor UX (in-canvas)
@@ -253,10 +255,12 @@ Only triggered by explicit admin action (e.g. library recovery). Never in happy 
    ```
 4. **Never** overwrite original `content_hash` or `final_docx_s3_key`. Signature stays valid against original bytes.
 
+> **Invariant:** `content_hash` (DOCX hash) and `final_docx_s3_key` are immutable once a Spec 2 approval signature is bound. The `reconstruction_attempts` field is append-only and informational — reconstruction hashes are stored separately and never overwrite the originals. Any code path that would mutate `content_hash` post-approval must be treated as a bug. Spec 2's `approval_instances.content_hash_at_submit` must remain unchanged across any re-render event.
+
 ### Schema — new columns and tables
 
 ```sql
-ALTER TABLE documents_v2_revisions ADD COLUMN
+ALTER TABLE documents_v2.documents ADD COLUMN
   placeholder_schema_snapshot     JSONB       NOT NULL,
   placeholder_schema_hash         BYTEA       NOT NULL,
   composition_config_snapshot     JSONB       NOT NULL,

@@ -65,7 +65,13 @@ internal/modules/
       user_area.go                       ← NEW: user_process_areas (effective_from/to, granted_by)
       role_capabilities.go               ← NEW: RoleCapabilities map + RoleCapabilitiesVersion int
     application/
-      area_membership_service.go         ← NEW: grant/revoke with governance_events write
+      area_membership_service.go         ← NEW: grant/revoke with governance_events write.
+                                           Spec 4 wires a MembershipHook here at app layer:
+                                           Grant() → enqueue distribution_outbox for all
+                                             published docs in the new area (scoped fan-out).
+                                           Revoke() → synchronously revoke pending obligations.
+                                           Hook runs after Spec 2's SECURITY DEFINER
+                                           grant_area_membership() commits (not a DB trigger).
       authorization.go                   ← NEW: Check(user, capability, resourceCtx):
                                            (1) role caps via user_process_areas lookup
                                            (2) AccessPolicy allow/deny overrides
@@ -126,6 +132,8 @@ var RoleCapabilities = map[string][]string{
 ```
 
 Any change to this map requires a `RoleCapabilitiesVersion` bump and emits `governance_events { event_type: "role.capability_map.version_bump" }` at process startup if the version differs from the last recorded row.
+
+> **Spec 2 extension:** Spec 2 bumps `RoleCapabilitiesVersion` to 2 and adds `workflow.*` capabilities: `workflow.submit` (editor, reviewer), `workflow.review` (reviewer), `workflow.approve` / `workflow.publish` / `workflow.supersede` / `workflow.reject` (approver). Admin-only: `workflow.obsolete`, `workflow.route.edit`, `workflow.instance.cancel`. See Spec 2 for the full extended map.
 
 ## Data Model
 
@@ -212,14 +220,21 @@ CREATE INDEX ix_user_process_areas_active
   WHERE effective_to IS NULL;
 
 -- Immutable governance audit log (complements existing audit)
+-- All specs write to this single table. event_type is TEXT (no enum constraint) to allow
+-- extension without schema migrations. Known event_types by spec:
+--   Spec 1: numbering.override, template.override, role.grant, role.revoke,
+--           profile.default_template_change, profile.rename_mapping,
+--           role.capability_map.version_bump
+--   Spec 2: workflow.submit, workflow.stage.complete, workflow.approved, workflow.reject,
+--           workflow.publish, workflow.publish.scheduled, workflow.supersede,
+--           workflow.obsolete, workflow.instance.cancel, legacy_published_no_signoffs
+--   Spec 4: distribution.obligation_created, distribution.obligation_delivered,
+--           distribution.obligation_acked, distribution.obligation_revoked,
+--           distribution.reconciliation_gap
 CREATE TABLE governance_events (
   id UUID PRIMARY KEY,
   tenant_id UUID NOT NULL,
-  event_type TEXT NOT NULL,                        -- numbering.override, template.override,
-                                                   -- role.grant, role.revoke,
-                                                   -- profile.default_template_change,
-                                                   -- profile.rename_mapping,
-                                                   -- role.capability_map.version_bump
+  event_type TEXT NOT NULL,
   actor_user_id UUID NOT NULL,
   resource_type TEXT NOT NULL,
   resource_id TEXT NOT NULL,
@@ -365,9 +380,10 @@ middleware.AuthzCheck(capability, resourceCtx):
   5. SoD guard:
      - For `template.publish`: look up prior-stage actors in templates_v2 version history
        (author, reviewer) — active in Spec 1.
-     - For `workflow.review` / `workflow.approve` on documents_v2: guard logic is implemented
-       in this spec but only fires once Spec 2 introduces the document approval state machine.
-       In Spec 1 these capabilities are granted but not yet triggered by any endpoint.
+     - For `workflow.review` / `workflow.approve` on documents_v2: SoD is NOT implemented
+       in Spec 1 middleware. Spec 2 implements SoD at the DB trigger level via
+       `enforce_signoff_sod()`. In Spec 1 these capabilities are granted but not yet
+       enforced at any workflow endpoint — enforcement begins when Spec 2 ships.
   6. Cache result for the remainder of the current HTTP request only.
 ```
 
@@ -572,6 +588,26 @@ e2e/rename_via_new_code.spec.ts   — admin creates new profile, archives old;
 - Authz middleware: < 5 ms overhead per request (single indexed query on `user_process_areas`).
 - Benchmark: 100 concurrent creates of controlled docs under same profile → no sequence collisions, p99 < 50 ms.
 
+## Cross-Spec Glossary (canonical terms)
+
+Authoritative terminology for all four foundational specs. When in doubt, defer to these names.
+
+| Concept | Canonical term | DB column / table | Notes |
+|---|---|---|---|
+| A single controlled document revision | **document revision** | `documents_v2.documents` row | "Version" is avoided — use "revision". One row = one revision. |
+| The revision's unique counter | **revision_number** | `documents_v2.documents.revision_number` | OCC counter is `revision_version` (separate). |
+| Effective date of a revision | **effective_from** | `documents_v2.documents.effective_from` | Spec 4 prose uses "effective_date" — the actual DB column is `effective_from`. |
+| A doctype / document class | **document profile** | `document_profiles` table | Code is `profile_code` (TEXT, immutable). |
+| An organizational scope unit | **process area** | `process_areas` table | Code is `process_area_code` (TEXT, immutable). Short form "area" is acceptable in prose but joins use `area_code`. |
+| Area membership for a user | **user_process_areas** row | `user_process_areas` table | Revocation tracked via `effective_to` (not `revoked_at`). `revoked_by` added by Spec 2. |
+| A duty to acknowledge a doc | **obligation** | `document_distributions` row | Not a synonym for "distribution" (the process). |
+| The process of issuing obligations | **distribution** | `distribution_outbox` → `FanoutWorker` | |
+| A user's proof of acknowledgment | **attestation** | `acked_at` + `ack_signature` | |
+| The immutable audit trail table | **governance_events** | `governance_events` table (Spec 1) | All specs write here. No separate `audit_log` table exists. |
+| DOCX content binding hash | **content_hash** | `approval_signoffs.content_hash` | DOCX-only hash. Spec 3 adds `schema_hash` + `values_hash` for triple-hash audit. |
+
+---
+
 ## Out of Scope
 
 **Deferred to later Foundation specs:**
@@ -595,7 +631,7 @@ e2e/rename_via_new_code.spec.ts   — admin creates new profile, archives old;
 - **Per-profile custom code format** — fixed `{CODE}-{NN}` format.
 - **Profile import/export between tenants** — no migration tooling in this spec.
 - **Scheduled obsoletion by `ReviewIntervalDays`** — field stored, cron not implemented.
-- **Retention auto-archive (`RetentionDays`)** — stored, not enforced.
+- **Retention auto-archive (`RetentionDays`)** — stored, not enforced. When implemented in a future spec, it must coordinate with Spec 4's `document_distributions` table to mark obligations as `revoked_at` with `revoke_reason='doc_archived'` before archiving.
 - **Validity period enforcement (`ValidityDays`)** — stored, not enforced.
 - **Cross-request membership cache** — request-scoped cache only. Revisit if load test flags.
 - **AccessPolicy engine rewrite** — kept as-is, only consumed by new `authz.Check` function.

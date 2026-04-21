@@ -31,7 +31,7 @@ Give `documents_v2` revisions a full approval lifecycle that:
 - **OCC via `revision_version` column + idempotency keys** on all transition commands.
 - **Outbox-style**: `governance_events` written in same transaction as state change.
 - **Scheduler**: single cron worker (`effective_date_publisher`) — UTC storage, idempotent via `SELECT FOR UPDATE SKIP LOCKED`, missed-run catchup window alerts rather than blind-processes.
-- **Capability gates from Spec 1** fully consumed: `workflow.submit`, `workflow.review`, `workflow.approve`, `workflow.publish`, `workflow.reject`, `workflow.obsolete`, `workflow.supersede`. Mapped onto roles already defined.
+- **Capability gates from Spec 1** fully consumed: `workflow.submit`, `workflow.review`, `workflow.approve`, `workflow.publish`, `workflow.reject`, `workflow.obsolete`, `workflow.supersede`. Mapped onto roles already defined. This spec bumps `RoleCapabilitiesVersion` to 2 and extends the capability map (see Data Model section). Spec 1's `governance_events` table (event_type TEXT, no enum constraint) receives all events from this spec: `workflow.submit`, `workflow.stage.complete`, `workflow.approved`, `workflow.reject`, `workflow.publish`, `workflow.publish.scheduled`, `workflow.supersede`, `workflow.obsolete`, `workflow.instance.cancel`, `legacy_published_no_signoffs`.
 - **Signature abstraction**: `signature_method` column + Go interface seam. Only `password_reauth` implementation ships in Spec 2.
 - **DB-side authz defense-in-depth**: NOINHERIT role boundary + SECURITY DEFINER functions owned by dedicated role + session context tripwire + trigger-enforced integrity. Application-layer `iam.Check` remains the authoritative authorization boundary.
 
@@ -49,7 +49,7 @@ ALTER TABLE documents_v2.documents
   DROP CONSTRAINT documents_status_check,
   ADD CONSTRAINT documents_status_check
     CHECK (status IN ('draft','under_review','approved','rejected',
-                      'published','superseded','obsolete','archived'));
+                      'scheduled','published','superseded','obsolete','archived'));
 
 ALTER TABLE documents_v2.documents
   ADD COLUMN revision_number INT NOT NULL DEFAULT 1,
@@ -66,7 +66,7 @@ CREATE UNIQUE INDEX ux_documents_v2_cd_revision
 -- At most one active (non-terminal) revision per controlled_document
 CREATE UNIQUE INDEX ux_documents_v2_cd_active
   ON documents_v2.documents (controlled_document_id)
-  WHERE status IN ('draft','under_review','approved','rejected');
+  WHERE status IN ('draft','under_review','approved','rejected','scheduled');
 ```
 
 ### Legal transition trigger
@@ -79,7 +79,8 @@ BEGIN
       (OLD.status = 'draft'        AND NEW.status IN ('under_review','archived')) OR
       (OLD.status = 'under_review' AND NEW.status IN ('approved','rejected')) OR
       (OLD.status = 'rejected'     AND NEW.status = 'draft') OR
-      (OLD.status = 'approved'     AND NEW.status IN ('published','draft')) OR
+      (OLD.status = 'approved'     AND NEW.status IN ('published','scheduled','draft')) OR
+      (OLD.status = 'scheduled'    AND NEW.status IN ('published','draft')) OR
       (OLD.status = 'published'    AND NEW.status IN ('superseded','obsolete')) OR
       (OLD.status = 'superseded'   AND NEW.status = 'obsolete')
     ) THEN
@@ -579,8 +580,13 @@ Signer → POST /api/v2/documents/{id}/decision
 11b. decision=approve + quorum met:
       - stage → 'completed'.
       - next stage exists → activate.
-      - no next stage → instance → 'approved', document → 'approved',
-        revision_version++, locked_at retained until publish.
+      - no next stage:
+          Call render.ApprovalFreeze(ctx, doc, instance) [Spec 3 contract]
+            — validates all required placeholders filled, resolves computed placeholders,
+              computes values_hash + content_hash (triple-hash per Spec 3).
+            — On freeze failure: return 500; stage stays 'active'; document stays 'under_review'.
+          On freeze success: instance → 'approved', document → 'approved',
+            revision_version++, locked_at retained until publish.
       - governance_event 'workflow.stage.complete' / 'workflow.approved'.
 11c. decision=approve + quorum not yet met: stage stays 'active', COMMIT.
 12. COMMIT.
@@ -596,14 +602,20 @@ Approver → POST /api/v2/documents/{id}/publish { effective_from?, idempotency_
 3. authz.Check(actor, 'workflow.publish', {area: snapshot}).
 4. effective_from = body.effective_from ?? now().
 5. If effective_from > now():
-     UPDATE document SET effective_from=$1, revision_version++.
+     UPDATE document SET status='scheduled', effective_from=$1, revision_version++.
      INSERT governance_events 'workflow.publish.scheduled'.
      COMMIT.
+     -- No distribution_outbox row here. CutoverJob (Spec 4) inserts the outbox row
+     -- when it promotes scheduled → published at effective_from.
    Else (immediate):
      Find prior published rev of same controlled_document.
      UPDATE prior SET status='superseded', effective_to=effective_from, revision_version++.
      UPDATE new SET status='published', effective_from=$1, revision_version++.
      INSERT governance_events 'workflow.publish' + 'workflow.supersede'.
+     If document.distribution_mode != 'passive':
+       INSERT distribution_outbox (event_type='publish', doc_version_id=document.id,
+                                   prior_version_id=prior.id OR NULL if first revision).
+       -- Spec 4 FanoutWorker resolves recipients and creates document_distributions rows.
      COMMIT.
 ```
 
@@ -658,6 +670,8 @@ SHA-256 over UTF-8 bytes → lowercase hex.
 ```
 
 Same implementation in Go + TS (shared test fixture ensures cross-layer parity).
+
+`content_hash_at_submit` on `approval_instances` and `content_hash` on `approval_signoffs` bind to the **DOCX hash only**. The triple-hash (schema_hash + values_hash + content_hash) is a Spec 3 concern — all three are stored by Spec 3 but Spec 2 signatures bind to DOCX content_hash. After a Spec 2 signature is recorded, `content_hash` on the document and `content_hash_at_submit` on the instance are immutable; no downstream re-render (Spec 3 forensic) may overwrite them.
 
 ### Quorum deadlock resolution
 

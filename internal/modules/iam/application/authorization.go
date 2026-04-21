@@ -12,8 +12,9 @@ import (
 )
 
 var (
-	ErrMembershipExpired = errors.New("membership_expired")
-	ErrSoDViolation      = errors.New("sod_violation")
+	ErrAccessDenied = errors.New("forbidden")
+	ErrSoDViolation = errors.New("sod_violation")
+	ErrAreaRequired = errors.New("missing_area_code")
 )
 
 type UserAreaRepository interface {
@@ -82,7 +83,7 @@ func (s *AuthorizationService) Check(
 	userID, tenantID string,
 	capability domain.Capability,
 	resource ResourceCtx,
-) (bool, error) {
+) error {
 	cache, _ := ctx.Value(authzCacheKey{}).(*sync.Map)
 	key := authzDecisionKey{
 		UserID:     strings.TrimSpace(userID),
@@ -91,28 +92,38 @@ func (s *AuthorizationService) Check(
 		Capability: capability,
 		ResourceID: strings.TrimSpace(resource.ResourceID),
 	}
+	if key.AreaCode == "" {
+		return ErrAreaRequired
+	}
 	if cache != nil {
 		if cached, ok := cache.Load(key); ok {
-			return cached.(bool), nil
+			if cached.(bool) {
+				return nil
+			}
+			return ErrAccessDenied
 		}
 	}
 
 	now := s.nowFn()
 	memberships, err := s.userAreas.ListActive(ctx, key.UserID, key.TenantID, now)
 	if err != nil {
-		return false, fmt.Errorf("list active memberships: %w", err)
+		return fmt.Errorf("list active memberships: %w", err)
+	}
+
+	activeMemberships := make([]domain.UserProcessArea, 0, len(memberships))
+	for _, membership := range memberships {
+		if membership.IsActive(now) {
+			activeMemberships = append(activeMemberships, membership)
+		}
 	}
 
 	granted := map[domain.Capability]bool{}
 	hasMatchingAreaMembership := false
-	for _, membership := range memberships {
-		if key.AreaCode != "" && membership.AreaCode != key.AreaCode {
+	for _, membership := range activeMemberships {
+		if membership.AreaCode != key.AreaCode {
 			continue
 		}
 		hasMatchingAreaMembership = true
-		if !membership.IsActive(now) {
-			return false, ErrMembershipExpired
-		}
 		for _, cap := range domain.RoleCapabilities[membership.Role] {
 			granted[cap] = true
 		}
@@ -122,7 +133,7 @@ func (s *AuthorizationService) Check(
 	if hasMatchingAreaMembership {
 		policies, err := s.accessPolicies.ListForUser(ctx, key.UserID, key.TenantID, key.AreaCode)
 		if err != nil {
-			return false, fmt.Errorf("list access policies: %w", err)
+			return fmt.Errorf("list access policies: %w", err)
 		}
 		allowOverride := false
 		denyOverride := false
@@ -147,15 +158,18 @@ func (s *AuthorizationService) Check(
 	if allowed && capability == domain.CapTemplatePublish && s.authorChecker != nil {
 		isAuthor, err := s.authorChecker.IsAuthor(ctx, key.UserID, key.ResourceID)
 		if err != nil {
-			return false, fmt.Errorf("check template author: %w", err)
+			return fmt.Errorf("check template author: %w", err)
 		}
 		if isAuthor {
-			return false, ErrSoDViolation
+			return ErrSoDViolation
 		}
 	}
 
 	if cache != nil {
 		cache.Store(key, allowed)
 	}
-	return allowed, nil
+	if !allowed {
+		return ErrAccessDenied
+	}
+	return nil
 }

@@ -17,6 +17,7 @@ var (
 type UserAreaWriteRepository interface {
 	Insert(ctx context.Context, membership domain.UserProcessArea) error
 	CloseActive(ctx context.Context, userID, tenantID, areaCode string, effectiveTo time.Time) error
+	GrantAtomic(ctx context.Context, oldMembership, newMembership domain.UserProcessArea) error
 	GetActiveByUserAndArea(ctx context.Context, userID, tenantID, areaCode string, now time.Time) (*domain.UserProcessArea, error)
 }
 
@@ -56,9 +57,25 @@ func (s *AreaMembershipService) Grant(
 		return fmt.Errorf("get active membership: %w", err)
 	}
 	if existing != nil && existing.IsActive(now) {
-		if err := s.repo.CloseActive(ctx, userID, tenantID, areaCode, now); err != nil {
-			return fmt.Errorf("close active membership: %w", err)
+		membership := domain.UserProcessArea{
+			UserID:        userID,
+			TenantID:      tenantID,
+			AreaCode:      areaCode,
+			Role:          role,
+			EffectiveFrom: now,
 		}
+		if grantedBy != "" {
+			membership.GrantedBy = &grantedBy
+		}
+		if err := s.repo.GrantAtomic(ctx, *existing, membership); err != nil {
+			return fmt.Errorf("grant membership atomically: %w", err)
+		}
+		if s.logger != nil {
+			if err := s.logger.Log(ctx, "role.grant", membership); err != nil {
+				return fmt.Errorf("log membership grant: %w", err)
+			}
+		}
+		return nil
 	}
 
 	membership := domain.UserProcessArea{

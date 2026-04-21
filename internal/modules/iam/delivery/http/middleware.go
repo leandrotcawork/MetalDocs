@@ -320,16 +320,22 @@ func NewV2AuthzMiddleware(service *iamapp.AuthorizationService) func(http.Handle
 				userID = strings.TrimSpace(r.Header.Get("X-User-Id"))
 			}
 			tenantID := strings.TrimSpace(r.Header.Get("X-Tenant-ID"))
+			if tenantID == "" {
+				writeJSON(w, http.StatusBadRequest, map[string]any{
+					"code":                "missing_tenant",
+					"required_capability": capability,
+					"area_code":           areaCode,
+				})
+				return
+			}
 
-			allowed, err := service.Check(r.Context(), userID, tenantID, capability, iamapp.ResourceCtx{
+			err := service.Check(r.Context(), userID, tenantID, capability, iamapp.ResourceCtx{
 				AreaCode:   areaCode,
 				ResourceID: strings.TrimSpace(resourceID),
 			})
-			if err != nil || !allowed {
+			if err != nil {
 				code := "forbidden"
-				if err != nil {
-					code = err.Error()
-				}
+				code = err.Error()
 				writeJSON(w, http.StatusForbidden, map[string]any{
 					"code":                code,
 					"required_capability": capability,

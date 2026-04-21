@@ -3,7 +3,10 @@ package application
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"log/slog"
+	"os"
 	"strings"
 
 	"metaldocs/internal/modules/iam/domain"
@@ -18,34 +21,57 @@ func CheckRoleCapabilitiesVersion(ctx context.Context, db *sql.DB, tenantID stri
 		return fmt.Errorf("tenant id is required")
 	}
 
-	var hasTable bool
-	if err := db.QueryRowContext(ctx, `SELECT to_regclass('public.role_capabilities_versions') IS NOT NULL`).Scan(&hasTable); err != nil {
-		return fmt.Errorf("check role capabilities version table: %w", err)
+	var lastVersion sql.NullInt64
+	err := db.QueryRowContext(
+		ctx,
+		`
+SELECT MAX((payload_json->>'version')::int)
+FROM governance_events
+WHERE tenant_id::text = $1
+  AND event_type = 'role.capability_map.version_bump'
+`,
+		tenantID,
+	).Scan(&lastVersion)
+	if err != nil {
+		return fmt.Errorf("load last role capability map version bump: %w", err)
 	}
-	if !hasTable {
+
+	if lastVersion.Valid && int(lastVersion.Int64) == domain.RoleCapabilitiesVersion {
 		return nil
 	}
 
-	var version int
-	err := db.QueryRowContext(
-		ctx,
-		`SELECT version FROM role_capabilities_versions WHERE tenant_id = $1 LIMIT 1`,
-		tenantID,
-	).Scan(&version)
+	payloadJSON, err := json.Marshal(map[string]int{
+		"version": domain.RoleCapabilitiesVersion,
+	})
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil
-		}
-		return fmt.Errorf("load role capabilities version: %w", err)
+		return fmt.Errorf("marshal governance event payload: %w", err)
 	}
 
-	if version != domain.RoleCapabilitiesVersion {
-		return fmt.Errorf(
-			"role capabilities version mismatch: tenant=%s expected=%d got=%d",
+	_, err = db.ExecContext(
+		ctx,
+		`
+INSERT INTO governance_events
+  (tenant_id, event_type, actor_user_id, resource_type, resource_id, payload_json)
+VALUES
+  ($1::uuid, 'role.capability_map.version_bump', 'system', 'role_capability_map', $1, $2::jsonb)
+`,
+		tenantID,
+		string(payloadJSON),
+	)
+	if err != nil {
+		if !strings.EqualFold(strings.TrimSpace(os.Getenv("APP_ENV")), "development") {
+			return fmt.Errorf("insert role capability map version bump event: %w", err)
+		}
+		slog.Warn(
+			"failed to persist role capability map version bump event",
+			"tenant_id",
 			tenantID,
+			"target_version",
 			domain.RoleCapabilitiesVersion,
-			version,
+			"error",
+			err,
 		)
 	}
+
 	return nil
 }

@@ -87,6 +87,70 @@ WHERE user_id = $1
 	return nil
 }
 
+func (r *UserAreaRepository) GrantAtomic(ctx context.Context, oldMembership, newMembership domain.UserProcessArea) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin grant transaction: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	const closeQ = `
+UPDATE user_process_areas
+SET effective_to = $5
+WHERE user_id = $1
+  AND tenant_id::text = $2
+  AND area_code = $3
+  AND effective_from = $4
+  AND effective_to IS NULL
+`
+	closeResult, err := tx.ExecContext(
+		ctx,
+		closeQ,
+		oldMembership.UserID,
+		oldMembership.TenantID,
+		oldMembership.AreaCode,
+		oldMembership.EffectiveFrom,
+		newMembership.EffectiveFrom,
+	)
+	if err != nil {
+		return fmt.Errorf("close active membership in grant transaction: %w", err)
+	}
+	rowsAffected, err := closeResult.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("read affected rows for close active membership: %w", err)
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("close active membership in grant transaction: no rows updated")
+	}
+
+	const insertQ = `
+INSERT INTO user_process_areas
+  (user_id, tenant_id, area_code, role, effective_from, effective_to, granted_by)
+VALUES
+  ($1, $2::uuid, $3, $4, $5, $6, $7)
+`
+	if _, err := tx.ExecContext(
+		ctx,
+		insertQ,
+		newMembership.UserID,
+		newMembership.TenantID,
+		newMembership.AreaCode,
+		string(newMembership.Role),
+		newMembership.EffectiveFrom,
+		newMembership.EffectiveTo,
+		newMembership.GrantedBy,
+	); err != nil {
+		return fmt.Errorf("insert membership in grant transaction: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit grant transaction: %w", err)
+	}
+	return nil
+}
+
 func (r *UserAreaRepository) GetActiveByUserAndArea(ctx context.Context, userID, tenantID, areaCode string, now time.Time) (*domain.UserProcessArea, error) {
 	const q = `
 SELECT user_id, tenant_id::text, area_code, role, effective_from, effective_to, granted_by

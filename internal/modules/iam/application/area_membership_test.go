@@ -10,14 +10,18 @@ import (
 )
 
 type userAreaWriteRepoStub struct {
-	active        *domain.UserProcessArea
-	closeCalls    int
-	insertCalls   int
-	closedAt      time.Time
-	inserted      domain.UserProcessArea
-	getActiveErr  error
-	closeActiveErr error
-	insertErr     error
+	active           *domain.UserProcessArea
+	closeCalls       int
+	insertCalls      int
+	grantAtomicCalls int
+	closedAt         time.Time
+	inserted         domain.UserProcessArea
+	atomicOld        domain.UserProcessArea
+	atomicNew        domain.UserProcessArea
+	getActiveErr     error
+	closeActiveErr   error
+	insertErr        error
+	grantAtomicErr   error
 }
 
 func (s *userAreaWriteRepoStub) Insert(ctx context.Context, membership domain.UserProcessArea) error {
@@ -35,6 +39,16 @@ func (s *userAreaWriteRepoStub) CloseActive(ctx context.Context, userID, tenantI
 	}
 	s.closeCalls++
 	s.closedAt = effectiveTo
+	return nil
+}
+
+func (s *userAreaWriteRepoStub) GrantAtomic(ctx context.Context, oldMembership, newMembership domain.UserProcessArea) error {
+	if s.grantAtomicErr != nil {
+		return s.grantAtomicErr
+	}
+	s.grantAtomicCalls++
+	s.atomicOld = oldMembership
+	s.atomicNew = newMembership
 	return nil
 }
 
@@ -67,6 +81,9 @@ func TestGrant_New(t *testing.T) {
 	}
 	if repo.closeCalls != 0 {
 		t.Fatalf("expected no close call, got %d", repo.closeCalls)
+	}
+	if repo.grantAtomicCalls != 0 {
+		t.Fatalf("expected no atomic grant call, got %d", repo.grantAtomicCalls)
 	}
 	if repo.insertCalls != 1 {
 		t.Fatalf("expected one insert call, got %d", repo.insertCalls)
@@ -101,14 +118,17 @@ func TestGrant_Overlap_Merge(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if repo.closeCalls != 1 {
-		t.Fatalf("expected one close call, got %d", repo.closeCalls)
+	if repo.closeCalls != 0 {
+		t.Fatalf("expected no close call (atomic path), got %d", repo.closeCalls)
 	}
-	if repo.insertCalls != 1 {
-		t.Fatalf("expected one insert call, got %d", repo.insertCalls)
+	if repo.insertCalls != 0 {
+		t.Fatalf("expected no direct insert call (atomic path), got %d", repo.insertCalls)
 	}
-	if repo.inserted.Role != domain.RoleReviewer {
-		t.Fatalf("expected inserted role reviewer, got %q", repo.inserted.Role)
+	if repo.grantAtomicCalls != 1 {
+		t.Fatalf("expected one atomic grant call, got %d", repo.grantAtomicCalls)
+	}
+	if repo.atomicNew.Role != domain.RoleReviewer {
+		t.Fatalf("expected atomic new role reviewer, got %q", repo.atomicNew.Role)
 	}
 }
 

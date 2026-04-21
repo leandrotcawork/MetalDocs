@@ -12,7 +12,6 @@ var RoleCapabilities = map[Role][]Capability{
 		CapDocumentCreate,
 		CapDocumentEdit,
 		CapTemplateView,
-		CapRegistryCreate,
 	},
 	RoleReviewer: {
 		CapDocumentView,

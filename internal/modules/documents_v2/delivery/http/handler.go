@@ -11,7 +11,9 @@ import (
 
 	"metaldocs/internal/modules/documents_v2/application"
 	"metaldocs/internal/modules/documents_v2/domain"
+	iamapp "metaldocs/internal/modules/iam/application"
 	iamdomain "metaldocs/internal/modules/iam/domain"
+	registrydomain "metaldocs/internal/modules/registry/domain"
 	"metaldocs/internal/platform/ratelimit"
 )
 
@@ -22,7 +24,7 @@ const (
 )
 
 type Service interface {
-	CreateDocument(ctx context.Context, cmd application.CreateDocumentCmd) (*application.CreateDocumentResult, error)
+	CreateDocument(ctx context.Context, cmd application.CreateDocumentInput) (*application.CreateDocumentResult, error)
 	GetDocument(ctx context.Context, tenantID, id string) (*domain.Document, error)
 	RenameDocument(ctx context.Context, tenantID, userID, docID, newName string) error
 	ListDocuments(ctx context.Context, tenantID string) ([]domain.Document, error)
@@ -119,21 +121,23 @@ func (h *Handler) createDocument(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		TemplateVersionID string          `json:"template_version_id"`
-		Name              string          `json:"name"`
-		FormData          json.RawMessage `json:"form_data"`
+		ControlledDocumentID string          `json:"controlled_document_id"`
+		TemplateVersionID    string          `json:"template_version_id"`
+		Name                 string          `json:"name"`
+		FormData             json.RawMessage `json:"form_data"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		httpErr(w, http.StatusBadRequest, "invalid_body")
 		return
 	}
 
-	res, err := h.svc.CreateDocument(r.Context(), application.CreateDocumentCmd{
-		TenantID:          tenantIDFromReq(r),
-		ActorUserID:       userIDFromReq(r),
-		TemplateVersionID: req.TemplateVersionID,
-		Name:              req.Name,
-		FormData:          req.FormData,
+	res, err := h.svc.CreateDocument(r.Context(), application.CreateDocumentInput{
+		TenantID:             tenantIDFromReq(r),
+		ActorUserID:          userIDFromReq(r),
+		ControlledDocumentID: req.ControlledDocumentID,
+		TemplateVersionID:    req.TemplateVersionID,
+		Name:                 req.Name,
+		FormData:             req.FormData,
 	})
 	if err != nil {
 		status, msg := mapErr(err)
@@ -788,8 +792,12 @@ func mapErr(err error) (int, string) {
 		return http.StatusNotFound, "not_found"
 	case errors.Is(err, domain.ErrInvalidName):
 		return http.StatusBadRequest, "invalid_name"
+	case errors.Is(err, application.ErrControlledDocumentRequired):
+		return http.StatusBadRequest, "controlled_document_required"
 	case errors.Is(err, domain.ErrCommentInvalid):
 		return http.StatusBadRequest, "comment_invalid"
+	case errors.Is(err, iamapp.ErrAccessDenied):
+		return http.StatusForbidden, "forbidden"
 	case errors.Is(err, domain.ErrExpiredUpload):
 		return http.StatusGone, "expired_upload"
 	case errors.Is(err, domain.ErrUploadMissing):
@@ -808,6 +816,10 @@ func mapErr(err error) (int, string) {
 		return http.StatusConflict, "misbound"
 	case errors.Is(err, domain.ErrInvalidStateTransition):
 		return http.StatusConflict, "invalid_state_transition"
+	case errors.Is(err, registrydomain.ErrCDNotActive):
+		return http.StatusConflict, "controlled_document_not_active"
+	case errors.Is(err, registrydomain.ErrProfileHasNoDefaultTemplate):
+		return http.StatusConflict, "profile_has_no_default_template"
 	case strings.HasPrefix(err.Error(), "form_data_invalid"):
 		return http.StatusUnprocessableEntity, "form_data_invalid"
 	default:

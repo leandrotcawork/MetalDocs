@@ -17,21 +17,24 @@ type Module struct {
 }
 
 type Dependencies struct {
-	DB            *sql.DB
-	Docgen        application.DocgenRenderer
-	Presign       application.Presigner
-	TplRead       application.TemplateReader
-	FormVal       application.FormValidator
-	Audit         application.Audit
-	ExportPresign application.ExportPresigner
-	ExportDocgen  application.DocgenPDFClient
-	DocgenVer     string
-	GrammarVer    string
+	DB              *sql.DB
+	Docgen          application.DocgenRenderer
+	Presign         application.Presigner
+	TplRead         application.TemplateReader
+	FormVal         application.FormValidator
+	Audit           application.Audit
+	RegistryReader  application.RegistryReader
+	AuthzChecker    application.AuthorizationChecker
+	ProfileDefaults application.ProfileDefaultTemplateReader
+	ExportPresign   application.ExportPresigner
+	ExportDocgen    application.DocgenPDFClient
+	DocgenVer       string
+	GrammarVer      string
 }
 
 func New(deps Dependencies) *Module {
 	repo := repository.New(deps.DB)
-	svc := application.New(repo, deps.Docgen, deps.Presign, deps.TplRead, deps.FormVal, deps.Audit)
+	svc := application.NewService(repo, deps.Docgen, deps.Presign, deps.TplRead, deps.FormVal, deps.Audit, deps.RegistryReader, deps.AuthzChecker, deps.ProfileDefaults)
 	h := dhttp.NewHandler(svc)
 
 	var exportHandler *dhttp.ExportHandler

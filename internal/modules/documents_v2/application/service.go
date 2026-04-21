@@ -13,6 +13,9 @@ import (
 
 	"metaldocs/internal/modules/documents_v2/domain"
 	"metaldocs/internal/modules/documents_v2/repository"
+	iamapp "metaldocs/internal/modules/iam/application"
+	iamdomain "metaldocs/internal/modules/iam/domain"
+	registrydomain "metaldocs/internal/modules/registry/domain"
 )
 
 // Type aliases so handlers depend only on application types.
@@ -72,26 +75,83 @@ type Audit interface {
 	Write(ctx context.Context, tenantID, actorID, action, docID string, meta any)
 }
 
+// RegistryReader loads a ControlledDocument for validation at create time.
+type RegistryReader interface {
+	GetByID(ctx context.Context, tenantID, id string) (*registrydomain.ControlledDocument, error)
+}
+
+// AuthorizationChecker validates that the actor can perform an action on a resource.
+type AuthorizationChecker interface {
+	Check(ctx context.Context, userID, tenantID string, cap iamdomain.Capability, res iamapp.ResourceCtx) error
+}
+
+type ProfileDefaultTemplateReader interface {
+	GetDefaultTemplateVersionID(ctx context.Context, tenantID, profileCode string) (*string, *string, error)
+	// returns (*templateVersionID, *templateVersionStatus, error)
+}
+
 type Service struct {
-	repo      Repository
-	docgen    DocgenRenderer
-	presigner Presigner
-	tpl       TemplateReader
-	fv        FormValidator
-	audit     Audit
+	repo             Repository
+	docgen           DocgenRenderer
+	presigner        Presigner
+	tpl              TemplateReader
+	fv               FormValidator
+	audit            Audit
+	registry         RegistryReader
+	authz            AuthorizationChecker
+	profileTemplates ProfileDefaultTemplateReader
 }
 
 func New(r Repository, d DocgenRenderer, p Presigner, t TemplateReader, fv FormValidator, a Audit) *Service {
-	return &Service{repo: r, docgen: d, presigner: p, tpl: t, fv: fv, audit: a}
+	return &Service{
+		repo:      r,
+		docgen:    d,
+		presigner: p,
+		tpl:       t,
+		fv:        fv,
+		audit:     a,
+	}
 }
 
-type CreateDocumentCmd struct {
-	TenantID          string
-	ActorUserID       string
-	TemplateVersionID string
-	Name              string
-	FormData          json.RawMessage
+func NewService(
+	r Repository,
+	d DocgenRenderer,
+	p Presigner,
+	t TemplateReader,
+	fv FormValidator,
+	a Audit,
+	reg RegistryReader,
+	authz AuthorizationChecker,
+	profileTemplates ProfileDefaultTemplateReader,
+) *Service {
+	return &Service{
+		repo:             r,
+		docgen:           d,
+		presigner:        p,
+		tpl:              t,
+		fv:               fv,
+		audit:            a,
+		registry:         reg,
+		authz:            authz,
+		profileTemplates: profileTemplates,
+	}
 }
+
+var ErrControlledDocumentRequired = errors.New("controlled_document_id is required")
+var errRegistryReaderNotConfigured = errors.New("registry reader not configured")
+var errAuthorizationCheckerNotConfigured = errors.New("authorization checker not configured")
+var errProfileTemplateReaderNotConfigured = errors.New("profile default template reader not configured")
+
+type CreateDocumentInput struct {
+	TenantID             string
+	ActorUserID          string
+	ControlledDocumentID string
+	TemplateVersionID    string
+	Name                 string
+	FormData             json.RawMessage
+}
+
+type CreateDocumentCmd = CreateDocumentInput
 
 type CreateDocumentResult struct {
 	DocumentID        string
@@ -99,8 +159,69 @@ type CreateDocumentResult struct {
 	SessionID         string
 }
 
-func (s *Service) CreateDocument(ctx context.Context, cmd CreateDocumentCmd) (res *CreateDocumentResult, err error) {
-	docxKey, schemaKey, schemaJSON, err := s.tpl.GetPublishedVersion(ctx, cmd.TenantID, cmd.TemplateVersionID)
+func (s *Service) CreateDocument(ctx context.Context, cmd CreateDocumentInput) (res *CreateDocumentResult, err error) {
+	if strings.TrimSpace(cmd.ControlledDocumentID) == "" {
+		return nil, ErrControlledDocumentRequired
+	}
+	if s.registry == nil {
+		return nil, errRegistryReaderNotConfigured
+	}
+	if s.authz == nil {
+		return nil, errAuthorizationCheckerNotConfigured
+	}
+	if s.profileTemplates == nil {
+		return nil, errProfileTemplateReaderNotConfigured
+	}
+
+	cd, err := s.registry.GetByID(ctx, cmd.TenantID, cmd.ControlledDocumentID)
+	if err != nil {
+		return nil, err
+	}
+	if !cd.IsActive() {
+		return nil, registrydomain.ErrCDNotActive
+	}
+
+	if err := s.authz.Check(ctx, cmd.ActorUserID, cmd.TenantID, iamdomain.CapDocumentCreate, iamapp.ResourceCtx{
+		AreaCode: cd.ProcessAreaCode,
+	}); err != nil {
+		return nil, err
+	}
+
+	defaultTemplateID, defaultTemplateStatus, err := s.profileTemplates.GetDefaultTemplateVersionID(ctx, cmd.TenantID, cd.ProfileCode)
+	if err != nil {
+		return nil, err
+	}
+
+	var overrideTemplate *registrydomain.TemplateVersionCandidate
+	if cd.OverrideTemplateVersionID != nil {
+		overrideStatus := "published"
+		overrideTemplate = &registrydomain.TemplateVersionCandidate{
+			ID:          *cd.OverrideTemplateVersionID,
+			ProfileCode: cd.ProfileCode,
+			Status:      &overrideStatus,
+		}
+	}
+
+	var defaultTemplate *registrydomain.TemplateVersionCandidate
+	if defaultTemplateID != nil {
+		defaultTemplate = &registrydomain.TemplateVersionCandidate{
+			ID:          *defaultTemplateID,
+			ProfileCode: cd.ProfileCode,
+			Status:      defaultTemplateStatus,
+		}
+	}
+
+	resolution, err := registrydomain.Resolve(registrydomain.TemplateResolutionInput{
+		ProfileCode:      cd.ProfileCode,
+		OverrideTemplate: overrideTemplate,
+		DefaultTemplate:  defaultTemplate,
+	})
+	if err != nil {
+		return nil, err
+	}
+	resolvedTemplateVersionID := resolution.TemplateVersionID
+
+	docxKey, schemaKey, schemaJSON, err := s.tpl.GetPublishedVersion(ctx, cmd.TenantID, resolvedTemplateVersionID)
 	if err != nil {
 		return nil, fmt.Errorf("template lookup: %w", err)
 	}
@@ -131,11 +252,14 @@ func (s *Service) CreateDocument(ctx context.Context, cmd CreateDocumentCmd) (re
 		}()
 
 		doc := &domain.Document{
-			TenantID:          cmd.TenantID,
-			TemplateVersionID: cmd.TemplateVersionID,
-			Name:              cmd.Name,
-			FormDataJSON:      cmd.FormData,
-			CreatedBy:         cmd.ActorUserID,
+			TenantID:                cmd.TenantID,
+			TemplateVersionID:       resolvedTemplateVersionID,
+			Name:                    cmd.Name,
+			FormDataJSON:            cmd.FormData,
+			CreatedBy:               cmd.ActorUserID,
+			ControlledDocumentID:    &cmd.ControlledDocumentID,
+			ProfileCodeSnapshot:     &cd.ProfileCode,
+			ProcessAreaCodeSnapshot: &cd.ProcessAreaCode,
 		}
 		docID, revID, sessionID, err := s.repo.CreateDocument(ctx, doc, contentHash)
 		if err != nil {
@@ -152,7 +276,7 @@ func (s *Service) CreateDocument(ctx context.Context, cmd CreateDocumentCmd) (re
 			return nil, fmt.Errorf("set revision key: %w", err)
 		}
 
-		s.audit.Write(ctx, cmd.TenantID, cmd.ActorUserID, "document.created", docID, map[string]any{"template_version_id": cmd.TemplateVersionID})
+		s.audit.Write(ctx, cmd.TenantID, cmd.ActorUserID, "document.created", docID, map[string]any{"template_version_id": resolvedTemplateVersionID})
 		return &CreateDocumentResult{DocumentID: docID, InitialRevisionID: revID, SessionID: sessionID}, nil
 	}
 
@@ -162,11 +286,14 @@ func (s *Service) CreateDocument(ctx context.Context, cmd CreateDocumentCmd) (re
 	contentHash = fmt.Sprintf("%x", h.Sum(nil))
 
 	doc := &domain.Document{
-		TenantID:          cmd.TenantID,
-		TemplateVersionID: cmd.TemplateVersionID,
-		Name:              cmd.Name,
-		FormDataJSON:      cmd.FormData,
-		CreatedBy:         cmd.ActorUserID,
+		TenantID:                cmd.TenantID,
+		TemplateVersionID:       resolvedTemplateVersionID,
+		Name:                    cmd.Name,
+		FormDataJSON:            cmd.FormData,
+		CreatedBy:               cmd.ActorUserID,
+		ControlledDocumentID:    &cmd.ControlledDocumentID,
+		ProfileCodeSnapshot:     &cd.ProfileCode,
+		ProcessAreaCodeSnapshot: &cd.ProcessAreaCode,
 	}
 	docID, revID, sessionID, err := s.repo.CreateDocument(ctx, doc, contentHash)
 	if err != nil {
@@ -178,7 +305,7 @@ func (s *Service) CreateDocument(ctx context.Context, cmd CreateDocumentCmd) (re
 		return nil, fmt.Errorf("set revision key: %w", err)
 	}
 
-	s.audit.Write(ctx, cmd.TenantID, cmd.ActorUserID, "document.created", docID, map[string]any{"template_version_id": cmd.TemplateVersionID})
+	s.audit.Write(ctx, cmd.TenantID, cmd.ActorUserID, "document.created", docID, map[string]any{"template_version_id": resolvedTemplateVersionID})
 	return &CreateDocumentResult{DocumentID: docID, InitialRevisionID: revID, SessionID: sessionID}, nil
 }
 

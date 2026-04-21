@@ -9,6 +9,7 @@ import (
 
 	"metaldocs/internal/modules/documents_v2/application"
 	"metaldocs/internal/modules/documents_v2/domain"
+	registrydomain "metaldocs/internal/modules/registry/domain"
 )
 
 type fakeRepo struct {
@@ -263,14 +264,30 @@ func (n *noopAudit) Write(_ context.Context, _, _, action, _ string, _ any) {
 func TestCreateDocument_OK(t *testing.T) {
 	repo := &fakeRepo{createDocIDs: [3]string{"doc_1", "rev_1", "sess_1"}}
 	audit := &noopAudit{}
-	svc := application.New(repo, fakeDocgen{}, &fakePresigner{hashReturn: "h_initial"}, fakeTplReader{}, fakeFormVal{valid: true}, audit)
+	svc := application.NewService(
+		repo,
+		fakeDocgen{},
+		&fakePresigner{hashReturn: "h_initial"},
+		fakeTplReader{},
+		fakeFormVal{valid: true},
+		audit,
+		&fakeRegistryReader{cd: &registrydomain.ControlledDocument{
+			ID:              "cd_1",
+			ProfileCode:     "PROC",
+			ProcessAreaCode: "AREA-01",
+			Status:          registrydomain.CDStatusActive,
+		}},
+		&fakeAuthzChecker{},
+		&fakeProfileDefaultTemplateReader{id: strptr("tpl_ver_1"), status: strptr("published")},
+	)
 
 	res, err := svc.CreateDocument(context.Background(), application.CreateDocumentCmd{
-		TenantID:          "tenant_1",
-		ActorUserID:       "user_1",
-		TemplateVersionID: "tpl_ver_1",
-		Name:              "Contract",
-		FormData:          []byte(`{"a":1}`),
+		TenantID:             "tenant_1",
+		ActorUserID:          "user_1",
+		ControlledDocumentID: "cd_1",
+		TemplateVersionID:    "tpl_ver_1",
+		Name:                 "Contract",
+		FormData:             []byte(`{"a":1}`),
 	})
 	if err != nil {
 		t.Fatalf("CreateDocument() error = %v", err)
@@ -285,14 +302,30 @@ func TestCreateDocument_OK(t *testing.T) {
 
 func TestCreateDocument_InvalidFormData_Rejects(t *testing.T) {
 	repo := &fakeRepo{createDocIDs: [3]string{"doc_1", "rev_1", "sess_1"}}
-	svc := application.New(repo, fakeDocgen{}, &fakePresigner{}, fakeTplReader{}, fakeFormVal{valid: false, errs: []string{"invalid"}}, &noopAudit{})
+	svc := application.NewService(
+		repo,
+		fakeDocgen{},
+		&fakePresigner{},
+		fakeTplReader{},
+		fakeFormVal{valid: false, errs: []string{"invalid"}},
+		&noopAudit{},
+		&fakeRegistryReader{cd: &registrydomain.ControlledDocument{
+			ID:              "cd_1",
+			ProfileCode:     "PROC",
+			ProcessAreaCode: "AREA-01",
+			Status:          registrydomain.CDStatusActive,
+		}},
+		&fakeAuthzChecker{},
+		&fakeProfileDefaultTemplateReader{id: strptr("tpl_ver_1"), status: strptr("published")},
+	)
 
 	_, err := svc.CreateDocument(context.Background(), application.CreateDocumentCmd{
-		TenantID:          "tenant_1",
-		ActorUserID:       "user_1",
-		TemplateVersionID: "tpl_ver_1",
-		Name:              "Contract",
-		FormData:          []byte(`{"a":1}`),
+		TenantID:             "tenant_1",
+		ActorUserID:          "user_1",
+		ControlledDocumentID: "cd_1",
+		TemplateVersionID:    "tpl_ver_1",
+		Name:                 "Contract",
+		FormData:             []byte(`{"a":1}`),
 	})
 	if err == nil {
 		t.Fatalf("expected validation error")

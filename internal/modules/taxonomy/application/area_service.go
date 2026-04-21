@@ -21,7 +21,7 @@ func NewAreaService(areas domain.AreaRepository, govLogger domain.GovernanceLogg
 	}
 }
 
-func (s *AreaService) SetParent(ctx context.Context, tenantID, areaCode string, parentCode *string, _ string) error {
+func (s *AreaService) SetParent(ctx context.Context, tenantID, areaCode string, parentCode *string, actorID string) error {
 	area, err := s.areas.GetByCode(ctx, tenantID, areaCode)
 	if err != nil {
 		return err
@@ -49,7 +49,17 @@ func (s *AreaService) SetParent(ctx context.Context, tenantID, areaCode string, 
 	}
 
 	area.ParentCode = parentCode
-	return s.areas.Update(ctx, area)
+	if err := s.areas.Update(ctx, area); err != nil {
+		return err
+	}
+	return s.govLogger.Log(ctx, domain.GovernanceEvent{
+		TenantID:     tenantID,
+		EventType:    "area.parent_changed",
+		ActorUserID:  actorID,
+		ResourceType: "process_area",
+		ResourceID:   areaCode,
+		PayloadJSON:  []byte(`{}`),
+	})
 }
 
 func (s *AreaService) Archive(ctx context.Context, tenantID, areaCode, actorID string) error {

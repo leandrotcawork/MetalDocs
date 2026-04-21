@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS controlled_documents (
   code                            TEXT NOT NULL,
   sequence_num                    INT,
   title                           TEXT NOT NULL,
-  owner_user_id                   UUID NOT NULL,
+  owner_user_id                   TEXT NOT NULL,
   override_template_version_id    UUID REFERENCES templates_v2_template_version(id),
   status                          TEXT NOT NULL DEFAULT 'active'
                                     CHECK (status IN ('active','obsolete','superseded')),
@@ -23,6 +23,10 @@ CREATE TABLE IF NOT EXISTS controlled_documents (
 
   UNIQUE (tenant_id, profile_code, code)
 );
+
+ALTER TABLE controlled_documents
+  ADD CONSTRAINT IF NOT EXISTS controlled_document_code_format
+    CHECK (length(code) >= 2 AND length(code) <= 100);
 
 CREATE TABLE IF NOT EXISTS profile_sequence_counters (
   tenant_id     UUID NOT NULL,
@@ -39,7 +43,18 @@ CREATE INDEX IF NOT EXISTS ix_controlled_documents_tenant_area
 CREATE INDEX IF NOT EXISTS ix_controlled_documents_tenant_profile
   ON controlled_documents (tenant_id, profile_code);
 
--- code column immutability trigger (reuse function from 0122)
+-- idempotent: safe to re-create, identical to definition in 0122
+CREATE OR REPLACE FUNCTION reject_code_update() RETURNS trigger AS $$
+BEGIN
+  IF NEW.code IS DISTINCT FROM OLD.code THEN
+    RAISE EXCEPTION 'code column is immutable (table=%, old=%, new=%)',
+      TG_TABLE_NAME, OLD.code, NEW.code
+      USING ERRCODE = 'check_violation';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 DROP TRIGGER IF EXISTS trg_controlled_documents_code_immutable ON controlled_documents;
 CREATE TRIGGER trg_controlled_documents_code_immutable
   BEFORE UPDATE ON controlled_documents

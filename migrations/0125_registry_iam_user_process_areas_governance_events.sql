@@ -17,6 +17,10 @@ CREATE INDEX IF NOT EXISTS ix_user_process_areas_active
   ON user_process_areas (user_id, area_code)
   WHERE effective_to IS NULL;
 
+CREATE UNIQUE INDEX IF NOT EXISTS ux_user_process_areas_one_active
+  ON user_process_areas (user_id, tenant_id, area_code)
+  WHERE effective_to IS NULL;
+
 CREATE TABLE IF NOT EXISTS governance_events (
   id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id      UUID NOT NULL,

@@ -8,7 +8,7 @@ ALTER TABLE metaldocs.document_profiles
 ALTER TABLE metaldocs.document_profiles
   ADD COLUMN IF NOT EXISTS default_template_version_id UUID
     REFERENCES templates_v2_template_version(id),
-  ADD COLUMN IF NOT EXISTS owner_user_id UUID,
+  ADD COLUMN IF NOT EXISTS owner_user_id TEXT,
   ADD COLUMN IF NOT EXISTS editable_by_role TEXT NOT NULL DEFAULT 'admin',
   ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
 

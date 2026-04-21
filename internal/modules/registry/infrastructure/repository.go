@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	registrydomain "metaldocs/internal/modules/registry/domain"
 	taxonomydomain "metaldocs/internal/modules/taxonomy/domain"
@@ -73,6 +74,11 @@ WHERE tenant_id = $1`
 		args = append(args, *filter.ProcessAreaCode)
 		idx++
 	}
+	if len(filter.UserAreaCodes) > 0 {
+		q += fmt.Sprintf(" AND process_area_code = ANY($%d)", idx)
+		args = append(args, pgtype.FlatArray[string](filter.UserAreaCodes))
+		idx++
+	}
 	if filter.DepartmentCode != nil {
 		q += fmt.Sprintf(" AND department_code = $%d", idx)
 		args = append(args, *filter.DepartmentCode)
@@ -125,7 +131,18 @@ WHERE tenant_id = $1`
 }
 
 func (r *PostgresControlledDocumentRepository) Create(ctx context.Context, doc *registrydomain.ControlledDocument) error {
-	const q = `
+	return r.createWithQueryer(ctx, r.db, doc)
+}
+
+func (r *PostgresControlledDocumentRepository) CreateTx(ctx context.Context, tx *sql.Tx, doc *registrydomain.ControlledDocument) error {
+	if tx == nil {
+		return errors.New("nil transaction")
+	}
+	return r.createWithQueryer(ctx, tx, doc)
+}
+
+func (r *PostgresControlledDocumentRepository) createWithQueryer(ctx context.Context, qr queryRower, doc *registrydomain.ControlledDocument) error {
+	const insertQ = `
 INSERT INTO controlled_documents
 	(tenant_id, profile_code, process_area_code, department_code, code, sequence_num, title, owner_user_id,
 	 override_template_version_id, status, created_at, updated_at)
@@ -133,9 +150,9 @@ VALUES
 	($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 RETURNING id::text`
 	var id string
-	err := r.db.QueryRowContext(
+	err := qr.QueryRowContext(
 		ctx,
-		q,
+		insertQ,
 		doc.TenantID,
 		doc.ProfileCode,
 		doc.ProcessAreaCode,
@@ -188,7 +205,13 @@ func NewPostgresSequenceAllocator(db *sql.DB) *PostgresSequenceAllocator {
 }
 
 func (a *PostgresSequenceAllocator) EnsureCounter(ctx context.Context, tenantID, profileCode string) error {
-	_, err := a.db.ExecContext(ctx, `
+	return a.ensureCounter(ctx, a.db, tenantID, profileCode)
+}
+
+func (a *PostgresSequenceAllocator) ensureCounter(ctx context.Context, execer interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+}, tenantID, profileCode string) error {
+	_, err := execer.ExecContext(ctx, `
 		INSERT INTO profile_sequence_counters (tenant_id, profile_code, next_seq)
 		VALUES ($1, $2, 1)
 		ON CONFLICT (tenant_id, profile_code) DO NOTHING`,
@@ -198,45 +221,26 @@ func (a *PostgresSequenceAllocator) EnsureCounter(ctx context.Context, tenantID,
 }
 
 func (a *PostgresSequenceAllocator) NextAndIncrement(ctx context.Context, tx interface{}, tenantID, profileCode string) (int, error) {
-	if err := a.EnsureCounter(ctx, tenantID, profileCode); err != nil {
-		return 0, err
-	}
-
+	exec := sequenceQueryExecutor(a.db)
 	if provided, ok := tx.(*sql.Tx); ok && provided != nil {
-		return a.nextAndIncrementTx(ctx, provided, tenantID, profileCode)
+		exec = provided
 	}
 
-	started, err := a.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
-	if err != nil {
+	if err := a.ensureCounter(ctx, exec, tenantID, profileCode); err != nil {
 		return 0, err
 	}
-	defer started.Rollback()
 
-	next, err := a.nextAndIncrementTx(ctx, started, tenantID, profileCode)
-	if err != nil {
-		return 0, err
-	}
-	if err := started.Commit(); err != nil {
-		return 0, err
-	}
-	return next, nil
-}
-
-func (a *PostgresSequenceAllocator) nextAndIncrementTx(ctx context.Context, tx *sql.Tx, tenantID, profileCode string) (int, error) {
 	var next int
-	if err := tx.QueryRowContext(ctx,
-		`SELECT next_seq FROM profile_sequence_counters WHERE tenant_id = $1 AND profile_code = $2 FOR UPDATE`,
+	if err := exec.QueryRowContext(ctx, `
+		UPDATE profile_sequence_counters
+		SET next_seq = next_seq + 1
+		WHERE tenant_id = $1 AND profile_code = $2
+		RETURNING next_seq - 1`,
 		tenantID, profileCode,
 	).Scan(&next); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return 0, registrydomain.ErrProfileHasNoDefaultTemplate
+			return 0, registrydomain.ErrSequenceCounterNotFound
 		}
-		return 0, err
-	}
-	if _, err := tx.ExecContext(ctx,
-		`UPDATE profile_sequence_counters SET next_seq = next_seq + 1 WHERE tenant_id = $1 AND profile_code = $2`,
-		tenantID, profileCode,
-	); err != nil {
 		return 0, err
 	}
 	return next, nil
@@ -355,6 +359,15 @@ WHERE tenant_id = $1 AND code = $2`
 
 type rowScanner interface {
 	Scan(dest ...any) error
+}
+
+type queryRower interface {
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
+type sequenceQueryExecutor interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 }
 
 func scanControlledDocument(row rowScanner) (*registrydomain.ControlledDocument, error) {

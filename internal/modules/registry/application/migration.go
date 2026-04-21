@@ -38,16 +38,27 @@ func BackfillLegacyDocuments(ctx context.Context, db *sql.DB, logger *slog.Logge
 	defer rows.Close()
 
 	processed := 0
+	skipped := 0
+	errorsCount := 0
 	for rows.Next() {
 		var docID string
 		var tenantID string
 		if err := rows.Scan(&docID, &tenantID); err != nil {
-			return fmt.Errorf("scan legacy document: %w", err)
+			errorsCount++
+			logger.Error("registry backfill row scan failed", "event", "backfill", "error", err)
+			continue
+		}
+
+		tx, err := db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+		if err != nil {
+			errorsCount++
+			logger.Error("registry backfill begin tx failed", "event", "backfill", "document_id", docID, "tenant_id", tenantID, "error", err)
+			continue
 		}
 
 		legacyCode := "MIG-" + strings.ToUpper(strings.ReplaceAll(docID, "-", "")[:8])
 		var controlledDocumentID string
-		if err := db.QueryRowContext(ctx, `
+		if err := tx.QueryRowContext(ctx, `
 			INSERT INTO controlled_documents
 				(tenant_id, profile_code, process_area_code, code, sequence_num, title, owner_user_id, status)
 			VALUES
@@ -57,10 +68,13 @@ func BackfillLegacyDocuments(ctx context.Context, db *sql.DB, logger *slog.Logge
 			RETURNING id::text`,
 			tenantID, legacyCode,
 		).Scan(&controlledDocumentID); err != nil {
-			return fmt.Errorf("upsert controlled document for legacy row %s: %w", docID, err)
+			_ = tx.Rollback()
+			errorsCount++
+			logger.Error("registry backfill controlled_document upsert failed", "event", "backfill", "document_id", docID, "tenant_id", tenantID, "error", err)
+			continue
 		}
 
-		if _, err := db.ExecContext(ctx, `
+		res, err := tx.ExecContext(ctx, `
 			UPDATE documents_v2
 			SET controlled_document_id = $1,
 			    profile_code_snapshot = 'unassigned',
@@ -68,15 +82,32 @@ func BackfillLegacyDocuments(ctx context.Context, db *sql.DB, logger *slog.Logge
 			WHERE id = $2
 			  AND controlled_document_id IS NULL`,
 			controlledDocumentID, docID,
-		); err != nil {
-			return fmt.Errorf("backfill document %s: %w", docID, err)
+		)
+		if err != nil {
+			_ = tx.Rollback()
+			errorsCount++
+			logger.Error("registry backfill document update failed", "event", "backfill", "document_id", docID, "tenant_id", tenantID, "error", err)
+			continue
 		}
-		processed++
+		updatedRows, _ := res.RowsAffected()
+
+		if err := tx.Commit(); err != nil {
+			_ = tx.Rollback()
+			errorsCount++
+			logger.Error("registry backfill commit failed", "event", "backfill", "document_id", docID, "tenant_id", tenantID, "error", err)
+			continue
+		}
+
+		// This migration intentionally falls back to "unassigned" profile/process area.
+		skipped++
+		if updatedRows > 0 {
+			processed++
+		}
 	}
 	if err := rows.Err(); err != nil {
 		return fmt.Errorf("iterate legacy documents: %w", err)
 	}
 
-	logger.Info("registry backfill completed", "processed", processed)
+	logger.Info("registry backfill completed", "event", "backfill", "processed", processed, "skipped", skipped, "errors", errorsCount)
 	return nil
 }

@@ -2,7 +2,9 @@ package application
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -23,6 +25,7 @@ type AreaReader interface {
 }
 
 type RegistryService struct {
+	db        *sql.DB
 	docs      registrydomain.ControlledDocumentRepository
 	seq       registrydomain.SequenceAllocator
 	tplCheck  TemplateVersionChecker
@@ -47,6 +50,7 @@ type CreateControlledDocumentCmd struct {
 }
 
 func NewRegistryService(
+	db *sql.DB,
 	docs registrydomain.ControlledDocumentRepository,
 	seq registrydomain.SequenceAllocator,
 	tplCheck TemplateVersionChecker,
@@ -58,6 +62,7 @@ func NewRegistryService(
 		panic("registry: governance logger must not be nil")
 	}
 	return &RegistryService{
+		db:        db,
 		docs:      docs,
 		seq:       seq,
 		tplCheck:  tplCheck,
@@ -90,6 +95,7 @@ func (s *RegistryService) Create(ctx context.Context, cmd CreateControlledDocume
 		sequence   *int
 		events     []taxonomydomain.GovernanceEvent
 		overrideID *string
+		createTx   *sql.Tx
 	)
 
 	if cmd.ManualCode != nil {
@@ -115,18 +121,45 @@ func (s *RegistryService) Create(ctx context.Context, cmd CreateControlledDocume
 			PayloadJSON:  payload,
 		})
 	} else {
-		next, err := s.seq.NextAndIncrement(ctx, nil, cmd.TenantID, cmd.ProfileCode)
-		if err != nil {
-			return nil, err
-		}
-		code = registrydomain.AutoCode(cmd.ProfileCode, next)
-		sequence = &next
-		taken, err := s.docs.CodeExists(ctx, cmd.TenantID, cmd.ProfileCode, code)
-		if err != nil {
-			return nil, err
-		}
-		if taken {
-			return nil, registrydomain.ErrCDCodeTaken
+		if s.db != nil {
+			tx, err := s.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+			if err != nil {
+				return nil, err
+			}
+			defer func() {
+				if createTx != nil {
+					_ = tx.Rollback()
+				}
+			}()
+			createTx = tx
+
+			next, err := s.seq.NextAndIncrement(ctx, tx, cmd.TenantID, cmd.ProfileCode)
+			if err != nil {
+				return nil, err
+			}
+			code = registrydomain.AutoCode(cmd.ProfileCode, next)
+			sequence = &next
+			taken, err := s.docs.CodeExists(ctx, cmd.TenantID, cmd.ProfileCode, code)
+			if err != nil {
+				return nil, err
+			}
+			if taken {
+				return nil, registrydomain.ErrCDCodeTaken
+			}
+		} else {
+			next, err := s.seq.NextAndIncrement(ctx, nil, cmd.TenantID, cmd.ProfileCode)
+			if err != nil {
+				return nil, err
+			}
+			code = registrydomain.AutoCode(cmd.ProfileCode, next)
+			sequence = &next
+			taken, err := s.docs.CodeExists(ctx, cmd.TenantID, cmd.ProfileCode, code)
+			if err != nil {
+				return nil, err
+			}
+			if taken {
+				return nil, registrydomain.ErrCDCodeTaken
+			}
 		}
 	}
 
@@ -177,13 +210,24 @@ func (s *RegistryService) Create(ctx context.Context, cmd CreateControlledDocume
 		CreatedAt:                 now,
 		UpdatedAt:                 now,
 	}
-	if err := s.docs.Create(ctx, doc); err != nil {
-		return nil, err
+	if createTx != nil {
+		if err := s.docs.CreateTx(ctx, createTx, doc); err != nil {
+			return nil, err
+		}
+		if err := createTx.Commit(); err != nil {
+			return nil, err
+		}
+		createTx = nil
+	} else {
+		if err := s.docs.Create(ctx, doc); err != nil {
+			return nil, err
+		}
 	}
 
+	// Governance events are best-effort; document creation is already committed.
 	for _, event := range events {
 		if err := s.govLogger.Log(ctx, event); err != nil {
-			return nil, err
+			slog.Warn("registry governance event logging failed", "event_type", event.EventType, "resource_id", event.ResourceID, "error", err)
 		}
 	}
 

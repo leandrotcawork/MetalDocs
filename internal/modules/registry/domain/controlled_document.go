@@ -35,6 +35,7 @@ var (
 	ErrCDNotFound               = errors.New("controlled document not found")
 	ErrCDCodeTaken              = errors.New("controlled document code already taken")
 	ErrCDArchivedCodeReuse      = errors.New("cannot reuse code from archived controlled document")
+	ErrSequenceCounterNotFound  = errors.New("sequence counter not initialized for profile")
 	ErrCDNotActive              = errors.New("controlled document is not active")
 	ErrManualCodeReasonRequired = errors.New("manual code reason is required")
 	ErrOverrideReasonRequired   = errors.New("override reason is required")

@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"testing"
 	"time"
@@ -12,8 +13,9 @@ import (
 
 func TestCreate_AutoCode(t *testing.T) {
 	repo := newFakeControlledDocumentRepository()
+	logger := &fakeGovernanceLogger{}
 	seq := &fakeSequenceAllocator{next: 1}
-	svc := NewRegistryService(repo, seq, &fakeTemplateVersionChecker{}, &fakeProfileReader{}, &fakeAreaReader{}, &fakeGovernanceLogger{})
+	svc := NewRegistryService(nil, repo, seq, &fakeTemplateVersionChecker{}, &fakeProfileReader{}, &fakeAreaReader{}, logger)
 	svc.now = func() time.Time { return time.Date(2026, 4, 21, 10, 0, 0, 0, time.UTC) }
 
 	cd, err := svc.Create(context.Background(), CreateControlledDocumentCmd{
@@ -33,12 +35,15 @@ func TestCreate_AutoCode(t *testing.T) {
 	if cd.SequenceNum == nil || *cd.SequenceNum != 1 {
 		t.Fatalf("expected sequence 1, got %+v", cd.SequenceNum)
 	}
+	if len(logger.events) != 0 {
+		t.Fatalf("expected zero governance events, got %+v", logger.events)
+	}
 }
 
 func TestCreate_ManualCode(t *testing.T) {
 	repo := newFakeControlledDocumentRepository()
 	logger := &fakeGovernanceLogger{}
-	svc := NewRegistryService(repo, &fakeSequenceAllocator{next: 1}, &fakeTemplateVersionChecker{}, &fakeProfileReader{}, &fakeAreaReader{}, logger)
+	svc := NewRegistryService(nil, repo, &fakeSequenceAllocator{next: 1}, &fakeTemplateVersionChecker{}, &fakeProfileReader{}, &fakeAreaReader{}, logger)
 
 	cd, err := svc.Create(context.Background(), CreateControlledDocumentCmd{
 		TenantID:         "tenant-a",
@@ -65,7 +70,7 @@ func TestCreate_ManualCode(t *testing.T) {
 }
 
 func TestCreate_ManualCode_MissingReason(t *testing.T) {
-	svc := NewRegistryService(newFakeControlledDocumentRepository(), &fakeSequenceAllocator{next: 1}, &fakeTemplateVersionChecker{}, &fakeProfileReader{}, &fakeAreaReader{}, &fakeGovernanceLogger{})
+	svc := NewRegistryService(nil, newFakeControlledDocumentRepository(), &fakeSequenceAllocator{next: 1}, &fakeTemplateVersionChecker{}, &fakeProfileReader{}, &fakeAreaReader{}, &fakeGovernanceLogger{})
 	_, err := svc.Create(context.Background(), CreateControlledDocumentCmd{
 		TenantID:        "tenant-a",
 		ProfileCode:     "po",
@@ -81,7 +86,7 @@ func TestCreate_ManualCode_MissingReason(t *testing.T) {
 }
 
 func TestCreate_ManualCode_ShortReason(t *testing.T) {
-	svc := NewRegistryService(newFakeControlledDocumentRepository(), &fakeSequenceAllocator{next: 1}, &fakeTemplateVersionChecker{}, &fakeProfileReader{}, &fakeAreaReader{}, &fakeGovernanceLogger{})
+	svc := NewRegistryService(nil, newFakeControlledDocumentRepository(), &fakeSequenceAllocator{next: 1}, &fakeTemplateVersionChecker{}, &fakeProfileReader{}, &fakeAreaReader{}, &fakeGovernanceLogger{})
 	_, err := svc.Create(context.Background(), CreateControlledDocumentCmd{
 		TenantID:         "tenant-a",
 		ProfileCode:      "po",
@@ -100,7 +105,7 @@ func TestCreate_ManualCode_ShortReason(t *testing.T) {
 func TestCreate_DuplicateCode(t *testing.T) {
 	repo := newFakeControlledDocumentRepository()
 	repo.codeExists = true
-	svc := NewRegistryService(repo, &fakeSequenceAllocator{next: 1}, &fakeTemplateVersionChecker{}, &fakeProfileReader{}, &fakeAreaReader{}, &fakeGovernanceLogger{})
+	svc := NewRegistryService(nil, repo, &fakeSequenceAllocator{next: 1}, &fakeTemplateVersionChecker{}, &fakeProfileReader{}, &fakeAreaReader{}, &fakeGovernanceLogger{})
 
 	_, err := svc.Create(context.Background(), CreateControlledDocumentCmd{
 		TenantID:         "tenant-a",
@@ -121,9 +126,9 @@ func TestCreate_OverrideTemplate_GovernanceEvent(t *testing.T) {
 	repo := newFakeControlledDocumentRepository()
 	logger := &fakeGovernanceLogger{}
 	checker := &fakeTemplateVersionChecker{byID: map[string]templateVersionState{
-		"tpl-ovr-1": {status: ptr("published"), profileCode: "po"},
+		"tpl-ovr-1": {status: stringPtr("published"), profileCode: "po"},
 	}}
-	svc := NewRegistryService(repo, &fakeSequenceAllocator{next: 1}, checker, &fakeProfileReader{}, &fakeAreaReader{}, logger)
+	svc := NewRegistryService(nil, repo, &fakeSequenceAllocator{next: 1}, checker, &fakeProfileReader{}, &fakeAreaReader{}, logger)
 
 	_, err := svc.Create(context.Background(), CreateControlledDocumentCmd{
 		TenantID:                  "tenant-a",
@@ -145,9 +150,9 @@ func TestCreate_OverrideTemplate_GovernanceEvent(t *testing.T) {
 
 func TestCreate_OverrideTemplate_MissingReason(t *testing.T) {
 	checker := &fakeTemplateVersionChecker{byID: map[string]templateVersionState{
-		"tpl-ovr-1": {status: ptr("published"), profileCode: "po"},
+		"tpl-ovr-1": {status: stringPtr("published"), profileCode: "po"},
 	}}
-	svc := NewRegistryService(newFakeControlledDocumentRepository(), &fakeSequenceAllocator{next: 1}, checker, &fakeProfileReader{}, &fakeAreaReader{}, &fakeGovernanceLogger{})
+	svc := NewRegistryService(nil, newFakeControlledDocumentRepository(), &fakeSequenceAllocator{next: 1}, checker, &fakeProfileReader{}, &fakeAreaReader{}, &fakeGovernanceLogger{})
 
 	_, err := svc.Create(context.Background(), CreateControlledDocumentCmd{
 		TenantID:                  "tenant-a",
@@ -166,7 +171,7 @@ func TestCreate_OverrideTemplate_MissingReason(t *testing.T) {
 func TestCreate_ProfileArchived(t *testing.T) {
 	archivedAt := time.Date(2026, 4, 20, 10, 0, 0, 0, time.UTC)
 	profiles := &fakeProfileReader{item: &taxonomydomain.DocumentProfile{Code: "po", TenantID: "tenant-a", ArchivedAt: &archivedAt}}
-	svc := NewRegistryService(newFakeControlledDocumentRepository(), &fakeSequenceAllocator{next: 1}, &fakeTemplateVersionChecker{}, profiles, &fakeAreaReader{}, &fakeGovernanceLogger{})
+	svc := NewRegistryService(nil, newFakeControlledDocumentRepository(), &fakeSequenceAllocator{next: 1}, &fakeTemplateVersionChecker{}, profiles, &fakeAreaReader{}, &fakeGovernanceLogger{})
 
 	_, err := svc.Create(context.Background(), CreateControlledDocumentCmd{
 		TenantID:        "tenant-a",
@@ -184,7 +189,7 @@ func TestCreate_ProfileArchived(t *testing.T) {
 func TestCreate_AreaArchived(t *testing.T) {
 	archivedAt := time.Date(2026, 4, 20, 10, 0, 0, 0, time.UTC)
 	areas := &fakeAreaReader{item: &taxonomydomain.ProcessArea{Code: "quality", TenantID: "tenant-a", ArchivedAt: &archivedAt}}
-	svc := NewRegistryService(newFakeControlledDocumentRepository(), &fakeSequenceAllocator{next: 1}, &fakeTemplateVersionChecker{}, &fakeProfileReader{}, areas, &fakeGovernanceLogger{})
+	svc := NewRegistryService(nil, newFakeControlledDocumentRepository(), &fakeSequenceAllocator{next: 1}, &fakeTemplateVersionChecker{}, &fakeProfileReader{}, areas, &fakeGovernanceLogger{})
 
 	_, err := svc.Create(context.Background(), CreateControlledDocumentCmd{
 		TenantID:        "tenant-a",
@@ -229,6 +234,12 @@ func (f *fakeControlledDocumentRepository) List(_ context.Context, _ string, _ r
 }
 
 func (f *fakeControlledDocumentRepository) Create(_ context.Context, doc *registrydomain.ControlledDocument) error {
+	copy := *doc
+	f.created = &copy
+	return nil
+}
+
+func (f *fakeControlledDocumentRepository) CreateTx(_ context.Context, _ *sql.Tx, doc *registrydomain.ControlledDocument) error {
 	copy := *doc
 	f.created = &copy
 	return nil
@@ -306,4 +317,3 @@ func (f *fakeGovernanceLogger) Log(_ context.Context, e taxonomydomain.Governanc
 }
 
 func stringPtr(v string) *string { return &v }
-func ptr(v string) *string       { return &v }

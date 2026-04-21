@@ -7,8 +7,13 @@ import (
 	"strings"
 
 	authdomain "metaldocs/internal/modules/auth/domain"
+	iamapp "metaldocs/internal/modules/iam/application"
 	iamdomain "metaldocs/internal/modules/iam/domain"
 )
+
+type ctxKeyCapability struct{}
+type ctxKeyAreaCode struct{}
+type ctxKeyResourceID struct{}
 
 type Middleware struct {
 	authorizer   iamdomain.Authorizer
@@ -277,4 +282,63 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
+}
+
+func NewV2AuthzMiddleware(service *iamapp.AuthorizationService) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		if service == nil {
+			return next
+		}
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			rawCap := r.Context().Value(ctxKeyCapability{})
+			if rawCap == nil {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			var capability iamdomain.Capability
+			switch value := rawCap.(type) {
+			case iamdomain.Capability:
+				capability = value
+			case string:
+				capability = iamdomain.Capability(strings.TrimSpace(value))
+			}
+			if capability == "" {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			areaCode, _ := r.Context().Value(ctxKeyAreaCode{}).(string)
+			areaCode = strings.TrimSpace(areaCode)
+			if areaCode == "" {
+				areaCode = strings.TrimSpace(r.Header.Get("X-Area-Code"))
+			}
+
+			resourceID, _ := r.Context().Value(ctxKeyResourceID{}).(string)
+			userID := strings.TrimSpace(iamdomain.UserIDFromContext(r.Context()))
+			if userID == "" {
+				userID = strings.TrimSpace(r.Header.Get("X-User-Id"))
+			}
+			tenantID := strings.TrimSpace(r.Header.Get("X-Tenant-ID"))
+
+			allowed, err := service.Check(r.Context(), userID, tenantID, capability, iamapp.ResourceCtx{
+				AreaCode:   areaCode,
+				ResourceID: strings.TrimSpace(resourceID),
+			})
+			if err != nil || !allowed {
+				code := "forbidden"
+				if err != nil {
+					code = err.Error()
+				}
+				writeJSON(w, http.StatusForbidden, map[string]any{
+					"code":                code,
+					"required_capability": capability,
+					"area_code":           areaCode,
+				})
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
 }

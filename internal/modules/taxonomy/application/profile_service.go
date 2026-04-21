@@ -24,12 +24,10 @@ func NewProfileService(
 	tplCheck TemplateVersionChecker,
 	govLogger domain.GovernanceLogger,
 ) *ProfileService {
-	return &ProfileService{
-		profiles:  profiles,
-		tplCheck:  tplCheck,
-		govLogger: govLogger,
-		now:       time.Now,
+	if govLogger == nil {
+		panic("taxonomy: ProfileService govLogger must not be nil")
 	}
+	return &ProfileService{profiles: profiles, tplCheck: tplCheck, govLogger: govLogger, now: time.Now}
 }
 
 func (s *ProfileService) SetDefaultTemplate(ctx context.Context, tenantID, profileCode, templateVersionID, actorID string) error {
@@ -57,10 +55,6 @@ func (s *ProfileService) SetDefaultTemplate(ctx context.Context, tenantID, profi
 		return err
 	}
 
-	if s.govLogger == nil {
-		return nil
-	}
-
 	payload, _ := json.Marshal(map[string]string{
 		"template_version_id": templateVersionID,
 	})
@@ -74,7 +68,7 @@ func (s *ProfileService) SetDefaultTemplate(ctx context.Context, tenantID, profi
 	})
 }
 
-func (s *ProfileService) Archive(ctx context.Context, tenantID, profileCode, _ string) error {
+func (s *ProfileService) Archive(ctx context.Context, tenantID, profileCode, actorID string) error {
 	profile, err := s.profiles.GetByCode(ctx, tenantID, profileCode)
 	if err != nil {
 		return err
@@ -82,5 +76,15 @@ func (s *ProfileService) Archive(ctx context.Context, tenantID, profileCode, _ s
 	if err := profile.Archive(s.now()); err != nil {
 		return err
 	}
-	return s.profiles.Update(ctx, profile)
+	if err := s.profiles.Update(ctx, profile); err != nil {
+		return err
+	}
+	return s.govLogger.Log(ctx, domain.GovernanceEvent{
+		TenantID:     tenantID,
+		EventType:    "profile.archived",
+		ActorUserID:  actorID,
+		ResourceType: "document_profile",
+		ResourceID:   profileCode,
+		PayloadJSON:  []byte(`{}`),
+	})
 }

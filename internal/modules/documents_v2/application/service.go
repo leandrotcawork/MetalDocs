@@ -159,6 +159,19 @@ type CreateDocumentResult struct {
 	SessionID         string
 }
 
+func buildDocumentForCreate(cmd CreateDocumentInput, cd *registrydomain.ControlledDocument, resolvedTemplateVersionID string) domain.Document {
+	return domain.Document{
+		TenantID:                cmd.TenantID,
+		TemplateVersionID:       resolvedTemplateVersionID,
+		Name:                    cmd.Name,
+		FormDataJSON:            cmd.FormData,
+		CreatedBy:               cmd.ActorUserID,
+		ControlledDocumentID:    &cmd.ControlledDocumentID,
+		ProfileCodeSnapshot:     &cd.ProfileCode,
+		ProcessAreaCodeSnapshot: &cd.ProcessAreaCode,
+	}
+}
+
 func (s *Service) CreateDocument(ctx context.Context, cmd CreateDocumentInput) (res *CreateDocumentResult, err error) {
 	if strings.TrimSpace(cmd.ControlledDocumentID) == "" {
 		return nil, ErrControlledDocumentRequired
@@ -251,17 +264,8 @@ func (s *Service) CreateDocument(ctx context.Context, cmd CreateDocumentInput) (
 			}
 		}()
 
-		doc := &domain.Document{
-			TenantID:                cmd.TenantID,
-			TemplateVersionID:       resolvedTemplateVersionID,
-			Name:                    cmd.Name,
-			FormDataJSON:            cmd.FormData,
-			CreatedBy:               cmd.ActorUserID,
-			ControlledDocumentID:    &cmd.ControlledDocumentID,
-			ProfileCodeSnapshot:     &cd.ProfileCode,
-			ProcessAreaCodeSnapshot: &cd.ProcessAreaCode,
-		}
-		docID, revID, sessionID, err := s.repo.CreateDocument(ctx, doc, contentHash)
+		doc := buildDocumentForCreate(cmd, cd, resolvedTemplateVersionID)
+		docID, revID, sessionID, err := s.repo.CreateDocument(ctx, &doc, contentHash)
 		if err != nil {
 			return nil, err
 		}
@@ -285,17 +289,8 @@ func (s *Service) CreateDocument(ctx context.Context, cmd CreateDocumentInput) (
 	h.Write([]byte(docxKey))
 	contentHash = fmt.Sprintf("%x", h.Sum(nil))
 
-	doc := &domain.Document{
-		TenantID:                cmd.TenantID,
-		TemplateVersionID:       resolvedTemplateVersionID,
-		Name:                    cmd.Name,
-		FormDataJSON:            cmd.FormData,
-		CreatedBy:               cmd.ActorUserID,
-		ControlledDocumentID:    &cmd.ControlledDocumentID,
-		ProfileCodeSnapshot:     &cd.ProfileCode,
-		ProcessAreaCodeSnapshot: &cd.ProcessAreaCode,
-	}
-	docID, revID, sessionID, err := s.repo.CreateDocument(ctx, doc, contentHash)
+	doc := buildDocumentForCreate(cmd, cd, resolvedTemplateVersionID)
+	docID, revID, sessionID, err := s.repo.CreateDocument(ctx, &doc, contentHash)
 	if err != nil {
 		return nil, err
 	}

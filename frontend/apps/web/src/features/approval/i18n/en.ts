@@ -1,13 +1,4 @@
 export const en = {
-  'state.draft': 'Draft',
-  'state.under_review': 'Under Review',
-  'state.approved': 'Approved',
-  'state.scheduled': 'Scheduled',
-  'state.published': 'Published',
-  'state.superseded': 'Superseded',
-  'state.rejected': 'Rejected',
-  'state.obsolete': 'Obsolete',
-  'state.cancelled': 'Cancelled',
   'action.submit': 'Submit for Review',
   'action.signoff': 'Sign Off',
   'action.publish': 'Publish',

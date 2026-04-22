@@ -1,13 +1,4 @@
 export const ptBR = {
-  'state.draft': 'Rascunho',
-  'state.under_review': 'Em revisão',
-  'state.approved': 'Aprovado',
-  'state.scheduled': 'Agendado',
-  'state.published': 'Publicado',
-  'state.superseded': 'Substituído',
-  'state.rejected': 'Rejeitado',
-  'state.obsolete': 'Obsoleto',
-  'state.cancelled': 'Cancelado',
   'action.submit': 'Submeter para revisão',
   'action.signoff': 'Assinar',
   'action.publish': 'Publicar',

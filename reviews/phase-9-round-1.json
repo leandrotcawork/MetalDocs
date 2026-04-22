@@ -1,0 +1,50 @@
+{
+  "phase": 9,
+  "mode": "COVERAGE",
+  "verdict": "PASS",
+  "critical_issues": [],
+  "important_issues": [],
+  "minor_issues": [],
+  "quality_checks": {
+    "1_mutationClient_412": "PASS — mutate() trata 412 com toast padrão ou callback on412 e sempre lança ApprovalError.",
+    "2_mutationClient_401": "PASS — mutate() em 401 mostra toast de sessão expirada e lança ApprovalError authn.expired.",
+    "3_mutationClient_idempotency": "PASS — todas as mutações usam mutate() que injeta Idempotency-Key automaticamente (uuid ou override).",
+    "4_etag_roundtrip": "PASS — getInstance() persiste ETag no etagCache e mutações enviam If-Match via resourceId/etagCache no mutate().",
+    "5_state_badge_single_source": "PASS — labels de estado removidas do i18n; STATE_CONFIG em StateBadge concentra labels/cores de estado.",
+    "6_transition_policy_exhaustive": "PASS — TRANSITION_POLICY agora é Record<ApprovalState, ...> cobrindo os 9 estados em RegistryDetailPanel.",
+    "7_signoff_state_machine": "PASS — os 8 estados (idle, submitting, success e 5 erros) são alcançáveis e renderizados em SignoffDialog.",
+    "8_password_cleared": "PASS — password é limpo no bloco finally de handleSubmit independentemente de sucesso/erro.",
+    "9_lock_badge_gating": "PASS — LockBadge retorna null quando lockedByInstanceId não existe, renderizando só quando há lock.",
+    "10_inbox_loading_empty_error": "PASS — InboxPage renderiza explicitamente loading, erro e estado vazio (além da tabela quando há dados).",
+    "11_route_admin_validation": "PASS — validateDraft() valida m_of_n com regra m <= quantidade de membros antes de submit.",
+    "12_supersede_datetime_min": "PASS — SupersedePublishDialog valida effective_from para >= 5 minutos no futuro antes de chamar schedulePublish().",
+    "13_registry_panel_actions": "PASS — botões de ação do RegistryDetailPanel foram gateados por flags de TRANSITION_POLICY por documentStatus.",
+    "14_test_coverage_density": "PASS — todos os componentes têm >=3 testes; SignoffDialog mantém >=7 casos (8 casos)."
+  },
+  "fixes_required": [
+    {
+      "file": "frontend/apps/web/src/features/approval/components/RegistryDetailPanel.tsx",
+      "description": "APPLIED: TRANSITION_POLICY tornado exaustivo para os 9 ApprovalState (~linhas 37-75) e gate de ações migrado para policy.actions (~linhas 306-333).",
+      "severity": "important",
+      "status": "APPLIED"
+    },
+    {
+      "file": "frontend/apps/web/src/features/approval/i18n/en.ts",
+      "description": "APPLIED: removidas entradas state.* para evitar definição duplicada de labels de estado fora de STATE_CONFIG (topo do arquivo).",
+      "severity": "important",
+      "status": "APPLIED"
+    },
+    {
+      "file": "frontend/apps/web/src/features/approval/i18n/pt-BR.ts",
+      "description": "APPLIED: removidas entradas state.* para manter labels de estado centralizadas em STATE_CONFIG (topo do arquivo).",
+      "severity": "important",
+      "status": "APPLIED"
+    },
+    {
+      "file": "frontend/apps/web/src/features/approval/components/StateBadge.test.tsx",
+      "description": "APPLIED: adicionado 3º caso de teste (label de estado approved) para cumprir densidade mínima de cobertura por componente (~linhas 29-32).",
+      "severity": "minor",
+      "status": "APPLIED"
+    }
+  ]
+}

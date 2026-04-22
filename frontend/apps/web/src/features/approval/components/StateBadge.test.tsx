@@ -25,4 +25,9 @@ describe('StateBadge', () => {
     const { container } = render(<StateBadge state="draft" size="sm" />);
     expect((container.firstChild as HTMLElement).className.includes('sm')).toBe(true);
   });
+
+  it('renders expected label for approved state', () => {
+    render(<StateBadge state="approved" />);
+    expect(screen.getByText('Aprovado')).toBeTruthy();
+  });
 });

@@ -37,7 +37,7 @@ export async function renameDocument(id: string, name: string): Promise<any> {
     body: JSON.stringify({ name }),
   }));
 }
-export async function createDocument(req: { template_version_id: string; name: string; form_data: unknown }): Promise<CreateDocumentResult> {
+export async function createDocument(req: { template_version_id?: string; name: string; form_data: unknown; controlled_document_id?: string }): Promise<CreateDocumentResult> {
   return json(await fetch('/api/v2/documents', {
     method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify(req),

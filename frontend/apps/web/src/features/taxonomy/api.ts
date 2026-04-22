@@ -27,7 +27,8 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
 export async function fetchProfiles(includeArchived?: boolean): Promise<DocumentProfile[]> {
   const qs = includeArchived ? "?includeArchived=true" : "";
-  return request<DocumentProfile[]>(`/profiles${qs}`);
+  const res = await request<{ items: DocumentProfile[] }>(`/profiles${qs}`);
+  return res.items;
 }
 
 export async function fetchProfile(code: string): Promise<DocumentProfile> {
@@ -63,7 +64,8 @@ export async function archiveProfile(code: string): Promise<void> {
 
 export async function fetchAreas(includeArchived?: boolean): Promise<ProcessArea[]> {
   const qs = includeArchived ? "?includeArchived=true" : "";
-  return request<ProcessArea[]>(`/areas${qs}`);
+  const res = await request<{ items: ProcessArea[] }>(`/areas${qs}`);
+  return res.items;
 }
 
 export async function fetchArea(code: string): Promise<ProcessArea> {

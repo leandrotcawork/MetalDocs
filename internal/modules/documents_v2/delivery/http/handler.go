@@ -760,7 +760,7 @@ func rolesFromHeader(header string) []string {
 	return roles
 }
 
-const devTenantID = "00000000-0000-0000-0000-000000000001"
+const devTenantID = "ffffffff-ffff-ffff-ffff-ffffffffffff"
 
 func tenantIDFromReq(r *http.Request) string {
 	if t := strings.TrimSpace(r.Header.Get("X-Tenant-ID")); t != "" {
@@ -816,6 +816,8 @@ func mapErr(err error) (int, string) {
 		return http.StatusConflict, "misbound"
 	case errors.Is(err, domain.ErrInvalidStateTransition):
 		return http.StatusConflict, "invalid_state_transition"
+	case errors.Is(err, registrydomain.ErrCDNotFound):
+		return http.StatusNotFound, "controlled_document_not_found"
 	case errors.Is(err, registrydomain.ErrCDNotActive):
 		return http.StatusConflict, "controlled_document_not_active"
 	case errors.Is(err, registrydomain.ErrProfileHasNoDefaultTemplate):

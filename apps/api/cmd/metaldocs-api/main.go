@@ -29,15 +29,18 @@ import (
 	authdelivery "metaldocs/internal/modules/auth/delivery/http"
 	iamapp "metaldocs/internal/modules/iam/application"
 	iamdelivery "metaldocs/internal/modules/iam/delivery/http"
+	iamdomain "metaldocs/internal/modules/iam/domain"
 	iampg "metaldocs/internal/modules/iam/infrastructure/postgres"
 	notificationapp "metaldocs/internal/modules/notifications/application"
 	notificationdelivery "metaldocs/internal/modules/notifications/delivery/http"
 	"metaldocs/internal/modules/registry"
+	registryinfra "metaldocs/internal/modules/registry/infrastructure"
 	searchapp "metaldocs/internal/modules/search/application"
 	searchdelivery "metaldocs/internal/modules/search/delivery/http"
 	searchdocs "metaldocs/internal/modules/search/infrastructure/documents"
 	"metaldocs/internal/modules/taxonomy"
 	taxonomyinfra "metaldocs/internal/modules/taxonomy/infrastructure"
+	taxonomydomain "metaldocs/internal/modules/taxonomy/domain"
 	workflowapp "metaldocs/internal/modules/workflow/application"
 	workflowdelivery "metaldocs/internal/modules/workflow/delivery/http"
 	"metaldocs/internal/platform/authn"
@@ -158,6 +161,8 @@ func main() {
 	// Legacy templates module routes removed — templates_v2 owns /api/v2/templates/*
 
 	docPresigner := objectstore.NewDocumentPresigner(deps.MinioClient, deps.MinioBucket, 15*time.Minute, 25*1024*1024)
+	cdRepo := registryinfra.NewPostgresControlledDocumentRepository(deps.SQLDB)
+	profileRepo := taxonomyinfra.NewProfileRepository(deps.SQLDB)
 	docDeps := documents_v2.Dependencies{
 		DB:      deps.SQLDB,
 		Docgen:  nil,
@@ -166,9 +171,12 @@ func main() {
 			docgenv2.NewTemplateReader(deps.SQLDB, deps.MinioClient, deps.MinioBucket),
 			docgenv2.NewTemplatesV2TemplateReader(deps.SQLDB),
 		),
-		FormVal:       formval.NewGojsonschema(),
-		Audit:         newDocumentsV2AuditAdapter(deps.AuditWriter),
-		ExportPresign: docPresigner,
+		FormVal:         formval.NewGojsonschema(),
+		Audit:           newDocumentsV2AuditAdapter(deps.AuditWriter),
+		ExportPresign:   docPresigner,
+		RegistryReader:  cdRepo,
+		AuthzChecker:    permissiveAuthzChecker{},
+		ProfileDefaults: &profileDefaultsAdapter{profileRepo: profileRepo},
 	}
 	if deps.DocgenV2Client != nil {
 		docDeps.ExportDocgen = deps.DocgenV2Client
@@ -252,4 +260,30 @@ func (a *documentsV2AuditAdapter) Write(ctx context.Context, tenantID, actorID, 
 	}); err != nil {
 		log.Printf("documents_v2 audit write failed: %v", err)
 	}
+}
+
+// permissiveAuthzChecker always grants access (dev/MVP only — IAM area check not yet enforced).
+type permissiveAuthzChecker struct{}
+
+func (permissiveAuthzChecker) Check(_ context.Context, _, _ string, _ iamdomain.Capability, _ iamapp.ResourceCtx) error {
+	return nil
+}
+
+// profileDefaultsAdapter bridges taxonomy ProfileRepository → documents_v2 ProfileDefaultTemplateReader.
+type profileDefaultsAdapter struct {
+	profileRepo interface {
+		GetByCode(ctx context.Context, tenantID, code string) (*taxonomydomain.DocumentProfile, error)
+	}
+}
+
+func (a *profileDefaultsAdapter) GetDefaultTemplateVersionID(ctx context.Context, tenantID, profileCode string) (*string, *string, error) {
+	profile, err := a.profileRepo.GetByCode(ctx, tenantID, profileCode)
+	if err != nil {
+		return nil, nil, err
+	}
+	if profile.DefaultTemplateVersionID == nil {
+		return nil, nil, nil
+	}
+	status := "published"
+	return profile.DefaultTemplateVersionID, &status, nil
 }

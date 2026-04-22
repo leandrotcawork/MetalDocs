@@ -16,19 +16,19 @@ const (
 )
 
 type ControlledDocument struct {
-	ID                        string
-	TenantID                  string
-	ProfileCode               string
-	ProcessAreaCode           string
-	DepartmentCode            *string
-	Code                      string
-	SequenceNum               *int
-	Title                     string
-	OwnerUserID               string
-	OverrideTemplateVersionID *string
-	Status                    CDStatus
-	CreatedAt                 time.Time
-	UpdatedAt                 time.Time
+	ID                        string     `json:"id"`
+	TenantID                  string     `json:"tenantId"`
+	ProfileCode               string     `json:"profileCode"`
+	ProcessAreaCode           string     `json:"processAreaCode"`
+	DepartmentCode            *string    `json:"departmentCode"`
+	Code                      string     `json:"code"`
+	SequenceNum               *int       `json:"sequenceNum"`
+	Title                     string     `json:"title"`
+	OwnerUserID               string     `json:"ownerUserId"`
+	OverrideTemplateVersionID *string    `json:"overrideTemplateVersionId"`
+	Status                    CDStatus   `json:"status"`
+	CreatedAt                 time.Time  `json:"createdAt"`
+	UpdatedAt                 time.Time  `json:"updatedAt"`
 }
 
 var (

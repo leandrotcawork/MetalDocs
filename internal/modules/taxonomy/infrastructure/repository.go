@@ -18,7 +18,7 @@ func NewProfileRepository(db *sql.DB) *ProfileRepository {
 
 func (r *ProfileRepository) GetByCode(ctx context.Context, tenantID, code string) (*domain.DocumentProfile, error) {
 	const q = `
-SELECT code, tenant_id, family_code, name, description, review_interval_days,
+SELECT code, tenant_id, family_code, name, description, alias, review_interval_days,
        default_template_version_id, owner_user_id, editable_by_role, archived_at, created_at
 FROM metaldocs.document_profiles
 WHERE tenant_id = $1 AND code = $2`
@@ -32,6 +32,7 @@ WHERE tenant_id = $1 AND code = $2`
 		&profile.FamilyCode,
 		&profile.Name,
 		&profile.Description,
+		&profile.Alias,
 		&profile.ReviewIntervalDays,
 		&defaultTemplateVersionID,
 		&ownerUserID,
@@ -52,7 +53,7 @@ WHERE tenant_id = $1 AND code = $2`
 
 func (r *ProfileRepository) List(ctx context.Context, tenantID string, includeArchived bool) ([]domain.DocumentProfile, error) {
 	q := `
-SELECT code, tenant_id, family_code, name, description, review_interval_days,
+SELECT code, tenant_id, family_code, name, description, alias, review_interval_days,
        default_template_version_id, owner_user_id, editable_by_role, archived_at, created_at
 FROM metaldocs.document_profiles
 WHERE tenant_id = $1`
@@ -78,6 +79,7 @@ WHERE tenant_id = $1`
 			&profile.FamilyCode,
 			&profile.Name,
 			&profile.Description,
+			&profile.Alias,
 			&profile.ReviewIntervalDays,
 			&defaultTemplateVersionID,
 			&ownerUserID,
@@ -100,9 +102,9 @@ WHERE tenant_id = $1`
 func (r *ProfileRepository) Create(ctx context.Context, p *domain.DocumentProfile) error {
 	const q = `
 INSERT INTO metaldocs.document_profiles
-    (code, tenant_id, family_code, name, description, review_interval_days, default_template_version_id, owner_user_id, editable_by_role, archived_at)
+    (code, tenant_id, family_code, name, description, alias, review_interval_days, default_template_version_id, owner_user_id, editable_by_role, archived_at)
 VALUES
-    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
+    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
 
 	_, err := r.db.ExecContext(
 		ctx,
@@ -112,6 +114,7 @@ VALUES
 		p.FamilyCode,
 		p.Name,
 		p.Description,
+		p.Alias,
 		p.ReviewIntervalDays,
 		stringPtrToNull(p.DefaultTemplateVersionID),
 		stringPtrToNull(p.OwnerUserID),
@@ -127,12 +130,13 @@ UPDATE metaldocs.document_profiles
 SET family_code = $1,
     name = $2,
     description = $3,
-    review_interval_days = $4,
-    default_template_version_id = $5,
-    owner_user_id = $6,
-    editable_by_role = $7,
-    archived_at = $8
-WHERE tenant_id = $9 AND code = $10`
+    alias = $4,
+    review_interval_days = $5,
+    default_template_version_id = $6,
+    owner_user_id = $7,
+    editable_by_role = $8,
+    archived_at = $9
+WHERE tenant_id = $10 AND code = $11`
 
 	result, err := r.db.ExecContext(
 		ctx,
@@ -140,6 +144,7 @@ WHERE tenant_id = $9 AND code = $10`
 		p.FamilyCode,
 		p.Name,
 		p.Description,
+		p.Alias,
 		p.ReviewIntervalDays,
 		stringPtrToNull(p.DefaultTemplateVersionID),
 		stringPtrToNull(p.OwnerUserID),

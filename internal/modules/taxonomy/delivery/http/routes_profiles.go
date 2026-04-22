@@ -18,6 +18,7 @@ type profileUpsertRequest struct {
 	FamilyCode               string  `json:"familyCode"`
 	Name                     string  `json:"name"`
 	Description              string  `json:"description"`
+	Alias                    string  `json:"alias"`
 	ReviewIntervalDays       int     `json:"reviewIntervalDays"`
 	DefaultTemplateVersionID *string `json:"defaultTemplateVersionId"`
 	OwnerUserID              *string `json:"ownerUserId"`
@@ -50,12 +51,21 @@ func (h *Handler) createProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	code := strings.TrimSpace(req.Code)
+	alias := strings.TrimSpace(req.Alias)
+	if alias == "" {
+		alias = code
+		if len(alias) > 24 {
+			alias = alias[:24]
+		}
+	}
 	profile := &domain.DocumentProfile{
-		Code:                     strings.TrimSpace(req.Code),
+		Code:                     code,
 		TenantID:                 tenantIDFromRequest(r),
 		FamilyCode:               strings.TrimSpace(req.FamilyCode),
 		Name:                     strings.TrimSpace(req.Name),
 		Description:              strings.TrimSpace(req.Description),
+		Alias:                    alias,
 		ReviewIntervalDays:       req.ReviewIntervalDays,
 		DefaultTemplateVersionID: req.DefaultTemplateVersionID,
 		OwnerUserID:              req.OwnerUserID,
@@ -89,12 +99,21 @@ func (h *Handler) updateProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	updateCode := r.PathValue("code")
+	updateAlias := strings.TrimSpace(req.Alias)
+	if updateAlias == "" {
+		updateAlias = updateCode
+		if len(updateAlias) > 24 {
+			updateAlias = updateAlias[:24]
+		}
+	}
 	profile := &domain.DocumentProfile{
-		Code:                     r.PathValue("code"),
+		Code:                     updateCode,
 		TenantID:                 tenantIDFromRequest(r),
 		FamilyCode:               strings.TrimSpace(req.FamilyCode),
 		Name:                     strings.TrimSpace(req.Name),
 		Description:              strings.TrimSpace(req.Description),
+		Alias:                    updateAlias,
 		ReviewIntervalDays:       req.ReviewIntervalDays,
 		DefaultTemplateVersionID: req.DefaultTemplateVersionID,
 		OwnerUserID:              req.OwnerUserID,

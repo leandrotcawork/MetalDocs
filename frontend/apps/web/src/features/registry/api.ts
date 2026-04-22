@@ -31,7 +31,8 @@ export async function fetchControlledDocuments(filter?: {
   if (filter?.limit != null) params.set("limit", String(filter.limit));
   if (filter?.offset != null) params.set("offset", String(filter.offset));
   const qs = params.toString() ? `?${params.toString()}` : "";
-  return request<ControlledDocument[]>(`${qs}`);
+  const res = await request<{ items: ControlledDocument[] }>(`${qs}`);
+  return res.items;
 }
 
 export async function fetchControlledDocument(id: string): Promise<ControlledDocument> {

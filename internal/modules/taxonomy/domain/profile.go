@@ -6,17 +6,18 @@ import (
 )
 
 type DocumentProfile struct {
-	Code                     string
-	TenantID                 string
-	FamilyCode               string
-	Name                     string
-	Description              string
-	ReviewIntervalDays       int
-	DefaultTemplateVersionID *string
-	OwnerUserID              *string
-	EditableByRole           string
-	ArchivedAt               *time.Time
-	CreatedAt                time.Time
+	Code                     string     `json:"code"`
+	TenantID                 string     `json:"tenantId"`
+	FamilyCode               string     `json:"familyCode"`
+	Name                     string     `json:"name"`
+	Description              string     `json:"description"`
+	Alias                    string     `json:"alias"`
+	ReviewIntervalDays       int        `json:"reviewIntervalDays"`
+	DefaultTemplateVersionID *string    `json:"defaultTemplateVersionId"`
+	OwnerUserID              *string    `json:"ownerUserId"`
+	EditableByRole           string     `json:"editableByRole"`
+	ArchivedAt               *time.Time `json:"archivedAt"`
+	CreatedAt                time.Time  `json:"createdAt"`
 }
 
 var (

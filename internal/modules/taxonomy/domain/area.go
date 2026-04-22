@@ -6,15 +6,15 @@ import (
 )
 
 type ProcessArea struct {
-	Code                string
-	TenantID            string
-	Name                string
-	Description         string
-	ParentCode          *string
-	OwnerUserID         *string
-	DefaultApproverRole *string
-	ArchivedAt          *time.Time
-	CreatedAt           time.Time
+	Code                string     `json:"code"`
+	TenantID            string     `json:"tenantId"`
+	Name                string     `json:"name"`
+	Description         string     `json:"description"`
+	ParentCode          *string    `json:"parentCode"`
+	OwnerUserID         *string    `json:"ownerUserId"`
+	DefaultApproverRole *string    `json:"defaultApproverRole"`
+	ArchivedAt          *time.Time `json:"archivedAt"`
+	CreatedAt           time.Time  `json:"createdAt"`
 }
 
 var (

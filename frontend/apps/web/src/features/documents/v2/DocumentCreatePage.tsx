@@ -39,7 +39,7 @@ export function DocumentCreatePage({ onCreated }: DocumentCreatePageProps): Reac
     setErr('');
     try {
       const res = await createDocument({
-        template_version_id: cdPick.overrideTemplateVersionId ?? '<resolved-server-side>',
+        ...(cdPick.overrideTemplateVersionId ? { template_version_id: cdPick.overrideTemplateVersionId } : {}),
         name: name.trim(),
         form_data: {},
         controlled_document_id: cdPick.id,

@@ -47,12 +47,12 @@ export async function createControlledDocument(req: CreateControlledDocumentRequ
 
 export async function obsoleteControlledDocument(id: string): Promise<void> {
   return request<void>(`/${encodeURIComponent(id)}/obsolete`, {
-    method: "POST",
+    method: "PUT",
   });
 }
 
 export async function supersedeControlledDocument(id: string): Promise<void> {
   return request<void>(`/${encodeURIComponent(id)}/supersede`, {
-    method: "POST",
+    method: "PUT",
   });
 }

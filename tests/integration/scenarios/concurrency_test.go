@@ -43,7 +43,14 @@ func TestConcurrencyScenarios(t *testing.T) {
 		db := openDirectDB(t)
 		ctx := context.Background()
 		workers := occRaceWorkers
-		for i := 0; i < 50; i++ {
+		n := 50
+		if v := os.Getenv("INTEGRATION_STRESS_N"); v != "" {
+			if parsed, err := fmt.Sscanf(v, "%d", &n); parsed != 1 || err != nil {
+				t.Logf("invalid INTEGRATION_STRESS_N=%q, using default 50", v)
+				n = 50
+			}
+		}
+		for i := 0; i < n; i++ {
 			t.Run(fmt.Sprintf("iter_%02d", i+1), func(t *testing.T) {
 				winners, losers := runSingleOCCRace(t, ctx, db, fmt.Sprintf("n50-%02d", i+1), workers)
 				if winners != 1 || losers != workers-1 {
@@ -186,7 +193,6 @@ func testSkipLockedNoDuplicateProcessing(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			<-start
-			defer selected.Done()
 
 			tx, err := db.BeginTx(ctx, nil)
 			if err != nil {
@@ -228,6 +234,8 @@ func testSkipLockedNoDuplicateProcessing(t *testing.T) {
 			}
 			_ = rows.Close()
 
+			// Signal this goroutine has finished selecting, then wait for all.
+			selected.Done()
 			selected.Wait()
 
 			for _, r := range picked {

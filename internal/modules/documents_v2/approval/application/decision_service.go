@@ -218,7 +218,6 @@ func (s *DecisionService) RecordSignoff(ctx context.Context, db *sql.DB, req Sig
 			_ = tx.Rollback()
 			return SignoffResult{}, fmt.Errorf("recordSignoff: reject instance: %w", err)
 		}
-		result.StageCompleted = true
 		result.InstanceRejected = true
 
 	default:

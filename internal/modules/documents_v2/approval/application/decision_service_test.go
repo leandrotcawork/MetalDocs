@@ -362,6 +362,80 @@ func TestRecordSignoff_ApprovePath_QuorumNotYetMet(t *testing.T) {
 	}
 }
 
+// TestRecordSignoff_RejectPath: single actor rejects on any_1_of stage.
+// Expect InstanceRejected=true, StageCompleted=false (stage is rejected_here, not completed),
+// and a single "signoff_recorded" governance event emitted.
+func TestRecordSignoff_RejectPath(t *testing.T) {
+	const (
+		instanceID = "inst-reject-1"
+		stageID    = "stage-reject-1"
+		actorID    = "approver-r1"
+		authorID   = "author-r1"
+	)
+
+	inst := buildSingleStageInstance(instanceID, stageID, authorID, []string{actorID})
+
+	signedAt := time.Date(2026, 4, 22, 14, 0, 0, 0, time.UTC)
+	// Simulate the reject signoff visible in loadStageSignoffs after insert.
+	stageSignoffs := []signoffRow{
+		{
+			id:                 "signoff-r1",
+			approvalInstanceID: instanceID,
+			stageInstanceID:    stageID,
+			actorUserID:        actorID,
+			actorTenantID:      "tenant-1",
+			decision:           "reject",
+			comment:            "Not acceptable",
+			signedAt:           signedAt,
+			signatureMethod:    "password",
+			signaturePayload:   []byte(`{}`),
+			contentHash:        validContentHash,
+		},
+	}
+
+	conn := &decisionTestConn{stageSignoffs: stageSignoffs}
+	repo := &fakeDecisionRepo{
+		instance:         inst,
+		insertSignoffRes: repository.SignoffInsertResult{ID: "signoff-r1", WasReplay: false},
+	}
+	emitter := &MemoryEmitter{}
+	clock := fixedClock{t: signedAt}
+	svc := &DecisionService{repo: repo, emitter: emitter, clock: clock}
+	db := newDecisionTestDB(t, conn)
+
+	req := SignoffRequest{
+		TenantID:        "tenant-1",
+		InstanceID:      instanceID,
+		StageInstanceID: stageID,
+		ActorUserID:     actorID,
+		Decision:        "reject",
+		Comment:         "Not acceptable",
+		SignatureMethod:  "password",
+		SignaturePayload: map[string]any{"hash": "def"},
+		ContentFormData: map[string]any{"title": "Doc"},
+	}
+
+	result, err := svc.RecordSignoff(context.Background(), db, req)
+	if err != nil {
+		t.Fatalf("RecordSignoff: unexpected error: %v", err)
+	}
+	if result.StageCompleted {
+		t.Error("expected StageCompleted=false — rejected stage is rejected_here, not completed")
+	}
+	if result.InstanceApproved {
+		t.Error("expected InstanceApproved=false")
+	}
+	if !result.InstanceRejected {
+		t.Error("expected InstanceRejected=true")
+	}
+	if len(emitter.Events) != 1 {
+		t.Errorf("expected 1 governance event; got %d", len(emitter.Events))
+	}
+	if emitter.Events[0].EventType != "signoff_recorded" {
+		t.Errorf("event type = %q; want %q", emitter.Events[0].EventType, "signoff_recorded")
+	}
+}
+
 // TestRecordSignoff_SoDViolation: actor == document author → ErrAuthorCannotSign.
 func TestRecordSignoff_SoDViolation(t *testing.T) {
 	const (

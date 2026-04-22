@@ -1,0 +1,18 @@
+{
+  "phase": 12,
+  "round": 1,
+  "mode": "OPERATIONS",
+  "model": "gpt-5.3-codex",
+  "reasoning_effort": "high",
+  "verdict": "APPROVE_WITH_FIXES",
+  "upgrade_required": true,
+  "confidence": "medium",
+  "issues": [
+    {"id":"O1","severity":"structural","title":"Canary rollback under-specified","resolution":"Baseline = rolling 24h median; ≥5000 req + ≥20min per step; 3-consecutive 1-min breach windows; thresholds include absolute + ratio; 15min cooldown; promote requires 2× clean window."},
+    {"id":"O2","severity":"structural","title":"Prod smoke = staging only","resolution":"Added synthetic_prod_smoke tenant 5-min cadence; 3-region external HTTP vantage; post-deploy forced roundtrip per canary step."},
+    {"id":"O3","severity":"structural","title":"Outbox-same-tx invariant unenforced in CI","resolution":"New cilint rule outboxpair (AST) + contract test against sql/contracts/state_transitions.yaml; wired into invariants.yml as required check."},
+    {"id":"O4","severity":"structural","title":"Perf gate label-only","resolution":"Minimum perf suite auto-runs on touched approval/jobs/api paths; failure blocks unconditionally; needs-perf-full for extended tier."},
+    {"id":"O5","severity":"local","title":"Migration range hardcoded","resolution":"Range discovered dynamically from filesystem glob; historical-file modification check via git diff-filter=M on every prior migration."}
+  ],
+  "action_taken": "All 5 fixes applied inline to Tasks 12.1, 12.2, 12.3, 12.4, 12.5. Round 2 skipped."
+}

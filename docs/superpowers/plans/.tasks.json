@@ -1,0 +1,275 @@
+{"plan":"2026-04-21-foundation-doc-approval-state-machine","tasks":[
+  {"id":"1.1","phase":1,"title":"Migration 0130: `iam_users` tenant + deactivated_at","status":"pending"}
+,
+  {"id":"1.2","phase":1,"title":"Migration 0131: `documents` state columns + SUPERSET CHECK","status":"pending"}
+,
+  {"id":"1.3","phase":1,"title":"Migration 0132: legacy status remap (one-shot)","status":"pending"}
+,
+  {"id":"1.4","phase":1,"title":"Migration 0133: legal-transition BEFORE UPDATE trigger","status":"pending"}
+,
+  {"id":"1.5","phase":1,"title":"Migration 0134: `approval_routes` + `approval_route_stages`","status":"pending"}
+,
+  {"id":"1.6","phase":1,"title":"Migration 0135: approval instances + stages + signoffs (Codex Round 1 fixes #6, #7 applied)","status":"pending"}
+,
+  {"id":"1.7","phase":1,"title":"Migration 0136: `user_process_areas` hardening (NOT VALID FKs + explicit backfill + VALIDATE)","status":"pending"}
+,
+  {"id":"1.8","phase":1,"title":"Migration 0137: DB roles + schema lockdown + SECURITY DEFINER (Codex #8 + #9 fixes)","status":"pending"}
+,
+  {"id":"1.9","phase":1,"title":"Migration 0138: GRANTs on new approval tables (Haiku)","status":"pending"}
+,
+  {"id":"1.10","phase":1,"title":"Migration 0139: governance_events caps bump (unique partial index + ON CONFLICT)","status":"pending"}
+,
+  {"id":"1.11","phase":1,"title":"Migration 0140: revision_version monotonic guard + inbox btree index (Codex #13)","status":"pending"}
+,
+  {"id":"1.12","phase":1,"title":"Phase 1 full-stack smoke (expanded)","status":"pending"}
+,
+  {"id":"1.13","phase":1,"title":"Codex Round 2 OPERATIONS hardening pass","status":"pending"}
+,
+  {"id":"2.1","phase":2,"title":"`state.go`: state enum + legal transition table","status":"pending"}
+,
+  {"id":"2.2","phase":2,"title":"`route.go`: route config + stage + quorum/drift enums","status":"pending"}
+,
+  {"id":"2.3","phase":2,"title":"`instance.go`: instance aggregate + stage instance","status":"pending"}
+,
+  {"id":"2.4","phase":2,"title":"`signoff.go`: signoff value object (immutable)","status":"pending"}
+,
+  {"id":"2.5","phase":2,"title":"`quorum.go`: quorum evaluator","status":"pending"}
+,
+  {"id":"2.6","phase":2,"title":"`sod.go`: Separation-of-Duties guards","status":"pending"}
+,
+  {"id":"2.7","phase":2,"title":"`drift.go`: eligibility drift policy application (R1-1)","status":"pending"}
+,
+  {"id":"2.8","phase":2,"title":"Full-package test run + coverage gate + cross-file integration (R2-1,R2-2,R2-3)","status":"pending"}
+,
+  {"id":"2.9","phase":2,"title":"Codex COVERAGE review (Round 2)","status":"pending"}
+,
+  {"id":"3.1","phase":3,"title":"Canonical JSON spec doc (Go ↔ TS contract)","status":"pending"}
+,
+  {"id":"3.2","phase":3,"title":"`content_hash.go` (Go side)","status":"pending"}
+,
+  {"id":"3.3","phase":3,"title":"`contentHash.ts` (TS side, parity)","status":"pending"}
+,
+  {"id":"3.4","phase":3,"title":"`idempotency.go`","status":"pending"}
+,
+  {"id":"3.5","phase":3,"title":"`signature/provider.go` + registry","status":"pending"}
+,
+  {"id":"3.6","phase":3,"title":"`signature/password_reauth.go`","status":"pending"}
+,
+  {"id":"3.7","phase":3,"title":"`membership_tx.go`","status":"pending"}
+,
+  {"id":"3.8","phase":3,"title":"`events.go` (governance_events emitter stub)","status":"pending"}
+,
+  {"id":"3.9","phase":3,"title":"Codex QUALITY review","status":"pending"}
+,
+  {"id":"4.1","phase":4,"title":"Repository interface + error taxonomy","status":"pending"}
+,
+  {"id":"4.2","phase":4,"title":"Postgres impl: instance + stage inserts","status":"pending"}
+,
+  {"id":"4.3","phase":4,"title":"Signoff insert with idempotency + dup collapse","status":"pending"}
+,
+  {"id":"4.4","phase":4,"title":"Load aggregates + active-instance lookup","status":"pending"}
+,
+  {"id":"4.5","phase":4,"title":"Status updates with optimistic concurrency","status":"pending"}
+,
+  {"id":"4.6","phase":4,"title":"Scheduled-publish queue (FOR UPDATE SKIP LOCKED)","status":"pending"}
+,
+  {"id":"4.7","phase":4,"title":"Extend `documents_v2` repo: transition + lock/unlock with OCC","status":"pending"}
+,
+  {"id":"4.8","phase":4,"title":"Legacy path purge (documents_v2 repo + service)","status":"pending"}
+,
+  {"id":"4.9","phase":4,"title":"Repository wiring through `membership_tx`","status":"pending"}
+,
+  {"id":"4.10","phase":4,"title":"Codex ARCHITECTURE review","status":"pending"}
+,
+  {"id":"4.11","phase":4,"title":"Opus phase-end review","status":"pending"}
+,
+  {"id":"4.12","phase":4,"title":"CI integration-test wiring (F7)","status":"pending"}
+,
+  {"id":"5.0","phase":5,"title":"Phase-1 amendment: governance_events dedupe + signoff uniqueness (C1, C5)","status":"pending"}
+,
+  {"id":"5.1","phase":5,"title":"Service package scaffold + shared types","status":"pending"}
+,
+  {"id":"5.2","phase":5,"title":"SubmitService.SubmitRevisionForReview","status":"pending"}
+,
+  {"id":"5.3","phase":5,"title":"DecisionService.RecordSignoff (approve path)","status":"pending"}
+,
+  {"id":"5.4","phase":5,"title":"DecisionService.RecordSignoff (reject path)","status":"pending"}
+,
+  {"id":"5.5","phase":5,"title":"PublishService.PublishApproved (immediate)","status":"pending"}
+,
+  {"id":"5.6","phase":5,"title":"PublishService.SchedulePublish (future effective_from)","status":"pending"}
+,
+  {"id":"5.7","phase":5,"title":"SchedulerService.RunDuePublishes","status":"pending"}
+,
+  {"id":"5.8","phase":5,"title":"SupersedeService.PublishSuperseding","status":"pending"}
+,
+  {"id":"5.9","phase":5,"title":"ObsoleteService.MarkObsolete (+ child cascade)","status":"pending"}
+,
+  {"id":"5.10","phase":5,"title":"Legacy cutover: delete adapter + strip legacy paths","status":"pending"}
+,
+  {"id":"5.11","phase":5,"title":"Integration probes (service-level)","status":"pending"}
+,
+  {"id":"5.12","phase":5,"title":"Codex COVERAGE review","status":"pending"}
+,
+  {"id":"6.1a","phase":6,"title":"Migration 0142a: additive caps + tripwire table (A2)","status":"pending"}
+,
+  {"id":"6.1b","phase":6,"title":"Migration 0142b: legacy strip + enforcement (post-rollout)","status":"pending"}
+,
+  {"id":"6.2","phase":6,"title":"SECURITY DEFINER canonical area_membership fns","status":"pending"}
+,
+  {"id":"6.3","phase":6,"title":"Go wrapper: area_membership package","status":"pending"}
+,
+  {"id":"6.4","phase":6,"title":"authz package (service-level capability check)","status":"pending"}
+,
+  {"id":"6.5","phase":6,"title":"Wire authz into Phase 5 services","status":"pending"}
+,
+  {"id":"6.5a","phase":6,"title":"Migration 0144: cancel state model (A5)","status":"pending"}
+,
+  {"id":"6.6","phase":6,"title":"CancelInstanceService (workflow.instance.cancel)","status":"pending"}
+,
+  {"id":"6.7","phase":6,"title":"RouteConfig admin capability gate","status":"pending"}
+,
+  {"id":"6.8","phase":6,"title":"Integration probes (IAM)","status":"pending"}
+,
+  {"id":"6.9","phase":6,"title":"Legacy IAM path removal","status":"pending"}
+,
+  {"id":"6.10","phase":6,"title":"Codex ARCHITECTURE review","status":"pending"}
+,
+  {"id":"6.11","phase":6,"title":"Opus phase-end review","status":"pending"}
+,
+  {"id":"7.0","phase":7,"title":"Migration 0146: idempotency_keys store (Q2)","status":"pending"}
+,
+  {"id":"7.1","phase":7,"title":"Contracts package (DTOs + validation)","status":"pending"}
+,
+  {"id":"7.2","phase":7,"title":"Error mapper","status":"pending"}
+,
+  {"id":"7.3","phase":7,"title":"SubmitHandler","status":"pending"}
+,
+  {"id":"7.4","phase":7,"title":"SignoffHandler","status":"pending"}
+,
+  {"id":"7.5","phase":7,"title":"Publish / Schedule / Supersede / Obsolete / Cancel handlers","status":"pending"}
+,
+  {"id":"7.6","phase":7,"title":"Read handlers (GetInstance, Inbox)","status":"pending"}
+,
+  {"id":"7.7","phase":7,"title":"RouteAdmin handlers","status":"pending"}
+,
+  {"id":"7.8","phase":7,"title":"Routing registration + middleware chain","status":"pending"}
+,
+  {"id":"7.9","phase":7,"title":"OpenAPI emit","status":"pending"}
+,
+  {"id":"7.10","phase":7,"title":"Codex QUALITY review","status":"pending"}
+,
+  {"id":"8.0","phase":8,"title":"Migration 0147: job_leases + idempotency_keys janitor index","status":"pending"}
+,
+  {"id":"8.1","phase":8,"title":"Scheduler runtime (cron loop, lease, metrics)","status":"pending"}
+,
+  {"id":"8.2","phase":8,"title":"EffectiveDatePublisher job","status":"pending"}
+,
+  {"id":"8.3","phase":8,"title":"StuckInstanceWatchdog job","status":"pending"}
+,
+  {"id":"8.4","phase":8,"title":"IdempotencyJanitor job","status":"pending"}
+,
+  {"id":"8.5","phase":8,"title":"LeaseReaper job","status":"pending"}
+,
+  {"id":"8.6","phase":8,"title":"App wiring (main.go)","status":"pending"}
+,
+  {"id":"8.7","phase":8,"title":"Integration tests (multi-instance lease + crash recovery)","status":"pending"}
+,
+  {"id":"8.8","phase":8,"title":"Codex OPERATIONS review","status":"pending"}
+,
+  {"id":"8.9","phase":8,"title":"Opus phase-end review","status":"pending"}
+,
+  {"id":"9.1","phase":9,"title":"API client from OpenAPI","status":"pending"}
+,
+  {"id":"9.2","phase":9,"title":"StateBadge component (8 states)","status":"pending"}
+,
+  {"id":"9.3","phase":9,"title":"LockBadge + lock banner","status":"pending"}
+,
+  {"id":"9.4","phase":9,"title":"SignoffDialog","status":"pending"}
+,
+  {"id":"9.5","phase":9,"title":"ApprovalTimelinePanel","status":"pending"}
+,
+  {"id":"9.6","phase":9,"title":"InboxPage","status":"pending"}
+,
+  {"id":"9.7","phase":9,"title":"RouteAdminPage","status":"pending"}
+,
+  {"id":"9.8","phase":9,"title":"SupersedePublishDialog","status":"pending"}
+,
+  {"id":"9.9","phase":9,"title":"RegistryDetailPanel integration","status":"pending"}
+,
+  {"id":"9.10","phase":9,"title":"i18n + labels","status":"pending"}
+,
+  {"id":"9.11","phase":9,"title":"Codex COVERAGE review + risk-based test matrix gate (F11)","status":"pending"}
+,
+  {"id":"10.1","phase":10,"title":"testdb harness + fixtures","status":"pending"}
+,
+  {"id":"10.2","phase":10,"title":"Scenario: trigger bypass blocked","status":"pending"}
+,
+  {"id":"10.3","phase":10,"title":"Scenario: membership fn gate","status":"pending"}
+,
+  {"id":"10.4","phase":10,"title":"Scenario: schema lockdown","status":"pending"}
+,
+  {"id":"10.5","phase":10,"title":"Scenario: concurrency races (OCC + SKIP LOCKED + fencing)","status":"pending"}
+,
+  {"id":"10.6","phase":10,"title":"Scenario: obsolete cascade","status":"pending"}
+,
+  {"id":"10.7","phase":10,"title":"Scenario: tx ownership (reflect + runtime)","status":"pending"}
+,
+  {"id":"10.8","phase":10,"title":"Scenario: idempotency end-to-end","status":"pending"}
+,
+  {"id":"10.9","phase":10,"title":"Scenario: legacy vocabulary absent (runtime + compile)","status":"pending"}
+,
+  {"id":"10.10","phase":10,"title":"Scenario: outbox same-tx invariant","status":"pending"}
+,
+  {"id":"10.11","phase":10,"title":"Scenario: full happy-path E2E via HTTP","status":"pending"}
+,
+  {"id":"10.12","phase":10,"title":"Codex QUALITY review + CI tier wiring (T6)","status":"pending"}
+,
+  {"id":"10.13","phase":10,"title":"Opus phase-end review","status":"pending"}
+,
+  {"id":"11.0","phase":11,"title":"Coverage map + parallel isolation + axe baseline governance (F1, F3, F5)","status":"pending"}
+,
+  {"id":"11.1","phase":11,"title":"Playwright harness + seed API","status":"pending"}
+,
+  {"id":"11.2","phase":11,"title":"Flow: happy path author→reviewer→approver→publish","status":"pending"}
+,
+  {"id":"11.3","phase":11,"title":"Flow: rejection at stage 2 rolls back to draft","status":"pending"}
+,
+  {"id":"11.4","phase":11,"title":"Flow: scheduled publish","status":"pending"}
+,
+  {"id":"11.5","phase":11,"title":"Flow: SoD violation (submitter cannot sign)","status":"pending"}
+,
+  {"id":"11.6","phase":11,"title":"Flow: edit lock UX","status":"pending"}
+,
+  {"id":"11.7","phase":11,"title":"Flow: m_of_n quorum (2 of 3)","status":"pending"}
+,
+  {"id":"11.8","phase":11,"title":"Flow: route_admin edit blocked when in_use","status":"pending"}
+,
+  {"id":"11.9","phase":11,"title":"Axe a11y smoke across all 7 flows","status":"pending"}
+,
+  {"id":"11.10","phase":11,"title":"Codex COVERAGE review","status":"pending"}
+,
+  {"id":"12.1","phase":12,"title":"Custom Go linters (cilint)","status":"pending"}
+,
+  {"id":"12.2","phase":12,"title":"CI invariants workflow","status":"pending"}
+,
+  {"id":"12.3","phase":12,"title":"Perf benchmarks (k6)","status":"pending"}
+,
+  {"id":"12.4","phase":12,"title":"Production smoke probes","status":"pending"}
+,
+  {"id":"12.5","phase":12,"title":"Canary rollout controller","status":"pending"}
+,
+  {"id":"12.6","phase":12,"title":"Deploy choreography doc","status":"pending"}
+,
+  {"id":"12.7","phase":12,"title":"Observability dashboard spec","status":"pending"}
+,
+  {"id":"12.8","phase":12,"title":"Chaos/failure drill suite","status":"pending"}
+,
+  {"id":"12.9","phase":12,"title":"Supply-chain hardening","status":"pending"}
+,
+  {"id":"12.10","phase":12,"title":"Incident response hooks","status":"pending"}
+,
+  {"id":"12.11","phase":12,"title":"Codex OPERATIONS review","status":"pending"}
+,
+  {"id":"12.12","phase":12,"title":"Opus phase-end review (whole plan cross-check)","status":"pending"}
+]}

@@ -1,0 +1,18 @@
+{
+  "phase": 11,
+  "round": 1,
+  "mode": "COVERAGE",
+  "model": "gpt-5.3-codex",
+  "reasoning_effort": "high",
+  "verdict": "APPROVE_WITH_FIXES",
+  "upgrade_required": true,
+  "confidence": "high",
+  "issues": [
+    {"id":"F1","severity":"structural","title":"No requirements→tests traceability matrix","resolution":"Task 11.0 COVERAGE.md maps every Phase 1-10 invariant + Phase 9 F1-F11 fixes to ≥1 spec id; e2e-coverage-gate.yml fails build on unmapped invariant."},
+    {"id":"F2","severity":"local","title":"Idempotency+stale-ETag negative cases missing","resolution":"Task 11.2 adds duplicate-submit replay assertion, mutated-body 409 assertion, stale If-Match 412 assertion."},
+    {"id":"F3","severity":"structural","title":"Parallel workers lack isolation for seed/reset/clock","resolution":"Task 11.0 per-worker tenant namespacing, parallel-flows vs serial-clock project split, tenant-scoped reset, deterministic UUIDv5 ids."},
+    {"id":"F4","severity":"local","title":"Event verification count-only not identity/order","resolution":"Task 11.2 asserts exact event_type sequence + actor + causation chain + monotonic timestamps."},
+    {"id":"F5","severity":"structural","title":"Axe baseline governance undefined","resolution":"Task 11.0 axe-baseline-policy.md with owner, review gate, deterministic viewport/locale/frozen-clock, dynamic-region exclusion, diff script."}
+  ],
+  "action_taken": "All 5 fixes applied inline via new Task 11.0 + Task 11.2 enhancements. Round 2 skipped — findings enumerable."
+}

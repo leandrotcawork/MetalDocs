@@ -241,6 +241,24 @@ migrations/
 
 ---
 
+## Phase Contracts (cross-phase sequencing — locked after Codex SEQUENCING pass)
+
+**Contract P2a/P2b split (SEQ-1):**
+- **P2a** = additive capability rows + tripwire scaffold (migration 0142a) + v2 seed. Completes in-phase.
+- **P2b** = enforcement migration (0142b) — **deferred**. Applied only after P8 canary reaches 100% per `ops/DEPLOY.md` step 5. Any reference to "P2 complete" means P2a complete; P2b lives as a deploy gate in P12.
+
+**Contract P5 idempotency-agnostic (SEQ-2):**
+- P5 application services MUST compile, test, and pass without idempotency_keys table (migration 0146).
+- P5 services accept an optional `IdempotencyStore` interface (nullable in tests); the `IdempotencyDecorator` that wires the store lives in P7, not P5.
+- P5 acceptance tests run with `IdempotencyStore=nil` — they assert domain semantics only.
+
+**Contract P5 lease epoch opaque (SEQ-3):**
+- P5 scheduler accepts `leaseEpoch int64` as opaque parameter + `LeaseAsserter` interface (no storage knowledge).
+- P5 unit tests use in-memory fake asserter. No P5 code imports from `jobs/lease` (P8 package).
+- P8 provides the concrete `LeaseAsserter` backed by migration 0147 table. Wiring happens in P8 composition root.
+
+---
+
 ## Phase 1: Database Migrations (Codex Round 1 revised)
 
 **Intent:** DB-only phase. All Spec 2 schema changes land, but CHECK constraints and DML privileges stay **backward-compatible with pre-Spec-2 Go code**. Tightening (drop `finalized`/`archived` from CHECK, revoke DML on `user_process_areas`, drop `finalized_at`/`archived_at` columns) happens in Phase 5/6/12 co-released with the Go cutover.
@@ -4131,5 +4149,642 @@ Every page/panel acceptance extended: loading skeleton, empty state with CTA, AP
 - [ ] Run all above before Codex call.
 - [ ] Codex `gpt-5.3-codex` high, COVERAGE, plan-review framing. Verdict → `reviews/phase-9-round-1.json`.
 - [ ] Fixes inline. Round 2 max.
+
+---
+
+## Phase 10: Integration Tests (trigger bypass, membership fn gates, schema lockdown, races, obsolete cascade)
+
+**Intent:** System-wide integration suite validating invariants that spans Phases 1-9. Real Postgres (docker-compose), real HTTP server, real scheduler. Gates merge to main. No mocks below HTTP layer.
+
+**Codex review:** QUALITY (Task 10.12).
+
+**Opus review:** phase end — cross-check test coverage against every invariant from Phases 1-9.
+
+**Codex Round 1 (QUALITY) verdict:** APPROVE_WITH_FIXES, `upgrade_required=true`, 6 findings (2 high, 4 medium). Applied inline:
+
+| # | Sev | Fix |
+|---|---|---|
+| T1 | high | Anti-flake controls on all race tests: deterministic barriers, logged seed, N=50 stress loop, bounded retry only for infra failures |
+| T2 | high | Isolation: per-test database (not schema) via testcontainers; deterministic fixture IDs; injectable clock; drop-on-exit |
+| T3 | medium | Authorization matrix expanded across ALL write entrypoints (HTTP handlers + all jobs + membership fns + repos) |
+| T4 | medium | Tx-owner instrumentation: DB layer wrapper tags owner on every write stmt; test asserts approved owner list, not just BeginTx scan |
+| T5 | medium | Load realism: parameterized worker counts (1/3/8), burst duplicate key distribution, hot/cold mix, latency SLO assertions |
+| T6 | medium | CI tiers: PR smoke (≤2min) / full gate (≤10min) / nightly stress (N=500); failures tagged infra/flake/regression; retry only infra |
+
+### Anti-flake controls (T1)
+
+Every race test declares:
+- `const testSeed = 0xDEADBEEF` (logged on every run; override via `TEST_SEED` env for reproduction).
+- Barrier `sync.WaitGroup` so all goroutines enter critical section simultaneously.
+- Stress loop `for i := 0; i < N; i++ { ... }` where N=50 locally, N=500 nightly.
+- No `time.Sleep` in assertions; use channel signals or poll with timeout.
+- Failure message includes seed + iteration + goroutine ID.
+
+### Isolation (T2)
+
+- **Per-test database** via testcontainers `postgres` module: each `TestXxx` gets fresh container, migrations applied fresh, dropped on exit. Slower than per-schema but eliminates cross-test timestamp/sequence contamination.
+- **Optimization:** tier 1 (smoke) uses shared container + per-test schema; tier 2+ uses per-test container.
+- **Deterministic fixture IDs:** `SeedTenant(t)` uses `uuid.NewV5(testNamespace, t.Name())` — reproducible across runs.
+- **Injectable clock** in all services (already Phase 5 Invariant 5); tests pass `fakeClock` with explicit `AdvanceBy(duration)`. Zero wall-clock comparisons in tests.
+
+### Tx-owner instrumentation (T4)
+
+Add `internal/infra/db/owner_tag.go`:
+```
+type OwnerTaggedDB struct { *sql.DB; allowedOwners []string }
+func (d *OwnerTaggedDB) ExecContext(ctx, query, args...) {
+  owner := callerPackage() // runtime.Caller chain
+  if writeQuery(query) && !slices.Contains(d.allowedOwners, owner) {
+    panic("unauthorized tx owner: " + owner)
+  }
+  ...
+}
+```
+Allowed owners: `approval/application`, `jobs/*`, `iam/area_membership`. Test replaces prod DB with `OwnerTaggedDB` + panic recovery asserting none triggered during E2E.
+
+### CI tiers (T6)
+
+| Tier | Trigger | Scope | Budget | Flake retry |
+|---|---|---|---|---|
+| Smoke | every PR | 10.2, 10.3, 10.4, 10.9, 10.11 subset | 2min | no |
+| Full gate | merge to main | all scenarios 10.2-10.11, N=50 race | 10min | infra only, max 1 |
+| Nightly stress | scheduled cron | full + N=500 race + load profiles | 60min | no (log + issue) |
+
+Failure classifier: setup/container → infra; timeout without assertion → flake (log); assertion failure → regression (block).
+
+**Subpackages:**
+- `tests/integration/` — top-level (not inside `internal/`)
+- `tests/integration/testdb/` — harness (Postgres via testcontainers)
+- `tests/integration/fixtures/` — seed helpers
+- `tests/integration/scenarios/` — one file per scenario group
+
+**Invariants verified:**
+
+1. **Trigger bypass blocked** — `session_replication_role='replica'` attempts rejected (Migration 0130 explicit).
+2. **Membership fn gate** — writer role cannot INSERT into `user_process_areas` directly (42501).
+3. **Schema lockdown** — writer role cannot DROP/ALTER; only admin role can.
+4. **Concurrency races** — OCC, SKIP LOCKED, fencing epoch, cascade — no lost updates or double-publishes.
+5. **Obsolete cascade** — parent + children transition atomically.
+6. **Tx ownership** — no approval write tx opened outside Phase 5 services (reflect + runtime probe).
+7. **Capability tripwire** — service forgetting authz.Require → DB trigger raises.
+8. **Idempotency** — same key + payload → replay; same key + different payload → 409.
+9. **Legacy vocabulary absent** — no `finalized`/`archived` in any code path.
+10. **Outbox same-tx** — every state transition has paired governance_event row.
+
+---
+
+### Task 10.1 — testdb harness + fixtures
+
+**Files:** `tests/integration/testdb/db.go`, `fixtures/seed.go`.
+
+**Acceptance Criteria:**
+- [ ] Harness spins up Postgres 16 via `testcontainers-go` (or `docker-compose up -d db` wrapper).
+- [ ] Applies all migrations 0100-0147 in order on each test suite.
+- [ ] Provides `NewTestDB(t) *sql.DB` with automatic cleanup (truncate schema on teardown).
+- [ ] Seed helpers: `SeedTenant`, `SeedUser`, `SeedAreaMembership`, `SeedDocument`, `SeedRouteConfig`.
+- [ ] Parallel-safe: each test gets unique schema via `metaldocs_test_<random>` prefix; or one DB per test with `t.Parallel()`.
+- [ ] README in `testdb/` documenting setup, parallelism, CI env vars.
+
+**Steps:** Codex high. Commit.
+
+---
+
+### Task 10.2 — Scenario: trigger bypass blocked
+
+**File:** `scenarios/trigger_bypass_test.go`.
+
+**AC:** writer role attempts `SET LOCAL session_replication_role = 'replica'; UPDATE documents SET status='published'` → migration 0131 revokes privilege; expect 42501. Admin role CAN do it (emergency only). Also: `SET session_replication_role` without SET LOCAL rejected by pre-hook or session start trigger.
+
+**Steps:** Codex high. Commit.
+
+---
+
+### Task 10.3 — Scenario: membership fn gate
+
+**File:** `scenarios/membership_fn_test.go`.
+
+**AC:**
+- Writer role direct INSERT on `user_process_areas` → 42501.
+- Writer role calling `grant_area_membership(...)` without granter having `membership.grant` cap → `ErrCapabilityDenied`.
+- Writer role calling fn with cap → succeeds; governance_event inserted; idempotent on re-call.
+- Revoke path: `revoke_area_membership` soft-deletes; re-grant creates new row (or resurrects per business rule — decide + document).
+- **Authz matrix (T3):** full table test for every (write entrypoint × capability × role) combination. Entrypoints: 13 HTTP routes + 5 jobs + 2 membership fns + scheduler bypass. Asserts denial semantics: HTTP → 403, fn → ErrCapabilityDenied, job → skip + log. Minimum cells = (13+5+2) × 11 caps × 4 roles = 880; pruned to meaningful combos via matrix table in test file.
+
+**Steps:** Codex medium. Commit.
+
+---
+
+### Task 10.4 — Scenario: schema lockdown
+
+**File:** `scenarios/schema_lockdown_test.go`.
+
+**AC:**
+- Writer role `DROP TABLE documents` → 42501.
+- Writer role `ALTER TABLE documents ADD COLUMN foo text` → 42501.
+- Admin role same commands succeed (migration path only).
+- `CREATE TABLE` by writer → 42501.
+
+**Steps:** Haiku. Commit.
+
+---
+
+### Task 10.5 — Scenario: concurrency races (OCC + SKIP LOCKED + fencing)
+
+**File:** `scenarios/concurrency_test.go`.
+
+**AC:**
+- **OCC on doc transitions:** two goroutines `SubmitService.Submit` on same doc with same expected_version; one succeeds, other → `ErrStaleRevision`.
+- **SKIP LOCKED scheduler:** 10 scheduled rows; 3 scheduler instances; each row published exactly once.
+- **Lease fencing:** worker A epoch=5; simulated GC pause > TTL; worker B acquires epoch=6; A's commit → `ErrLeaseEpochStale` (Phase 8 Probe G).
+- **Signoff stage-unique:** two goroutines insert signoff `(instance, stage, actor)` — one wins, other → `ErrActorAlreadySigned`.
+- **Capability tripwire tuple mismatch:** service calls `Require("doc.submit", AREA_X)` but inserts instance with AREA_Y → `ErrCapabilityNotAsserted` (Phase 6 Probe J).
+- Each scenario runs `-race` enabled.
+- Anti-flake (T1): deterministic barriers, logged seed, N=50 stress in full gate, N=500 nightly.
+- Load realism (T5): parameterized workers `[1,3,8]`; burst duplicate-key distribution; hot/cold key mix 80/20; p99 latency SLO ≤500ms per operation.
+
+**Steps:** Codex high. Commit.
+
+---
+
+### Task 10.6 — Scenario: obsolete cascade
+
+**File:** `scenarios/obsolete_cascade_test.go`.
+
+**AC:**
+- Parent published + 2 children published → `MarkObsolete(parent)` → all 3 obsolete; 3 governance events with `cascaded_from` on children.
+- Cycle A→B→A → cycle broken via visited-set; both reachable nodes obsolete; no infinite loop.
+- Grandchild chain: P → C1 → C2 → C3 → all 4 obsolete.
+- Stale OCC mid-cascade → whole tx rolls back; no partial cascade.
+- Cascade size limit (1000 nodes) → `ErrCascadeTooLarge` at 1001.
+
+**Steps:** Codex high. Commit.
+
+---
+
+### Task 10.7 — Scenario: tx ownership (reflect + runtime)
+
+**File:** `scenarios/tx_ownership_test.go`.
+
+**AC:**
+- **Reflect-based:** scan all functions in `internal/modules/documents_v2/approval/repository/` — none call `BeginTx` or `Commit` or `Rollback` (take `*sql.Tx` instead).
+- **Runtime probe (T4):** `OwnerTaggedDB` wrapper on every write stmt (not just BeginTx) — tags caller package via `runtime.Caller` chain, panics on unauthorized owner. Allowed: `approval/application`, `jobs/*`, `iam/area_membership`. Run full E2E; zero panics.
+- HTTP handlers: zero `BeginTx` calls AND zero write stmts (all via service).
+
+**Steps:** Codex high. Commit.
+
+---
+
+### Task 10.8 — Scenario: idempotency end-to-end
+
+**File:** `scenarios/idempotency_test.go`.
+
+**AC:**
+- Submit with same Idempotency-Key twice → both return same instance_id; only one `approval_instance` row; second response has `Idempotent-Replay: true`.
+- Submit with same key but different body → 409 `idempotency.key_conflict`.
+- Submit with key A, then wait 24h (simulated via clock), then same key A → new instance (TTL expired).
+- Concurrent duplicate submits → one wins, other polls and returns same result (no error).
+- Signoff same pattern.
+- Publish same pattern — already-published doc with same key returns 200 replay; different expected_version → `ErrStaleRevision`.
+- Load profile (T5): 50 concurrent submits, 40% duplicate keys, 60% unique → exactly `unique_count` instances created; duplicates all replay; zero `ErrActorAlreadySigned` false positives.
+
+**Steps:** Codex high. Commit.
+
+---
+
+### Task 10.9 — Scenario: legacy vocabulary absent (runtime + compile)
+
+**File:** `scenarios/legacy_absent_test.go`.
+
+**AC:**
+- `grep -rE "'finalized'|'archived'|document\.finalize|document\.archive"` over repo → zero in `.go`/`.ts` source (excl tests/historical event types).
+- Full HTTP E2E runs — no response contains `finalized` or `archived` status.
+- `role_capabilities` table post-migration → zero legacy cap rows.
+- `staticcheck` passes; `go vet` passes.
+
+**Steps:** Sonnet. Commit.
+
+---
+
+### Task 10.10 — Scenario: outbox same-tx invariant
+
+**File:** `scenarios/outbox_same_tx_test.go`.
+
+**AC:**
+- For every state transition (submit, signoff, publish, schedule, supersede, obsolete, cancel), assert matching `governance_events` row exists with same `created_at` (within 1ms) as state row.
+- Simulated write failure mid-tx (inject panic after state update, before event insert) → both rollback; no orphan state without event, no orphan event without state.
+- Dedupe key unique per logical operation — retry of same op produces at most 1 event.
+
+**Steps:** Codex high. Commit.
+
+---
+
+### Task 10.11 — Scenario: full happy-path E2E via HTTP
+
+**File:** `scenarios/e2e_happy_test.go`.
+
+**AC:**
+- Spin full server (HTTP + scheduler).
+- Flow: author creates doc → submits → reviewer signs stage1 → approver signs stage2 → auto-publish → scheduler ticks if scheduled → supersede → obsolete with cascade.
+- Every step asserts: HTTP status, response body, ETag roundtrip, governance events count, state columns, lock state.
+- Timing check: full flow < 5s.
+
+**Steps:** Codex high. Commit.
+
+---
+
+### Task 10.12 — Codex QUALITY review + CI tier wiring (T6)
+
+**Before Codex call:**
+- [ ] `.github/workflows/test-smoke.yml` — PR-triggered, ≤2min budget, runs subset (10.2, 10.3, 10.4, 10.9, 10.11-happy).
+- [ ] `.github/workflows/test-full.yml` — merge-to-main triggered, ≤10min, all 10.2-10.11, N=50 race, infra-only retry max 1.
+- [ ] `.github/workflows/test-nightly.yml` — cron 02:00 UTC, ≤60min, full + N=500 + load profiles; failures open GitHub issue auto-tagged.
+- [ ] Failure classifier script `scripts/classify-test-failure.sh` — parses test output, tags infra|flake|regression; gating rules only block on regression.
+
+**Codex call:** `gpt-5.3-codex` high, QUALITY mode, plan-review framing. Verdict → `reviews/phase-10-round-1.json`. Fixes inline; round 2 max.
+
+---
+
+### Task 10.13 — Opus phase-end review
+
+Opus reviews: invariants-to-tests coverage table (every Phase 1-9 invariant has ≥1 test row); gap analysis; report → `reviews/phase-10-opus.md`.
+
+---
+
+## Phase 11: E2E Playwright (real browser, 7 user flows, SSE-ready)
+
+**Intent:** Browser-level acceptance suite validating Phase 9 UI against Phase 7 API + Phase 5/8 services. Real Chromium via Playwright, seeded Postgres (reuses Phase 10 testdb template), real HTTP server. Gates release to staging.
+
+**Codex review:** COVERAGE (Task 11.10).
+
+**Opus review:** none (Phase 12 Opus pass covers invariants cross-check).
+
+**Subpackages:**
+- `apps/web/e2e/` — new
+  - `fixtures/` — page-object + seed fixtures
+  - `flows/` — one file per user flow
+  - `utils/auth.ts` — login helper (password_reauth path)
+  - `utils/seed.ts` — HTTP-driven seed via admin API
+  - `playwright.config.ts` — 3 shards, retries=0, trace on first retry (0 → always off), video on failure
+
+**Invariants:**
+1. No flake tolerance: `retries: 0`; barriers via `expect.poll` with hard timeout; no `waitForTimeout`.
+2. Each flow seeds its own tenant + users + doc via admin API before run; tears down via `truncate_test_schema()` RPC.
+3. Every mutation path verifies: network request carries `Idempotency-Key` (UUIDv7 shape) + `If-Match` header when doc ETag known.
+4. SSE hook surface (Phase 13 candidate): flows tagged with `@sse` assert polling fallback until SSE wired.
+5. Accessibility smoke: `@axe-core/playwright` runs on every page entered; zero critical violations.
+
+---
+
+### Task 11.0 — Coverage map + parallel isolation + axe baseline governance (F1, F3, F5)
+
+**Files:** `apps/web/e2e/COVERAGE.md`, `apps/web/e2e/fixtures/isolation.ts`, `apps/web/e2e/axe-baseline-policy.md`, `scripts/axe-diff.mjs`, `.github/workflows/e2e-coverage-gate.yml`.
+
+**AC (F1 requirements→tests matrix):**
+- [ ] `COVERAGE.md` table: every Phase 1-10 invariant + every Phase 9 hardening fix (F1-F11) maps to ≥1 E2E spec id.
+- [ ] `e2e-coverage-gate.yml` parses matrix; fails build if any invariant unmapped.
+- [ ] PR template checkbox: "coverage map updated" required on Phase 11 PRs.
+
+**AC (F3 per-worker isolation):**
+- [ ] Seed returns `tenantId = "e2e_${workerIndex}_${shortTestId}"`; no reuse across workers.
+- [ ] Playwright project split: `parallel-flows` workers=3 + `serial-clock` workers=1 (clock-advance tests).
+- [ ] Deterministic IDs: `docId = uuidv5(testTitle, WORKER_NAMESPACE)`; reruns reproduce.
+- [ ] `/internal/test/reset?tenantId=X` tenant-scoped; global reset forbidden except teardown.
+
+**AC (F5 axe baseline governance):**
+- [ ] `axe-baseline-policy.md` owner=frontend-lead; baseline update requires PR + 1 reviewer + reason field.
+- [ ] Deterministic axe: fixed viewport 1280×800, locale pt-BR, `page.clock.install()` freezes Date.
+- [ ] Dynamic regions (timeline timestamps, lock relative-time) excluded via `AxeBuilder.exclude()`.
+- [ ] `axe-diff.mjs` reports added/removed/moved violations separately.
+
+**Steps:** Sonnet. Commit.
+
+---
+
+### Task 11.1 — Playwright harness + seed API
+
+**Files:** `apps/web/e2e/playwright.config.ts`, `fixtures/testdb.ts`, `utils/seed.ts`.
+
+**AC:**
+- [ ] Spins backend via `docker-compose up -d` then `go run ./cmd/api`; health-checks `/healthz`.
+- [ ] Each test requests `POST /internal/test/seed` (enabled only when `METALDOCS_E2E=1`) returning `{tenantId, users:{author, reviewer, approver, admin}, docId, cookies}`.
+- [ ] Teardown: `POST /internal/test/reset` truncates schema.
+- [ ] `playwright.config.ts`: `fullyParallel: true`, `workers: 3`, `retries: 0`, `use.trace: 'retain-on-failure'`, `expect.timeout: 5000`.
+- [ ] README documents env vars + running locally vs CI.
+
+**Steps:** Codex medium. Commit.
+
+---
+
+### Task 11.2 — Flow: happy path author→reviewer→approver→publish
+
+**File:** `flows/happy_path.spec.ts`.
+
+**AC:**
+- [ ] Author logs in, opens doc, clicks Submit, enters idempotency observable via network tab mock.
+- [ ] Doc state badge transitions `draft → under_review`; lock banner appears.
+- [ ] Reviewer logs in (new context), opens Inbox, row visible, clicks row → SignoffDialog opens auto → approves with password_reauth.
+- [ ] Approver signs stage 2 → badge `approved` → auto-publish triggers → badge `published` within 3s (polling assertion).
+- [ ] Timeline shows 4 nodes with actors + timestamps in browser tz.
+- [ ] Governance events asserted via admin API: **exact types + order + correlation** (F4): `[doc.submitted, stage.activated(1), signoff.recorded(reviewer), stage.passed(1), signoff.recorded(approver), stage.passed(2), doc.published]` — assert `event_type`, `actor_user_id`, `instance_id`, `causation_id` chain, monotonic `created_at`.
+- [ ] **Idempotency+OCC negative cases (F2):** resend identical submit with same Idempotency-Key → `Idempotent-Replay: true`, single governance row; resend with same key + mutated body → 409 `idempotency.key_conflict`; publish with stale `If-Match` → 412, badge unchanged, toast surfaced.
+
+**Steps:** Codex high. Commit.
+
+---
+
+### Task 11.3 — Flow: rejection at stage 2 rolls back to draft
+
+**File:** `flows/reject_flow.spec.ts`.
+
+**AC:**
+- [ ] Same setup as 11.2 through stage 1.
+- [ ] Approver rejects with reason "needs diagram fix".
+- [ ] Badge transitions `under_review → rejected`; doc auto-transitions to `draft` per spec; lock released.
+- [ ] Timeline shows rejection node with reason text.
+- [ ] Author Inbox empty; author doc detail shows Submit button re-enabled.
+- [ ] Reject without reason → form validation error, submit disabled.
+
+**Steps:** Codex high. Commit.
+
+---
+
+### Task 11.4 — Flow: scheduled publish
+
+**File:** `flows/scheduled_publish.spec.ts`.
+
+**AC:**
+- [ ] After approval, approver opens SupersedePublishDialog → selects `Schedule for` → picks datetime (local tz `effective_from = now + 10 min`).
+- [ ] Badge transitions to `scheduled`; effective_from displayed in local tz.
+- [ ] Test fast-forwards server clock via `POST /internal/test/advance-clock?seconds=700`; scheduler tick runs.
+- [ ] Badge transitions to `published`; effective_from persisted unchanged.
+- [ ] Past datetime → dialog shows inline error "must be ≥ 5 minutes from now"; submit disabled.
+
+**Steps:** Codex high. Commit.
+
+---
+
+### Task 11.5 — Flow: SoD violation (submitter cannot sign)
+
+**File:** `flows/sod_violation.spec.ts`.
+
+**AC:**
+- [ ] Author submits doc.
+- [ ] Author (same user) added as stage 1 member by admin mid-flow.
+- [ ] Author opens Inbox → row present (member match) → clicks → SignoffDialog opens → approves → server returns 403 `sod.submitter_cannot_sign`.
+- [ ] Toast shows translated pt-BR message; dialog stays open with error inline.
+- [ ] Governance events: no signoff row; one `signoff_denied_sod` event.
+
+**Steps:** Codex high. Commit.
+
+---
+
+### Task 11.6 — Flow: edit lock UX
+
+**File:** `flows/edit_lock.spec.ts`.
+
+**AC:**
+- [ ] Author submits → doc locked.
+- [ ] Second author-role user opens doc detail → LockBadge banner shows "locked by <actor>" + relative time.
+- [ ] Edit button disabled with tooltip "document is under review".
+- [ ] Direct API PUT attempt returns 423 `doc.locked`; UI surfaces via toast if triggered via keyboard shortcut.
+- [ ] Reviewer rejects → lock releases within 2s (polling); second user reload shows edit button enabled.
+
+**Steps:** Codex medium. Commit.
+
+---
+
+### Task 11.7 — Flow: m_of_n quorum (2 of 3)
+
+**File:** `flows/quorum_m_of_n.spec.ts`.
+
+**AC:**
+- [ ] Admin creates route with stage `{kind: m_of_n, m: 2, members: [u1,u2,u3]}`.
+- [ ] Author submits using this route.
+- [ ] u1 approves → badge stays `under_review`; quorum progress "1/2".
+- [ ] u2 approves → stage passes; auto-advance or publish per route.
+- [ ] u3 opens Inbox → row gone (stage already passed).
+- [ ] Variant: u1 approves, u2 rejects → stage fails at first reject (per spec decision); doc → `draft`.
+
+**Steps:** Codex high. Commit.
+
+---
+
+### Task 11.8 — Flow: route_admin edit blocked when in_use
+
+**File:** `flows/route_admin.spec.ts`.
+
+**AC:**
+- [ ] Admin creates route → lists in RouteAdminPage with `in_use=false`.
+- [ ] Edit succeeds → toast + row updates.
+- [ ] Author submits using route → admin reloads → `in_use=true`; Edit button disabled with tooltip.
+- [ ] Deactivate confirmation dialog → confirms → active=false; new submissions fail with 409; existing instance unaffected.
+- [ ] Accessibility: dialog focus trap; ESC closes without deactivating.
+
+**Steps:** Codex medium. Commit.
+
+---
+
+### Task 11.9 — Axe a11y smoke across all 7 flows
+
+**File:** `flows/a11y_smoke.spec.ts` + `fixtures/axe.ts`.
+
+**AC:**
+- [ ] Helper `expectAxeClean(page)` runs `AxeBuilder` with WCAG 2.1 AA tags; fails on any critical violation.
+- [ ] Invoked at each route entry in all 7 flows (via fixture, not duplicated inline).
+- [ ] Baseline snapshot of known violations stored in `e2e/axe-baseline.json`; net-new violation fails build.
+- [ ] CI artifact: axe report HTML per failed run.
+
+**Steps:** Sonnet + manual pass on 1 page. Commit.
+
+---
+
+### Task 11.10 — Codex COVERAGE review
+
+Codex `gpt-5.3-codex` high, COVERAGE mode, plan-review framing. Verdict → `reviews/phase-11-round-1.json`. Fixes inline; round 2 max.
+
+---
+
+## Phase 12: CI Invariants, Production Smoke, Perf Benchmarks
+
+**Intent:** Guard-rails that block bad merges + detect post-deploy drift. Static analyzers + perf budgets + staging smoke + canary rollout controls. No new product code — only enforcement wiring.
+
+**Codex review:** OPERATIONS (Task 12.11).
+**Opus review:** phase-end — cross-check all Phases 1-11 invariants have ≥1 CI gate (`reviews/phase-12-opus.md`).
+
+**Subpackages:**
+- `.github/workflows/` — invariants.yml, smoke.yml, perf.yml, canary.yml
+- `tools/cilint/` — custom Go linters
+- `tools/perfbench/` — load generators (k6)
+- `ops/smoke/` — production health probes
+- `ops/canary/` — progressive rollout controller
+
+**Invariants policed:**
+1. No `BeginTx`/`Commit`/`Rollback` outside allowed packages (AST lint).
+2. No legacy vocab strings in source (regex lint).
+3. Every approval service method wrapped in `authz.Require` (reflect test at build time).
+4. Every state transition emits matching governance_event (SQL check on fixture DB).
+5. OpenAPI spec ↔ generated types drift-free.
+6. Migration monotonicity: `0100..0147` gapless, no edits to applied migrations.
+7. Capability catalog frozen post-Phase 2 (hash-pinned).
+
+---
+
+### Task 12.1 — Custom Go linters (cilint)
+
+**Files:** `tools/cilint/txownership.go`, `tools/cilint/authzrequire.go`, `tools/cilint/legacyvocab.go`, `tools/cilint/main.go`.
+
+**AC:**
+- [ ] `txownership`: AST walk — reports `BeginTx|Commit|Rollback` call sites outside allowlist (`approval/application/**`, `jobs/**`, `iam/area_membership/**`).
+- [ ] `authzrequire`: for every exported method in `approval/application/**`, first stmt must be `authz.Require(...)` call (or `//cilint:allow-noauthz` comment with justification).
+- [ ] `legacyvocab`: regex `(?i)\b(finalized|archived|document\.finalize|document\.archive)\b` in `.go|.ts|.tsx` (excl test fixtures + historical event type enum).
+- [ ] **`outboxpair` (O3 fix):** AST + SQL contract check — for every method in `approval/application/**` that calls `repo.Update*` on `approval_instance|documents|signoffs`, the same function must call `events.Emit(...)` with matching logical operation; also a transition-table contract test loads `sql/contracts/state_transitions.yaml` and asserts every (from,to) row has a paired `governance_event_type`.
+- [ ] Output: SARIF for GitHub code-scanning integration.
+- [ ] Unit tests per linter with positive + negative fixtures.
+
+**Steps:** Codex high. Commit.
+
+---
+
+### Task 12.2 — CI invariants workflow
+
+**File:** `.github/workflows/invariants.yml`.
+
+**AC:**
+- [ ] Triggers: PR + push to main.
+- [ ] Jobs (parallel): `cilint`, `openapi-drift`, `migration-gapless`, `capability-catalog-hash`, `staticcheck`, `govet`.
+- [ ] `openapi-drift`: regenerates types from `api/openapi/spec2.yaml` + `git diff --exit-code`.
+- [ ] `migration-gapless` (O5 fix): script discovers range dynamically — `min..max` from filesystem glob `sql/migrations/*.sql`, asserts contiguous sequence and no modifications to any historical file since its merge commit (git log `--diff-filter=M --follow`); range never hardcoded.
+- [ ] `capability-catalog-hash`: SHA256 of `sql/seeds/capabilities_v2.sql` matches pinned hash in `ops/CAPABILITY_CATALOG.sha256`; mismatch requires explicit bump PR.
+- [ ] Wall-time budget: ≤4 min total.
+
+**Steps:** Codex high. Commit.
+
+---
+
+### Task 12.3 — Perf benchmarks (k6)
+
+**Files:** `tools/perfbench/submit.js`, `signoff.js`, `publish.js`, `scheduler_tick.js`, `tools/perfbench/thresholds.json`.
+
+**AC:**
+- [ ] Scenarios: 100 rps submit × 60s; 200 rps signoff × 60s; 50 rps publish × 60s; scheduler 5 instances × 1000 pending rows.
+- [ ] Thresholds (p99): submit ≤200ms, signoff ≤300ms, publish ≤500ms, scheduler tick ≤2s per 100 rows.
+- [ ] **Minimum perf suite mandatory (O4 fix):** PR touching `approval/application/**`, `jobs/scheduler/**`, `api/handlers/approval/**` auto-runs reduced perf suite (10 rps × 30s per scenario, 50% thresholds); failure blocks merge unconditionally. Label `needs-perf-full` triggers full suite; required on main pre-release tag.
+- [ ] Results archived to S3 + trended in Grafana (operator task, link only).
+
+**Steps:** Codex medium. Commit.
+
+---
+
+### Task 12.4 — Production smoke probes
+
+**Files:** `ops/smoke/healthz.sh`, `ops/smoke/approval_roundtrip.sh`, `.github/workflows/smoke.yml`.
+
+**AC:**
+- [ ] `healthz.sh`: curls `/healthz` + `/readyz` + asserts DB + Redis + scheduler heartbeat.
+- [ ] `approval_roundtrip.sh`: disposable tenant (prefix `synthetic_smoke_`), submits + auto-signs + publishes + cleans up; fails if any step >2s or wrong state.
+- [ ] **Staging cadence:** every 10 min via GH Actions cron against `STAGING_URL`.
+- [ ] **Production cadence (O2 fix):** every 5 min against `PROD_URL` using dedicated synthetic tenant `synthetic_prod_smoke` (isolated quota, auto-cleanup retention 1h).
+- [ ] **External vantage points:** Pingdom-style HTTP check from 3 regions (us-east, sa-east, eu-west) against `/healthz`.
+- [ ] **Post-deploy forced run:** canary controller invokes roundtrip synchronously after each ramp step; failure aborts ramp before metrics window.
+- [ ] PagerDuty P2 on 2 consecutive staging fails; P1 on single prod fail.
+
+**Steps:** Codex medium. Commit.
+
+---
+
+### Task 12.5 — Canary rollout controller
+
+**Files:** `ops/canary/controller.go`, `ops/canary/policy.yaml`.
+
+**AC:**
+- [ ] Reads feature flags from central config (`approval_v2_enabled_pct`).
+- [ ] Ramp schedule: 1% → 5% → 25% → 50% → 100% with ≥30 min dwell between steps.
+- [ ] **Baseline math (O1 fix):** pre-canary baseline = rolling 24h median over matched traffic slice; stored in `ops/canary/baseline.json`, refreshed nightly.
+- [ ] **Sample-size floor:** each canary step requires ≥ 5000 requests AND ≥ 20 min before evaluation; lower traffic → auto-extend dwell up to 4h else abort ramp.
+- [ ] **Breach windows:** trigger requires 3 consecutive 1-min buckets breaching threshold; single-bucket spike ignored.
+- [ ] **Thresholds:** error_rate > baseline × 1.5 AND absolute > 0.5% ; p99 latency > baseline × 2 ; signoff_failure_rate > 1% absolute.
+- [ ] **Cooldown:** 15 min post-rollback before any re-ramp; promote step requires clean 2× breach-window observation.
+- [ ] Rollback flips flag + Slack incident + GH issue + `ops/canary/events.log` append.
+- [ ] Dry-run mode for CI verification with synthetic metric stream.
+
+**Steps:** Codex high. Commit.
+
+---
+
+### Task 12.6 — Deploy choreography doc
+
+**File:** `ops/DEPLOY.md`.
+
+**AC:**
+- [ ] Step-by-step: (1) apply additive migrations (0141-0146); (2) deploy API with v2 feature flag OFF; (3) run smoke; (4) flip flag via canary; (5) apply enforcement migration (0142b + 0147 lease); (6) enable jobs (ENABLE_SCHEDULER, ENABLE_REAPER); (7) final smoke.
+- [ ] Rollback playbook mirrored (reverse order + explicit SQL for flag-flip-back).
+- [ ] Runbook links per step; SRE sign-off checkbox.
+
+**Steps:** Sonnet. Commit.
+
+---
+
+### Task 12.7 — Observability dashboard spec
+
+**File:** `ops/dashboards/approval.json` (Grafana export).
+
+**AC:**
+- [ ] Panels: doc state counts per area, signoff p99 latency, scheduler lag, lease acquire rate, 412 rate (OCC contention), 409 idempotency conflicts, back-pressure state, SECURITY DEFINER invocation count, tripwire firings.
+- [ ] Alert rules exported: lease_steal_count > 5/min, skip_streak > 10, 412_rate > 2%, p99 > threshold.
+
+**Steps:** Sonnet. Commit.
+
+---
+
+### Task 12.8 — Chaos/failure drill suite
+
+**Files:** `tools/chaos/kill_scheduler.sh`, `network_partition.sh`, `db_pause.sh`, `ops/chaos/SCENARIOS.md`.
+
+**AC:**
+- [ ] Scripts kill scheduler mid-tick; assert: fencing epoch prevents double-publish; replacement acquires within lease TTL.
+- [ ] Simulated network partition author↔API; assert: offline queue drains on reconnect; no duplicate governance events.
+- [ ] `pg_sleep(60)` on hot path; assert: back-pressure hysteresis enters, non-critical jobs Skip, safety jobs Degrade.
+- [ ] Run monthly in staging; results appended to `ops/chaos/LOG.md`.
+
+**Steps:** Codex medium. Commit.
+
+---
+
+### Task 12.9 — Supply-chain hardening
+
+**Files:** `.github/workflows/supply-chain.yml`, `ops/SBOM.md`.
+
+**AC:**
+- [ ] `syft` generates SBOM per release; stored as artifact.
+- [ ] `grype` scans for CVE; critical/high fails build.
+- [ ] `cosign` signs release images; verification gate in canary controller.
+- [ ] Dependabot PRs auto-labeled `deps`; 7-day soak in staging before main merge.
+
+**Steps:** Codex medium. Commit.
+
+---
+
+### Task 12.10 — Incident response hooks
+
+**Files:** `ops/incident/RUNBOOK.md`, `ops/incident/freeze.sh`.
+
+**AC:**
+- [ ] `freeze.sh`: single-command writes read-only flag to central config — API returns 503 for all mutating routes; GETs continue.
+- [ ] Runbook covers: stuck scheduler, lease storm, tripwire floods, cascade bug, idempotency collision spike — each with detection query + mitigation steps + escalation.
+- [ ] Tabletop drill quarterly; sign-off logged.
+
+**Steps:** Sonnet. Commit.
+
+---
+
+### Task 12.11 — Codex OPERATIONS review
+
+Codex `gpt-5.3-codex` high, OPERATIONS mode, plan-review framing. Verdict → `reviews/phase-12-round-1.json`. Fixes inline; round 2 max.
+
+---
+
+### Task 12.12 — Opus phase-end review (whole plan cross-check)
+
+Opus reviews: every invariant in every phase (1-11) → CI gate exists. Produces coverage table `reviews/phase-12-opus.md`. Gaps become backlog tasks in `docs/superpowers/plans/followups/spec2-gaps.md`. Publish `PLAN_COMPLETE.md` summary.
 
 ---

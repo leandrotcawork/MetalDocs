@@ -6,9 +6,11 @@ import (
 )
 
 func TestIdempotencyDoubleClickSameSecond(t *testing.T) {
+	// Fixed time anchored at the start of a second — immune to second-boundary race.
+	fixedBase := time.Date(2026, 1, 15, 10, 30, 42, 0, time.UTC)
 	base := IdempotencyInput{
 		ActorUserID: "u1", DocumentID: "d1", StageInstanceID: "s1",
-		Decision: "approve", Timestamp: time.Now(),
+		Decision: "approve", Timestamp: fixedBase,
 	}
 	// Sub-second difference → same bucket → same key.
 	base2 := base

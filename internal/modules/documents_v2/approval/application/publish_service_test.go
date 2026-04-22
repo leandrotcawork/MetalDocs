@@ -202,3 +202,90 @@ func TestPublishApproved_NotApprovedInstance(t *testing.T) {
 		})
 	}
 }
+
+// ---------------------------------------------------------------------------
+// SchedulePublish tests
+// ---------------------------------------------------------------------------
+
+func TestSchedulePublish_HappyPath(t *testing.T) {
+	now := time.Date(2026, 4, 22, 12, 0, 0, 0, time.UTC)
+	future := now.Add(24 * time.Hour) // strictly after now
+
+	inst := &domain.Instance{
+		ID:              "inst-sched-1",
+		TenantID:        "tenant-uuid-1",
+		DocumentID:      "doc-sched-1",
+		Status:          domain.InstanceApproved,
+		RevisionVersion: 5,
+	}
+
+	repo := &fakePublishRepo{instance: inst}
+	emitter := &MemoryEmitter{}
+	clock := fixedClock{t: now}
+
+	svc := &PublishService{repo: repo, emitter: emitter, clock: clock}
+	// rowsAffected=1 → UPDATE matched one document row.
+	db := newPublishTestDB(t, 1)
+
+	req := SchedulePublishRequest{
+		TenantID:      "tenant-uuid-1",
+		InstanceID:    "inst-sched-1",
+		EffectiveDate: future,
+		ScheduledBy:   "user-sched-1",
+	}
+
+	result, err := svc.SchedulePublish(context.Background(), db, req)
+	if err != nil {
+		t.Fatalf("SchedulePublish: unexpected error: %v", err)
+	}
+	if result.DocumentID != "doc-sched-1" {
+		t.Errorf("result.DocumentID = %q; want %q", result.DocumentID, "doc-sched-1")
+	}
+	if !result.EffectiveDate.Equal(future) {
+		t.Errorf("result.EffectiveDate = %v; want %v", result.EffectiveDate, future)
+	}
+	if len(emitter.Events) != 1 {
+		t.Fatalf("expected 1 governance event; got %d", len(emitter.Events))
+	}
+	ev := emitter.Events[0]
+	if ev.EventType != "publish_scheduled" {
+		t.Errorf("event type = %q; want %q", ev.EventType, "publish_scheduled")
+	}
+	if ev.ResourceID != "doc-sched-1" {
+		t.Errorf("event resource_id = %q; want %q", ev.ResourceID, "doc-sched-1")
+	}
+	if ev.ActorUserID != "user-sched-1" {
+		t.Errorf("event actor_user_id = %q; want %q", ev.ActorUserID, "user-sched-1")
+	}
+}
+
+func TestSchedulePublish_PastDate(t *testing.T) {
+	now := time.Date(2026, 4, 22, 12, 0, 0, 0, time.UTC)
+	past := now.Add(-time.Second) // strictly before now
+
+	repo := &fakePublishRepo{} // LoadInstance must never be called
+	emitter := &MemoryEmitter{}
+	clock := fixedClock{t: now}
+
+	svc := &PublishService{repo: repo, emitter: emitter, clock: clock}
+	// rowsAffected irrelevant — guard fires before any tx is opened.
+	db := newPublishTestDB(t, 0)
+
+	req := SchedulePublishRequest{
+		TenantID:      "tenant-uuid-1",
+		InstanceID:    "inst-sched-2",
+		EffectiveDate: past,
+		ScheduledBy:   "user-sched-2",
+	}
+
+	_, err := svc.SchedulePublish(context.Background(), db, req)
+	if err == nil {
+		t.Fatal("expected ErrEffectiveDateInPast; got nil")
+	}
+	if !errors.Is(err, ErrEffectiveDateInPast) {
+		t.Errorf("expected errors.Is(err, ErrEffectiveDateInPast); got %v", err)
+	}
+	if len(emitter.Events) != 0 {
+		t.Errorf("no governance event should be emitted; got %d", len(emitter.Events))
+	}
+}

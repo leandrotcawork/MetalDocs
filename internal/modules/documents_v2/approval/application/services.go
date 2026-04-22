@@ -33,6 +33,7 @@ type Services struct {
 	Supersede  *SupersedeService
 	Obsolete   *ObsoleteService
 	Cancel     *CancelService
+	Read       *ReadService
 	RouteAdmin *RouteAdminService
 	clock      Clock
 }
@@ -47,6 +48,7 @@ func NewServices(repo repository.ApprovalRepository, emitter EventEmitter, clock
 		Supersede:  &SupersedeService{repo: repo, emitter: emitter, clock: clock},
 		Obsolete:   &ObsoleteService{repo: repo, emitter: emitter, clock: clock},
 		Cancel:     &CancelService{repo: repo, emitter: emitter, clock: clock},
+		Read:       newReadService(repo),
 		RouteAdmin: &RouteAdminService{repo: repo, emitter: emitter, clock: clock},
 		clock:      clock,
 	}

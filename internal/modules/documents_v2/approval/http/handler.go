@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"metaldocs/internal/modules/documents_v2/approval/application"
+	"metaldocs/internal/modules/documents_v2/approval/domain"
 	iamdomain "metaldocs/internal/modules/iam/domain"
 )
 
@@ -20,6 +21,11 @@ type submitService interface {
 
 type decisionService interface {
 	RecordSignoff(ctx context.Context, db *sql.DB, req application.SignoffRequest) (application.SignoffResult, error)
+}
+
+type readService interface {
+	LoadInstance(ctx context.Context, db *sql.DB, tenantID, actorID, instanceID string) (*domain.Instance, error)
+	ListPendingForActor(ctx context.Context, db *sql.DB, tenantID, actorID string, areaCode string, limit, offset int) ([]domain.Instance, error)
 }
 
 var (
@@ -35,6 +41,7 @@ type Handler struct {
 	db          *sql.DB
 	submitSvc   submitService
 	decisionSvc decisionService
+	readSvc     readService
 }
 
 func NewHandler(services *application.Services, db *sql.DB) *Handler {
@@ -45,6 +52,7 @@ func NewHandler(services *application.Services, db *sql.DB) *Handler {
 	if services != nil {
 		h.submitSvc = services.Submit
 		h.decisionSvc = services.Decision
+		h.readSvc = services.Read
 	}
 	return h
 }

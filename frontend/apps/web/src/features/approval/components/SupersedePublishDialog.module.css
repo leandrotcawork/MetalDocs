@@ -71,6 +71,12 @@
   border-color: transparent;
 }
 
+.inlineError {
+  color: #991b1b;
+  font-size: 13px;
+  margin: 6px 0 0;
+}
+
 .actions {
   display: flex;
   justify-content: flex-end;

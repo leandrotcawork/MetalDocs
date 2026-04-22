@@ -27,7 +27,8 @@ const (
 )
 
 type seedHandler struct {
-	db *sql.DB
+	db               *sql.DB
+	runSchedulerTick func(context.Context) error
 }
 
 type seedRequest struct {
@@ -73,7 +74,7 @@ type seedResponse struct {
 	Cookies map[string]string `json:"cookies"`
 }
 
-func RegisterE2EHandlers(mux *http.ServeMux, db *sql.DB) {
+func RegisterE2EHandlers(mux *http.ServeMux, db *sql.DB, runSchedulerTick func(context.Context) error) {
 	if mux == nil || db == nil {
 		return
 	}
@@ -81,10 +82,12 @@ func RegisterE2EHandlers(mux *http.ServeMux, db *sql.DB) {
 		return
 	}
 
-	h := &seedHandler{db: db}
+	h := &seedHandler{db: db, runSchedulerTick: runSchedulerTick}
 	mux.HandleFunc("POST /internal/test/seed", h.seed)
 	mux.HandleFunc("POST /internal/test/reset", h.reset)
 	mux.HandleFunc("GET /internal/test/governance-events", h.governanceEvents)
+	mux.HandleFunc("POST /internal/test/advance-clock", h.advanceClock)
+	mux.HandleFunc("POST /internal/test/trigger-scheduler-tick", h.triggerSchedulerTick)
 }
 
 func (h *seedHandler) seed(w http.ResponseWriter, r *http.Request) {
@@ -323,6 +326,55 @@ ORDER BY ge.created_at ASC, ge.id ASC
 	}
 
 	writeJSON(w, http.StatusOK, events)
+}
+
+func (h *seedHandler) advanceClock(w http.ResponseWriter, r *http.Request) {
+	if os.Getenv("METALDOCS_E2E") != "1" {
+		http.NotFound(w, r)
+		return
+	}
+
+	secondsRaw := strings.TrimSpace(r.URL.Query().Get("seconds"))
+	if secondsRaw == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "seconds is required"})
+		return
+	}
+
+	seconds, err := strconv.ParseInt(secondsRaw, 10, 64)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "seconds must be an integer"})
+		return
+	}
+
+	SetE2EClockOffset(seconds)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"offset_seconds": int64(E2EClockOffset() / time.Second),
+	})
+}
+
+func (h *seedHandler) triggerSchedulerTick(w http.ResponseWriter, r *http.Request) {
+	if os.Getenv("METALDOCS_E2E") != "1" {
+		http.NotFound(w, r)
+		return
+	}
+
+	if h.runSchedulerTick != nil {
+		if err := h.runSchedulerTick(r.Context()); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+		return
+	}
+
+	select {
+	case <-time.After(6 * time.Second):
+	case <-r.Context().Done():
+		writeJSON(w, http.StatusRequestTimeout, map[string]string{"error": "request cancelled"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func ensureTenant(ctx context.Context, tx *sql.Tx, tenantID string) error {

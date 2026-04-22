@@ -54,6 +54,7 @@ import (
 	"metaldocs/internal/platform/objectstore"
 	"metaldocs/internal/platform/observability"
 	"metaldocs/internal/platform/security"
+	e2etest "metaldocs/internal/test"
 )
 
 func main() {
@@ -168,6 +169,10 @@ func main() {
 	approvalRepo := approvalrepo.NewPostgresApprovalRepository(deps.SQLDB)
 	approvalEmitter := approvalapp.NewSQLEmitter()
 	approvalServices := approvalapp.NewServices(approvalRepo, approvalEmitter, approvalapp.RealClock{})
+	e2etest.RegisterE2EHandlers(mux, deps.SQLDB, func(ctx context.Context) error {
+		_, err := approvalServices.Scheduler.RunDuePublishes(ctx, deps.SQLDB)
+		return err
+	})
 
 	leaderID := schedulerLeaderID()
 	s := jobscheduler.New(deps.SQLDB, leaderID)

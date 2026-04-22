@@ -47,6 +47,18 @@ export function SupersedePublishDialog({
 
   const isSubmitting = state === 'submitting';
   const isSuccess = state === 'success';
+  const scheduleValidationMessage =
+    mode === 'schedule' && scheduledAt
+      ? (() => {
+          const scheduledDate = new Date(scheduledAt);
+          const minDateMs = Date.now() + 5 * 60 * 1000;
+          if (Number.isNaN(scheduledDate.getTime()) || scheduledDate.getTime() < minDateMs) {
+            return 'A data deve ser pelo menos 5 minutos no futuro.';
+          }
+          return null;
+        })()
+      : null;
+  const submitDisabled = isSubmitting || (mode === 'schedule' && (!scheduledAt || scheduleValidationMessage !== null));
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -59,14 +71,11 @@ export function SupersedePublishDialog({
 
     try {
       if (mode === 'schedule') {
-        const scheduledDate = new Date(scheduledAt);
-        const minDateMs = Date.now() + 5 * 60 * 1000;
-        if (!scheduledAt || Number.isNaN(scheduledDate.getTime()) || scheduledDate.getTime() < minDateMs) {
-          setState('error');
-          setErrorMessage('A data deve ser pelo menos 5 minutos no futuro.');
+        if (!scheduledAt || scheduleValidationMessage !== null) {
+          setState('idle');
           return;
         }
-
+        const scheduledDate = new Date(scheduledAt);
         await schedulePublish(documentId, {
           content_hash: contentHash,
           effective_from: scheduledDate.toISOString(),
@@ -148,6 +157,11 @@ export function SupersedePublishDialog({
                   onChange={(event) => setScheduledAt(event.target.value)}
                   disabled={isSubmitting}
                 />
+                {scheduleValidationMessage ? (
+                  <p className={styles.inlineError} role="alert">
+                    {scheduleValidationMessage}
+                  </p>
+                ) : null}
               </div>
             ) : null}
 
@@ -172,7 +186,7 @@ export function SupersedePublishDialog({
               >
                 Cancelar
               </button>
-              <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`} disabled={isSubmitting}>
+              <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`} disabled={submitDisabled}>
                 {isSubmitting ? 'Enviando...' : 'Confirmar publicação'}
               </button>
             </div>

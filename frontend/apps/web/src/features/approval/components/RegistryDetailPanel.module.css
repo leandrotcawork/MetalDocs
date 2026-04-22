@@ -1,0 +1,139 @@
+.panel {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid #d6deea;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.topRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.section {
+  display: grid;
+  gap: 10px;
+}
+
+.label {
+  display: inline-block;
+  color: #52607a;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.integrityGrid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  padding: 12px;
+  border: 1px solid #e4eaf4;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.hashRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.actionButton {
+  border: 1px solid #0b66e4;
+  background: #0b66e4;
+  color: #fff;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.actionButton:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.actionButtonSecondary {
+  border: 1px solid #b8c4d8;
+  background: #fff;
+  color: #1f2a3d;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.smallButton {
+  border: 1px solid #b8c4d8;
+  background: #fff;
+  color: #1f2a3d;
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.staleBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid #f0d39f;
+  border-radius: 8px;
+  background: #fff5e8;
+}
+
+.disabledReason {
+  margin: 0;
+  color: #6f4d16;
+  font-size: 13px;
+}
+
+.readOnlyTag {
+  margin: 0;
+  color: #4d5b78;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.submitSection {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px dashed #c6d2e4;
+  border-radius: 8px;
+}
+
+.select {
+  border: 1px solid #b8c4d8;
+  border-radius: 6px;
+  padding: 8px;
+  background: #fff;
+  color: #1f2a3d;
+}
+
+.inlineActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.state {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #d6deea;
+  border-radius: 10px;
+  background: #fff;
+}

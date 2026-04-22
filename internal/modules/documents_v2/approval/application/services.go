@@ -32,6 +32,7 @@ type Services struct {
 	Scheduler *SchedulerService
 	Supersede *SupersedeService
 	Obsolete  *ObsoleteService
+	Cancel    *CancelService
 	clock     Clock
 }
 
@@ -44,6 +45,7 @@ func NewServices(repo repository.ApprovalRepository, emitter EventEmitter, clock
 		Scheduler: &SchedulerService{repo: repo, emitter: emitter, clock: clock},
 		Supersede: &SupersedeService{repo: repo, emitter: emitter, clock: clock},
 		Obsolete:  &ObsoleteService{repo: repo, emitter: emitter, clock: clock},
+		Cancel:    &CancelService{repo: repo, emitter: emitter, clock: clock},
 		clock:     clock,
 	}
 }

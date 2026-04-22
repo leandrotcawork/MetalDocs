@@ -40,6 +40,22 @@ type resetRequest struct {
 	TenantID string `json:"tenantId"`
 }
 
+type governanceEventRow struct {
+	ID            string          `json:"id"`
+	TenantID      string          `json:"tenant_id"`
+	EventType     string          `json:"event_type"`
+	ActorUserID   string          `json:"actor_user_id"`
+	ResourceType  string          `json:"resource_type"`
+	ResourceID    string          `json:"resource_id"`
+	Reason        string          `json:"reason,omitempty"`
+	PayloadJSON   json.RawMessage `json:"payload_json"`
+	CreatedAt     string          `json:"created_at"`
+	DedupeKey     string          `json:"dedupe_key,omitempty"`
+	CorrelationID string          `json:"correlation_id,omitempty"`
+	InstanceID    string          `json:"instance_id,omitempty"`
+	DocumentID    string          `json:"doc_id,omitempty"`
+}
+
 type seededUser struct {
 	ID    string `json:"id"`
 	Email string `json:"email"`
@@ -68,6 +84,7 @@ func RegisterE2EHandlers(mux *http.ServeMux, db *sql.DB) {
 	h := &seedHandler{db: db}
 	mux.HandleFunc("POST /internal/test/seed", h.seed)
 	mux.HandleFunc("POST /internal/test/reset", h.reset)
+	mux.HandleFunc("GET /internal/test/governance-events", h.governanceEvents)
 }
 
 func (h *seedHandler) seed(w http.ResponseWriter, r *http.Request) {
@@ -217,6 +234,95 @@ func (h *seedHandler) reset(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *seedHandler) governanceEvents(w http.ResponseWriter, r *http.Request) {
+	if os.Getenv("METALDOCS_E2E") != "1" {
+		http.NotFound(w, r)
+		return
+	}
+
+	tenantID := strings.TrimSpace(r.URL.Query().Get("tenantId"))
+	if tenantID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "tenantId is required"})
+		return
+	}
+
+	docID := strings.TrimSpace(r.URL.Query().Get("docId"))
+	instanceID := strings.TrimSpace(r.URL.Query().Get("instanceId"))
+
+	rows, err := h.db.QueryContext(r.Context(), `
+SELECT
+  ge.id::text,
+  ge.tenant_id::text,
+  ge.event_type,
+  ge.actor_user_id,
+  ge.resource_type,
+  ge.resource_id,
+  COALESCE(ge.reason, ''),
+  ge.payload_json,
+  ge.created_at,
+  COALESCE(ge.dedupe_key, ''),
+  COALESCE(ge.correlation_id, ''),
+  COALESCE(NULLIF(ge.payload_json->>'instance_id', ''), CASE WHEN ge.resource_type = 'approval_instance' THEN ge.resource_id ELSE '' END) AS instance_id,
+  COALESCE(
+    NULLIF(ge.payload_json->>'doc_id', ''),
+    NULLIF(ge.payload_json->>'document_id', ''),
+    CASE WHEN ge.resource_type = 'document' THEN ge.resource_id ELSE '' END,
+    ai.document_v2_id::text
+  ) AS doc_id
+FROM governance_events ge
+LEFT JOIN approval_instances ai
+  ON ge.resource_type = 'approval_instance'
+ AND ge.resource_id = ai.id::text
+WHERE ge.tenant_id = $1
+  AND ($2 = '' OR
+       ge.resource_id = $2 OR
+       ge.payload_json->>'doc_id' = $2 OR
+       ge.payload_json->>'document_id' = $2 OR
+       ai.document_v2_id::text = $2)
+  AND ($3 = '' OR
+       ge.resource_id = $3 OR
+       ge.payload_json->>'instance_id' = $3)
+ORDER BY ge.created_at ASC, ge.id ASC
+`, tenantID, docID, instanceID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	events := make([]governanceEventRow, 0)
+	for rows.Next() {
+		var row governanceEventRow
+		var createdAt time.Time
+		if scanErr := rows.Scan(
+			&row.ID,
+			&row.TenantID,
+			&row.EventType,
+			&row.ActorUserID,
+			&row.ResourceType,
+			&row.ResourceID,
+			&row.Reason,
+			&row.PayloadJSON,
+			&createdAt,
+			&row.DedupeKey,
+			&row.CorrelationID,
+			&row.InstanceID,
+			&row.DocumentID,
+		); scanErr != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": scanErr.Error()})
+			return
+		}
+		row.CreatedAt = createdAt.UTC().Format(time.RFC3339Nano)
+		events = append(events, row)
+	}
+	if err := rows.Err(); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, events)
 }
 
 func ensureTenant(ctx context.Context, tx *sql.Tx, tenantID string) error {

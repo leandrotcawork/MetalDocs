@@ -37,6 +37,7 @@ export function viewFromPath(pathname: string): WorkspaceView {
   if (path.startsWith("/content-builder")) return "content-builder";
   if (path.startsWith("/registry")) return "registry";
   if (path.startsWith("/notifications")) return "notifications";
+  if (path.startsWith("/admin/taxonomy")) return "taxonomy-admin";
   if (path.startsWith("/admin")) return "admin";
   if (path.startsWith("/approvals")) return "approvals";
   if (path.startsWith("/audit")) return "audit";
@@ -67,6 +68,8 @@ export function pathFromView(view: WorkspaceView): string {
       return "/registry";
     case "notifications":
       return "/notifications";
+    case "taxonomy-admin":
+      return "/admin/taxonomy";
     case "admin":
       return "/admin";
     case "approvals":
@@ -97,6 +100,7 @@ export function isPathForView(pathname: string, view: WorkspaceView): boolean {
   if (view === "content-builder") return path.startsWith("/content-builder");
   if (view === "registry") return path.startsWith("/registry");
   if (view === "notifications") return path.startsWith("/notifications");
+  if (view === "taxonomy-admin") return path.startsWith("/admin/taxonomy");
   if (view === "admin") return path.startsWith("/admin");
   if (view === "approvals") return path.startsWith("/approvals");
   if (view === "audit") return path.startsWith("/audit");

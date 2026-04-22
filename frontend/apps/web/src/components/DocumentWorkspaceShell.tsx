@@ -3,7 +3,7 @@ import { buildProfileAccordions } from "../features/documents/adapters/catalogSu
 import type { DocumentProfileItem, ProcessAreaItem, SearchDocumentItem } from "../lib.types";
 import styles from "./DocumentWorkspaceShell.module.css";
 
-export type WorkspaceView = "operations" | "approvals" | "audit" | "library" | "my-docs" | "recent" | "create" | "content-builder" | "registry" | "notifications" | "admin" | "templates-v2" | "documents-v2";
+export type WorkspaceView = "operations" | "approvals" | "audit" | "library" | "my-docs" | "recent" | "create" | "content-builder" | "registry" | "notifications" | "admin" | "taxonomy-admin" | "templates-v2" | "documents-v2";
 
 type WorkspaceShellProps = {
   userDisplayName: string;
@@ -164,6 +164,17 @@ function sections(props: WorkspaceShellProps): NavSection[] {
             </svg>
           ),
         },
+        {
+          key: "taxonomy-admin",
+          label: "Tipos Documentais",
+          icon: (
+            <svg viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.4">
+              <rect x="1.5" y="2.5" width="12" height="3" rx="1" />
+              <rect x="1.5" y="7.5" width="8" height="2.5" rx="1" />
+              <rect x="1.5" y="11.5" width="5" height="2" rx="1" />
+            </svg>
+          ),
+        },
       ],
     });
   }
@@ -211,6 +222,8 @@ function activeTitle(activeView: WorkspaceView): string {
       return "Notificacoes";
     case "admin":
       return "Usuarios Internos";
+    case "taxonomy-admin":
+      return "Tipos Documentais";
     case "templates-v2":
       return "Templates";
     case "documents-v2":

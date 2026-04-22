@@ -4,6 +4,7 @@ import { api } from "./lib.api";
 import { AuthShell } from "./components/AuthShell";
 import { DocumentCreateView } from "./components/DocumentCreateView";
 import { AdminCenterView } from "./features/iam/AdminCenterView";
+import { TaxonomyAdminPage } from "./features/taxonomy";
 import { NotificationsPanel } from "./components/NotificationsPanel";
 import { OperationsCenter } from "./components/OperationsCenter";
 import { PasswordChangePanel } from "./components/PasswordChangePanel";
@@ -475,6 +476,10 @@ function AppContent() {
       return (
         <AdminCenterView />
       );
+    }
+
+    if (activeView === "taxonomy-admin" && isAdmin) {
+      return <TaxonomyAdminPage />;
     }
 
     if (activeView === "templates-v2") {

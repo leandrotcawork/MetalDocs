@@ -8,6 +8,7 @@ import (
 
 	iamapp "metaldocs/internal/modules/iam/application"
 	iamdomain "metaldocs/internal/modules/iam/domain"
+	"metaldocs/internal/platform/authn"
 )
 
 const defaultTenantID = "ffffffff-ffff-ffff-ffff-ffffffffffff"
@@ -17,10 +18,9 @@ type MembershipHandler struct {
 }
 
 type grantMembershipRequest struct {
-	UserID    string `json:"userId"`
-	AreaCode  string `json:"areaCode"`
-	Role      string `json:"role"`
-	GrantedBy string `json:"grantedBy,omitempty"`
+	UserID   string `json:"userId"`
+	AreaCode string `json:"areaCode"`
+	Role     string `json:"role"`
 }
 
 func NewMembershipHandler(svc *iamapp.AreaMembershipService) *MembershipHandler {
@@ -35,22 +35,22 @@ func (h *MembershipHandler) RegisterRoutes(mux *http.ServeMux) {
 
 func (h *MembershipHandler) listMemberships(w http.ResponseWriter, r *http.Request) {
 	if h.svc == nil {
-		writeAPIError(w, http.StatusNotImplemented, "INTERNAL_ERROR", "Membership service is not configured", requestTraceID(r))
+		writeMembershipAPIError(w, http.StatusNotImplemented, "INTERNAL_ERROR", "Membership service is not configured")
 		return
 	}
 
-	userID := strings.TrimSpace(r.URL.Query().Get("userID"))
+	userID := strings.TrimSpace(r.URL.Query().Get("userId"))
 	if userID == "" {
 		userID = strings.TrimSpace(authenticatedActor(r))
 	}
 	if userID == "" {
-		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "userID is required", requestTraceID(r))
+		writeMembershipAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "userId is required")
 		return
 	}
 
 	items, err := h.svc.ListActive(r.Context(), userID, tenantIDFromRequest(r))
 	if err != nil {
-		writeAPIError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to list memberships", requestTraceID(r))
+		writeMembershipAPIError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to list memberships")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": items})
@@ -58,24 +58,21 @@ func (h *MembershipHandler) listMemberships(w http.ResponseWriter, r *http.Reque
 
 func (h *MembershipHandler) grantMembership(w http.ResponseWriter, r *http.Request) {
 	if h.svc == nil {
-		writeAPIError(w, http.StatusNotImplemented, "INTERNAL_ERROR", "Membership service is not configured", requestTraceID(r))
+		writeMembershipAPIError(w, http.StatusNotImplemented, "INTERNAL_ERROR", "Membership service is not configured")
 		return
 	}
 
 	var req grantMembershipRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid JSON payload", requestTraceID(r))
+		writeMembershipAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid JSON payload")
 		return
 	}
 	if strings.TrimSpace(req.UserID) == "" || strings.TrimSpace(req.AreaCode) == "" || strings.TrimSpace(req.Role) == "" {
-		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "userId, areaCode and role are required", requestTraceID(r))
+		writeMembershipAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "userId, areaCode and role are required")
 		return
 	}
 
-	grantedBy := strings.TrimSpace(req.GrantedBy)
-	if grantedBy == "" {
-		grantedBy = authenticatedActor(r)
-	}
+	grantedBy := authn.UserIDFromContext(r.Context())
 	err := h.svc.Grant(
 		r.Context(),
 		strings.TrimSpace(req.UserID),
@@ -85,7 +82,7 @@ func (h *MembershipHandler) grantMembership(w http.ResponseWriter, r *http.Reque
 		grantedBy,
 	)
 	if err != nil {
-		h.writeMembershipError(w, err, "Failed to grant membership", requestTraceID(r))
+		h.writeMembershipError(w, err, "Failed to grant membership")
 		return
 	}
 
@@ -99,37 +96,34 @@ func (h *MembershipHandler) grantMembership(w http.ResponseWriter, r *http.Reque
 
 func (h *MembershipHandler) revokeMembership(w http.ResponseWriter, r *http.Request) {
 	if h.svc == nil {
-		writeAPIError(w, http.StatusNotImplemented, "INTERNAL_ERROR", "Membership service is not configured", requestTraceID(r))
+		writeMembershipAPIError(w, http.StatusNotImplemented, "INTERNAL_ERROR", "Membership service is not configured")
 		return
 	}
 
-	userID := strings.TrimSpace(r.URL.Query().Get("userID"))
+	userID := strings.TrimSpace(r.URL.Query().Get("userId"))
 	areaCode := strings.TrimSpace(r.URL.Query().Get("areaCode"))
 	if userID == "" || areaCode == "" {
-		writeAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "userID and areaCode are required", requestTraceID(r))
+		writeMembershipAPIError(w, http.StatusBadRequest, "VALIDATION_ERROR", "userId and areaCode are required")
 		return
 	}
-	revokedBy := strings.TrimSpace(r.URL.Query().Get("revokedBy"))
-	if revokedBy == "" {
-		revokedBy = authenticatedActor(r)
-	}
+	revokedBy := authn.UserIDFromContext(r.Context())
 
 	err := h.svc.Revoke(r.Context(), userID, tenantIDFromRequest(r), areaCode, revokedBy)
 	if err != nil {
-		h.writeMembershipError(w, err, "Failed to revoke membership", requestTraceID(r))
+		h.writeMembershipError(w, err, "Failed to revoke membership")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *MembershipHandler) writeMembershipError(w http.ResponseWriter, err error, defaultMessage, traceID string) {
+func (h *MembershipHandler) writeMembershipError(w http.ResponseWriter, err error, defaultMessage string) {
 	switch {
 	case errors.Is(err, iamapp.ErrMembershipNotFound):
-		writeAPIError(w, http.StatusNotFound, "MEMBERSHIP_NOT_FOUND", "Membership not found", traceID)
+		writeMembershipAPIError(w, http.StatusNotFound, "MEMBERSHIP_NOT_FOUND", "Membership not found")
 	case errors.Is(err, iamapp.ErrUnknownRole):
-		writeAPIError(w, http.StatusBadRequest, "UNKNOWN_ROLE", "Unknown role", traceID)
+		writeMembershipAPIError(w, http.StatusBadRequest, "UNKNOWN_ROLE", "Unknown role")
 	default:
-		writeAPIError(w, http.StatusInternalServerError, "INTERNAL_ERROR", defaultMessage, traceID)
+		writeMembershipAPIError(w, http.StatusInternalServerError, "INTERNAL_ERROR", defaultMessage)
 	}
 }
 
@@ -139,4 +133,11 @@ func tenantIDFromRequest(r *http.Request) string {
 		return defaultTenantID
 	}
 	return tenantID
+}
+
+func writeMembershipAPIError(w http.ResponseWriter, status int, code, message string) {
+	writeJSON(w, status, map[string]any{
+		"code":    code,
+		"message": message,
+	})
 }

@@ -179,10 +179,8 @@ func parseIncludeArchived(r *http.Request) (bool, error) {
 
 func writeError(w http.ResponseWriter, status int, code, message string) {
 	writeJSON(w, status, map[string]any{
-		"error": map[string]any{
-			"code":    code,
-			"message": message,
-		},
+		"code":    code,
+		"message": message,
 	})
 }
 

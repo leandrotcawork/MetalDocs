@@ -10,6 +10,7 @@ import (
 	"metaldocs/internal/modules/registry/application"
 	registrydomain "metaldocs/internal/modules/registry/domain"
 	taxonomydomain "metaldocs/internal/modules/taxonomy/domain"
+	"metaldocs/internal/platform/authn"
 )
 
 const defaultTenantID = "ffffffff-ffff-ffff-ffff-ffffffffffff"
@@ -20,7 +21,6 @@ type createDocRequest struct {
 	DepartmentCode            *string `json:"departmentCode"`
 	Title                     string  `json:"title"`
 	OwnerUserID               string  `json:"ownerUserId"`
-	ActorUserID               string  `json:"actorUserId"`
 	ManualCode                *string `json:"manualCode"`
 	ManualCodeReason          *string `json:"manualCodeReason"`
 	OverrideTemplateVersionID *string `json:"overrideTemplateVersionId"`
@@ -56,7 +56,7 @@ func (h *Handler) createDoc(w http.ResponseWriter, r *http.Request) {
 		DepartmentCode:            req.DepartmentCode,
 		Title:                     strings.TrimSpace(req.Title),
 		OwnerUserID:               strings.TrimSpace(req.OwnerUserID),
-		ActorUserID:               strings.TrimSpace(req.ActorUserID),
+		ActorUserID:               authn.UserIDFromContext(r.Context()),
 		ManualCode:                req.ManualCode,
 		ManualCodeReason:          req.ManualCodeReason,
 		OverrideTemplateVersionID: req.OverrideTemplateVersionID,
@@ -187,10 +187,8 @@ func parseFilter(r *http.Request) (application.CDFilter, error) {
 
 func writeError(w http.ResponseWriter, status int, code, message string) {
 	writeJSON(w, status, map[string]any{
-		"error": map[string]any{
-			"code":    code,
-			"message": message,
-		},
+		"code":    code,
+		"message": message,
 	})
 }
 

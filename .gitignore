@@ -33,3 +33,7 @@ apps/ck5-studio/.dev.err
 frontend/apps/web/.tmp-main-tsc.txt
 \!
 coverage_phase5.out
+.claude/worktrees/
+.claude/launch.json
+.codex/
+.gomodcache/

@@ -26,27 +26,29 @@ var ErrFloatInPayload = errors.New("event payload must not contain float64 value
 // subsystem. Each field is a focused service; all share the same repo,
 // emitter, and clock.
 type Services struct {
-	Submit    *SubmitService
-	Decision  *DecisionService
-	Publish   *PublishService
-	Scheduler *SchedulerService
-	Supersede *SupersedeService
-	Obsolete  *ObsoleteService
-	Cancel    *CancelService
-	clock     Clock
+	Submit     *SubmitService
+	Decision   *DecisionService
+	Publish    *PublishService
+	Scheduler  *SchedulerService
+	Supersede  *SupersedeService
+	Obsolete   *ObsoleteService
+	Cancel     *CancelService
+	RouteAdmin *RouteAdminService
+	clock      Clock
 }
 
 // NewServices constructs a fully wired Services value.
 func NewServices(repo repository.ApprovalRepository, emitter EventEmitter, clock Clock) *Services {
 	return &Services{
-		Submit:    &SubmitService{repo: repo, emitter: emitter, clock: clock},
-		Decision:  &DecisionService{repo: repo, emitter: emitter, clock: clock},
-		Publish:   &PublishService{repo: repo, emitter: emitter, clock: clock},
-		Scheduler: &SchedulerService{repo: repo, emitter: emitter, clock: clock},
-		Supersede: &SupersedeService{repo: repo, emitter: emitter, clock: clock},
-		Obsolete:  &ObsoleteService{repo: repo, emitter: emitter, clock: clock},
-		Cancel:    &CancelService{repo: repo, emitter: emitter, clock: clock},
-		clock:     clock,
+		Submit:     &SubmitService{repo: repo, emitter: emitter, clock: clock},
+		Decision:   &DecisionService{repo: repo, emitter: emitter, clock: clock},
+		Publish:    &PublishService{repo: repo, emitter: emitter, clock: clock},
+		Scheduler:  &SchedulerService{repo: repo, emitter: emitter, clock: clock},
+		Supersede:  &SupersedeService{repo: repo, emitter: emitter, clock: clock},
+		Obsolete:   &ObsoleteService{repo: repo, emitter: emitter, clock: clock},
+		Cancel:     &CancelService{repo: repo, emitter: emitter, clock: clock},
+		RouteAdmin: &RouteAdminService{repo: repo, emitter: emitter, clock: clock},
+		clock:      clock,
 	}
 }
 

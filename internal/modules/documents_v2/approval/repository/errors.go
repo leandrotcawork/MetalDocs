@@ -3,6 +3,7 @@ package repository
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgconn"
 )
@@ -19,6 +20,7 @@ var (
 	ErrCheckViolation        = errors.New("approval: check constraint violation")
 	ErrInsufficientPrivilege = errors.New("approval: insufficient privilege — GUC context missing")
 	ErrUnknownDB             = errors.New("approval: unknown database error")
+	ErrRouteInUse            = errors.New("approval: route is referenced by one or more instances and cannot be modified")
 )
 
 // MapHints carries constraint-name hints for SQLSTATE 23505 disambiguation.
@@ -56,6 +58,11 @@ func MapPgError(err error, hints MapHints) error {
 		return ErrCheckViolation
 	case "42501": // insufficient_privilege
 		return ErrInsufficientPrivilege
+	case "P0001":
+		if strings.Contains(pgErr.Message, "ErrRouteInUse") {
+			return ErrRouteInUse
+		}
+		return fmt.Errorf("%w: %s (SQLSTATE %s)", ErrUnknownDB, pgErr.Message, pgErr.Code)
 	default:
 		return fmt.Errorf("%w: %s (SQLSTATE %s)", ErrUnknownDB, pgErr.Message, pgErr.Code)
 	}

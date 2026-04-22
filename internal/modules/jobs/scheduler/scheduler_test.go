@@ -360,8 +360,11 @@ func TestScheduler_BackpressureSkip(t *testing.T) {
 
 	s.Start(ctx)
 
-	if got := runs.Load(); got != 3 {
-		t.Fatalf("runs = %d; want 3 (tick 4 skipped)", got)
+	// With non-lagged probePressure (returns s.inPressure inside lock), pressure
+	// is entered on the 3rd consecutive high probe, so tick 3 is the first skip.
+	// Ticks 1+2 run, ticks 3+4 are skipped.
+	if got := runs.Load(); got != 2 {
+		t.Fatalf("runs = %d; want 2 (ticks 3+4 skipped once hysteresis threshold met)", got)
 	}
 	if got := s.Metrics.SkipsTotal["bp-skip"]; got < 1 {
 		t.Fatalf("SkipsTotal = %d; want >= 1", got)

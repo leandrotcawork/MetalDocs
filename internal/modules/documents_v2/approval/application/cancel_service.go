@@ -30,6 +30,10 @@ type CancelInput struct {
 	ExpectedRevisionVersion int    // OCC guard on the document
 	ActorUserID             string
 	Reason                  string
+	// BypassAuthz, when true, sets metaldocs.bypass_authz inside the cancel
+	// transaction before the authz check. Used by system jobs (e.g. watchdog)
+	// that must act without a user capability claim.
+	BypassAuthz bool
 }
 
 // CancelResult is returned on a successful cancellation.
@@ -78,6 +82,16 @@ func (s *CancelService) CancelInstance(ctx context.Context, db *sql.DB, in Cance
 	if err != nil {
 		tx.Rollback()
 		return CancelResult{}, fmt.Errorf("cancel: fetch area_code: %w", err)
+	}
+
+	// If caller is a system job bypassing user authz, set GUC inside this tx.
+	if in.BypassAuthz {
+		if _, err = tx.ExecContext(ctx,
+			`SELECT set_config('metaldocs.bypass_authz', 'system', true)`,
+		); err != nil {
+			tx.Rollback()
+			return CancelResult{}, fmt.Errorf("cancel: set bypass_authz GUC: %w", err)
+		}
 	}
 
 	// Authz gate: require workflow.instance.cancel capability.

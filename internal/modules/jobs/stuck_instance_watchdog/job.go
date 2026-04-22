@@ -50,18 +50,13 @@ func New(db *sql.DB, cancelSvc cancelSvcInterface, emitter governanceEmitter) sc
 
 		for _, inst := range stuck {
 			if inst.DriftPolicy == "auto_cancel" {
-				if err := setBypassAuthz(ctx, db); err != nil {
-					slog.ErrorContext(ctx, "stuck_instance_watchdog: set bypass before cancel failed",
-						"job", JobName, "epoch", epoch, "instance_id", inst.ID, "tenant_id", inst.TenantID, "error", err)
-					continue
-				}
-
 				_, err := cancelSvc.CancelInstance(ctx, db, application.CancelInput{
 					TenantID:                inst.TenantID,
 					InstanceID:              inst.ID,
 					ExpectedRevisionVersion: 0,
 					ActorUserID:             SystemActor,
 					Reason:                  "stuck_watchdog_auto_cancel",
+					BypassAuthz:             true,
 				})
 				if err != nil {
 					slog.ErrorContext(ctx, "stuck_instance_watchdog: auto-cancel failed",
@@ -135,19 +130,6 @@ LIMIT $1`, BatchSize)
 		return nil, err
 	}
 	return out, nil
-}
-
-func setBypassAuthz(ctx context.Context, db *sql.DB) error {
-	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	if _, err := tx.ExecContext(ctx, `SELECT set_config('metaldocs.bypass_authz', $1, true)`, BypassGUC); err != nil {
-		return err
-	}
-	return tx.Commit()
 }
 
 func emitStuckAlert(ctx context.Context, db *sql.DB, emitter governanceEmitter, inst StuckInstance) error {

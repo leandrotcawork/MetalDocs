@@ -266,7 +266,10 @@ func TestProbe5_HeartbeatLease_StalEpoch(t *testing.T) {
 	}
 }
 
-func TestProbe6_ReleaseLease_DeletesRow(t *testing.T) {
+// TestProbe6_ReleaseLease_ExpiresRow verifies that release_lease marks the lease
+// as expired (expires_at in the past) rather than deleting it, preserving epoch
+// monotonicity per migration 0149.
+func TestProbe6_ReleaseLease_ExpiresRow(t *testing.T) {
 	ctx, cancel := testCtx(t)
 	defer cancel()
 
@@ -275,7 +278,7 @@ func TestProbe6_ReleaseLease_DeletesRow(t *testing.T) {
 	defer tx.Rollback()
 	setSearchPath(t, ctx, tx)
 
-	job := testJobName("release-delete")
+	job := testJobName("release-expire")
 	acquired, epoch, err := acquireLease(ctx, tx, job, "leader-a")
 	if err != nil {
 		t.Fatalf("acquire_lease: %v", err)
@@ -288,12 +291,20 @@ func TestProbe6_ReleaseLease_DeletesRow(t *testing.T) {
 		t.Fatalf("release_lease: %v", err)
 	}
 
+	// Row must still exist (not deleted) but be expired.
 	var count int
-	if err := tx.QueryRowContext(ctx, "SELECT count(*) FROM metaldocs.job_leases WHERE job_name = $1", job).Scan(&count); err != nil {
-		t.Fatalf("count job_leases: %v", err)
+	var expired bool
+	if err := tx.QueryRowContext(ctx,
+		"SELECT count(*), bool_and(expires_at < now()) FROM metaldocs.job_leases WHERE job_name = $1",
+		job,
+	).Scan(&count, &expired); err != nil {
+		t.Fatalf("query after release: %v", err)
 	}
-	if count != 0 {
-		t.Fatalf("expected row deleted, got count=%d", count)
+	if count != 1 {
+		t.Fatalf("expected row to remain after release, got count=%d", count)
+	}
+	if !expired {
+		t.Fatal("expected expires_at < now() after release_lease")
 	}
 }
 
@@ -425,5 +436,46 @@ WHERE event_type = 'lease.reaped'
 	}
 	if eventCount == 0 {
 		t.Fatal("expected at least one governance_events row for lease.reaped")
+	}
+}
+
+// TestProbe11_EpochMonotonic_AcrossReleaseReacquire verifies that after
+// release_lease, a subsequent acquire_lease increments the epoch rather than
+// resetting it to 1 (regression guard for migration 0149).
+func TestProbe11_EpochMonotonic_AcrossReleaseReacquire(t *testing.T) {
+	ctx, cancel := testCtx(t)
+	defer cancel()
+
+	db := testDB(t)
+	tx := beginTx(t, ctx, db)
+	defer tx.Rollback()
+	setSearchPath(t, ctx, tx)
+
+	job := testJobName("epoch-monotonic")
+
+	// First acquisition: epoch must be 1.
+	ok, epoch1, err := acquireLease(ctx, tx, job, "leader-a")
+	if err != nil {
+		t.Fatalf("first acquire_lease: %v", err)
+	}
+	if !ok || epoch1 != 1 {
+		t.Fatalf("expected acquired=true epoch=1, got acquired=%v epoch=%d", ok, epoch1)
+	}
+
+	// Release: marks lease expired (0149 behaviour — row stays).
+	if err := releaseLease(ctx, tx, job, "leader-a", epoch1); err != nil {
+		t.Fatalf("release_lease: %v", err)
+	}
+
+	// Second acquisition (same or different leader on expired lease): epoch must be 2.
+	ok, epoch2, err := acquireLease(ctx, tx, job, "leader-b")
+	if err != nil {
+		t.Fatalf("second acquire_lease: %v", err)
+	}
+	if !ok {
+		t.Fatal("expected second acquire_lease to succeed on expired lease")
+	}
+	if epoch2 != epoch1+1 {
+		t.Fatalf("expected epoch to increment from %d to %d, got %d", epoch1, epoch1+1, epoch2)
 	}
 }

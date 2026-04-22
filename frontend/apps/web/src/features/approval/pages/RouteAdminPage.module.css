@@ -1,0 +1,235 @@
+﻿.page {
+  padding: 20px;
+  display: grid;
+  gap: 16px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #0f172a;
+}
+
+.tableWrap {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 760px;
+}
+
+.table th {
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+  font-size: 0.8rem;
+  color: #334155;
+  padding: 10px 12px;
+}
+
+.table td {
+  border-bottom: 1px solid #f1f5f9;
+  padding: 10px 12px;
+  color: #0f172a;
+  font-size: 0.9rem;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.rowActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.badgeActive,
+.badgeInactive {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badgeActive {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.badgeInactive {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.primaryButton,
+.secondaryButton,
+.warnButton,
+.ghostButton,
+.linkButton {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.primaryButton {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.primaryButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.secondaryButton,
+.ghostButton {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.warnButton {
+  background: #fff1f2;
+  border-color: #fecdd3;
+  color: #9f1239;
+}
+
+.linkButton {
+  background: transparent;
+  border: none;
+  color: #1d4ed8;
+  padding: 0;
+}
+
+.emptyRow {
+  text-align: center;
+  color: #64748b;
+  font-style: italic;
+}
+
+.state {
+  margin: 0;
+  color: #475569;
+}
+
+.errorBox {
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.9rem;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 12px;
+}
+
+.modal,
+.confirmDialog {
+  width: min(760px, 95vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 20px 30px rgba(15, 23, 42, 0.2);
+}
+
+.modalTitle {
+  margin: 0 0 14px;
+  font-size: 1.1rem;
+}
+
+.form {
+  display: grid;
+  gap: 10px;
+}
+
+.fieldLabel {
+  font-size: 0.85rem;
+  color: #334155;
+  font-weight: 600;
+}
+
+.input {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.9rem;
+}
+
+.stageSection {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px;
+  display: grid;
+  gap: 12px;
+}
+
+.stageSection h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.stageSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.stageCard {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.stageHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.actions {
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.confirmDialog h2 {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+}
+
+.confirmDialog p {
+  margin: 0;
+  color: #334155;
+}
+

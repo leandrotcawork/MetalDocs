@@ -1,0 +1,30 @@
+# State transition contract table — used by outboxpair linter and integration tests.
+# Every (from, to) pair must have a paired governance_event_type.
+transitions:
+  - from: draft
+    to: under_review
+    event_type: doc.submitted
+  - from: under_review
+    to: approved
+    event_type: doc.approved
+  - from: under_review
+    to: rejected
+    event_type: doc.rejected
+  - from: approved
+    to: published
+    event_type: doc.published
+  - from: approved
+    to: scheduled
+    event_type: doc.scheduled
+  - from: scheduled
+    to: published
+    event_type: doc.published
+  - from: under_review
+    to: cancelled
+    event_type: doc.cancelled
+  - from: published
+    to: obsolete
+    event_type: doc.obsoleted
+  - from: published
+    to: superseded
+    event_type: doc.superseded

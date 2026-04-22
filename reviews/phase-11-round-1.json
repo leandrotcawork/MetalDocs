@@ -1,0 +1,45 @@
+﻿{
+  "phase": 11,
+  "round": 1,
+  "verdict": "FAIL",
+  "summary": "Coverage review found material gaps against Phase 11 ACs. One critical mismatch was fixed inline (reject-without-reason now asserts disabled submit), but mutation-header assertions and several AC-specific checks are still incomplete across flows.",
+  "issues": [
+    {
+      "id": "COV-001",
+      "severity": "IMPORTANT",
+      "file": "frontend/apps/web/e2e/flows/reject_flow.spec.ts",
+      "description": "Mutation paths (submit/signoff) do not assert Idempotency-Key UUID format or If-Match presence where ETag is known, violating Phase 11 invariant #3.",
+      "fix": "Capture submit/signoff requests with waitForRequest and assert headers with UUID regex (Idempotency-Key) and If-Match on known-ETag mutations."
+    },
+    {
+      "id": "COV-002",
+      "severity": "IMPORTANT",
+      "file": "frontend/apps/web/e2e/flows/scheduled_publish.spec.ts",
+      "description": "Flow covers scheduler behavior but does not assert mutation request headers (Idempotency-Key/If-Match) for submit/signoff/publish scheduling operations.",
+      "fix": "Instrument each mutating UI/API action with request capture and header assertions, including schedule publish confirmation."
+    },
+    {
+      "id": "COV-003",
+      "severity": "IMPORTANT",
+      "file": "frontend/apps/web/e2e/flows/happy_path.spec.ts",
+      "description": "Governance chain assertion verifies event types/order but misses causation/correlation-chain validation required by Task 11.2 AC; timeline test also omits timestamp/browser-TZ assertion.",
+      "fix": "Assert causation_id/correlation linkage across the returned chain and validate rendered timeline timestamps in pt-BR/local timezone."
+    },
+    {
+      "id": "COV-004",
+      "severity": "IMPORTANT",
+      "file": "frontend/apps/web/e2e/flows/edit_lock.spec.ts",
+      "description": "Task 11.6 ACs are only partially covered: scenario uses reviewer as second actor (not explicit second author-role user) and does not validate UI toast path for 423 lock via keyboard-triggered edit action.",
+      "fix": "Seed/use a second author-role actor for lock UX checks and add a UI-triggered locked-edit attempt that asserts toast/error rendering."
+    },
+    {
+      "id": "COV-005",
+      "severity": "MINOR",
+      "file": "frontend/apps/web/e2e/flows/sod_violation.spec.ts",
+      "description": "Submit/signoff assertions focus on status/code and governance events, but do not enforce Idempotency-Key UUID assertion on captured outgoing mutation requests.",
+      "fix": "Capture outgoing submit/signoff requests and assert Idempotency-Key format consistently with UUID regex helper."
+    }
+  ],
+  "coverage_gaps": [],
+  "approved_for_merge": false
+}

@@ -3,11 +3,15 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/google/uuid"
@@ -17,7 +21,13 @@ import (
 
 	auditdomain "metaldocs/internal/modules/audit/domain"
 	documents_v2 "metaldocs/internal/modules/documents_v2"
+	approvalapp "metaldocs/internal/modules/documents_v2/approval/application"
+	approvalrepo "metaldocs/internal/modules/documents_v2/approval/repository"
 	"metaldocs/internal/modules/documents_v2/jobs"
+	"metaldocs/internal/modules/jobs/effective_date_publisher"
+	"metaldocs/internal/modules/jobs/idempotency_janitor"
+	jobscheduler "metaldocs/internal/modules/jobs/scheduler"
+	"metaldocs/internal/modules/jobs/stuck_instance_watchdog"
 	tv2app "metaldocs/internal/modules/templates_v2/application"
 	tv2http "metaldocs/internal/modules/templates_v2/delivery/http"
 	tv2repo "metaldocs/internal/modules/templates_v2/repository"
@@ -44,9 +54,13 @@ import (
 	"metaldocs/internal/platform/objectstore"
 	"metaldocs/internal/platform/observability"
 	"metaldocs/internal/platform/security"
+	e2etest "metaldocs/internal/test"
 )
 
 func main() {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	repoMode, err := config.RepositoryMode()
 	if err != nil {
 		log.Fatalf("invalid repository mode: %v", err)
@@ -69,14 +83,14 @@ func main() {
 	}
 	featureFlagsCfg := config.LoadFeatureFlagsConfig()
 
-	deps, err := bootstrap.BuildAPIDependencies(context.Background(), repoMode, attachmentsCfg)
+	deps, err := bootstrap.BuildAPIDependencies(ctx, repoMode, attachmentsCfg)
 	if err != nil {
 		log.Fatalf("build api dependencies: %v", err)
 	}
 	defer deps.Cleanup()
 
 	authService := authapp.NewService(deps.AuthRepo, deps.RoleProvider, deps.RoleAdminRepo, authCfg)
-	if err := authService.BootstrapLocalAdmin(context.Background()); err != nil {
+	if err := authService.BootstrapLocalAdmin(ctx); err != nil {
 		log.Fatalf("bootstrap local admin: %v", err)
 	}
 
@@ -131,9 +145,9 @@ func main() {
 
 	docPresigner := objectstore.NewDocumentPresigner(deps.MinioClient, deps.MinioBucket, 15*time.Minute, 25*1024*1024)
 	docDeps := documents_v2.Dependencies{
-		DB:            deps.SQLDB,
-		Docgen:        nil,
-		Presign:       docPresigner,
+		DB:      deps.SQLDB,
+		Docgen:  nil,
+		Presign: docPresigner,
 		TplRead: docgenv2.NewFanoutTemplateReader(
 			docgenv2.NewTemplateReader(deps.SQLDB, deps.MinioClient, deps.MinioBucket),
 			docgenv2.NewTemplatesV2TemplateReader(deps.SQLDB),
@@ -152,8 +166,58 @@ func main() {
 	tv2Svc := tv2app.New(tv2repo.New(deps.SQLDB), tv2Presigner, realClock{}, realUUIDGen{})
 	tv2http.New(tv2Svc, nil).Register(mux)
 
-	stopSessions := jobs.StartSessionSweeper(context.Background(), docMod.Repo(), 60*time.Second)
-	stopOrphans := jobs.StartOrphanPendingSweeper(context.Background(), docMod.Repo(), time.Hour)
+	approvalRepo := approvalrepo.NewPostgresApprovalRepository(deps.SQLDB)
+	approvalEmitter := approvalapp.NewSQLEmitter()
+	approvalServices := approvalapp.NewServices(approvalRepo, approvalEmitter, approvalapp.RealClock{})
+	e2etest.RegisterE2EHandlers(mux, deps.SQLDB, func(ctx context.Context) error {
+		_, err := approvalServices.Scheduler.RunDuePublishes(ctx, deps.SQLDB)
+		return err
+	})
+
+	leaderID := schedulerLeaderID()
+	s := jobscheduler.New(deps.SQLDB, leaderID)
+	if jobEnabled("ENABLE_JOB_EFFECTIVE_DATE_PUBLISHER") {
+		s.Register(jobscheduler.JobConfig{
+			Name:     "effective-date-publisher",
+			Interval: time.Minute,
+			Fn:       effective_date_publisher.New(deps.SQLDB, approvalServices.Scheduler),
+			Policy:   jobscheduler.SkipOnPressure,
+		})
+	}
+	if jobEnabled("ENABLE_JOB_STUCK_INSTANCE_WATCHDOG") {
+		s.Register(jobscheduler.JobConfig{
+			Name:     "stuck-instance-watchdog",
+			Interval: 5 * time.Minute,
+			Fn:       stuck_instance_watchdog.New(deps.SQLDB, approvalServices.Cancel, approvalEmitter),
+			Policy:   jobscheduler.SkipOnPressure,
+		})
+	}
+	if jobEnabled("ENABLE_JOB_IDEMPOTENCY_JANITOR") {
+		s.Register(jobscheduler.JobConfig{
+			Name:     "idempotency-janitor",
+			Interval: 15 * time.Minute,
+			Fn:       idempotency_janitor.New(deps.SQLDB),
+			Policy:   jobscheduler.SkipOnPressure,
+		})
+	}
+	if jobEnabled("ENABLE_JOB_LEASE_REAPER") {
+		s.Register(jobscheduler.JobConfig{
+			Name:     "lease-reaper",
+			Interval: 10 * time.Minute,
+			Fn:       jobscheduler.RunLeaseReaper(deps.SQLDB),
+			Policy:   jobscheduler.SkipOnPressure,
+		})
+	}
+
+	var schedulerWG sync.WaitGroup
+	schedulerWG.Add(1)
+	go func() {
+		defer schedulerWG.Done()
+		s.Start(ctx)
+	}()
+
+	stopSessions := jobs.StartSessionSweeper(ctx, docMod.Repo(), 60*time.Second)
+	stopOrphans := jobs.StartOrphanPendingSweeper(ctx, docMod.Repo(), time.Hour)
 	defer stopSessions()
 	defer stopOrphans()
 	mux.Handle("/api/v1/metrics", httpObs.MetricsHandler())
@@ -177,9 +241,27 @@ func main() {
 
 	log.Printf("MetalDocs API listening on %s (repository=%s auth_enabled=%t auth_cache_ttl=%s rate_limit_enabled=%t rate_limit_window_s=%d rate_limit_max_requests=%d cors_enabled=%t cors_allowed_origins=%d)",
 		addr, repoMode, authn.Enabled(), authn.CacheTTL(), rateCfg.Enabled, rateCfg.WindowSeconds, rateCfg.MaxRequests, corsCfg.Enabled, len(corsCfg.AllowedOrigins))
-	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("server failed: %v", err)
+
+	serverErr := make(chan error, 1)
+	go func() {
+		serverErr <- server.ListenAndServe()
+	}()
+
+	select {
+	case err := <-serverErr:
+		if err != nil && err != http.ErrServerClosed {
+			stop()
+			schedulerWG.Wait()
+			log.Fatalf("server failed: %v", err)
+		}
+	case <-ctx.Done():
 	}
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer shutdownCancel()
+	_ = server.Shutdown(shutdownCtx)
+	stop()
+	schedulerWG.Wait()
 }
 
 type realClock struct{}
@@ -224,4 +306,16 @@ func (a *documentsV2AuditAdapter) Write(ctx context.Context, tenantID, actorID, 
 	}); err != nil {
 		log.Printf("documents_v2 audit write failed: %v", err)
 	}
+}
+
+func jobEnabled(envName string) bool {
+	return !strings.EqualFold(strings.TrimSpace(os.Getenv(envName)), "false")
+}
+
+func schedulerLeaderID() string {
+	hostname, err := os.Hostname()
+	if err != nil || strings.TrimSpace(hostname) == "" {
+		hostname = "unknown"
+	}
+	return fmt.Sprintf("%s:%d", hostname, os.Getpid())
 }

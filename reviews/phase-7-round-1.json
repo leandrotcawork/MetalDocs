@@ -1,0 +1,76 @@
+{
+  "phase": 7,
+  "mode": "QUALITY",
+  "verdict": "PASS_WITH_NOTES",
+  "critical_issues": [
+    {
+      "id": "CRIT-001",
+      "title": "Idempotency-Key not enforced on SubmitHandler",
+      "detail": "submit_handler.go line 19 had `_ = idempotencyKey` — key extracted but silently ignored. Missing key returned no error, violating idempotency contract. FIXED inline: now returns 400 ErrIdempotencyRequired when header absent.",
+      "status": "FIXED"
+    }
+  ],
+  "important_issues": [
+    {
+      "id": "IMP-001",
+      "title": "SubmitResponse.ETag field left empty in body",
+      "detail": "ETag is correctly set as HTTP response header but contracts.SubmitResponse.ETag field is written as empty string in JSON body. Minor inconsistency — clients should use the header, but the body field is misleading.",
+      "fix": "Set ETag field to same value as header: `ETag: `\"v\" + strconv.Itoa(expectedRevisionVersion+1) + \"`\"`"
+    },
+    {
+      "id": "IMP-002",
+      "title": "Idempotency key not stored or replayed — table exists but middleware absent",
+      "detail": "Migration 0147 created metaldocs.idempotency_keys table. Handlers extract Idempotency-Key and enforce presence, but no middleware reads/writes the table for actual replay. Duplicate keys get reprocessed rather than returning cached response. Full idempotency store integration deferred.",
+      "fix": "Phase 8 janitor task references this; add idempotency middleware in Phase 7 follow-up or Phase 8."
+    }
+  ],
+  "minor_issues": [
+    {
+      "id": "MIN-001",
+      "title": "ListRoutesHandler returns hardcoded empty response",
+      "detail": "Stubbed — returns {routes:[], total:0}. Acceptable for now; full implementation requires ApprovalRepository.ListRoutes method not yet in interface."
+    },
+    {
+      "id": "MIN-002",
+      "title": "InboxHandler.ListPendingForActor is a stub",
+      "detail": "ReadService.ListPendingForActor returns empty slice with TODO comment. Inbox query requires stage membership join not yet implemented in repository."
+    },
+    {
+      "id": "MIN-003",
+      "title": "GetInstanceHandler ETag always `v1`",
+      "detail": "Instance revision version not tracked in domain.Instance; ETag hardcoded to `\"v1\"`. Full versioning requires revision_version column on approval_instances."
+    }
+  ],
+  "quality_checks": {
+    "1_handler_thinness": "PASS — no tx, no repo calls in any handler. All handlers delegate to services via interfaces.",
+    "2_idempotency_enforcement": "PASS (after CRIT-001 fix) — all mutating POST/PUT/DELETE handlers now enforce Idempotency-Key presence, returning 400 ErrIdempotencyRequired when absent.",
+    "3_if_match_enforcement": "PASS — parseIfMatch returns errIfMatchRequired (→428) when header missing, errIfMatchMalformed (→400) when malformed. Wildcard `*` accepted (version=0). Applied on all non-create mutators.",
+    "4_error_mapper_completeness": "PASS — MapErrorToResponse uses errors.Is for sentinels and errors.As for struct types (ErrCapabilityDenied, *json.SyntaxError, *json.UnmarshalTypeError). Covers all 21 domain errors in matrix.",
+    "5_5xx_sanitization": "PASS — responseMessage() returns `internal error` literal for statusCode >= 500. Raw DB/stack text never reaches response body.",
+    "6_strictjson_usage": "PASS — all body-decoding handlers use contracts.Decode(r, &req). No raw json.NewDecoder used in handlers.",
+    "7_content_type_enforcement": "PASS — contracts.Decode checks Content-Type via mime.ParseMediaType; non-application/json returns ErrContentType → 415.",
+    "8_body_size_limit": "PASS — contracts.Decode uses io.LimitReader(r.Body, 64KB+1); overflow returns ErrBodyTooLarge → 413.",
+    "9_request_id_propagation": "PASS — all WriteError calls pass reqID from requestID(r); body.RequestID set before WriteJSON.",
+    "10_etag_emission": "PASS — SubmitHandler sets ETag header on 201. GetInstanceHandler sets ETag header and body field. Other mutators do not yet emit new ETag (deferred — requires post-mutation version read).",
+    "11_test_coverage": "PASS — submit: 7 cases, signoff: 5 cases, publish: 4+4 cases, supersede: 4, obsolete: 4, cancel: 4, get-instance: 3, inbox: 3, route-admin: 6. All handlers have ≥4 cases except read handlers (3 each — acceptable for stubs).",
+    "12_openapi_completeness": "PASS — spec2.yaml (1081 lines) documents all 13 routes, shared headers (Idempotency-Key, If-Match, X-Tenant-ID, X-User-ID, ETag, Idempotent-Replay), shared schemas (ErrorResponse, StageRequest/Response, RouteResponse, InstanceResponse, PaginatedInbox), and all error codes."
+  },
+  "fixes_required": [
+    {
+      "file": "internal/modules/documents_v2/approval/http/submit_handler.go",
+      "description": "Enforce Idempotency-Key presence — APPLIED (was `_ = idempotencyKey`; now returns 400 if empty)",
+      "severity": "critical",
+      "status": "APPLIED"
+    },
+    {
+      "file": "internal/modules/documents_v2/approval/http/submit_handler.go",
+      "description": "Set SubmitResponse.ETag field to match the ETag header value (currently empty string in body)",
+      "severity": "important"
+    },
+    {
+      "file": "internal/modules/documents_v2/approval/http/",
+      "description": "Add idempotency middleware that reads/writes metaldocs.idempotency_keys for true replay support",
+      "severity": "important"
+    }
+  ]
+}

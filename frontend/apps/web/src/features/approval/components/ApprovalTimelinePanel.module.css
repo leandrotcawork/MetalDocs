@@ -1,0 +1,124 @@
+.panel {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 16px;
+}
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 18px;
+  border-left: 2px solid #dbe3ee;
+}
+
+.node {
+  position: relative;
+  margin: 0 0 18px 0;
+}
+
+.node:last-child {
+  margin-bottom: 0;
+}
+
+.dot {
+  position: absolute;
+  left: -26px;
+  top: 6px;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #2563eb;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 2px #dbe3ee;
+}
+
+.content {
+  display: grid;
+  gap: 6px;
+}
+
+.title {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #0f172a;
+}
+
+.meta {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #475569;
+}
+
+.stageHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.stageStatus {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.stage_pending {
+  background: #f8fafc;
+  color: #475569;
+  border-color: #cbd5e1;
+}
+
+.stage_active {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #93c5fd;
+}
+
+.stage_passed {
+  background: #ecfdf5;
+  color: #047857;
+  border-color: #86efac;
+}
+
+.stage_failed {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fca5a5;
+}
+
+.stage_cancelled {
+  background: #fff7ed;
+  color: #c2410c;
+  border-color: #fdba74;
+}
+
+.signoffs {
+  margin: 4px 0 0 0;
+  padding-left: 16px;
+  display: grid;
+  gap: 8px;
+}
+
+.signoff {
+  margin: 0;
+}
+
+.signoff p {
+  margin: 0;
+}
+
+.state {
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 16px;
+  color: #334155;
+  display: grid;
+  gap: 10px;
+}
+
+.state button {
+  justify-self: start;
+}

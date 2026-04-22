@@ -1,0 +1,39 @@
+# Canary rollout policy for MetalDocs approval v2
+# Read by ops/canary/controller.go
+
+feature_flag: approval_v2_enabled_pct
+
+ramp_steps:
+  - pct: 1
+    dwell_min: 30
+  - pct: 5
+    dwell_min: 30
+  - pct: 25
+    dwell_min: 30
+  - pct: 50
+    dwell_min: 30
+  - pct: 100
+    dwell_min: 0
+
+# Minimum sample floor per step before evaluation
+min_requests: 5000
+min_dwell_min: 20
+max_dwell_min: 240  # auto-extend up to 4h on low traffic before aborting
+
+# Breach detection: 3 consecutive 1-min buckets must breach threshold
+# (single spike ignored)
+breach_consecutive_buckets: 3
+
+# Thresholds (relative to 24h rolling baseline)
+thresholds:
+  error_rate_multiplier: 1.5       # error_rate > baseline × 1.5 AND absolute > 0.5%
+  error_rate_absolute_pct: 0.5
+  p99_latency_multiplier: 2.0      # p99 > baseline × 2
+  signoff_failure_rate_pct: 1.0    # absolute threshold
+
+# Baseline
+baseline:
+  window_hours: 24
+  traffic_slice: canary_match       # matched traffic slice only
+  storage: ops/canary/baseline.json
+  refresh_cron: "0 2 * * *"        # nightly 02:00 UTC

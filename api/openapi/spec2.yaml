@@ -1,0 +1,1081 @@
+openapi: 3.0.3
+info:
+  title: MetalDocs Approval API (Spec 2)
+  version: 2.0.0
+  description: |-
+    Document approval state machine — submit, signoff, publish, supersede, obsolete, cancel, route admin.
+    Error code enum:
+    - conflict.stale_revision
+    - signoff.duplicate
+    - route.in_use
+    - route.duplicate_profile
+    - state.instance_completed
+    - not_found.instance
+    - not_found.route
+    - authz.capability_denied
+    - validation.reason_required
+    - validation.if_match_malformed
+    - validation.json_decode
+    - validation.empty_body
+    - validation.body_too_large
+    - validation.content_type
+    - precondition.if_match_required
+    - precondition.if_match_mismatch
+    - timeout
+    - internal.unknown
+    - internal.db_unknown
+    - internal.db_privilege_missing
+    - internal.capability_tripwire
+servers:
+  - url: /api/v2
+
+paths:
+  /documents/{id}/submit:
+    post:
+      summary: Submit document revision for approval
+      parameters:
+        - $ref: '#/components/parameters/DocumentIdParam'
+        - $ref: '#/components/parameters/HeaderXTenantID'
+        - $ref: '#/components/parameters/HeaderXUserID'
+        - $ref: '#/components/parameters/HeaderIdempotencyKey'
+        - $ref: '#/components/parameters/HeaderIfMatch'
+        - $ref: '#/components/parameters/HeaderXRequestID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitRequest'
+      responses:
+        '201':
+          description: Approval instance created
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            Idempotent-Replay:
+              $ref: '#/components/headers/IdempotentReplay'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmitResponse'
+        '400':
+          $ref: '#/components/responses/ErrorResponse400'
+        '403':
+          $ref: '#/components/responses/ErrorResponse403'
+        '409':
+          $ref: '#/components/responses/ErrorResponse409'
+        '412':
+          $ref: '#/components/responses/ErrorResponse412'
+        '428':
+          $ref: '#/components/responses/ErrorResponse428'
+        '500':
+          $ref: '#/components/responses/ErrorResponse500'
+
+  /approval/instances/{instance_id}/stages/{stage_id}/signoffs:
+    post:
+      summary: Record a signoff (approve or reject)
+      parameters:
+        - $ref: '#/components/parameters/InstanceIdParam'
+        - $ref: '#/components/parameters/StageIdParam'
+        - $ref: '#/components/parameters/HeaderXTenantID'
+        - $ref: '#/components/parameters/HeaderXUserID'
+        - $ref: '#/components/parameters/HeaderIdempotencyKey'
+        - $ref: '#/components/parameters/HeaderIfMatch'
+        - $ref: '#/components/parameters/HeaderXRequestID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignoffRequest'
+      responses:
+        '200':
+          description: Signoff recorded
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            Idempotent-Replay:
+              $ref: '#/components/headers/IdempotentReplay'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignoffResponse'
+        '400':
+          $ref: '#/components/responses/ErrorResponse400'
+        '401':
+          $ref: '#/components/responses/ErrorResponse401'
+        '403':
+          $ref: '#/components/responses/ErrorResponse403'
+        '409':
+          $ref: '#/components/responses/ErrorResponse409'
+        '412':
+          $ref: '#/components/responses/ErrorResponse412'
+        '428':
+          $ref: '#/components/responses/ErrorResponse428'
+        '500':
+          $ref: '#/components/responses/ErrorResponse500'
+
+  /documents/{id}/publish:
+    post:
+      summary: Publish an approved document
+      parameters:
+        - $ref: '#/components/parameters/DocumentIdParam'
+        - $ref: '#/components/parameters/HeaderXTenantID'
+        - $ref: '#/components/parameters/HeaderXUserID'
+        - $ref: '#/components/parameters/HeaderIdempotencyKey'
+        - $ref: '#/components/parameters/HeaderIfMatch'
+        - $ref: '#/components/parameters/HeaderXRequestID'
+      responses:
+        '200':
+          description: Document published
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            Idempotent-Replay:
+              $ref: '#/components/headers/IdempotentReplay'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublishResponse'
+        '400':
+          $ref: '#/components/responses/ErrorResponse400'
+        '403':
+          $ref: '#/components/responses/ErrorResponse403'
+        '409':
+          $ref: '#/components/responses/ErrorResponse409'
+        '412':
+          $ref: '#/components/responses/ErrorResponse412'
+        '422':
+          $ref: '#/components/responses/ErrorResponse422'
+        '428':
+          $ref: '#/components/responses/ErrorResponse428'
+        '500':
+          $ref: '#/components/responses/ErrorResponse500'
+
+  /documents/{id}/schedule-publish:
+    post:
+      summary: Schedule future publish
+      parameters:
+        - $ref: '#/components/parameters/DocumentIdParam'
+        - $ref: '#/components/parameters/HeaderXTenantID'
+        - $ref: '#/components/parameters/HeaderXUserID'
+        - $ref: '#/components/parameters/HeaderIdempotencyKey'
+        - $ref: '#/components/parameters/HeaderIfMatch'
+        - $ref: '#/components/parameters/HeaderXRequestID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SchedulePublishRequest'
+      responses:
+        '200':
+          description: Document publish scheduled
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            Idempotent-Replay:
+              $ref: '#/components/headers/IdempotentReplay'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublishResponse'
+        '400':
+          $ref: '#/components/responses/ErrorResponse400'
+        '403':
+          $ref: '#/components/responses/ErrorResponse403'
+        '409':
+          $ref: '#/components/responses/ErrorResponse409'
+        '412':
+          $ref: '#/components/responses/ErrorResponse412'
+        '422':
+          $ref: '#/components/responses/ErrorResponse422'
+        '428':
+          $ref: '#/components/responses/ErrorResponse428'
+        '500':
+          $ref: '#/components/responses/ErrorResponse500'
+
+  /documents/{id}/supersede:
+    post:
+      summary: Publish new version superseding old
+      parameters:
+        - $ref: '#/components/parameters/DocumentIdParam'
+        - $ref: '#/components/parameters/HeaderXTenantID'
+        - $ref: '#/components/parameters/HeaderXUserID'
+        - $ref: '#/components/parameters/HeaderIdempotencyKey'
+        - $ref: '#/components/parameters/HeaderIfMatch'
+        - $ref: '#/components/parameters/HeaderXRequestID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupersedeRequest'
+      responses:
+        '200':
+          description: Document superseded
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            Idempotent-Replay:
+              $ref: '#/components/headers/IdempotentReplay'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupersedeResponse'
+        '400':
+          $ref: '#/components/responses/ErrorResponse400'
+        '403':
+          $ref: '#/components/responses/ErrorResponse403'
+        '409':
+          $ref: '#/components/responses/ErrorResponse409'
+        '412':
+          $ref: '#/components/responses/ErrorResponse412'
+        '422':
+          $ref: '#/components/responses/ErrorResponse422'
+        '428':
+          $ref: '#/components/responses/ErrorResponse428'
+        '500':
+          $ref: '#/components/responses/ErrorResponse500'
+
+  /documents/{id}/obsolete:
+    post:
+      summary: Mark document obsolete
+      parameters:
+        - $ref: '#/components/parameters/DocumentIdParam'
+        - $ref: '#/components/parameters/HeaderXTenantID'
+        - $ref: '#/components/parameters/HeaderXUserID'
+        - $ref: '#/components/parameters/HeaderIdempotencyKey'
+        - $ref: '#/components/parameters/HeaderIfMatch'
+        - $ref: '#/components/parameters/HeaderXRequestID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ObsoleteRequest'
+      responses:
+        '200':
+          description: Document marked obsolete
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            Idempotent-Replay:
+              $ref: '#/components/headers/IdempotentReplay'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObsoleteResponse'
+        '400':
+          $ref: '#/components/responses/ErrorResponse400'
+        '403':
+          $ref: '#/components/responses/ErrorResponse403'
+        '409':
+          $ref: '#/components/responses/ErrorResponse409'
+        '412':
+          $ref: '#/components/responses/ErrorResponse412'
+        '422':
+          $ref: '#/components/responses/ErrorResponse422'
+        '428':
+          $ref: '#/components/responses/ErrorResponse428'
+        '500':
+          $ref: '#/components/responses/ErrorResponse500'
+
+  /approval/instances/{instance_id}/cancel:
+    post:
+      summary: Cancel an in-progress approval instance
+      parameters:
+        - $ref: '#/components/parameters/InstanceIdParam'
+        - $ref: '#/components/parameters/HeaderXTenantID'
+        - $ref: '#/components/parameters/HeaderXUserID'
+        - $ref: '#/components/parameters/HeaderIdempotencyKey'
+        - $ref: '#/components/parameters/HeaderIfMatch'
+        - $ref: '#/components/parameters/HeaderXRequestID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelRequest'
+      responses:
+        '200':
+          description: Approval instance cancelled
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            Idempotent-Replay:
+              $ref: '#/components/headers/IdempotentReplay'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CancelResponse'
+        '400':
+          $ref: '#/components/responses/ErrorResponse400'
+        '403':
+          $ref: '#/components/responses/ErrorResponse403'
+        '409':
+          $ref: '#/components/responses/ErrorResponse409'
+        '428':
+          $ref: '#/components/responses/ErrorResponse428'
+        '500':
+          $ref: '#/components/responses/ErrorResponse500'
+
+  /approval/instances/{instance_id}:
+    get:
+      summary: Get approval instance details
+      parameters:
+        - $ref: '#/components/parameters/InstanceIdParam'
+        - $ref: '#/components/parameters/HeaderXTenantID'
+        - $ref: '#/components/parameters/HeaderXUserID'
+      responses:
+        '200':
+          description: Approval instance details
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceResponse'
+        '403':
+          $ref: '#/components/responses/ErrorResponse403'
+        '404':
+          $ref: '#/components/responses/ErrorResponse404'
+        '500':
+          $ref: '#/components/responses/ErrorResponse500'
+
+  /approval/inbox:
+    get:
+      summary: List pending signoff items for actor
+      parameters:
+        - $ref: '#/components/parameters/HeaderXTenantID'
+        - $ref: '#/components/parameters/HeaderXUserID'
+        - $ref: '#/components/parameters/AreaCodeQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+        - $ref: '#/components/parameters/OffsetQuery'
+      responses:
+        '200':
+          description: Inbox items
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedInbox'
+        '400':
+          $ref: '#/components/responses/ErrorResponse400'
+        '403':
+          $ref: '#/components/responses/ErrorResponse403'
+        '500':
+          $ref: '#/components/responses/ErrorResponse500'
+
+  /approval/routes:
+    post:
+      summary: Create approval route configuration
+      parameters:
+        - $ref: '#/components/parameters/HeaderXTenantID'
+        - $ref: '#/components/parameters/HeaderXUserID'
+        - $ref: '#/components/parameters/HeaderIdempotencyKey'
+        - $ref: '#/components/parameters/HeaderXRequestID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRouteRequest'
+      responses:
+        '201':
+          description: Approval route created
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            Idempotent-Replay:
+              $ref: '#/components/headers/IdempotentReplay'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RouteResponse'
+        '400':
+          $ref: '#/components/responses/ErrorResponse400'
+        '403':
+          $ref: '#/components/responses/ErrorResponse403'
+        '409':
+          $ref: '#/components/responses/ErrorResponse409'
+        '428':
+          $ref: '#/components/responses/ErrorResponse428'
+        '500':
+          $ref: '#/components/responses/ErrorResponse500'
+    get:
+      summary: List route configurations
+      parameters:
+        - $ref: '#/components/parameters/HeaderXTenantID'
+        - $ref: '#/components/parameters/HeaderXUserID'
+        - $ref: '#/components/parameters/ActiveOnlyQuery'
+      responses:
+        '200':
+          description: Route list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListRoutesResponse'
+        '403':
+          $ref: '#/components/responses/ErrorResponse403'
+        '500':
+          $ref: '#/components/responses/ErrorResponse500'
+
+  /approval/routes/{id}:
+    put:
+      summary: Update route (only if not in use)
+      parameters:
+        - $ref: '#/components/parameters/RouteIdParam'
+        - $ref: '#/components/parameters/HeaderXTenantID'
+        - $ref: '#/components/parameters/HeaderXUserID'
+        - $ref: '#/components/parameters/HeaderIdempotencyKey'
+        - $ref: '#/components/parameters/HeaderIfMatch'
+        - $ref: '#/components/parameters/HeaderXRequestID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRouteRequest'
+      responses:
+        '200':
+          description: Approval route updated
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            Idempotent-Replay:
+              $ref: '#/components/headers/IdempotentReplay'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RouteUpdateResponse'
+        '400':
+          $ref: '#/components/responses/ErrorResponse400'
+        '403':
+          $ref: '#/components/responses/ErrorResponse403'
+        '404':
+          $ref: '#/components/responses/ErrorResponse404'
+        '409':
+          $ref: '#/components/responses/ErrorResponse409'
+        '412':
+          $ref: '#/components/responses/ErrorResponse412'
+        '428':
+          $ref: '#/components/responses/ErrorResponse428'
+        '500':
+          $ref: '#/components/responses/ErrorResponse500'
+    delete:
+      summary: Deactivate route
+      parameters:
+        - $ref: '#/components/parameters/RouteIdParam'
+        - $ref: '#/components/parameters/HeaderXTenantID'
+        - $ref: '#/components/parameters/HeaderXUserID'
+        - $ref: '#/components/parameters/HeaderIdempotencyKey'
+        - $ref: '#/components/parameters/HeaderIfMatch'
+        - $ref: '#/components/parameters/HeaderXRequestID'
+      responses:
+        '200':
+          description: Approval route deactivated
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            Idempotent-Replay:
+              $ref: '#/components/headers/IdempotentReplay'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RouteResponse'
+        '403':
+          $ref: '#/components/responses/ErrorResponse403'
+        '404':
+          $ref: '#/components/responses/ErrorResponse404'
+        '409':
+          $ref: '#/components/responses/ErrorResponse409'
+        '412':
+          $ref: '#/components/responses/ErrorResponse412'
+        '428':
+          $ref: '#/components/responses/ErrorResponse428'
+        '500':
+          $ref: '#/components/responses/ErrorResponse500'
+
+components:
+  parameters:
+    DocumentIdParam:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+    InstanceIdParam:
+      name: instance_id
+      in: path
+      required: true
+      schema:
+        type: string
+    StageIdParam:
+      name: stage_id
+      in: path
+      required: true
+      schema:
+        type: string
+    RouteIdParam:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+    AreaCodeQuery:
+      name: area_code
+      in: query
+      required: false
+      schema:
+        type: string
+    LimitQuery:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        default: 25
+        maximum: 100
+        minimum: 1
+    OffsetQuery:
+      name: offset
+      in: query
+      required: false
+      schema:
+        type: integer
+        default: 0
+        minimum: 0
+    ActiveOnlyQuery:
+      name: active_only
+      in: query
+      required: false
+      schema:
+        type: boolean
+    HeaderIdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Client-generated UUID for replay protection.
+      schema:
+        type: string
+    HeaderIfMatch:
+      name: If-Match
+      in: header
+      required: true
+      description: ETag value like "v3" or *.
+      schema:
+        type: string
+    HeaderXTenantID:
+      name: X-Tenant-ID
+      in: header
+      required: true
+      description: Tenant UUID.
+      schema:
+        type: string
+    HeaderXUserID:
+      name: X-User-ID
+      in: header
+      required: true
+      description: Actor user ID.
+      schema:
+        type: string
+    HeaderXRequestID:
+      name: X-Request-ID
+      in: header
+      required: false
+      description: Client request ID.
+      schema:
+        type: string
+
+  headers:
+    ETag:
+      description: New version value, for example "v4".
+      schema:
+        type: string
+    IdempotentReplay:
+      description: "true" if the response is a cached idempotent replay.
+      schema:
+        type: string
+        enum: ['true', 'false']
+
+  schemas:
+    ErrorBody:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+      required:
+        - code
+        - message
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorBody'
+        request_id:
+          type: string
+      required:
+        - error
+        - request_id
+
+    StageRequest:
+      type: object
+      properties:
+        order:
+          type: integer
+        name:
+          type: string
+        required_role:
+          type: string
+        required_capability:
+          type: string
+        area_code:
+          type: string
+        quorum:
+          type: string
+          enum:
+            - any_1_of
+            - all_of
+            - m_of_n
+        quorum_m:
+          type: integer
+          nullable: true
+        drift_policy:
+          type: string
+          enum:
+            - reduce_quorum
+            - fail_stage
+            - keep_snapshot
+      required:
+        - order
+        - name
+        - required_role
+        - required_capability
+        - area_code
+        - quorum
+        - drift_policy
+
+    StageResponse:
+      type: object
+      properties:
+        order:
+          type: integer
+        name:
+          type: string
+        required_role:
+          type: string
+        required_capability:
+          type: string
+        area_code:
+          type: string
+        quorum:
+          type: string
+        quorum_m:
+          type: integer
+          nullable: true
+        drift_policy:
+          type: string
+
+    RouteResponse:
+      type: object
+      properties:
+        route_id:
+          type: string
+        profile_code:
+          type: string
+        name:
+          type: string
+        version:
+          type: integer
+        active:
+          type: boolean
+        in_use:
+          type: boolean
+        stages:
+          type: array
+          items:
+            $ref: '#/components/schemas/StageResponse'
+        created_at:
+          type: string
+          format: date-time
+
+    InstanceResponse:
+      type: object
+      properties:
+        instance_id:
+          type: string
+        document_id:
+          type: string
+        tenant_id:
+          type: string
+        status:
+          type: string
+          enum:
+            - in_progress
+            - approved
+            - rejected
+            - cancelled
+        submitted_by:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        stages:
+          type: array
+          items:
+            type: object
+        etag:
+          type: string
+
+    InboxItem:
+      type: object
+      properties:
+        instance_id:
+          type: string
+        document_id:
+          type: string
+        document_name:
+          type: string
+        stage_id:
+          type: string
+        stage_name:
+          type: string
+        submitted_by:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        area_code:
+          type: string
+
+    PaginatedInbox:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/InboxItem'
+        next_cursor:
+          type: string
+        has_more:
+          type: boolean
+      required:
+        - items
+        - has_more
+
+    SubmitRequest:
+      type: object
+      properties:
+        route_id:
+          type: string
+        content_hash:
+          type: string
+      required:
+        - route_id
+        - content_hash
+
+    SubmitResponse:
+      type: object
+      properties:
+        instance_id:
+          type: string
+        was_replay:
+          type: boolean
+        etag:
+          type: string
+      required:
+        - instance_id
+        - was_replay
+        - etag
+
+    SignoffRequest:
+      type: object
+      properties:
+        decision:
+          type: string
+          enum:
+            - approve
+            - reject
+        reason:
+          type: string
+        password_token:
+          type: string
+        content_hash:
+          type: string
+      required:
+        - decision
+        - password_token
+        - content_hash
+
+    SignoffResponse:
+      type: object
+      properties:
+        instance_id:
+          type: string
+        stage_id:
+          type: string
+        decision:
+          type: string
+          enum:
+            - approve
+            - reject
+        status:
+          type: string
+          enum:
+            - in_progress
+            - approved
+            - rejected
+            - cancelled
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        was_replay:
+          type: boolean
+      required:
+        - instance_id
+        - stage_id
+        - decision
+        - status
+        - was_replay
+
+    PublishResponse:
+      type: object
+      properties:
+        document_id:
+          type: string
+        status:
+          type: string
+          enum:
+            - published
+            - scheduled
+        effective_from:
+          type: string
+          format: date-time
+          nullable: true
+        was_replay:
+          type: boolean
+      required:
+        - document_id
+        - status
+        - was_replay
+
+    SchedulePublishRequest:
+      type: object
+      properties:
+        effective_from:
+          type: string
+          format: date-time
+      required:
+        - effective_from
+
+    SupersedeRequest:
+      type: object
+      properties:
+        superseded_document_id:
+          type: string
+      required:
+        - superseded_document_id
+
+    SupersedeResponse:
+      type: object
+      properties:
+        document_id:
+          type: string
+        superseded_document_id:
+          type: string
+        status:
+          type: string
+          enum:
+            - published
+        was_replay:
+          type: boolean
+      required:
+        - document_id
+        - superseded_document_id
+        - status
+        - was_replay
+
+    ObsoleteRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+      required:
+        - reason
+
+    ObsoleteResponse:
+      type: object
+      properties:
+        document_id:
+          type: string
+        status:
+          type: string
+          enum:
+            - obsolete
+        reason:
+          type: string
+        was_replay:
+          type: boolean
+      required:
+        - document_id
+        - status
+        - reason
+        - was_replay
+
+    CancelRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+      required:
+        - reason
+
+    CancelResponse:
+      type: object
+      properties:
+        instance_id:
+          type: string
+        status:
+          type: string
+          enum:
+            - cancelled
+        reason:
+          type: string
+        was_replay:
+          type: boolean
+      required:
+        - instance_id
+        - status
+        - reason
+        - was_replay
+
+    CreateRouteRequest:
+      type: object
+      properties:
+        profile_code:
+          type: string
+        name:
+          type: string
+        stages:
+          type: array
+          items:
+            $ref: '#/components/schemas/StageRequest'
+      required:
+        - profile_code
+        - name
+        - stages
+
+    UpdateRouteRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        stages:
+          type: array
+          items:
+            $ref: '#/components/schemas/StageRequest'
+      required:
+        - name
+        - stages
+
+    RouteUpdateResponse:
+      allOf:
+        - $ref: '#/components/schemas/RouteResponse'
+        - type: object
+          properties:
+            new_version:
+              type: integer
+          required:
+            - new_version
+
+    ListRoutesResponse:
+      type: object
+      properties:
+        routes:
+          type: array
+          items:
+            $ref: '#/components/schemas/RouteResponse'
+        total:
+          type: integer
+      required:
+        - routes
+        - total
+
+  responses:
+    ErrorResponse400:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ErrorResponse401:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ErrorResponse403:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ErrorResponse404:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ErrorResponse409:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ErrorResponse412:
+      description: Precondition failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ErrorResponse413:
+      description: Payload too large
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ErrorResponse415:
+      description: Unsupported media type
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ErrorResponse422:
+      description: Unprocessable entity
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ErrorResponse428:
+      description: Precondition required (If-Match missing)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ErrorResponse500:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'

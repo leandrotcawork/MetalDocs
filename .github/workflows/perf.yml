@@ -1,0 +1,86 @@
+name: Perf Benchmarks
+
+on:
+  pull_request:
+    paths:
+      - 'internal/modules/documents_v2/approval/application/**'
+      - 'internal/modules/jobs/scheduler/**'
+      - 'api/handlers/approval/**'
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      full_suite:
+        description: 'Run full suite (not reduced)'
+        type: boolean
+        default: false
+
+jobs:
+  perf-reduced:
+    name: Perf suite (reduced — PR gate)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    env:
+      REDUCED: '1'
+      BASE_URL: http://localhost:8080
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Start backend
+        run: |
+          go run ./apps/api/cmd/metaldocs-api &
+          for i in $(seq 1 30); do curl -sf $BASE_URL/healthz && break || sleep 2; done
+        env:
+          DATABASE_URL: ${{ secrets.PERF_DATABASE_URL }}
+          METALDOCS_E2E: '1'
+      - name: Install k6
+        run: |
+          curl -fsSL https://dl.k6.io/key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/k6-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update && sudo apt-get install -y k6
+      - name: Run submit benchmark (reduced)
+        run: k6 run tools/perfbench/submit.js
+      - name: Run signoff benchmark (reduced)
+        run: k6 run tools/perfbench/signoff.js
+      - name: Run publish benchmark (reduced)
+        run: k6 run tools/perfbench/publish.js
+
+  perf-full:
+    name: Perf suite (full — main/manual)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.full_suite)
+    env:
+      BASE_URL: http://localhost:8080
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Start backend
+        run: |
+          go run ./apps/api/cmd/metaldocs-api &
+          for i in $(seq 1 30); do curl -sf $BASE_URL/healthz && break || sleep 2; done
+        env:
+          DATABASE_URL: ${{ secrets.PERF_DATABASE_URL }}
+      - name: Install k6
+        run: |
+          curl -fsSL https://dl.k6.io/key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/k6-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update && sudo apt-get install -y k6
+      - name: Run full perf suite
+        run: |
+          k6 run tools/perfbench/submit.js
+          k6 run tools/perfbench/signoff.js
+          k6 run tools/perfbench/publish.js
+          k6 run tools/perfbench/scheduler_tick.js
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: perf-results
+          path: k6-results/
+          retention-days: 30

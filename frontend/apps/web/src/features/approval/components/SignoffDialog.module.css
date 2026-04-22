@@ -1,0 +1,36 @@
+.overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center; z-index: 1000;
+}
+.dialog {
+  background: white; border-radius: 12px; padding: 24px; width: 480px;
+  max-width: 95vw; max-height: 90vh; overflow-y: auto; position: relative;
+}
+.title { font-size: 18px; font-weight: 700; margin: 0 0 16px; }
+.fieldset { border: none; padding: 0; margin: 0 0 16px; }
+.legend { font-weight: 600; margin-bottom: 8px; font-size: 13px; }
+.radioGroup { display: flex; gap: 16px; }
+.radio { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 14px; }
+.label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.textarea, .input {
+  width: 100%; border: 1px solid #d1d5db; border-radius: 8px;
+  padding: 8px 12px; font-size: 14px; resize: vertical;
+}
+.textarea:focus, .input:focus { outline: 2px solid #3b82f6; border-color: transparent; }
+.field { margin-bottom: 16px; }
+.errorBox {
+  background: #fee2e2; border: 1px solid #fca5a5; border-radius: 8px;
+  padding: 10px 14px; color: #991b1b; font-size: 13px; margin-bottom: 16px;
+}
+.staleBanner {
+  background: #fef9c3; border: 1px solid #fde047; border-radius: 8px;
+  padding: 10px 14px; color: #713f12; font-size: 13px; margin-bottom: 16px;
+}
+.actions { display: flex; justify-content: flex-end; gap: 8px; }
+.btn { padding: 8px 18px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; }
+.btnSecondary { background: #f3f4f6; color: #374151; }
+.btnSecondary:hover { background: #e5e7eb; }
+.btnPrimary { background: #3b82f6; color: white; }
+.btnPrimary:hover { background: #2563eb; }
+.btnPrimary:disabled { opacity: 0.5; cursor: not-allowed; }
+.success { text-align: center; padding: 24px 0; color: #166534; font-size: 16px; font-weight: 600; }

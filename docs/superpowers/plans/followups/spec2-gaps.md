@@ -12,3 +12,14 @@ Non-blocking hardening tasks identified during phase-end coverage cross-check. S
 - [ ] **G8** E2E `permission_degradation.spec.ts`: 401 re-auth modal; 403 CTA hidden.
 - [ ] **G9** E2E SignoffDialog error classes: network timeout, 429, 5xx, 412, 423.
 - [ ] **G10** E2E `integrity_panel.spec.ts`: copy content_hash/version/ETag; drift warning.
+
+---
+
+## Phase 11-12 additions (from Task 12.12 Opus cross-check)
+
+- [ ] **G11** E2E: stuck-instance watchdog auto-cancel (requires clock advance >7d — staging only)
+- [ ] **G12** E2E: area RBAC negative case (user without area role cannot see doc)
+- [ ] **G13** E2E: 401 redirect via session-expiry injection endpoint
+- [ ] **G14** Canary: wire Prometheus to fetchRecentSamples (blocks prod canary) — HIGH
+- [ ] **G15** Canary: replace httpGet stub with net/http.Get (blocks prod canary smoke) — HIGH
+- [ ] **G16** Supply-chain: cosign signing on release tags + verification in canary controller

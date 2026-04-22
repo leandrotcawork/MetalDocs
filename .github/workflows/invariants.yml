@@ -1,0 +1,133 @@
+name: CI Invariants
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  cilint:
+    name: cilint — custom Go linters
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Run cilint
+        run: go run ./tools/cilint --sarif ./... > sarif-cilint.json 2>&1 || true
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: sarif-cilint.json
+      - name: Fail on violations
+        run: go run ./tools/cilint ./...
+
+  openapi-drift:
+    name: OpenAPI spec ↔ generated types drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install openapi-typescript
+        run: npm install -g openapi-typescript@7
+      - name: Regenerate types
+        run: |
+          openapiTS api/openapi/spec2.yaml \
+            -o frontend/apps/web/src/features/approval/api/__generated__/openapi.ts
+      - name: Assert no drift
+        run: git diff --exit-code frontend/apps/web/src/features/approval/api/__generated__/
+
+  migration-gapless:
+    name: Migration monotonicity check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history for git log --diff-filter
+      - name: Check gapless sequence + no historical edits
+        run: |
+          set -euo pipefail
+          MIGRATION_DIR="migrations"
+
+          # Discover min and max from filesystem (never hardcoded)
+          nums=$(ls "$MIGRATION_DIR"/*.sql 2>/dev/null \
+            | grep -oE '[0-9]+' | sort -n)
+          MIN=$(echo "$nums" | head -1)
+          MAX=$(echo "$nums" | tail -1)
+
+          echo "Checking migrations $MIN..$MAX for gapless sequence..."
+          seq "$MIN" "$MAX" | while read -r n; do
+            padded=$(printf "%04d" "$n")
+            count=$(ls "$MIGRATION_DIR"/${padded}_*.sql 2>/dev/null | wc -l)
+            if [ "$count" -eq 0 ]; then
+              echo "❌ Gap: migration $padded missing"
+              exit 1
+            fi
+          done
+
+          echo "✅ Gapless $MIN..$MAX"
+
+          # Check no historical migrations were modified after merge
+          # (only check files that exist in main already)
+          BASE=${GITHUB_BASE_REF:-main}
+          MODIFIED=$(git log --diff-filter=M --follow --name-only \
+            origin/$BASE...HEAD -- "$MIGRATION_DIR"/*.sql 2>/dev/null | grep '\.sql$' || true)
+
+          if [ -n "$MODIFIED" ]; then
+            echo "❌ Historical migrations modified: $MODIFIED"
+            exit 1
+          fi
+          echo "✅ No historical migration edits"
+
+  capability-catalog-hash:
+    name: Capability catalog integrity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify SHA256 matches pinned hash
+        run: |
+          CATALOG="sql/seeds/capabilities_v2.sql"
+          PIN_FILE="ops/CAPABILITY_CATALOG.sha256"
+
+          if [ ! -f "$CATALOG" ]; then
+            echo "Catalog file not found: $CATALOG — skip"
+            exit 0
+          fi
+          if [ ! -f "$PIN_FILE" ]; then
+            echo "Pin file not found: $PIN_FILE — creating initial pin"
+            sha256sum "$CATALOG" | awk '{print $1}' > "$PIN_FILE"
+            exit 0
+          fi
+
+          ACTUAL=$(sha256sum "$CATALOG" | awk '{print $1}')
+          EXPECTED=$(cat "$PIN_FILE" | tr -d '[:space:]')
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "❌ Capability catalog changed without bump PR"
+            echo "Expected: $EXPECTED"
+            echo "Actual:   $ACTUAL"
+            echo "Update ops/CAPABILITY_CATALOG.sha256 in a dedicated PR."
+            exit 1
+          fi
+          echo "✅ Capability catalog hash matches"
+
+  staticcheck:
+    name: staticcheck + go vet
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: go vet
+        run: go vet ./...
+      - name: staticcheck
+        uses: dominikh/staticcheck-action@v1
+        with:
+          version: "2024.1"
+          install-go: false

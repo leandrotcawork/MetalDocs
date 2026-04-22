@@ -1,0 +1,36 @@
+{
+  "phase": 10,
+  "mode": "QUALITY",
+  "verdict": "PASS_WITH_NOTES",
+  "critical_issues": [],
+  "important_issues": [
+    {
+      "id": "IMP-001",
+      "title": "Load realism stress loop was not worker-parameterized",
+      "detail": "`tests/integration/scenarios/concurrency_test.go` had an `N=50` OCC loop, but race worker count was hardcoded to 2 in `runSingleOCCRace`, reducing stress configurability and explicitness of expected loser counts.",
+      "fix": "Parameterize `runSingleOCCRace` with `workers`, add `occRaceWorkers` constant usage in callers, and assert losers as `workers-1`. Also replaced timing-based coordination (`time.Sleep`) in skip-locked worker test with a WaitGroup barrier to keep race orchestration deterministic.",
+      "status": "FIXED"
+    }
+  ],
+  "minor_issues": [],
+  "quality_checks": {
+    "1_anti_flake_controls": "PASS (after IMP-001) - race paths use WaitGroup/channel barriers; skip-locked worker coordination no longer relies on time.Sleep.",
+    "2_isolation": "PASS - DB-dependent tests skip when DATABASE_URL/METALDOCS_DATABASE_URL is unset and use per-test deterministic IDs + explicit cleanup to avoid cross-test leakage.",
+    "3_authz_matrix": "PASS - membership tests cover direct writer insert blocked path and SECURITY DEFINER fn callable/idempotent behavior.",
+    "4_tx_owner_scan": "PASS - tx ownership scan checks both repository and HTTP handler directories.",
+    "5_load_realism": "PASS (after IMP-001) - `concurrency_test` includes N=50 stress loop with parameterized workers.",
+    "6_legacy_absent_comprehensive": "PASS - legacy literal checks cover both Go (`internal/**.go`) and TS/TSX (`frontend/apps/web/src/**`).",
+    "7_outbox_paired": "PASS - outbox tests cover both commit path persistence and rollback atomic omission.",
+    "8_idempotency_concurrent": "PASS - concurrent same-key insert test explicitly expects SQLSTATE 23505 collisions and single-row final state.",
+    "9_e2e_stub_documented": "PASS - e2e test documents full API flow with ordered steps and cleanly skips when server URL is absent.",
+    "10_vet_passes": "PASS - `go vet -tags integration ./tests/...` exited 0."
+  },
+  "fixes_required": [
+    {
+      "file": "tests/integration/scenarios/concurrency_test.go",
+      "description": "Parameterize OCC race workers in N=50 stress loop and replace timing-based synchronization with barrier-based coordination in skip-locked concurrency path.",
+      "severity": "important",
+      "status": "APPLIED"
+    }
+  ]
+}

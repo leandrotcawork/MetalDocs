@@ -32,7 +32,6 @@ func AuthzRequire(files []string) []Finding {
 			if fn.Recv == nil || !fn.Name.IsExported() {
 				continue
 			}
-			src := readSource(path)
 			pos := fset.Position(fn.Pos())
 
 			// Check for //cilint:allow-noauthz directive in function comment

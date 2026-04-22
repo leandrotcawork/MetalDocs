@@ -1,0 +1,26 @@
+{
+  "phase": 1,
+  "round": 1,
+  "mode": "OPERATIONS",
+  "model": "gpt-5.3-codex",
+  "reasoning_effort": "high",
+  "verdict": "REJECT",
+  "upgrade_required": true,
+  "confidence": "high",
+  "issues": [
+    {"id": 1, "scope": "structural", "title": "Status remap ordering invalid against current CHECK", "repair": "Superset CHECK transition: add temp CHECK including legacy + new states, run remap, tighten CHECK to new-only"},
+    {"id": 2, "scope": "structural", "title": "Migration numbering contradicts execution order", "repair": "Renumber files so numeric order = dependency order; merge dependent steps if needed"},
+    {"id": 3, "scope": "structural", "title": "Tenant retrofit on iam_users model-incompatible", "repair": "Declare user_id globally-unique PK; tenant_id is lookup attribute; UNIQUE(tenant_id,user_id) anchors composite FKs without per-tenant identity namespace"},
+    {"id": 4, "scope": "local", "title": "Sentinel DEFAULT long-term footgun", "repair": "Drop DEFAULT after backfill; add guard CHECK or app-layer enforcement"},
+    {"id": 5, "scope": "structural", "title": "Existing data breaks new composite FKs", "repair": "ADD CONSTRAINT ... NOT VALID; separate VALIDATE after explicit backfill step"},
+    {"id": 6, "scope": "structural", "title": "SoD trigger race-prone", "repair": "Denormalize approval_instance_id into approval_signoffs + UNIQUE (approval_instance_id, actor_user_id)"},
+    {"id": 7, "scope": "local", "title": "Cross-tenant signoff not fully constrained", "repair": "Add BEFORE INSERT trigger asserting actor_tenant_id = approval_instances.tenant_id"},
+    {"id": 8, "scope": "local", "title": "SECURITY DEFINER hardening incomplete", "repair": "search_path=pg_catalog,pg_temp; all object refs schema-qualified"},
+    {"id": 9, "scope": "local", "title": "Role DDL not existence-safe", "repair": "DO $$ guards around CREATE/ALTER ROLE using pg_roles checks"},
+    {"id": 10, "scope": "structural", "title": "Phase-1-alone breaks pre-Spec-2 app paths", "repair": "Keep CHECK superset through Phase 1; tighten only in Phase 5 co-release with Go code update; defer DML revoke on user_process_areas to Phase 6"},
+    {"id": 11, "scope": "structural", "title": "Irreversible data drop too early", "repair": "Defer finalized_at/archived_at column drop to Phase 12 stabilization gate; not Phase 1"},
+    {"id": 12, "scope": "local", "title": "0139 idempotency predicate brittle", "repair": "Unique index on (event_type, (payload_json->>'spec'), (payload_json->>'to')) + ON CONFLICT DO NOTHING"},
+    {"id": 13, "scope": "local", "title": "Missing hot-path indexes + revision_version monotonic guard", "repair": "btree (tenant_id, submitted_by, status, submitted_at DESC); trigger enforcing NEW.revision_version >= OLD.revision_version on documents"}
+  ],
+  "action_taken": "Revise Phase 1 inline (all 13 issues addressed); re-submit for Round 2 verdict"
+}

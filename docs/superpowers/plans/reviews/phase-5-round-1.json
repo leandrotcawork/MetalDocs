@@ -1,0 +1,21 @@
+{
+  "phase": 5,
+  "round": 1,
+  "mode": "COVERAGE",
+  "model": "gpt-5.3-codex",
+  "reasoning_effort": "high",
+  "verdict": "APPROVE_WITH_FIXES",
+  "upgrade_required": true,
+  "confidence": "high",
+  "note": "Plan-review framing respected; no false positives.",
+  "issues": [
+    {"id": "C1", "severity": "critical", "title": "Idempotency only explicit for submit; other mutators underspecified", "resolution": "Idempotency matrix added covering every mutator + scheduler; outbox dedupe_key backstop via Migration 0141."},
+    {"id": "C2", "severity": "high", "title": "Scheduler tx composition ambiguous (nested tx risk)", "resolution": "Task 5.7 rewritten: short claim tx (READ COMMITTED, SKIP LOCKED, mark 'publishing') + per-row transition tx via RunInMembershipTx. Intermediate status added to Migration 0141."},
+    {"id": "C3", "severity": "high", "title": "Event payload contracts not defined", "resolution": "Per-event required-keys table added (12 event types). domain.ValidateEventPayload + events.BuildDedupeKey helpers in Task 5.1."},
+    {"id": "C4", "severity": "high", "title": "Transition matrix incomplete", "resolution": "Per-method allowed/from/to/error matrix added. Terminal-state writes unconditionally ErrIllegalTransition."},
+    {"id": "C5", "severity": "medium", "title": "Signoff uniqueness not explicit", "resolution": "UNIQUE (stage_instance_id, actor_user_id) added to Migration 0141 (stage-scoped, tighter than Phase 1 instance-scoped). Service replay rule references Phase 4 F2 4-tuple."},
+    {"id": "C6", "severity": "medium", "title": "Obsolete cascade traversal/locking unspecified", "resolution": "BFS, sorted-by-child-ID lock order, visited-set cycle break, 1000-node depth bound, per-node events with dedupe_key."},
+    {"id": "C7", "severity": "low", "title": "Legacy cutover relies only on grep", "resolution": "Added staticcheck + DI container reflect test + integration probe 5.11-G scanning routes/cron."}
+  ],
+  "action_taken": "All 7 fixes applied inline. Upgrade_required satisfied via structural additions (matrix, idempotency, scheduler rewrite). Migration 0141 added as Phase-1 amendment. Round 2 skipped — findings enumerable and directly addressed."
+}

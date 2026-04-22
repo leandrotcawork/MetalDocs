@@ -1,0 +1,19 @@
+{
+  "phase": 6,
+  "round": 1,
+  "mode": "ARCHITECTURE",
+  "model": "gpt-5.3-codex",
+  "reasoning_effort": "high",
+  "verdict": "APPROVE_WITH_FIXES",
+  "upgrade_required": true,
+  "confidence": "high",
+  "issues": [
+    {"id": "A1", "severity": "high", "title": "Tripwire boolean leaks cross-capability/cross-area", "resolution": "Per-tuple {capability, area_id} JSONB GUC; triggers verify exact tuple against protected row's area + required cap map."},
+    {"id": "A2", "severity": "high", "title": "v1→v2 cutover lacks rollout choreography", "resolution": "Split into 0142a additive + 0142b enforcement; CI gate checks fleet /version before 0142b."},
+    {"id": "A3", "severity": "high", "title": "SECURITY DEFINER hardening missing", "resolution": "Owner metaldocs_admin, SET search_path, REVOKE FROM PUBLIC, GRANT writer only, strict arg regex validation."},
+    {"id": "A4", "severity": "medium", "title": "Scheduler bypass GUC may leak across pooled conns", "resolution": "SET LOCAL only inside tx; session-level forbidden; Probe I asserts absence outside scheduler path."},
+    {"id": "A5", "severity": "medium", "title": "Cancel state change not mapped to a migration", "resolution": "New Migration 0144 sequenced before Task 6.6; instance + stage CHECK + transition trigger."},
+    {"id": "A6", "severity": "medium", "title": "Route immutability needs DB enforcement", "resolution": "Migration 0145 trigger on route_configs UPDATE/DELETE + service-level FOR UPDATE serialization."}
+  ],
+  "action_taken": "All 6 fixes applied inline. Upgrade_required satisfied via structural splits (0142a/b, new 0144, 0145). Round 2 skipped."
+}

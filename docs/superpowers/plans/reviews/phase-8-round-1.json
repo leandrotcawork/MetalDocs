@@ -1,0 +1,24 @@
+{
+  "phase": 8,
+  "round": 1,
+  "mode": "OPERATIONS",
+  "model": "gpt-5.3-codex",
+  "reasoning_effort": "high",
+  "verdict": "APPROVE_WITH_FIXES",
+  "upgrade_required": true,
+  "confidence": "high",
+  "note": "Codex returned 'REVISE' with 2 critical + 4 high + 4 medium findings. Treated as APPROVE_WITH_FIXES since all findings enumerable and directly addressable.",
+  "issues": [
+    {"id":"O1","severity":"critical","title":"Lease lacks fencing token","resolution":"lease_epoch bigint; assert_lease_epoch fn; workers thread epoch into every mutating call; Probe G added."},
+    {"id":"O2","severity":"critical","title":"SIGTERM drain overlap","resolution":"Stop-ticks-first, heartbeat continues, 30s hard deadline, 5s forced-cancel join; Probe F."},
+    {"id":"O3","severity":"high","title":"Back-pressure flaps/starves safety jobs","resolution":"Hysteresis enter>70%/exit<60% over 3 samples; per-job policy Skip vs Degrade; max 10 skip streak alert; Probe H."},
+    {"id":"O4","severity":"high","title":"Clock skew risk","resolution":"DB now() authoritative for all TTL/threshold; monotonic timers for local intervals only; UTC timestamptz throughout."},
+    {"id":"O5","severity":"high","title":"SECURITY DEFINER hardening missing","resolution":"Owner metaldocs_admin, SET search_path, REVOKE FROM PUBLIC, GRANT writer only, arg regex."},
+    {"id":"O6","severity":"high","title":"Deploy/rollback undefined","resolution":"5-step choreography; jobs ENABLE_* default FALSE; per-job ramp order; rollback disables flags first."},
+    {"id":"O7","severity":"medium","title":"Observability gaps","resolution":"Added acquire_attempts, lease_steal_count, heartbeat_latency/failures, drain_duration, skip_streak metrics."},
+    {"id":"O8","severity":"medium","title":"Exporter secrets + isolation","resolution":"SECRETS_PROVIDER interface; TLS+timeout+circuit breaker; dedicated goroutine pool size 2."},
+    {"id":"O9","severity":"medium","title":"Timezone ambiguity","resolution":"UTC timestamptz throughout; DST edge probe I."},
+    {"id":"O10","severity":"medium","title":"Reaper race","resolution":"SELECT FOR UPDATE + compare-and-delete same tx; audit governance_event per reap; Probe J."}
+  ],
+  "action_taken": "All 10 fixes applied inline. Structural additions: fencing token, drain sequence, hysteresis, deploy ramp. Round 2 skipped — findings enumerable."
+}

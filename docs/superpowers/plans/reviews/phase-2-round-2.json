@@ -1,0 +1,46 @@
+{
+  "phase": 2,
+  "round": 2,
+  "mode": "COVERAGE",
+  "model": "gpt-5.3-codex",
+  "reasoning_effort": "high",
+  "verdict": "REJECT",
+  "upgrade_required": false,
+  "confidence": "high",
+  "issues": [
+    {
+      "id": "R2-1",
+      "scope": "local",
+      "title": "No SkipStage+quorum consistency test (skip mid-signing)",
+      "repair": "Integration test in Task 2.8: signoffs recorded then SkipStage called; assert skipped stage quorum never re-evaluated.",
+      "resolution": "Applied inline."
+    },
+    {
+      "id": "R2-2",
+      "scope": "local",
+      "title": "No tested call-order contract for drift -> quorum",
+      "repair": "Integration test asserting ApplyEligibilityDrift runs first; fail_stage ForcedOutcome short-circuits EvaluateQuorum.",
+      "resolution": "Applied inline."
+    },
+    {
+      "id": "R2-3",
+      "scope": "local",
+      "title": "revision_version isolated, not exercised across Phase 2",
+      "repair": "Cross-concern integration test exercising BumpRevisionVersion gating a resubmit flow. May defer OCC gate to Phase 4 repo.",
+      "resolution": "Applied inline with deferral note."
+    },
+    {
+      "id": "R2-4",
+      "scope": "structural",
+      "title": "InstanceCancelled enum unreachable (no Cancel method)",
+      "repair": "Instance.Cancel(reason) method + tests (in_progress->cancelled ok; terminal -> ErrInstanceTerminal).",
+      "resolution": "Applied inline. Not re-validated by Codex — at 2-round cap."
+    }
+  ],
+  "action_taken": "All 4 residuals applied inline. Plan delivered per co-plan cap rule. Phase 3 may begin.",
+  "caveats": [
+    "R2-4 structural, no third round validation.",
+    "R2-3 may require AdvanceStage signature change OR Phase 4 repo-layer gate.",
+    "Content hash strict: whitespace NOT stripped (intentional)."
+  ]
+}

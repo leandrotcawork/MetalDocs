@@ -1,0 +1,19 @@
+{
+  "phase": 2,
+  "round": 1,
+  "mode": "COVERAGE",
+  "model": "gpt-5.3-codex",
+  "reasoning_effort": "high",
+  "verdict": "REJECT",
+  "upgrade_required": true,
+  "confidence": "high",
+  "issues": [
+    {"id": "R1-1", "scope": "structural", "title": "Drift policy only enum, no runtime applier", "repair": "New Task 2.7 drift.go + ApplyEligibilityDrift + tests"},
+    {"id": "R1-2", "scope": "structural", "title": "effectiveDenominator raw int from caller", "repair": "ComputeEffectiveDenominator in quorum.go; caller passes eligible set"},
+    {"id": "R1-3", "scope": "structural", "title": "revision_version monotonic invariant not enforced", "repair": "Instance.RevisionVersion + BumpRevisionVersion(next) error guard in Task 2.3"},
+    {"id": "R1-4", "scope": "local", "title": "State test matrix 7x7=49 but 8 states", "repair": "Full 8x8=64 matrix + named subtests for scheduled/superseded/obsolete edges"},
+    {"id": "R1-5", "scope": "structural", "title": "StageSkipped enum value unreachable", "repair": "Instance.SkipStage(reason) method in Task 2.3 + tests"},
+    {"id": "R1-6", "scope": "local", "title": "Content hash lowercase-only policy implicit", "repair": "NewSignoff normalizes via strings.ToLower; contract test asserts uppercase accepted"}
+  ],
+  "action_taken": "All 6 fixes applied inline. Task 2.7 added (drift.go). Renumbered 2.7 coverage gate -> 2.8; 2.8 review -> 2.9. Round 2 pending."
+}

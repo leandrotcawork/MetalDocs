@@ -1,0 +1,56 @@
+{
+  "phase": 4,
+  "round": 1,
+  "mode": "ARCHITECTURE",
+  "model": "gpt-5.3-codex",
+  "reasoning_effort": "high",
+  "verdict": "APPROVE_WITH_FIXES",
+  "upgrade_required": false,
+  "confidence": "high",
+  "note": "Plan-review framing respected this round; no false positives.",
+  "issues": [
+    {
+      "id": "F1",
+      "severity": "critical",
+      "title": "Repo interface internally inconsistent (missing tenantID, LoadSignoffByActor, expected-status args)",
+      "resolution": "Canonical interface published in Task 4.1 with all signatures + 11-error taxonomy."
+    },
+    {
+      "id": "F2",
+      "severity": "critical",
+      "title": "Signoff idempotency vs duplicate-actor ambiguous on ON CONFLICT",
+      "resolution": "Compare (idempotency_key, content_hash, stage_instance_id, decision) 4-tuple; same=replay, any diff=ErrActorAlreadySigned."
+    },
+    {
+      "id": "F3",
+      "severity": "high",
+      "title": "Tx ownership rule not codified",
+      "resolution": "Invariant 7 updated: Phase 5 services own; handlers/jobs never open; repos strictly tx-in/tx-out."
+    },
+    {
+      "id": "F4",
+      "severity": "high",
+      "title": "SQLSTATE mapping incomplete (23503, 42501 unhandled)",
+      "resolution": "MapPgError(err, hints) matrix added: 23505+constraint, 23503, 23514+reason, 42501, fallback."
+    },
+    {
+      "id": "F5",
+      "severity": "high",
+      "title": "Legacy purge panic stubs unsafe in live paths",
+      "resolution": "Typed ErrLegacyMethodRemoved stubs; staged removal; temp legacy_adapter.go until Phase 5."
+    },
+    {
+      "id": "F6",
+      "severity": "medium",
+      "title": "ListScheduledDue isolation under-specified",
+      "resolution": "READ COMMITTED explicit; godoc mandates; claim+transition same tx."
+    },
+    {
+      "id": "F7",
+      "severity": "high",
+      "title": "Integration-tagged tests silently skipped in CI",
+      "resolution": "New Task 4.12: dedicated CI job + scripts/test-integration.sh; gates merge."
+    }
+  ],
+  "action_taken": "All 7 fixes applied inline. Plan now has 12 tasks (4.1-4.12). Round 2 skipped — findings enumerable and directly addressed."
+}

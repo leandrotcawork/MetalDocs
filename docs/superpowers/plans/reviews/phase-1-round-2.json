@@ -1,0 +1,57 @@
+{
+  "phase": 1,
+  "round": 2,
+  "mode": "OPERATIONS",
+  "model": "gpt-5.3-codex",
+  "reasoning_effort": "high",
+  "verdict": "REJECT",
+  "upgrade_required": true,
+  "confidence": "high",
+  "issues": [
+    {
+      "id": 1,
+      "scope": "structural",
+      "title": "0133 transition trigger breaks pre-Spec-2 code (Round-1 #10 not closed)",
+      "why": "Trigger rejects legacy-state transitions; pre-Spec-2 code still writes finalized/archived.",
+      "repair": "Compatibility mode: allow finalized->finalized, archived->archived, and whitelisted legacy->legacy/dormant paths until Phase 5 cutover. Or: defer installing trigger until Phase 5 migration, leaving only superset CHECK in Phase 1.",
+      "resolution": "Applied inline — 0133 extended to admit legacy transitions draft->finalized, finalized->archived, finalized->finalized, archived->archived; still rejects cross-graph (finalized->published)."
+    },
+    {
+      "id": 2,
+      "scope": "local",
+      "title": "0139 ON CONFLICT ON CONSTRAINT names an index not a constraint",
+      "why": "ON CONSTRAINT resolves via pg_constraint; unique index name is not a constraint → migration aborts.",
+      "repair": "Use index-inference conflict target matching the expression/predicate, or guarded INSERT … WHERE NOT EXISTS.",
+      "resolution": "Applied inline — switched to ON CONFLICT (event_type, (payload_json->>'spec'), (payload_json->>'to')) WHERE event_type='role_capabilities_version_bump' DO NOTHING."
+    },
+    {
+      "id": 3,
+      "scope": "structural",
+      "title": "0135 signoff lacks invariant tying instance_id to stage_instance_id",
+      "why": "Denormalized approval_instance_id on signoffs can drift from approval_stage_instances.approval_instance_id of the referenced stage — corrupts SoD/tenant guarantees.",
+      "repair": "Composite FK (stage_instance_id, approval_instance_id) REFERENCES approval_stage_instances(id, approval_instance_id) — requires UNIQUE(id, approval_instance_id) on stage_instances. Alternative: BEFORE INSERT trigger asserting match.",
+      "resolution": "Applied inline — added UNIQUE(id, approval_instance_id) on approval_stage_instances and composite FK on approval_signoffs."
+    },
+    {
+      "id": 4,
+      "scope": "local",
+      "title": "0136 revoked_by_required CHECK added before backfill",
+      "why": "Pre-existing rows with effective_to NOT NULL and revoked_by NULL abort constraint creation.",
+      "repair": "Add CHECK NOT VALID, backfill revoked_by (or revoked_by:='system:legacy'), then VALIDATE.",
+      "resolution": "Applied inline — CHECK added NOT VALID, backfill step inserts 'system:legacy' where missing, VALIDATE CONSTRAINT runs after."
+    },
+    {
+      "id": 5,
+      "scope": "local",
+      "title": "0137 missing USAGE grant on metaldocs schema to SECURITY DEFINER owner",
+      "why": "In hardened envs without PUBLIC USAGE on metaldocs, SECURITY DEFINER functions fail to read iam_users despite table-level grants.",
+      "repair": "GRANT USAGE ON SCHEMA metaldocs TO metaldocs_security_owner, metaldocs_membership_writer.",
+      "resolution": "Applied inline — explicit USAGE grant added in 0137."
+    }
+  ],
+  "action_taken": "All 5 fixes applied inline. Co-plan rule caps at Round 2; plan delivered with caveats. User should review before Phase 2 begins.",
+  "caveats": [
+    "Two structural fixes (#1, #3) applied without third Codex round — verify at Phase 1 execution time.",
+    "Composite FK on approval_stage_instances(id, approval_instance_id) requires UNIQUE(id, approval_instance_id) which is redundant with PK but accepted by Postgres."
+  ]
+}

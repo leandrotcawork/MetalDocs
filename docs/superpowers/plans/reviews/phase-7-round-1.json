@@ -1,0 +1,21 @@
+{
+  "phase": 7,
+  "round": 1,
+  "mode": "QUALITY",
+  "model": "gpt-5.3-codex",
+  "reasoning_effort": "high",
+  "verdict": "APPROVE_WITH_FIXES",
+  "upgrade_required": true,
+  "confidence": "high",
+  "issues": [
+    {"id":"Q1","severity":"high","resolution":"Per-route authz matrix; handler helper authz.RequireHTTP before service call."},
+    {"id":"Q2","severity":"high","resolution":"Idempotency-Key scope (tenant,actor,route,key) + payload_hash binding + 24h TTL + concurrency poll; Migration 0146 idempotency_keys table."},
+    {"id":"Q3","severity":"high","resolution":"Strict ETag strong-only parser; 428 on missing If-Match; 412 on mismatch; wildcard * accepted."},
+    {"id":"Q4","severity":"medium","resolution":"errors.As/Is unwrap chain; decode error branches (SyntaxError, UnmarshalTypeError, EOF, MaxBytesError, strictjson.ErrDuplicateKey) mapped to 400/413."},
+    {"id":"Q5","severity":"medium","resolution":"strictjson.Decode helper: MaxBytesReader 64KB, Content-Type check, DisallowUnknownFields, duplicate-key rejection."},
+    {"id":"Q6","severity":"medium","resolution":"HMAC-signed cursor with exp; default 25 max 100; created_at DESC, id ASC tie-breaker; tampered/expired → 400."},
+    {"id":"Q7","severity":"medium","resolution":"Per-handler 9-case table test + middleware ordering + request_id propagation tests."},
+    {"id":"Q8","severity":"low","resolution":"OpenAPI headers + shared components + CI contract-sync test."}
+  ],
+  "action_taken": "All 8 fixes applied inline. Migration 0146 added (Task 7.0). Round 2 skipped."
+}

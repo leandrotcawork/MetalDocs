@@ -176,7 +176,7 @@ test.describe.serial('happy_path', () => {
     const context = await contextAs(browser, requireBaseURL(baseURL), seeded.cookies, 'reviewer');
     try {
       const { request } = await reviewerOrApproverSignoff(context, primaryDocId);
-      expect(request.headerValue('idempotency-key')).toBeTruthy();
+      expect(request.headerValue('idempotency-key')).toMatch(UUID_HEADER_RE);
       expect(request.headerValue('if-match')).toBeTruthy();
     } finally {
       await context.close();

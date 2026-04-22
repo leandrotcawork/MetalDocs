@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+ï»¿import { randomUUID } from 'node:crypto';
 
 import { test, expect, type APIRequestContext, type BrowserContext, type Page, type Request } from '@playwright/test';
 
@@ -64,11 +64,11 @@ async function submitAsAuthor(page: Page, docId: string): Promise<void> {
 
   const submitRequestPromise = page.waitForRequest((request) => isSubmitRequest(request, docId));
 
-  await page.getByRole('button', { name: 'Submeter para revisão' }).click();
+  await page.getByRole('button', { name: 'Submeter para revisÃ£o' }).click();
   await page.getByRole('button', { name: /^Submeter$/ }).click();
 
   await submitRequestPromise;
-  await expect.poll(() => stateBadgeText(page), { timeout: 5000 }).toBe('Em revisão');
+  await expect.poll(() => stateBadgeText(page), { timeout: 5000 }).toBe('Em revisÃ£o');
 }
 
 async function signoffFromInbox(
@@ -130,10 +130,10 @@ test.describe.serial('reject_flow', () => {
     }
 
     await page.goto(`/documents/${primaryDocId}`);
-    await expect.poll(() => stateBadgeText(page), { timeout: 5000 }).toBe('Em revisão');
+    await expect.poll(() => stateBadgeText(page), { timeout: 5000 }).toBe('Em revisÃ£o');
   });
 
-  test('approver rejects at stage 2 — badge transitions to rejected', async ({ browser, baseURL }) => {
+  test('approver rejects at stage 2 â€” badge transitions to rejected', async ({ browser, baseURL }) => {
     const approverContext = await contextAs(browser, requireBaseURL(baseURL), seeded.cookies, 'approver');
     try {
       const page = await signoffFromInbox(approverContext, {
@@ -153,15 +153,15 @@ test.describe.serial('reject_flow', () => {
     await page.goto(`/documents/${primaryDocId}`);
 
     await expect.poll(() => stateBadgeText(page), { timeout: 5000 }).toBe('Rascunho');
-    await expect(page.getByRole('button', { name: /Documento em revisão/i })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Submeter para revisão' })).toBeEnabled();
+    await expect(page.getByRole('button', { name: /Documento em revisÃ£o/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Submeter para revisÃ£o' })).toBeEnabled();
   });
 
   test('timeline shows rejection node with reason text', async ({ page }) => {
     await loginAs(page, seeded.cookies, 'author');
     await page.goto(`/documents/${primaryDocId}`);
 
-    const timelinePanel = page.locator('section[aria-label="Timeline de aprovação"]');
+    const timelinePanel = page.locator('section[aria-label="Timeline de aprovaÃ§Ã£o"]');
     await expect(timelinePanel).toContainText('needs diagram fix');
   });
 
@@ -173,7 +173,7 @@ test.describe.serial('reject_flow', () => {
     await expect.poll(async () => docRow.count(), { timeout: 5000 }).toBe(0);
   });
 
-  test('reject without reason — form validation, submit disabled', async ({ page, browser, baseURL }) => {
+  test('reject without reason â€” form validation, submit disabled', async ({ page, browser, baseURL }) => {
     await submitAsAuthor(page, secondaryDocId);
 
     const reviewerContext = await contextAs(browser, requireBaseURL(baseURL), seeded.cookies, 'reviewer');
@@ -208,8 +208,8 @@ test.describe.serial('reject_flow', () => {
       await approverPage.getByRole('button', { name: 'Confirmar assinatura' }).click();
 
       await expect.poll(() => signoffRequests, { timeout: 5000 }).toBe(0);
-      await expect(approverPage.getByText('Informe o motivo da rejeição.')).toBeVisible();
-      await expect(approverPage.getByRole('button', { name: 'Confirmar assinatura' })).toBeEnabled();
+      await expect(approverPage.getByText('Informe o motivo da rejeiÃ§Ã£o.')).toBeVisible();
+      await expect(approverPage.getByRole('button', { name: 'Confirmar assinatura' })).toBeDisabled();
     } finally {
       await approverContext.close();
     }

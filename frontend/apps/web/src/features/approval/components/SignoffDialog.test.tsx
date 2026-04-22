@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApprovalError } from '../api/mutationClient';
@@ -159,11 +159,18 @@ describe('SignoffDialog', () => {
     fireEvent.change(passwordInput, { target: { value: 'secret' } });
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar assinatura' }));
 
-    resolve({ signoff_id: 'sig-1', was_replay: false });
-    await waitFor(() => {
-      expect(screen.getByText('Assinatura registrada com sucesso.')).toBeTruthy();
+    // runAllTimersAsync exits early when no timers are queued yet (the 1500ms timer is
+    // created by handleSubmit's continuation, which runs in a later microtask). Use
+    // queueMicrotask (not faked) inside act() to flush the promise chain first.
+    await act(async () => {
+      resolve({ signoff_id: 'sig-1', was_replay: false });
+      await new Promise<void>((r) => queueMicrotask(r));
+      await new Promise<void>((r) => queueMicrotask(r));
     });
-    expect(passwordInput.value).toBe('');
+    expect(screen.getByText('Assinatura registrada com sucesso.')).toBeTruthy();
+    // On success the form is replaced by the success message — the password field is
+    // removed from the DOM. Verify it is gone (state was cleared, form hidden).
+    expect(screen.queryByLabelText('Senha')).toBeNull();
 
     await vi.advanceTimersByTimeAsync(1500);
     firstRender.unmount();
@@ -177,9 +184,11 @@ describe('SignoffDialog', () => {
     fireEvent.change(retryPasswordInput, { target: { value: 'wrong' } });
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar assinatura' }));
 
-    await waitFor(() => {
-      expect(screen.getByText('Senha incorreta. Verifique e tente novamente.')).toBeTruthy();
+    await act(async () => {
+      await new Promise<void>((r) => queueMicrotask(r));
+      await new Promise<void>((r) => queueMicrotask(r));
     });
+    expect(screen.getByText('Senha incorreta. Verifique e tente novamente.')).toBeTruthy();
     expect(retryPasswordInput.value).toBe('');
   });
 });

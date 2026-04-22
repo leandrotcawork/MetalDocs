@@ -23,6 +23,8 @@ CREATE TABLE IF NOT EXISTS approval_instances (
 );
 
 ALTER TABLE approval_instances
+  DROP CONSTRAINT IF EXISTS approval_instances_submitted_by_tenant_fkey;
+ALTER TABLE approval_instances
   ADD CONSTRAINT approval_instances_submitted_by_tenant_fkey
     FOREIGN KEY (tenant_id, submitted_by)
       REFERENCES metaldocs.iam_users (tenant_id, user_id)
@@ -87,6 +89,8 @@ CREATE TABLE IF NOT EXISTS approval_signoffs (
     REFERENCES approval_stage_instances (id, approval_instance_id)
 );
 
+ALTER TABLE approval_signoffs
+  DROP CONSTRAINT IF EXISTS approval_signoffs_actor_tenant_fkey;
 ALTER TABLE approval_signoffs
   ADD CONSTRAINT approval_signoffs_actor_tenant_fkey
     FOREIGN KEY (actor_tenant_id, actor_user_id)

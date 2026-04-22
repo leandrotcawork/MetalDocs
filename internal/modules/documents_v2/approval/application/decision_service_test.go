@@ -7,11 +7,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"testing"
 	"time"
 
 	"metaldocs/internal/modules/documents_v2/approval/domain"
 	"metaldocs/internal/modules/documents_v2/approval/repository"
+	"metaldocs/internal/modules/iam/authz"
 )
 
 // ---------------------------------------------------------------------------
@@ -75,16 +77,34 @@ type signoffRow struct {
 
 type decisionTestConn struct {
 	stageSignoffs []signoffRow // rows returned by loadStageSignoffs
+	authzGranted  bool
+	authzSet      bool
+	areaCode      string
+	actorID       string
 }
 
 type decisionNoopResult struct{}
 type decisionEmptyRows struct{}
+type decisionSingleValueRows struct {
+	value any
+	done  bool
+}
 
 func (decisionNoopResult) LastInsertId() (int64, error) { return 0, nil }
 func (decisionNoopResult) RowsAffected() (int64, error) { return 1, nil }
-func (decisionEmptyRows) Columns() []string              { return nil }
-func (decisionEmptyRows) Close() error                   { return nil }
-func (decisionEmptyRows) Next([]driver.Value) error      { return io.EOF }
+func (decisionEmptyRows) Columns() []string             { return nil }
+func (decisionEmptyRows) Close() error                  { return nil }
+func (decisionEmptyRows) Next([]driver.Value) error     { return io.EOF }
+func (r *decisionSingleValueRows) Columns() []string    { return []string{"v"} }
+func (r *decisionSingleValueRows) Close() error         { return nil }
+func (r *decisionSingleValueRows) Next(dest []driver.Value) error {
+	if r.done {
+		return io.EOF
+	}
+	r.done = true
+	dest[0] = r.value
+	return nil
+}
 
 // signoffRows returns configured signoff rows.
 type signoffRows struct {
@@ -131,11 +151,24 @@ func (s *decisionTestStmt) Exec(_ []driver.Value) (driver.Result, error) {
 	return decisionNoopResult{}, nil
 }
 func (s *decisionTestStmt) Query(_ []driver.Value) (driver.Rows, error) {
+	q := strings.ToLower(s.query)
+	if strings.Contains(q, "from documents") {
+		return &decisionSingleValueRows{value: s.conn.areaCode}, nil
+	}
+	if strings.Contains(q, "select exists") && strings.Contains(q, "role_capabilities") {
+		return &decisionSingleValueRows{value: s.conn.authzGranted}, nil
+	}
+	if strings.Contains(q, "current_setting('metaldocs.asserted_caps'") {
+		return &decisionSingleValueRows{value: nil}, nil
+	}
+	if strings.Contains(q, "current_setting('metaldocs.actor_id'") {
+		return &decisionSingleValueRows{value: s.conn.actorID}, nil
+	}
 	// loadStageSignoffs queries WHERE stage_instance_id = $1 (no "!=")
 	// loadPriorSignoffs queries WHERE stage_instance_id != $2
 	// Both hit "approval_signoffs" table.
 	// We return configured stageSignoffs for the stage query and empty for prior.
-	if isStageQuery(s.query) {
+	if strings.Contains(q, "approval_signoffs") && isStageQuery(s.query) {
 		return &signoffRows{rows: s.conn.stageSignoffs}, nil
 	}
 	return decisionEmptyRows{}, nil
@@ -169,6 +202,15 @@ var decisionDBCounter int
 
 func newDecisionTestDB(t *testing.T, conn *decisionTestConn) *sql.DB {
 	t.Helper()
+	if conn.areaCode == "" {
+		conn.areaCode = "QA"
+	}
+	if conn.actorID == "" {
+		conn.actorID = "user-1"
+	}
+	if !conn.authzSet {
+		conn.authzGranted = true
+	}
 	decisionDBCounter++
 	name := fmt.Sprintf("decision_test_%d", decisionDBCounter)
 	sql.Register(name, &decisionTestDriver{conn: conn})
@@ -258,7 +300,12 @@ func TestRecordSignoff_ApprovePath_QuorumMet(t *testing.T) {
 		},
 	}
 
-	conn := &decisionTestConn{stageSignoffs: stageSignoffs}
+	conn := &decisionTestConn{
+		stageSignoffs: stageSignoffs,
+		authzGranted:  true,
+		areaCode:      "QA",
+		actorID:       actorID,
+	}
 	repo := &fakeDecisionRepo{
 		instance:         inst,
 		insertSignoffRes: repository.SignoffInsertResult{ID: "signoff-1", WasReplay: false},
@@ -269,15 +316,15 @@ func TestRecordSignoff_ApprovePath_QuorumMet(t *testing.T) {
 	db := newDecisionTestDB(t, conn)
 
 	req := SignoffRequest{
-		TenantID:        "tenant-1",
-		InstanceID:      instanceID,
-		StageInstanceID: stageID,
-		ActorUserID:     actorID,
-		Decision:        "approve",
-		Comment:         "LGTM",
+		TenantID:         "tenant-1",
+		InstanceID:       instanceID,
+		StageInstanceID:  stageID,
+		ActorUserID:      actorID,
+		Decision:         "approve",
+		Comment:          "LGTM",
 		SignatureMethod:  "password",
 		SignaturePayload: map[string]any{"hash": "abc"},
-		ContentFormData: map[string]any{"title": "Doc"},
+		ContentFormData:  map[string]any{"title": "Doc"},
 	}
 
 	result, err := svc.RecordSignoff(context.Background(), db, req)
@@ -331,7 +378,12 @@ func TestRecordSignoff_ApprovePath_QuorumNotYetMet(t *testing.T) {
 		},
 	}
 
-	conn := &decisionTestConn{stageSignoffs: stageSignoffs}
+	conn := &decisionTestConn{
+		stageSignoffs: stageSignoffs,
+		authzGranted:  true,
+		areaCode:      "QA",
+		actorID:       actorID,
+	}
 	repo := &fakeDecisionRepo{
 		instance:         inst,
 		insertSignoffRes: repository.SignoffInsertResult{ID: "signoff-2", WasReplay: false},
@@ -393,7 +445,12 @@ func TestRecordSignoff_RejectPath(t *testing.T) {
 		},
 	}
 
-	conn := &decisionTestConn{stageSignoffs: stageSignoffs}
+	conn := &decisionTestConn{
+		stageSignoffs: stageSignoffs,
+		authzGranted:  true,
+		areaCode:      "QA",
+		actorID:       actorID,
+	}
 	repo := &fakeDecisionRepo{
 		instance:         inst,
 		insertSignoffRes: repository.SignoffInsertResult{ID: "signoff-r1", WasReplay: false},
@@ -404,15 +461,15 @@ func TestRecordSignoff_RejectPath(t *testing.T) {
 	db := newDecisionTestDB(t, conn)
 
 	req := SignoffRequest{
-		TenantID:        "tenant-1",
-		InstanceID:      instanceID,
-		StageInstanceID: stageID,
-		ActorUserID:     actorID,
-		Decision:        "reject",
-		Comment:         "Not acceptable",
+		TenantID:         "tenant-1",
+		InstanceID:       instanceID,
+		StageInstanceID:  stageID,
+		ActorUserID:      actorID,
+		Decision:         "reject",
+		Comment:          "Not acceptable",
 		SignatureMethod:  "password",
 		SignaturePayload: map[string]any{"hash": "def"},
-		ContentFormData: map[string]any{"title": "Doc"},
+		ContentFormData:  map[string]any{"title": "Doc"},
 	}
 
 	result, err := svc.RecordSignoff(context.Background(), db, req)
@@ -446,7 +503,11 @@ func TestRecordSignoff_SoDViolation(t *testing.T) {
 
 	inst := buildSingleStageInstance(instanceID, stageID, authorID, []string{authorID})
 
-	conn := &decisionTestConn{} // empty — SoD check fires before any SQL read
+	conn := &decisionTestConn{
+		authzGranted: true,
+		areaCode:     "QA",
+		actorID:      authorID,
+	} // SoD check fires before signoff SQL reads
 	repo := &fakeDecisionRepo{instance: inst}
 	emitter := &MemoryEmitter{}
 	clock := fixedClock{t: time.Date(2026, 4, 22, 12, 0, 0, 0, time.UTC)}
@@ -471,5 +532,52 @@ func TestRecordSignoff_SoDViolation(t *testing.T) {
 	}
 	if len(emitter.Events) != 0 {
 		t.Errorf("no governance event should be emitted on SoD violation; got %d", len(emitter.Events))
+	}
+}
+
+func TestRecordSignoff_CapabilityDenied(t *testing.T) {
+	const (
+		instanceID = "inst-authz-1"
+		stageID    = "stage-authz-1"
+		actorID    = "approver-authz-1"
+		authorID   = "author-authz-1"
+	)
+
+	inst := buildSingleStageInstance(instanceID, stageID, authorID, []string{actorID})
+
+	conn := &decisionTestConn{
+		authzGranted: false,
+		authzSet:     true,
+		areaCode:     "QA",
+		actorID:      actorID,
+	}
+	repo := &fakeDecisionRepo{instance: inst}
+	emitter := &MemoryEmitter{}
+	clock := fixedClock{t: time.Date(2026, 4, 22, 12, 0, 0, 0, time.UTC)}
+	svc := &DecisionService{repo: repo, emitter: emitter, clock: clock}
+	db := newDecisionTestDB(t, conn)
+
+	req := SignoffRequest{
+		TenantID:        "tenant-1",
+		InstanceID:      instanceID,
+		StageInstanceID: stageID,
+		ActorUserID:     actorID,
+		Decision:        "approve",
+		ContentFormData: map[string]any{"title": "Doc"},
+	}
+
+	_, err := svc.RecordSignoff(context.Background(), db, req)
+	if err == nil {
+		t.Fatal("expected ErrCapabilityDenied; got nil")
+	}
+	var denied authz.ErrCapabilityDenied
+	if !errors.As(err, &denied) {
+		t.Fatalf("expected ErrCapabilityDenied; got %v", err)
+	}
+	if denied.Capability != "doc.signoff" {
+		t.Errorf("capability = %q; want %q", denied.Capability, "doc.signoff")
+	}
+	if len(emitter.Events) != 0 {
+		t.Errorf("no governance event should be emitted on denied capability; got %d", len(emitter.Events))
 	}
 }

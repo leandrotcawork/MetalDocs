@@ -12,6 +12,7 @@ import (
 
 	"metaldocs/internal/modules/documents_v2/approval/domain"
 	"metaldocs/internal/modules/documents_v2/approval/repository"
+	"metaldocs/internal/modules/iam/authz"
 )
 
 // SubmitService handles document submission for approval.
@@ -67,6 +68,18 @@ func (s *SubmitService) SubmitRevisionForReview(ctx context.Context, db *sql.DB,
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return SubmitResult{}, fmt.Errorf("submit: begin tx: %w", err)
+	}
+
+	ctx = authz.WithCapCache(ctx)
+
+	areaCode, err := loadDocumentAreaCode(ctx, tx, req.TenantID, req.DocumentID)
+	if err != nil {
+		_ = tx.Rollback()
+		return SubmitResult{}, fmt.Errorf("submit: load document area: %w", err)
+	}
+	if err := authz.Require(ctx, tx, "doc.submit", areaCode); err != nil {
+		_ = tx.Rollback()
+		return SubmitResult{}, err
 	}
 
 	// Step 5: load route with stages.
@@ -228,4 +241,24 @@ func (s *SubmitService) loadRoute(ctx context.Context, tx *sql.Tx, tenantID, rou
 	}
 
 	return route, nil
+}
+
+func loadDocumentAreaCode(ctx context.Context, tx *sql.Tx, tenantID, documentID string) (string, error) {
+	var areaCode string
+	err := tx.QueryRowContext(ctx, `
+		SELECT area_code
+		FROM documents
+		WHERE id = $1 AND tenant_id = $2`,
+		documentID, tenantID,
+	).Scan(&areaCode)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "tenant", nil
+		}
+		return "", err
+	}
+	if areaCode == "" {
+		return "tenant", nil
+	}
+	return areaCode, nil
 }

@@ -12,6 +12,7 @@ import (
 
 	"metaldocs/internal/modules/documents_v2/approval/domain"
 	"metaldocs/internal/modules/documents_v2/approval/repository"
+	"metaldocs/internal/modules/iam/authz"
 )
 
 // DecisionService handles approver approve/reject decisions.
@@ -23,15 +24,15 @@ type DecisionService struct {
 
 // SignoffRequest carries all inputs for RecordSignoff.
 type SignoffRequest struct {
-	TenantID        string
-	InstanceID      string
-	StageInstanceID string
-	ActorUserID     string
-	Decision        string // "approve" or "reject"
-	Comment         string
+	TenantID         string
+	InstanceID       string
+	StageInstanceID  string
+	ActorUserID      string
+	Decision         string // "approve" or "reject"
+	Comment          string
 	SignatureMethod  string
 	SignaturePayload map[string]any
-	ContentFormData map[string]any // current document content for hash
+	ContentFormData  map[string]any // current document content for hash
 }
 
 // SignoffResult is returned by RecordSignoff.
@@ -84,6 +85,16 @@ func (s *DecisionService) RecordSignoff(ctx context.Context, db *sql.DB, req Sig
 	if instance.Status != domain.InstanceInProgress {
 		_ = tx.Rollback()
 		return SignoffResult{}, repository.ErrInstanceCompleted
+	}
+
+	areaCode, err := loadDocumentAreaCode(ctx, tx, req.TenantID, instance.DocumentID)
+	if err != nil {
+		_ = tx.Rollback()
+		return SignoffResult{}, fmt.Errorf("recordSignoff: load document area: %w", err)
+	}
+	if err := authz.Require(ctx, tx, "doc.signoff", areaCode); err != nil {
+		_ = tx.Rollback()
+		return SignoffResult{}, err
 	}
 
 	// Step 5: identify active stage.
@@ -226,7 +237,7 @@ func (s *DecisionService) RecordSignoff(ctx context.Context, db *sql.DB, req Sig
 
 	// Step 12: emit governance event.
 	payloadMap := map[string]any{
-		"instance_id":      req.InstanceID,
+		"instance_id":       req.InstanceID,
 		"stage_instance_id": activeStage.ID,
 		"decision":          req.Decision,
 		"content_hash":      contentHash,

@@ -10,6 +10,7 @@ import (
 
 	"metaldocs/internal/modules/documents_v2/approval/domain"
 	"metaldocs/internal/modules/documents_v2/approval/repository"
+	"metaldocs/internal/modules/iam/authz"
 )
 
 // PublishService handles transitioning an approved document to published state.
@@ -65,6 +66,16 @@ func (s *PublishService) PublishApproved(ctx context.Context, db *sql.DB, req Pu
 	if instance.Status != domain.InstanceApproved {
 		_ = tx.Rollback()
 		return PublishResult{}, ErrInstanceNotApproved
+	}
+
+	areaCode, err := loadDocumentAreaCode(ctx, tx, req.TenantID, instance.DocumentID)
+	if err != nil {
+		_ = tx.Rollback()
+		return PublishResult{}, fmt.Errorf("publishApproved: load document area: %w", err)
+	}
+	if err := authz.Require(ctx, tx, "doc.publish", areaCode); err != nil {
+		_ = tx.Rollback()
+		return PublishResult{}, err
 	}
 
 	// Step 3: OCC transition the document from "approved" to "published".
@@ -177,6 +188,16 @@ func (s *PublishService) SchedulePublish(ctx context.Context, db *sql.DB, req Sc
 	if instance.Status != domain.InstanceApproved {
 		_ = tx.Rollback()
 		return SchedulePublishResult{}, ErrInstanceNotApproved
+	}
+
+	areaCode, err := loadDocumentAreaCode(ctx, tx, req.TenantID, instance.DocumentID)
+	if err != nil {
+		_ = tx.Rollback()
+		return SchedulePublishResult{}, fmt.Errorf("schedulePublish: load document area: %w", err)
+	}
+	if err := authz.Require(ctx, tx, "doc.publish", areaCode); err != nil {
+		_ = tx.Rollback()
+		return SchedulePublishResult{}, err
 	}
 
 	// Step 4: OCC transition the document from "approved" to "scheduled".

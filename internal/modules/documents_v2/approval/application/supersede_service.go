@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"metaldocs/internal/modules/documents_v2/approval/repository"
+	"metaldocs/internal/modules/iam/authz"
 )
 
 // SupersedeService marks a published document as superseded by a newer revision.
@@ -41,6 +42,16 @@ func (s *SupersedeService) PublishSuperseding(ctx context.Context, db *sql.DB, r
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return SupersedeResult{}, fmt.Errorf("publishSuperseding: begin tx: %w", err)
+	}
+
+	areaCode, err := loadDocumentAreaCode(ctx, tx, req.TenantID, req.NewDocumentID)
+	if err != nil {
+		_ = tx.Rollback()
+		return SupersedeResult{}, fmt.Errorf("publishSuperseding: load document area: %w", err)
+	}
+	if err := authz.Require(ctx, tx, "doc.supersede", areaCode); err != nil {
+		_ = tx.Rollback()
+		return SupersedeResult{}, err
 	}
 
 	// Step 2: OCC UPDATE for new document (approved → published).

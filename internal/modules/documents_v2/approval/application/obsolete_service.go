@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"metaldocs/internal/modules/documents_v2/approval/repository"
+	"metaldocs/internal/modules/iam/authz"
 )
 
 // ObsoleteService marks a document as obsolete (end-of-life).
@@ -48,14 +49,15 @@ func (s *ObsoleteService) MarkObsolete(ctx context.Context, db *sql.DB, req Mark
 	// Step 2: fetch current status + revision_version under a row-level lock.
 	var priorStatus string
 	var currentRevision int
+	var areaCode string
 	err = tx.QueryRowContext(ctx, `
-		SELECT status, revision_version
+		SELECT status, revision_version, area_code
 		  FROM documents
 		 WHERE id        = $1
 		   AND tenant_id = $2
 		 FOR UPDATE`,
 		req.DocumentID, req.TenantID,
-	).Scan(&priorStatus, &currentRevision)
+	).Scan(&priorStatus, &currentRevision, &areaCode)
 	if err != nil {
 		_ = tx.Rollback()
 		if errors.Is(err, sql.ErrNoRows) {
@@ -68,6 +70,11 @@ func (s *ObsoleteService) MarkObsolete(ctx context.Context, db *sql.DB, req Mark
 	if priorStatus != "published" && priorStatus != "superseded" {
 		_ = tx.Rollback()
 		return MarkObsoleteResult{}, ErrInvalidObsoleteSource
+	}
+
+	if err := authz.Require(ctx, tx, "doc.obsolete", areaCode); err != nil {
+		_ = tx.Rollback()
+		return MarkObsoleteResult{}, err
 	}
 
 	// Step 4: OCC UPDATE — atomically set status and bump revision_version.

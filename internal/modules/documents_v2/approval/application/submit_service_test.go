@@ -13,6 +13,7 @@ import (
 
 	"metaldocs/internal/modules/documents_v2/approval/domain"
 	"metaldocs/internal/modules/documents_v2/approval/repository"
+	"metaldocs/internal/modules/iam/authz"
 )
 
 // ---------------------------------------------------------------------------
@@ -20,7 +21,7 @@ import (
 // ---------------------------------------------------------------------------
 
 type fakeSubmitRepo struct {
-	insertInstanceErr      error
+	insertInstanceErr       error
 	insertStageInstancesErr error
 	// Embed a no-op for the full interface; all other methods panic if called.
 	repository.ApprovalRepository
@@ -52,7 +53,10 @@ func (c fixedClock) Now() time.Time { return c.t }
 //   4. COMMIT/ROLLBACK   — tx lifecycle
 
 type submitTestConn struct {
-	name string // driver instance name, unused but kept for debugging
+	name         string // driver instance name, unused but kept for debugging
+	authzGranted bool
+	areaCode     string
+	actorID      string
 }
 
 type submitNoopResult struct{}
@@ -65,6 +69,22 @@ type submitEmptyRows struct{}
 func (submitEmptyRows) Columns() []string         { return nil }
 func (submitEmptyRows) Close() error              { return nil }
 func (submitEmptyRows) Next([]driver.Value) error { return io.EOF }
+
+type submitSingleValueRows struct {
+	value any
+	done  bool
+}
+
+func (r *submitSingleValueRows) Columns() []string { return []string{"v"} }
+func (r *submitSingleValueRows) Close() error      { return nil }
+func (r *submitSingleValueRows) Next(dest []driver.Value) error {
+	if r.done {
+		return io.EOF
+	}
+	r.done = true
+	dest[0] = r.value
+	return nil
+}
 
 // routeRow returns a single-column-set row representing approval_routes.
 // Columns: id, tenant_id, profile_code, version
@@ -88,7 +108,8 @@ func (r *routeRows) Next(dest []driver.Value) error {
 
 // stageRows returns one stage row representing approval_route_stages.
 // Columns: stage_order, name, required_role, required_capability,
-//          area_code, quorum, quorum_m, on_eligibility_drift
+//
+//	area_code, quorum, quorum_m, on_eligibility_drift
 type stageRows struct {
 	done bool
 }
@@ -117,6 +138,7 @@ func (r *stageRows) Next(dest []driver.Value) error {
 }
 
 type submitTestStmt struct {
+	conn  *submitTestConn
 	query string
 }
 
@@ -129,6 +151,18 @@ func (s *submitTestStmt) Exec(_ []driver.Value) (driver.Result, error) {
 
 func (s *submitTestStmt) Query(_ []driver.Value) (driver.Rows, error) {
 	q := strings.ToLower(s.query)
+	if strings.Contains(q, "from documents") {
+		return &submitSingleValueRows{value: s.conn.areaCode}, nil
+	}
+	if strings.Contains(q, "select exists") && strings.Contains(q, "role_capabilities") {
+		return &submitSingleValueRows{value: s.conn.authzGranted}, nil
+	}
+	if strings.Contains(q, "current_setting('metaldocs.asserted_caps'") {
+		return &submitSingleValueRows{value: nil}, nil
+	}
+	if strings.Contains(q, "current_setting('metaldocs.actor_id'") {
+		return &submitSingleValueRows{value: s.conn.actorID}, nil
+	}
 	if strings.Contains(q, "approval_routes") && strings.Contains(q, "where") {
 		return &routeRows{}, nil
 	}
@@ -139,21 +173,29 @@ func (s *submitTestStmt) Query(_ []driver.Value) (driver.Rows, error) {
 }
 
 func (c *submitTestConn) Prepare(query string) (driver.Stmt, error) {
-	return &submitTestStmt{query: query}, nil
+	return &submitTestStmt{conn: c, query: query}, nil
 }
-func (c *submitTestConn) Close() error                 { return nil }
-func (c *submitTestConn) Begin() (driver.Tx, error)    { return c, nil }
-func (c *submitTestConn) Commit() error                { return nil }
-func (c *submitTestConn) Rollback() error              { return nil }
+func (c *submitTestConn) Close() error              { return nil }
+func (c *submitTestConn) Begin() (driver.Tx, error) { return c, nil }
+func (c *submitTestConn) Commit() error             { return nil }
+func (c *submitTestConn) Rollback() error           { return nil }
 
 type submitTestDriver struct{ conn *submitTestConn }
 
 func (d *submitTestDriver) Open(_ string) (driver.Conn, error) { return d.conn, nil }
 
 // newSubmitTestDB registers a unique driver per test and returns a *sql.DB.
-func newSubmitTestDB(t *testing.T) *sql.DB {
+func newSubmitTestDB(t *testing.T, authzGranted ...bool) *sql.DB {
 	t.Helper()
-	conn := &submitTestConn{}
+	granted := true
+	if len(authzGranted) > 0 {
+		granted = authzGranted[0]
+	}
+	conn := &submitTestConn{
+		authzGranted: granted,
+		areaCode:     "QA",
+		actorID:      "user-1",
+	}
 	name := fmt.Sprintf("submit_test_%p", conn)
 	sql.Register(name, &submitTestDriver{conn: conn})
 	db, err := sql.Open(name, "")
@@ -174,7 +216,7 @@ func TestSubmitRevisionForReview_HappyPath(t *testing.T) {
 	clock := fixedClock{t: time.Date(2026, 4, 22, 12, 0, 0, 0, time.UTC)}
 
 	svc := &SubmitService{repo: repo, emitter: emitter, clock: clock}
-	db := newSubmitTestDB(t)
+	db := newSubmitTestDB(t, true)
 
 	req := SubmitRequest{
 		TenantID:        "tenant-uuid-1",
@@ -208,7 +250,7 @@ func TestSubmitRevisionForReview_DuplicateSubmission(t *testing.T) {
 	clock := fixedClock{t: time.Date(2026, 4, 22, 12, 0, 0, 0, time.UTC)}
 
 	svc := &SubmitService{repo: repo, emitter: emitter, clock: clock}
-	db := newSubmitTestDB(t)
+	db := newSubmitTestDB(t, true)
 
 	req := SubmitRequest{
 		TenantID:        "tenant-uuid-1",
@@ -228,5 +270,38 @@ func TestSubmitRevisionForReview_DuplicateSubmission(t *testing.T) {
 	}
 	if len(emitter.Events) != 0 {
 		t.Errorf("no governance event should be emitted on duplicate; got %d", len(emitter.Events))
+	}
+}
+
+func TestSubmitRevisionForReview_CapabilityDenied(t *testing.T) {
+	repo := &fakeSubmitRepo{}
+	emitter := &MemoryEmitter{}
+	clock := fixedClock{t: time.Date(2026, 4, 22, 12, 0, 0, 0, time.UTC)}
+
+	svc := &SubmitService{repo: repo, emitter: emitter, clock: clock}
+	db := newSubmitTestDB(t, false)
+
+	req := SubmitRequest{
+		TenantID:        "tenant-uuid-1",
+		DocumentID:      "doc-uuid-1",
+		RouteID:         "route-uuid-1",
+		SubmittedBy:     "user-1",
+		ContentFormData: map[string]any{"title": "My Doc"},
+		RevisionVersion: 1,
+	}
+
+	_, err := svc.SubmitRevisionForReview(context.Background(), db, req)
+	if err == nil {
+		t.Fatal("expected ErrCapabilityDenied; got nil")
+	}
+	var denied authz.ErrCapabilityDenied
+	if !errors.As(err, &denied) {
+		t.Fatalf("expected ErrCapabilityDenied; got %v", err)
+	}
+	if denied.Capability != "doc.submit" {
+		t.Errorf("capability = %q; want %q", denied.Capability, "doc.submit")
+	}
+	if len(emitter.Events) != 0 {
+		t.Errorf("no governance event should be emitted on denied capability; got %d", len(emitter.Events))
 	}
 }

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"metaldocs/internal/modules/documents_v2/approval/repository"
+	"metaldocs/internal/modules/iam/authz"
 )
 
 // ---------------------------------------------------------------------------
@@ -36,11 +37,14 @@ func (r obsoleteTestResult) RowsAffected() (int64, error) { return r.rowsAffecte
 type obsoleteTestRows struct {
 	status          string
 	revisionVersion int
+	areaCode        string
 	done            bool
 }
 
-func (r *obsoleteTestRows) Columns() []string { return []string{"status", "revision_version"} }
-func (r *obsoleteTestRows) Close() error      { return nil }
+func (r *obsoleteTestRows) Columns() []string {
+	return []string{"status", "revision_version", "area_code"}
+}
+func (r *obsoleteTestRows) Close() error { return nil }
 func (r *obsoleteTestRows) Next(dest []driver.Value) error {
 	if r.done {
 		return io.EOF
@@ -48,15 +52,34 @@ func (r *obsoleteTestRows) Next(dest []driver.Value) error {
 	r.done = true
 	dest[0] = r.status
 	dest[1] = int64(r.revisionVersion)
+	dest[2] = r.areaCode
 	return nil
 }
 
 // obsoleteEmptyRows is used when the SELECT finds no document.
 type obsoleteEmptyRows struct{}
+type obsoleteSingleValueRows struct {
+	value any
+	done  bool
+}
 
-func (obsoleteEmptyRows) Columns() []string         { return []string{"status", "revision_version"} }
+func (obsoleteEmptyRows) Columns() []string {
+	return []string{"status", "revision_version", "area_code"}
+}
 func (obsoleteEmptyRows) Close() error              { return nil }
 func (obsoleteEmptyRows) Next([]driver.Value) error { return io.EOF }
+func (r *obsoleteSingleValueRows) Columns() []string {
+	return []string{"v"}
+}
+func (r *obsoleteSingleValueRows) Close() error { return nil }
+func (r *obsoleteSingleValueRows) Next(dest []driver.Value) error {
+	if r.done {
+		return io.EOF
+	}
+	r.done = true
+	dest[0] = r.value
+	return nil
+}
 
 type obsoleteTestStmt struct {
 	conn  *obsoleteTestConn
@@ -77,12 +100,23 @@ func (s *obsoleteTestStmt) Exec(_ []driver.Value) (driver.Result, error) {
 }
 
 func (s *obsoleteTestStmt) Query(_ []driver.Value) (driver.Rows, error) {
+	lower := strings.ToLower(s.query)
+	if strings.Contains(lower, "select exists") && strings.Contains(lower, "role_capabilities") {
+		return &obsoleteSingleValueRows{value: s.conn.authzGranted}, nil
+	}
+	if strings.Contains(lower, "current_setting('metaldocs.asserted_caps'") {
+		return &obsoleteSingleValueRows{value: nil}, nil
+	}
+	if strings.Contains(lower, "current_setting('metaldocs.actor_id'") {
+		return &obsoleteSingleValueRows{value: s.conn.actorID}, nil
+	}
 	if s.conn.notFound {
 		return &obsoleteEmptyRows{}, nil
 	}
 	return &obsoleteTestRows{
 		status:          s.conn.docStatus,
 		revisionVersion: s.conn.docRevisionVersion,
+		areaCode:        s.conn.areaCode,
 	}, nil
 }
 
@@ -91,6 +125,9 @@ type obsoleteTestConn struct {
 	docStatus          string
 	docRevisionVersion int
 	notFound           bool
+	areaCode           string
+	authzGranted       bool
+	actorID            string
 
 	// UPDATE documents result
 	docUpdateRowsAffected int64
@@ -111,6 +148,12 @@ func (d *obsoleteTestDriver) Open(_ string) (driver.Conn, error) { return d.conn
 // newObsoleteTestDB registers a unique driver name and returns a *sql.DB.
 func newObsoleteTestDB(t *testing.T, conn *obsoleteTestConn) *sql.DB {
 	t.Helper()
+	if conn.areaCode == "" {
+		conn.areaCode = "QA"
+	}
+	if conn.actorID == "" {
+		conn.actorID = "user-1"
+	}
 	name := fmt.Sprintf("obsolete_test_%p", conn)
 	sql.Register(name, &obsoleteTestDriver{conn: conn})
 	db, err := sql.Open(name, "")
@@ -134,6 +177,7 @@ func TestMarkObsolete_FromPublished(t *testing.T) {
 		docStatus:             "published",
 		docRevisionVersion:    3,
 		docUpdateRowsAffected: 1,
+		authzGranted:          true,
 	}
 	db := newObsoleteTestDB(t, conn)
 
@@ -181,6 +225,7 @@ func TestMarkObsolete_FromSuperseded(t *testing.T) {
 		docStatus:             "superseded",
 		docRevisionVersion:    7,
 		docUpdateRowsAffected: 1,
+		authzGranted:          true,
 	}
 	db := newObsoleteTestDB(t, conn)
 
@@ -218,6 +263,7 @@ func TestMarkObsolete_InvalidSource(t *testing.T) {
 		docStatus:             "draft",
 		docRevisionVersion:    1,
 		docUpdateRowsAffected: 0, // not reached
+		authzGranted:          true,
 	}
 	db := newObsoleteTestDB(t, conn)
 
@@ -250,6 +296,7 @@ func TestMarkObsolete_StaleRevision(t *testing.T) {
 		docStatus:             "published",
 		docRevisionVersion:    5,
 		docUpdateRowsAffected: 0, // OCC conflict
+		authzGranted:          true,
 	}
 	db := newObsoleteTestDB(t, conn)
 
@@ -271,5 +318,43 @@ func TestMarkObsolete_StaleRevision(t *testing.T) {
 	}
 	if len(emitter.Events) != 0 {
 		t.Errorf("no governance event should be emitted on stale revision; got %d", len(emitter.Events))
+	}
+}
+
+func TestMarkObsolete_CapabilityDenied(t *testing.T) {
+	emitter := &MemoryEmitter{}
+	clock := fixedClock{t: time.Date(2026, 4, 22, 12, 0, 0, 0, time.UTC)}
+
+	conn := &obsoleteTestConn{
+		docStatus:             "published",
+		docRevisionVersion:    2,
+		docUpdateRowsAffected: 1,
+		authzGranted:          false,
+		actorID:               "user-authz-1",
+	}
+	db := newObsoleteTestDB(t, conn)
+
+	svc := &ObsoleteService{emitter: emitter, clock: clock}
+	req := MarkObsoleteRequest{
+		TenantID:        "tenant-1",
+		DocumentID:      "doc-authz-1",
+		MarkedBy:        "user-authz-1",
+		RevisionVersion: 2,
+		Reason:          "denied test",
+	}
+
+	_, err := svc.MarkObsolete(context.Background(), db, req)
+	if err == nil {
+		t.Fatal("expected ErrCapabilityDenied; got nil")
+	}
+	var denied authz.ErrCapabilityDenied
+	if !errors.As(err, &denied) {
+		t.Fatalf("expected ErrCapabilityDenied; got %v", err)
+	}
+	if denied.Capability != "doc.obsolete" {
+		t.Errorf("capability = %q; want %q", denied.Capability, "doc.obsolete")
+	}
+	if len(emitter.Events) != 0 {
+		t.Errorf("no governance event should be emitted on denied capability; got %d", len(emitter.Events))
 	}
 }

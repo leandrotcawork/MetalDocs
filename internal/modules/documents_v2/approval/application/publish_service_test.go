@@ -13,6 +13,7 @@ import (
 
 	"metaldocs/internal/modules/documents_v2/approval/domain"
 	"metaldocs/internal/modules/documents_v2/approval/repository"
+	"metaldocs/internal/modules/iam/authz"
 )
 
 // ---------------------------------------------------------------------------
@@ -20,8 +21,8 @@ import (
 // ---------------------------------------------------------------------------
 
 type fakePublishRepo struct {
-	instance    *domain.Instance
-	loadErr     error
+	instance                      *domain.Instance
+	loadErr                       error
 	repository.ApprovalRepository // no-op embed for unused methods
 }
 
@@ -50,9 +51,26 @@ func (publishEmptyRows) Columns() []string         { return nil }
 func (publishEmptyRows) Close() error              { return nil }
 func (publishEmptyRows) Next([]driver.Value) error { return io.EOF }
 
+type publishSingleValueRows struct {
+	value any
+	done  bool
+}
+
+func (r *publishSingleValueRows) Columns() []string { return []string{"v"} }
+func (r *publishSingleValueRows) Close() error      { return nil }
+func (r *publishSingleValueRows) Next(dest []driver.Value) error {
+	if r.done {
+		return io.EOF
+	}
+	r.done = true
+	dest[0] = r.value
+	return nil
+}
+
 type publishTestStmt struct {
 	query        string
 	rowsAffected int64 // injected by the conn
+	conn         *publishTestConn
 }
 
 func (s *publishTestStmt) Close() error  { return nil }
@@ -63,12 +81,28 @@ func (s *publishTestStmt) Exec(_ []driver.Value) (driver.Result, error) {
 }
 
 func (s *publishTestStmt) Query(_ []driver.Value) (driver.Rows, error) {
+	q := strings.ToLower(s.query)
+	if strings.Contains(q, "from documents") {
+		return &publishSingleValueRows{value: s.conn.areaCode}, nil
+	}
+	if strings.Contains(q, "select exists") && strings.Contains(q, "role_capabilities") {
+		return &publishSingleValueRows{value: s.conn.authzGranted}, nil
+	}
+	if strings.Contains(q, "current_setting('metaldocs.asserted_caps'") {
+		return &publishSingleValueRows{value: nil}, nil
+	}
+	if strings.Contains(q, "current_setting('metaldocs.actor_id'") {
+		return &publishSingleValueRows{value: s.conn.actorID}, nil
+	}
 	return publishEmptyRows{}, nil
 }
 
 type publishTestConn struct {
 	// rowsAffected controls what the UPDATE returns.
 	rowsAffected int64
+	authzGranted bool
+	areaCode     string
+	actorID      string
 }
 
 func (c *publishTestConn) Prepare(query string) (driver.Stmt, error) {
@@ -77,7 +111,7 @@ func (c *publishTestConn) Prepare(query string) (driver.Stmt, error) {
 		// Non-UPDATE statements (governance_events INSERT, etc.) always succeed with 1.
 		ra = 1
 	}
-	return &publishTestStmt{query: query, rowsAffected: ra}, nil
+	return &publishTestStmt{query: query, rowsAffected: ra, conn: c}, nil
 }
 
 func (c *publishTestConn) Close() error              { return nil }
@@ -90,9 +124,18 @@ type publishTestDriver struct{ conn *publishTestConn }
 func (d *publishTestDriver) Open(_ string) (driver.Conn, error) { return d.conn, nil }
 
 // newPublishTestDB registers a unique driver per test and returns a *sql.DB.
-func newPublishTestDB(t *testing.T, rowsAffected int64) *sql.DB {
+func newPublishTestDB(t *testing.T, rowsAffected int64, authzGranted ...bool) *sql.DB {
 	t.Helper()
-	conn := &publishTestConn{rowsAffected: rowsAffected}
+	granted := true
+	if len(authzGranted) > 0 {
+		granted = authzGranted[0]
+	}
+	conn := &publishTestConn{
+		rowsAffected: rowsAffected,
+		authzGranted: granted,
+		areaCode:     "QA",
+		actorID:      "user-1",
+	}
 	name := fmt.Sprintf("publish_test_%p", conn)
 	sql.Register(name, &publishTestDriver{conn: conn})
 	db, err := sql.Open(name, "")
@@ -123,7 +166,7 @@ func TestPublishApproved_HappyPath(t *testing.T) {
 
 	svc := &PublishService{repo: repo, emitter: emitter, clock: clock}
 	// rowsAffected=1 → UPDATE matched one document row.
-	db := newPublishTestDB(t, 1)
+	db := newPublishTestDB(t, 1, true)
 
 	req := PublishRequest{
 		TenantID:    "tenant-uuid-1",
@@ -181,7 +224,7 @@ func TestPublishApproved_NotApprovedInstance(t *testing.T) {
 
 			svc := &PublishService{repo: repo, emitter: emitter, clock: clock}
 			// rowsAffected irrelevant — should never reach UPDATE.
-			db := newPublishTestDB(t, 0)
+			db := newPublishTestDB(t, 0, true)
 
 			req := PublishRequest{
 				TenantID:    "tenant-uuid-1",
@@ -225,7 +268,7 @@ func TestSchedulePublish_HappyPath(t *testing.T) {
 
 	svc := &PublishService{repo: repo, emitter: emitter, clock: clock}
 	// rowsAffected=1 → UPDATE matched one document row.
-	db := newPublishTestDB(t, 1)
+	db := newPublishTestDB(t, 1, true)
 
 	req := SchedulePublishRequest{
 		TenantID:      "tenant-uuid-1",
@@ -269,7 +312,7 @@ func TestSchedulePublish_PastDate(t *testing.T) {
 
 	svc := &PublishService{repo: repo, emitter: emitter, clock: clock}
 	// rowsAffected irrelevant — guard fires before any tx is opened.
-	db := newPublishTestDB(t, 0)
+	db := newPublishTestDB(t, 0, true)
 
 	req := SchedulePublishRequest{
 		TenantID:      "tenant-uuid-1",
@@ -287,5 +330,43 @@ func TestSchedulePublish_PastDate(t *testing.T) {
 	}
 	if len(emitter.Events) != 0 {
 		t.Errorf("no governance event should be emitted; got %d", len(emitter.Events))
+	}
+}
+
+func TestPublishApproved_CapabilityDenied(t *testing.T) {
+	now := time.Date(2026, 4, 22, 12, 0, 0, 0, time.UTC)
+	inst := &domain.Instance{
+		ID:              "inst-authz-1",
+		TenantID:        "tenant-uuid-1",
+		DocumentID:      "doc-authz-1",
+		Status:          domain.InstanceApproved,
+		RevisionVersion: 3,
+	}
+
+	repo := &fakePublishRepo{instance: inst}
+	emitter := &MemoryEmitter{}
+	clock := fixedClock{t: now}
+	svc := &PublishService{repo: repo, emitter: emitter, clock: clock}
+	db := newPublishTestDB(t, 1, false)
+
+	req := PublishRequest{
+		TenantID:    "tenant-uuid-1",
+		InstanceID:  "inst-authz-1",
+		PublishedBy: "user-1",
+	}
+
+	_, err := svc.PublishApproved(context.Background(), db, req)
+	if err == nil {
+		t.Fatal("expected ErrCapabilityDenied; got nil")
+	}
+	var denied authz.ErrCapabilityDenied
+	if !errors.As(err, &denied) {
+		t.Fatalf("expected ErrCapabilityDenied; got %v", err)
+	}
+	if denied.Capability != "doc.publish" {
+		t.Errorf("capability = %q; want %q", denied.Capability, "doc.publish")
+	}
+	if len(emitter.Events) != 0 {
+		t.Errorf("no governance event should be emitted on denied capability; got %d", len(emitter.Events))
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"metaldocs/internal/modules/documents_v2/approval/repository"
+	"metaldocs/internal/modules/iam/authz"
 )
 
 // SchedulerService processes scheduled publish jobs (F6 — ListScheduledDue).
@@ -76,6 +77,10 @@ func (s *SchedulerService) processRow(ctx context.Context, db *sql.DB, row repos
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return false, fmt.Errorf("scheduler: begin publish tx for doc %s: %w", row.DocumentID, err)
+	}
+	if err := authz.BypassSystem(ctx, tx); err != nil {
+		_ = tx.Rollback()
+		return false, fmt.Errorf("scheduler: bypass authz for doc %s: %w", row.DocumentID, err)
 	}
 
 	res, err := tx.ExecContext(ctx, updateScheduledDocSQL,

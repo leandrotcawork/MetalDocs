@@ -140,6 +140,19 @@ func (s *phase5Stmt) Exec(_ []driver.Value) (driver.Result, error) {
 func (s *phase5Stmt) Query(_ []driver.Value) (driver.Rows, error) {
 	q := strings.ToLower(s.query)
 
+	if strings.Contains(q, "from documents") {
+		return &submitSingleValueRows{value: "QA"}, nil
+	}
+	if strings.Contains(q, "select exists") && strings.Contains(q, "role_capabilities") {
+		return &submitSingleValueRows{value: true}, nil
+	}
+	if strings.Contains(q, "current_setting('metaldocs.asserted_caps'") {
+		return &submitSingleValueRows{value: nil}, nil
+	}
+	if strings.Contains(q, "current_setting('metaldocs.actor_id'") {
+		return &submitSingleValueRows{value: "user-1"}, nil
+	}
+
 	// Submit: approval_routes SELECT
 	if strings.Contains(q, "approval_routes") && strings.Contains(q, "where") {
 		return &routeRows{}, nil // reuse submit_service_test.go's routeRows
@@ -305,15 +318,15 @@ func TestPhase5_FullApprovalAndPublish(t *testing.T) {
 	decisionSvc := &DecisionService{repo: decisionRepo, emitter: emitter, clock: clock}
 
 	signoffReq := SignoffRequest{
-		TenantID:        tenantID,
-		InstanceID:      instanceID,
-		StageInstanceID: stageID,
-		ActorUserID:     actorID,
-		Decision:        "approve",
-		Comment:         "LGTM",
+		TenantID:         tenantID,
+		InstanceID:       instanceID,
+		StageInstanceID:  stageID,
+		ActorUserID:      actorID,
+		Decision:         "approve",
+		Comment:          "LGTM",
 		SignatureMethod:  "password",
 		SignaturePayload: map[string]any{"hash": "abc"},
-		ContentFormData: map[string]any{"title": "P5 Doc"},
+		ContentFormData:  map[string]any{"title": "P5 Doc"},
 	}
 	signoffResult, err := decisionSvc.RecordSignoff(ctx, decisionDB, signoffReq)
 	if err != nil {
@@ -477,15 +490,15 @@ func TestPhase5_RejectThenResubmit(t *testing.T) {
 	decisionSvc := &DecisionService{repo: repo, emitter: emitter, clock: clockAtSignoff}
 
 	signoffReq := SignoffRequest{
-		TenantID:        tenantID,
-		InstanceID:      instanceID,
-		StageInstanceID: stageID,
-		ActorUserID:     actorID,
-		Decision:        "reject",
-		Comment:         "Not ready",
+		TenantID:         tenantID,
+		InstanceID:       instanceID,
+		StageInstanceID:  stageID,
+		ActorUserID:      actorID,
+		Decision:         "reject",
+		Comment:          "Not ready",
 		SignatureMethod:  "password",
 		SignaturePayload: map[string]any{"hash": "rej"},
-		ContentFormData: map[string]any{"title": "Reject Doc v1"},
+		ContentFormData:  map[string]any{"title": "Reject Doc v1"},
 	}
 	signoffResult, err := decisionSvc.RecordSignoff(ctx, dbDecision, signoffReq)
 	if err != nil {

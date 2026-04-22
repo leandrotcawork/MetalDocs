@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"metaldocs/internal/modules/documents_v2/approval/repository"
+	"metaldocs/internal/modules/iam/authz"
 )
 
 // ---------------------------------------------------------------------------
@@ -37,6 +38,22 @@ func (supersedeEmptyRows) Columns() []string         { return nil }
 func (supersedeEmptyRows) Close() error              { return nil }
 func (supersedeEmptyRows) Next([]driver.Value) error { return io.EOF }
 
+type supersedeSingleValueRows struct {
+	value any
+	done  bool
+}
+
+func (r *supersedeSingleValueRows) Columns() []string { return []string{"v"} }
+func (r *supersedeSingleValueRows) Close() error      { return nil }
+func (r *supersedeSingleValueRows) Next(dest []driver.Value) error {
+	if r.done {
+		return io.EOF
+	}
+	r.done = true
+	dest[0] = r.value
+	return nil
+}
+
 type supersedeTestStmt struct {
 	conn  *supersedeTestConn
 	query string
@@ -61,6 +78,19 @@ func (s *supersedeTestStmt) Exec(_ []driver.Value) (driver.Result, error) {
 }
 
 func (s *supersedeTestStmt) Query(_ []driver.Value) (driver.Rows, error) {
+	q := strings.ToLower(s.query)
+	if strings.Contains(q, "from documents") {
+		return &supersedeSingleValueRows{value: s.conn.areaCode}, nil
+	}
+	if strings.Contains(q, "select exists") && strings.Contains(q, "role_capabilities") {
+		return &supersedeSingleValueRows{value: s.conn.authzGranted}, nil
+	}
+	if strings.Contains(q, "current_setting('metaldocs.asserted_caps'") {
+		return &supersedeSingleValueRows{value: nil}, nil
+	}
+	if strings.Contains(q, "current_setting('metaldocs.actor_id'") {
+		return &supersedeSingleValueRows{value: s.conn.actorID}, nil
+	}
 	return supersedeEmptyRows{}, nil
 }
 
@@ -68,6 +98,9 @@ type supersedeTestConn struct {
 	newDocRowsAffected   int64
 	priorDocRowsAffected int64
 	updateCount          int // incremented on each UPDATE exec
+	authzGranted         bool
+	areaCode             string
+	actorID              string
 }
 
 func (c *supersedeTestConn) Prepare(query string) (driver.Stmt, error) {
@@ -85,11 +118,18 @@ func (d *supersedeTestDriver) Open(_ string) (driver.Conn, error) { return d.con
 
 // newSupersedeTestDB registers a unique driver and returns a *sql.DB.
 // newRowsAffected controls the first UPDATE; priorRowsAffected controls the second.
-func newSupersedeTestDB(t *testing.T, newRowsAffected, priorRowsAffected int64) *sql.DB {
+func newSupersedeTestDB(t *testing.T, newRowsAffected, priorRowsAffected int64, authzGranted ...bool) *sql.DB {
 	t.Helper()
+	granted := true
+	if len(authzGranted) > 0 {
+		granted = authzGranted[0]
+	}
 	conn := &supersedeTestConn{
 		newDocRowsAffected:   newRowsAffected,
 		priorDocRowsAffected: priorRowsAffected,
+		authzGranted:         granted,
+		areaCode:             "QA",
+		actorID:              "user-1",
 	}
 	name := fmt.Sprintf("supersede_test_%p", conn)
 	sql.Register(name, &supersedeTestDriver{conn: conn})
@@ -112,7 +152,7 @@ func TestPublishSuperseding_HappyPath(t *testing.T) {
 
 	svc := &SupersedeService{emitter: emitter, clock: clock}
 	// Both UPDATE statements match one row each.
-	db := newSupersedeTestDB(t, 1, 1)
+	db := newSupersedeTestDB(t, 1, 1, true)
 
 	req := SupersedeRequest{
 		TenantID:             "tenant-uuid-1",
@@ -158,7 +198,7 @@ func TestPublishSuperseding_OCC_NewConflict(t *testing.T) {
 
 	svc := &SupersedeService{emitter: emitter, clock: clock}
 	// First UPDATE (new doc) returns 0 — OCC conflict.
-	db := newSupersedeTestDB(t, 0, 1)
+	db := newSupersedeTestDB(t, 0, 1, true)
 
 	req := SupersedeRequest{
 		TenantID:             "tenant-uuid-1",
@@ -187,7 +227,7 @@ func TestPublishSuperseding_OCC_PriorConflict(t *testing.T) {
 
 	svc := &SupersedeService{emitter: emitter, clock: clock}
 	// First UPDATE (new doc) succeeds; second UPDATE (prior doc) returns 0 — OCC conflict.
-	db := newSupersedeTestDB(t, 1, 0)
+	db := newSupersedeTestDB(t, 1, 0, true)
 
 	req := SupersedeRequest{
 		TenantID:             "tenant-uuid-1",
@@ -207,5 +247,36 @@ func TestPublishSuperseding_OCC_PriorConflict(t *testing.T) {
 	}
 	if len(emitter.Events) != 0 {
 		t.Errorf("no governance event should be emitted on OCC conflict; got %d", len(emitter.Events))
+	}
+}
+
+func TestPublishSuperseding_CapabilityDenied(t *testing.T) {
+	emitter := &MemoryEmitter{}
+	clock := fixedClock{t: time.Date(2026, 4, 22, 12, 0, 0, 0, time.UTC)}
+	svc := &SupersedeService{emitter: emitter, clock: clock}
+	db := newSupersedeTestDB(t, 1, 1, false)
+
+	req := SupersedeRequest{
+		TenantID:             "tenant-uuid-1",
+		NewDocumentID:        "doc-new-authz-1",
+		PriorDocumentID:      "doc-prior-authz-1",
+		SupersededBy:         "user-1",
+		NewRevisionVersion:   1,
+		PriorRevisionVersion: 1,
+	}
+
+	_, err := svc.PublishSuperseding(context.Background(), db, req)
+	if err == nil {
+		t.Fatal("expected ErrCapabilityDenied; got nil")
+	}
+	var denied authz.ErrCapabilityDenied
+	if !errors.As(err, &denied) {
+		t.Fatalf("expected ErrCapabilityDenied; got %v", err)
+	}
+	if denied.Capability != "doc.supersede" {
+		t.Errorf("capability = %q; want %q", denied.Capability, "doc.supersede")
+	}
+	if len(emitter.Events) != 0 {
+		t.Errorf("no governance event should be emitted on denied capability; got %d", len(emitter.Events))
 	}
 }

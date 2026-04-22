@@ -388,16 +388,20 @@ type erroringConn struct{}
 
 type erroringStmt struct{}
 
-func (s *erroringStmt) Close() error                                    { return nil }
-func (s *erroringStmt) NumInput() int                                   { return -1 }
-func (s *erroringStmt) Exec(_ []driver.Value) (driver.Result, error)   { return nil, errors.New("db error") }
-func (s *erroringStmt) Query(_ []driver.Value) (driver.Rows, error)    { return nil, errors.New("db error") }
+func (s *erroringStmt) Close() error  { return nil }
+func (s *erroringStmt) NumInput() int { return -1 }
+func (s *erroringStmt) Exec(_ []driver.Value) (driver.Result, error) {
+	return nil, errors.New("db error")
+}
+func (s *erroringStmt) Query(_ []driver.Value) (driver.Rows, error) {
+	return nil, errors.New("db error")
+}
 
 func (c *erroringConn) Prepare(_ string) (driver.Stmt, error) { return &erroringStmt{}, nil }
-func (c *erroringConn) Close() error                           { return nil }
-func (c *erroringConn) Begin() (driver.Tx, error)              { return c, nil }
-func (c *erroringConn) Commit() error                          { return nil }
-func (c *erroringConn) Rollback() error                        { return nil }
+func (c *erroringConn) Close() error                          { return nil }
+func (c *erroringConn) Begin() (driver.Tx, error)             { return c, nil }
+func (c *erroringConn) Commit() error                         { return nil }
+func (c *erroringConn) Rollback() error                       { return nil }
 
 // errorQueryConn returns an error only from Query (not Prepare).
 type errorQueryStmt struct{}
@@ -414,10 +418,10 @@ func (s *errorQueryStmt) Query(_ []driver.Value) (driver.Rows, error) {
 type errorQueryConn struct{}
 
 func (c *errorQueryConn) Prepare(_ string) (driver.Stmt, error) { return &errorQueryStmt{}, nil }
-func (c *errorQueryConn) Close() error                           { return nil }
+func (c *errorQueryConn) Close() error                          { return nil }
 func (c *errorQueryConn) Begin() (driver.Tx, error)             { return c, nil }
-func (c *errorQueryConn) Commit() error                          { return nil }
-func (c *errorQueryConn) Rollback() error                        { return nil }
+func (c *errorQueryConn) Commit() error                         { return nil }
+func (c *errorQueryConn) Rollback() error                       { return nil }
 
 type errorQueryDriver struct{}
 
@@ -652,13 +656,13 @@ func TestRecordSignoff_FloatInPayload(t *testing.T) {
 	db := newDecisionTestDB(t, conn)
 
 	req := SignoffRequest{
-		TenantID:        "t",
-		InstanceID:      "inst",
-		StageInstanceID: "stage",
-		ActorUserID:     "actor",
-		Decision:        "approve",
+		TenantID:         "t",
+		InstanceID:       "inst",
+		StageInstanceID:  "stage",
+		ActorUserID:      "actor",
+		Decision:         "approve",
 		SignaturePayload: map[string]any{"bad": float64(1.5)},
-		ContentFormData: map[string]any{"title": "Doc"},
+		ContentFormData:  map[string]any{"title": "Doc"},
 	}
 	_, err := svc.RecordSignoff(context.Background(), db, req)
 	if !errors.Is(err, ErrFloatInPayload) {
@@ -864,15 +868,15 @@ func TestRecordSignoff_UpdateStageStatusError(t *testing.T) {
 
 	// Quorum met (any_1_of with one approval).
 	stageSignoffs := []signoffRow{{
-		id:               "sig-u1",
+		id:                 "sig-u1",
 		approvalInstanceID: instanceID,
-		stageInstanceID:  stageID,
-		actorUserID:      actorID,
-		actorTenantID:    "t",
-		decision:         "approve",
-		signedAt:         signedAt,
-		signaturePayload: []byte(`{}`),
-		contentHash:      validContentHash,
+		stageInstanceID:    stageID,
+		actorUserID:        actorID,
+		actorTenantID:      "t",
+		decision:           "approve",
+		signedAt:           signedAt,
+		signaturePayload:   []byte(`{}`),
+		contentHash:        validContentHash,
 	}}
 
 	stageErr := errors.New("update stage failed")
@@ -909,15 +913,15 @@ func TestRecordSignoff_UpdateInstanceStatusError_Approve(t *testing.T) {
 	signedAt := time.Date(2026, 4, 22, 12, 0, 0, 0, time.UTC)
 
 	stageSignoffs := []signoffRow{{
-		id:               "sig-ui-a",
+		id:                 "sig-ui-a",
 		approvalInstanceID: instanceID,
-		stageInstanceID:  stageID,
-		actorUserID:      actorID,
-		actorTenantID:    "t",
-		decision:         "approve",
-		signedAt:         signedAt,
-		signaturePayload: []byte(`{}`),
-		contentHash:      validContentHash,
+		stageInstanceID:    stageID,
+		actorUserID:        actorID,
+		actorTenantID:      "t",
+		decision:           "approve",
+		signedAt:           signedAt,
+		signaturePayload:   []byte(`{}`),
+		contentHash:        validContentHash,
 	}}
 
 	instErr := errors.New("update instance failed")
@@ -954,15 +958,15 @@ func TestRecordSignoff_UpdateInstanceStatusError_Reject(t *testing.T) {
 	signedAt := time.Date(2026, 4, 22, 12, 0, 0, 0, time.UTC)
 
 	stageSignoffs := []signoffRow{{
-		id:               "sig-ui-r",
+		id:                 "sig-ui-r",
 		approvalInstanceID: instanceID,
-		stageInstanceID:  stageID,
-		actorUserID:      actorID,
-		actorTenantID:    "t",
-		decision:         "reject",
-		signedAt:         signedAt,
-		signaturePayload: []byte(`{}`),
-		contentHash:      validContentHash,
+		stageInstanceID:    stageID,
+		actorUserID:        actorID,
+		actorTenantID:      "t",
+		decision:           "reject",
+		signedAt:           signedAt,
+		signaturePayload:   []byte(`{}`),
+		contentHash:        validContentHash,
 	}}
 
 	instErr := errors.New("update instance reject failed")
@@ -1002,15 +1006,15 @@ func TestRecordSignoff_EmitError(t *testing.T) {
 
 	// Only one signoff — quorum not met, falls to default (QuorumPending).
 	stageSignoffs := []signoffRow{{
-		id:               "sig-emit-err",
+		id:                 "sig-emit-err",
 		approvalInstanceID: instanceID,
-		stageInstanceID:  stageID,
-		actorUserID:      actorID,
-		actorTenantID:    "t",
-		decision:         "approve",
-		signedAt:         signedAt,
-		signaturePayload: []byte(`{}`),
-		contentHash:      validContentHash,
+		stageInstanceID:    stageID,
+		actorUserID:        actorID,
+		actorTenantID:      "t",
+		decision:           "approve",
+		signedAt:           signedAt,
+		signaturePayload:   []byte(`{}`),
+		contentHash:        validContentHash,
 	}}
 
 	conn := &decisionTestConn{stageSignoffs: stageSignoffs}
@@ -1084,15 +1088,15 @@ func TestRecordSignoff_ActivateNextStage(t *testing.T) {
 	signedAt := time.Date(2026, 4, 22, 12, 0, 0, 0, time.UTC)
 
 	stageSignoffs := []signoffRow{{
-		id:               "sig-ts-1",
+		id:                 "sig-ts-1",
 		approvalInstanceID: instanceID,
-		stageInstanceID:  stage1ID,
-		actorUserID:      actorID,
-		actorTenantID:    "tenant-1",
-		decision:         "approve",
-		signedAt:         signedAt,
-		signaturePayload: []byte(`{}`),
-		contentHash:      validContentHash,
+		stageInstanceID:    stage1ID,
+		actorUserID:        actorID,
+		actorTenantID:      "tenant-1",
+		decision:           "approve",
+		signedAt:           signedAt,
+		signaturePayload:   []byte(`{}`),
+		contentHash:        validContentHash,
 	}}
 
 	conn := &decisionTestConn{stageSignoffs: stageSignoffs}
@@ -1292,10 +1296,10 @@ func TestSchedulePublish_OCC_StaleRevision(t *testing.T) {
 	future := now.Add(24 * time.Hour)
 
 	inst := &domain.Instance{
-		ID:       "inst-sched-stale",
-		TenantID: "t",
+		ID:         "inst-sched-stale",
+		TenantID:   "t",
 		DocumentID: "doc-sched-stale",
-		Status:   domain.InstanceApproved,
+		Status:     domain.InstanceApproved,
 	}
 	repo := &fakePublishRepo{instance: inst}
 	svc := &PublishService{repo: repo, emitter: &MemoryEmitter{}, clock: fixedClock{t: now}}
@@ -1524,14 +1528,16 @@ type errorRows struct {
 	scanErr error
 }
 
-func (r *errorRows) Columns() []string { return []string{
-	"id", "approval_instance_id", "stage_instance_id",
-	"actor_user_id", "actor_tenant_id", "decision",
-	"comment", "signed_at", "signature_method", "signature_payload", "content_hash",
-}}
-func (r *errorRows) Close() error { return nil }
-func (r *errorRows) Err() error   { return r.scanErr }
-func (r *errorRows) Next() bool   { return false }
+func (r *errorRows) Columns() []string {
+	return []string{
+		"id", "approval_instance_id", "stage_instance_id",
+		"actor_user_id", "actor_tenant_id", "decision",
+		"comment", "signed_at", "signature_method", "signature_payload", "content_hash",
+	}
+}
+func (r *errorRows) Close() error        { return nil }
+func (r *errorRows) Err() error          { return r.scanErr }
+func (r *errorRows) Next() bool          { return false }
 func (r *errorRows) Scan(_ ...any) error { return nil }
 
 // Note: scanSignoffs uses *sql.Rows, not the driver Rows interface.
@@ -1578,13 +1584,13 @@ func TestRecordSignoff_ContentHashError(t *testing.T) {
 	db := newDecisionTestDB(t, conn)
 
 	req := SignoffRequest{
-		TenantID:        "t",
-		InstanceID:      "inst",
-		StageInstanceID: "stage",
-		ActorUserID:     "actor",
-		Decision:        "approve",
+		TenantID:         "t",
+		InstanceID:       "inst",
+		StageInstanceID:  "stage",
+		ActorUserID:      "actor",
+		Decision:         "approve",
 		SignaturePayload: map[string]any{},
-		ContentFormData: map[string]any{"nested": map[string]any{"val": float64(1.5)}},
+		ContentFormData:  map[string]any{"nested": map[string]any{"val": float64(1.5)}},
 	}
 	_, err := svc.RecordSignoff(context.Background(), db, req)
 	if err == nil {
@@ -1603,7 +1609,7 @@ func TestRecordSignoff_ContentHashError(t *testing.T) {
 type beginFailConn struct{}
 
 func (c *beginFailConn) Prepare(_ string) (driver.Stmt, error) { return &errorQueryStmt{}, nil }
-func (c *beginFailConn) Close() error                           { return nil }
+func (c *beginFailConn) Close() error                          { return nil }
 func (c *beginFailConn) Begin() (driver.Tx, error)             { return nil, errors.New("begin failed") }
 
 type beginFailDriver struct{}
@@ -1679,7 +1685,9 @@ func newExecFailDB(t *testing.T) *sql.DB {
 type rowsAffectedFailResult struct{}
 
 func (r rowsAffectedFailResult) LastInsertId() (int64, error) { return 0, nil }
-func (r rowsAffectedFailResult) RowsAffected() (int64, error) { return 0, errors.New("rows affected error") }
+func (r rowsAffectedFailResult) RowsAffected() (int64, error) {
+	return 0, errors.New("rows affected error")
+}
 
 type rowsAffectedFailStmt struct{ query string }
 
@@ -1708,7 +1716,9 @@ func (c *rowsAffectedFailConn) Rollback() error           { return nil }
 
 type rowsAffectedFailDriver struct{}
 
-func (d *rowsAffectedFailDriver) Open(_ string) (driver.Conn, error) { return &rowsAffectedFailConn{}, nil }
+func (d *rowsAffectedFailDriver) Open(_ string) (driver.Conn, error) {
+	return &rowsAffectedFailConn{}, nil
+}
 
 var rowsAffectedFailDBCounter int
 
@@ -1742,6 +1752,18 @@ func (s *commitFailStmt) Exec(_ []driver.Value) (driver.Result, error) {
 }
 func (s *commitFailStmt) Query(_ []driver.Value) (driver.Rows, error) {
 	q := strings.ToLower(s.query)
+	if strings.Contains(q, "from documents") {
+		return &submitSingleValueRows{value: "QA"}, nil
+	}
+	if strings.Contains(q, "select exists") && strings.Contains(q, "role_capabilities") {
+		return &submitSingleValueRows{value: true}, nil
+	}
+	if strings.Contains(q, "current_setting('metaldocs.asserted_caps'") {
+		return &submitSingleValueRows{value: nil}, nil
+	}
+	if strings.Contains(q, "current_setting('metaldocs.actor_id'") {
+		return &submitSingleValueRows{value: "user-1"}, nil
+	}
 	// For route query (submit) return valid route rows.
 	if strings.Contains(q, "approval_routes") && strings.Contains(q, "where") {
 		return &routeRows{}, nil
@@ -2088,7 +2110,9 @@ func (c *supersedeRowsAffectedFailConn) Begin() (driver.Tx, error) { return c, n
 func (c *supersedeRowsAffectedFailConn) Commit() error             { return nil }
 func (c *supersedeRowsAffectedFailConn) Rollback() error           { return nil }
 
-type supersedeRowsAffectedFailDriver struct{ conn *supersedeRowsAffectedFailConn }
+type supersedeRowsAffectedFailDriver struct {
+	conn *supersedeRowsAffectedFailConn
+}
 
 func (d *supersedeRowsAffectedFailDriver) Open(_ string) (driver.Conn, error) { return d.conn, nil }
 
@@ -2812,10 +2836,14 @@ type membershipCommitFailConn struct{}
 
 type membershipCommitFailStmt struct{}
 
-func (s *membershipCommitFailStmt) Close() error                              { return nil }
-func (s *membershipCommitFailStmt) NumInput() int                             { return -1 }
-func (s *membershipCommitFailStmt) Exec(_ []driver.Value) (driver.Result, error) { return noopResult{}, nil }
-func (s *membershipCommitFailStmt) Query(_ []driver.Value) (driver.Rows, error)  { return emptyRows{}, nil }
+func (s *membershipCommitFailStmt) Close() error  { return nil }
+func (s *membershipCommitFailStmt) NumInput() int { return -1 }
+func (s *membershipCommitFailStmt) Exec(_ []driver.Value) (driver.Result, error) {
+	return noopResult{}, nil
+}
+func (s *membershipCommitFailStmt) Query(_ []driver.Value) (driver.Rows, error) {
+	return emptyRows{}, nil
+}
 
 func (c *membershipCommitFailConn) Prepare(_ string) (driver.Stmt, error) {
 	return &membershipCommitFailStmt{}, nil
@@ -2862,9 +2890,9 @@ func buildAllCompletedInstance(instanceID, stageID string) *domain.Instance {
 		RevisionVersion: 1,
 		Stages: []domain.StageInstance{
 			{
-				ID:           stageID,
-				StageOrder:   1,
-				Status:       domain.StageCompleted, // completed, not active
+				ID:         stageID,
+				StageOrder: 1,
+				Status:     domain.StageCompleted, // completed, not active
 			},
 		},
 	}
@@ -2907,8 +2935,21 @@ func (s *decisionPriorQueryFailStmt) Exec(_ []driver.Value) (driver.Result, erro
 	return decisionNoopResult{}, nil
 }
 func (s *decisionPriorQueryFailStmt) Query(_ []driver.Value) (driver.Rows, error) {
+	q := strings.ToLower(s.query)
+	if strings.Contains(q, "from documents") {
+		return &decisionSingleValueRows{value: "QA"}, nil
+	}
+	if strings.Contains(q, "select exists") && strings.Contains(q, "role_capabilities") {
+		return &decisionSingleValueRows{value: true}, nil
+	}
+	if strings.Contains(q, "current_setting('metaldocs.asserted_caps'") {
+		return &decisionSingleValueRows{value: nil}, nil
+	}
+	if strings.Contains(q, "current_setting('metaldocs.actor_id'") {
+		return &decisionSingleValueRows{value: "actor"}, nil
+	}
 	// Return error for the prior-signoffs query (which contains "!=").
-	if !isStageQuery(s.query) {
+	if strings.Contains(q, "approval_signoffs") && !isStageQuery(s.query) {
 		return nil, errors.New("prior signoffs query failed")
 	}
 	return decisionEmptyRows{}, nil
@@ -3103,15 +3144,15 @@ func TestRecordSignoff_NoEligibleActors_QuorumPending(t *testing.T) {
 
 	signedAt := now
 	stageSignoffs := []signoffRow{{
-		id:               "sig-no-elig",
+		id:                 "sig-no-elig",
 		approvalInstanceID: instanceID,
-		stageInstanceID:  stageID,
-		actorUserID:      actorID,
-		actorTenantID:    "tenant-1",
-		decision:         "approve",
-		signedAt:         signedAt,
-		signaturePayload: []byte(`{}`),
-		contentHash:      validContentHash,
+		stageInstanceID:    stageID,
+		actorUserID:        actorID,
+		actorTenantID:      "tenant-1",
+		decision:           "approve",
+		signedAt:           signedAt,
+		signaturePayload:   []byte(`{}`),
+		contentHash:        validContentHash,
 	}}
 
 	conn := &decisionTestConn{stageSignoffs: stageSignoffs}
@@ -3155,6 +3196,19 @@ func (s *decisionReplayCommitFailStmt) Exec(_ []driver.Value) (driver.Result, er
 	return decisionNoopResult{}, nil
 }
 func (s *decisionReplayCommitFailStmt) Query(_ []driver.Value) (driver.Rows, error) {
+	q := strings.ToLower(s.query)
+	if strings.Contains(q, "from documents") {
+		return &decisionSingleValueRows{value: "QA"}, nil
+	}
+	if strings.Contains(q, "select exists") && strings.Contains(q, "role_capabilities") {
+		return &decisionSingleValueRows{value: true}, nil
+	}
+	if strings.Contains(q, "current_setting('metaldocs.asserted_caps'") {
+		return &decisionSingleValueRows{value: nil}, nil
+	}
+	if strings.Contains(q, "current_setting('metaldocs.actor_id'") {
+		return &decisionSingleValueRows{value: "actor"}, nil
+	}
 	return decisionEmptyRows{}, nil
 }
 
@@ -3228,15 +3282,15 @@ func TestRecordSignoff_ActivateNextStage_UpdateError(t *testing.T) {
 	signedAt := time.Date(2026, 4, 22, 12, 0, 0, 0, time.UTC)
 
 	stageSignoffs := []signoffRow{{
-		id:               "sig-nse",
+		id:                 "sig-nse",
 		approvalInstanceID: instanceID,
-		stageInstanceID:  stage1ID,
-		actorUserID:      actorID,
-		actorTenantID:    "tenant-1",
-		decision:         "approve",
-		signedAt:         signedAt,
-		signaturePayload: []byte(`{}`),
-		contentHash:      validContentHash,
+		stageInstanceID:    stage1ID,
+		actorUserID:        actorID,
+		actorTenantID:      "tenant-1",
+		decision:           "approve",
+		signedAt:           signedAt,
+		signaturePayload:   []byte(`{}`),
+		contentHash:        validContentHash,
 	}}
 
 	conn := &decisionTestConn{stageSignoffs: stageSignoffs}
@@ -3246,8 +3300,8 @@ func TestRecordSignoff_ActivateNextStage_UpdateError(t *testing.T) {
 	// Use a counter in a custom repo.
 	nextStageErr := errors.New("activate next stage failed")
 	repo := &fakeDecisionRepoWithCounter{
-		instance:         inst,
-		insertSignoffRes: repository.SignoffInsertResult{ID: "sig-nse", WasReplay: false},
+		instance:          inst,
+		insertSignoffRes:  repository.SignoffInsertResult{ID: "sig-nse", WasReplay: false},
 		stageUpdateErrors: []error{nil, nextStageErr},
 	}
 	svc := &DecisionService{repo: repo, emitter: &MemoryEmitter{}, clock: fixedClock{t: signedAt}}
@@ -3316,15 +3370,15 @@ func TestRecordSignoff_RejectStageUpdateError(t *testing.T) {
 	signedAt := time.Date(2026, 4, 22, 12, 0, 0, 0, time.UTC)
 
 	stageSignoffs := []signoffRow{{
-		id:               "sig-rse",
+		id:                 "sig-rse",
 		approvalInstanceID: instanceID,
-		stageInstanceID:  stageID,
-		actorUserID:      actorID,
-		actorTenantID:    "tenant-1",
-		decision:         "reject",
-		signedAt:         signedAt,
-		signaturePayload: []byte(`{}`),
-		contentHash:      validContentHash,
+		stageInstanceID:    stageID,
+		actorUserID:        actorID,
+		actorTenantID:      "tenant-1",
+		decision:           "reject",
+		signedAt:           signedAt,
+		signaturePayload:   []byte(`{}`),
+		contentHash:        validContentHash,
 	}}
 
 	rejectStageErr := errors.New("reject stage update failed")
@@ -3368,15 +3422,15 @@ func TestRecordSignoff_FinalCommitError(t *testing.T) {
 
 	// One signoff → quorum not met for allOf → falls to default → emit → commit.
 	stageSignoffs := []signoffRow{{
-		id:               "sig-fc",
+		id:                 "sig-fc",
 		approvalInstanceID: instanceID,
-		stageInstanceID:  stageID,
-		actorUserID:      actorID,
-		actorTenantID:    "tenant-1",
-		decision:         "approve",
-		signedAt:         signedAt,
-		signaturePayload: []byte(`{}`),
-		contentHash:      validContentHash,
+		stageInstanceID:    stageID,
+		actorUserID:        actorID,
+		actorTenantID:      "tenant-1",
+		decision:           "approve",
+		signedAt:           signedAt,
+		signaturePayload:   []byte(`{}`),
+		contentHash:        validContentHash,
 	}}
 
 	repo := &fakeDecisionRepo{
@@ -3492,6 +3546,18 @@ func (s *submitNoStageStmt) Exec(_ []driver.Value) (driver.Result, error) {
 }
 func (s *submitNoStageStmt) Query(_ []driver.Value) (driver.Rows, error) {
 	q := strings.ToLower(s.query)
+	if strings.Contains(q, "from documents") {
+		return &submitSingleValueRows{value: "QA"}, nil
+	}
+	if strings.Contains(q, "select exists") && strings.Contains(q, "role_capabilities") {
+		return &submitSingleValueRows{value: true}, nil
+	}
+	if strings.Contains(q, "current_setting('metaldocs.asserted_caps'") {
+		return &submitSingleValueRows{value: nil}, nil
+	}
+	if strings.Contains(q, "current_setting('metaldocs.actor_id'") {
+		return &submitSingleValueRows{value: "user-1"}, nil
+	}
 	if strings.Contains(q, "approval_routes") && strings.Contains(q, "where") {
 		return &routeRows{}, nil
 	}
@@ -3870,5 +3936,5 @@ func TestRunDuePublishes_FetchTxCommitError(t *testing.T) {
 // Unused import guard: ensure io is used by the test helpers
 // ============================================================
 
-var _ = io.EOF    // used by inline stubs referencing driver.Rows in existing tests
+var _ = io.EOF          // used by inline stubs referencing driver.Rows in existing tests
 var _ = strings.ToLower // used in existing test helpers

@@ -12,7 +12,9 @@ import (
 	"testing"
 
 	"metaldocs/internal/modules/documents_v2/approval/application"
+	"metaldocs/internal/modules/documents_v2/approval/domain"
 	"metaldocs/internal/modules/documents_v2/approval/http/contracts"
+	approvalsignature "metaldocs/internal/modules/documents_v2/approval/infra/signature"
 	"metaldocs/internal/modules/documents_v2/approval/repository"
 	"metaldocs/internal/modules/iam/authz"
 )
@@ -73,6 +75,20 @@ func TestMapErrorToResponse(t *testing.T) {
 			wantStatus: http.StatusConflict,
 			wantCode:   "route.duplicate_profile",
 			wantMsg:    repository.ErrDuplicateRouteProfile.Error(),
+		},
+		{
+			name:       "domain sod submitter cannot sign",
+			err:        domain.ErrAuthorCannotSign,
+			wantStatus: http.StatusForbidden,
+			wantCode:   "sod.submitter_cannot_sign",
+			wantMsg:    domain.ErrAuthorCannotSign.Error(),
+		},
+		{
+			name:       "domain sod cross-stage duplicate",
+			err:        domain.ErrActorAlreadySigned,
+			wantStatus: http.StatusForbidden,
+			wantCode:   "sod.cross_stage_duplicate",
+			wantMsg:    domain.ErrActorAlreadySigned.Error(),
 		},
 		{
 			name:       "repository fk violation",
@@ -193,6 +209,55 @@ func TestMapErrorToResponse(t *testing.T) {
 			wantStatus: http.StatusBadRequest,
 			wantCode:   "validation.duplicate_key",
 			wantMsg:    contracts.ErrDuplicateKey.Error(),
+		},
+		{
+			name:       "if-match required",
+			err:        ErrIfMatchRequired,
+			wantStatus: http.StatusPreconditionRequired,
+			wantCode:   "precondition.if_match_required",
+			wantMsg:    ErrIfMatchRequired.Error(),
+		},
+		{
+			name:       "if-match malformed",
+			err:        ErrIfMatchMalformed,
+			wantStatus: http.StatusBadRequest,
+			wantCode:   "validation.if_match_malformed",
+			wantMsg:    ErrIfMatchMalformed.Error(),
+		},
+		{
+			name:       "idempotency key required",
+			err:        ErrIdempotencyRequired,
+			wantStatus: http.StatusBadRequest,
+			wantCode:   "idempotency.key_required",
+			wantMsg:    ErrIdempotencyRequired.Error(),
+		},
+		{
+			name:       "content hash mismatch",
+			err:        ErrContentHashMismatch,
+			wantStatus: http.StatusPreconditionFailed,
+			wantCode:   "precondition.content_hash_mismatch",
+			wantMsg:    ErrContentHashMismatch.Error(),
+		},
+		{
+			name:       "signature invalid",
+			err:        approvalsignature.ErrInvalidCredentials,
+			wantStatus: http.StatusUnauthorized,
+			wantCode:   "authn.signature_invalid",
+			wantMsg:    approvalsignature.ErrInvalidCredentials.Error(),
+		},
+		{
+			name:       "signature rate-limited",
+			err:        approvalsignature.ErrRateLimited,
+			wantStatus: http.StatusTooManyRequests,
+			wantCode:   "authn.signature_rate_limited",
+			wantMsg:    approvalsignature.ErrRateLimited.Error(),
+		},
+		{
+			name:       "generic validation error",
+			err:        errors.New("route_id is required"),
+			wantStatus: http.StatusBadRequest,
+			wantCode:   "validation.request_invalid",
+			wantMsg:    "route_id is required",
 		},
 		{
 			name:       "unknown error",

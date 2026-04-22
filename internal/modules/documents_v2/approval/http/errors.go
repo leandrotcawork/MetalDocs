@@ -6,9 +6,12 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strings"
 
 	"metaldocs/internal/modules/documents_v2/approval/application"
+	"metaldocs/internal/modules/documents_v2/approval/domain"
 	"metaldocs/internal/modules/documents_v2/approval/http/contracts"
+	approvalsignature "metaldocs/internal/modules/documents_v2/approval/infra/signature"
 	"metaldocs/internal/modules/documents_v2/approval/repository"
 	"metaldocs/internal/modules/iam/authz"
 )
@@ -41,12 +44,36 @@ func MapErrorToResponse(err error) (statusCode int, body contracts.ErrorResponse
 	case errors.Is(err, repository.ErrDuplicateRouteProfile):
 		statusCode = http.StatusConflict
 		code = "route.duplicate_profile"
+	case errors.Is(err, domain.ErrAuthorCannotSign):
+		statusCode = http.StatusForbidden
+		code = "sod.submitter_cannot_sign"
+	case errors.Is(err, domain.ErrActorAlreadySigned):
+		statusCode = http.StatusForbidden
+		code = "sod.cross_stage_duplicate"
 	case errors.Is(err, repository.ErrFKViolation):
 		statusCode = http.StatusUnprocessableEntity
 		code = "db.fk_violation"
 	case errors.Is(err, repository.ErrCheckViolation):
 		statusCode = http.StatusUnprocessableEntity
 		code = "db.check_violation"
+	case errors.Is(err, ErrIfMatchRequired):
+		statusCode = http.StatusPreconditionRequired
+		code = "precondition.if_match_required"
+	case errors.Is(err, ErrIfMatchMalformed):
+		statusCode = http.StatusBadRequest
+		code = "validation.if_match_malformed"
+	case errors.Is(err, ErrIdempotencyRequired):
+		statusCode = http.StatusBadRequest
+		code = "idempotency.key_required"
+	case errors.Is(err, ErrContentHashMismatch):
+		statusCode = http.StatusPreconditionFailed
+		code = "precondition.content_hash_mismatch"
+	case errors.Is(err, approvalsignature.ErrInvalidCredentials):
+		statusCode = http.StatusUnauthorized
+		code = "authn.signature_invalid"
+	case errors.Is(err, approvalsignature.ErrRateLimited):
+		statusCode = http.StatusTooManyRequests
+		code = "authn.signature_rate_limited"
 	case errors.Is(err, repository.ErrInsufficientPrivilege):
 		statusCode = http.StatusInternalServerError
 		code = "internal.db_privilege_missing"
@@ -74,6 +101,9 @@ func MapErrorToResponse(err error) (statusCode int, body contracts.ErrorResponse
 		case errors.As(err, &syntaxErr):
 			statusCode = http.StatusBadRequest
 			code = "validation.json_decode"
+		case errors.Is(err, io.ErrUnexpectedEOF):
+			statusCode = http.StatusBadRequest
+			code = "validation.json_decode"
 		case errors.As(err, &typeErr):
 			statusCode = http.StatusBadRequest
 			code = "validation.json_type_error"
@@ -92,6 +122,9 @@ func MapErrorToResponse(err error) (statusCode int, body contracts.ErrorResponse
 		case errors.Is(err, contracts.ErrDuplicateKey):
 			statusCode = http.StatusBadRequest
 			code = "validation.duplicate_key"
+		case looksLikeValidationError(err):
+			statusCode = http.StatusBadRequest
+			code = "validation.request_invalid"
 		}
 	}
 
@@ -136,4 +169,14 @@ func responseMessage(err error, statusCode int) string {
 		return internalErrorMessage
 	}
 	return err.Error()
+}
+
+func looksLikeValidationError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, " is required") ||
+		strings.Contains(msg, " must be ") ||
+		strings.Contains(msg, " must not be ")
 }

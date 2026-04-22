@@ -1,0 +1,7 @@
+{
+  "submit_p99_ms": 200,
+  "signoff_p99_ms": 300,
+  "publish_p99_ms": 500,
+  "scheduler_tick_ms": 2000,
+  "_comment": "Full-suite thresholds. REDUCED=1 uses 2× these values at 10 rps × 30s."
+}

@@ -1,0 +1,134 @@
+{
+  "__comment": "Grafana dashboard export — approval system. Import via Grafana UI: Dashboards > Import > Upload JSON.",
+  "title": "MetalDocs — Approval System",
+  "uid": "metaldocs-approval-v2",
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Document State Counts (by area)",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum by (status, area) (metaldocs_documents_total)",
+          "legendFormat": "{{status}} / {{area}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Signoff p99 Latency (ms)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, rate(metaldocs_signoff_duration_seconds_bucket[5m])) * 1000",
+          "legendFormat": "p99"
+        }
+      ],
+      "thresholds": { "steps": [{ "value": 300, "color": "red" }] }
+    },
+    {
+      "id": 3,
+      "title": "Scheduler Lag (seconds since last tick)",
+      "type": "gauge",
+      "targets": [
+        { "expr": "time() - metaldocs_scheduler_last_tick_timestamp" }
+      ],
+      "thresholds": { "steps": [{ "value": 120, "color": "yellow" }, { "value": 300, "color": "red" }] }
+    },
+    {
+      "id": 4,
+      "title": "Lease Acquire Rate (per min)",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "rate(metaldocs_scheduler_lease_acquires_total[1m]) * 60", "legendFormat": "acquires/min" }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "OCC Contention Rate (412 / min)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "rate(metaldocs_http_responses_total{status=\"412\"}[1m]) * 60",
+          "legendFormat": "412/min"
+        }
+      ],
+      "thresholds": { "steps": [{ "value": 2, "color": "red" }] }
+    },
+    {
+      "id": 6,
+      "title": "Idempotency Conflicts (409 / min)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "rate(metaldocs_http_responses_total{status=\"409\",code=\"idempotency.key_conflict\"}[1m]) * 60",
+          "legendFormat": "409-conflicts/min"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Backpressure State",
+      "type": "stat",
+      "targets": [
+        { "expr": "metaldocs_scheduler_in_pressure", "legendFormat": "in_pressure (1=yes)" }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "SECURITY DEFINER Invocation Count",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "rate(metaldocs_pg_security_definer_calls_total[5m])", "legendFormat": "definer calls/s" }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Tripwire Firings (per hour)",
+      "type": "stat",
+      "targets": [
+        { "expr": "increase(metaldocs_tripwire_firings_total[1h])", "legendFormat": "firings/h" }
+      ],
+      "thresholds": { "steps": [{ "value": 1, "color": "red" }] }
+    },
+    {
+      "id": 10,
+      "title": "Scheduler Skip Streak",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "metaldocs_scheduler_skip_streak", "legendFormat": "skip_streak" }
+      ],
+      "thresholds": { "steps": [{ "value": 10, "color": "red" }] }
+    }
+  ],
+  "alerting": {
+    "rules": [
+      {
+        "name": "Lease Steal Detected",
+        "expr": "rate(metaldocs_scheduler_lease_steals_total[1m]) * 60 > 5",
+        "for": "1m",
+        "severity": "critical"
+      },
+      {
+        "name": "Skip Streak Too High",
+        "expr": "metaldocs_scheduler_skip_streak > 10",
+        "for": "2m",
+        "severity": "warning"
+      },
+      {
+        "name": "OCC Rate Too High",
+        "expr": "rate(metaldocs_http_responses_total{status=\"412\"}[5m]) * 300 > 2",
+        "for": "5m",
+        "severity": "warning"
+      },
+      {
+        "name": "Signoff p99 Exceeded",
+        "expr": "histogram_quantile(0.99, rate(metaldocs_signoff_duration_seconds_bucket[5m])) * 1000 > 300",
+        "for": "5m",
+        "severity": "warning"
+      }
+    ]
+  }
+}

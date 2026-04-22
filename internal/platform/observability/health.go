@@ -16,6 +16,7 @@ func NewHealthHandler(provider RuntimeStatusProvider) *HealthHandler {
 func (h *HealthHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/health/live", h.handleLive)
 	mux.HandleFunc("/api/v1/health/ready", h.handleReady)
+	mux.HandleFunc("/healthz", h.handleLive)
 }
 
 func (h *HealthHandler) handleLive(w http.ResponseWriter, r *http.Request) {

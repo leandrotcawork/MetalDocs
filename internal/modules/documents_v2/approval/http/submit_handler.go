@@ -16,7 +16,10 @@ func (h *Handler) SubmitHandler(w http.ResponseWriter, r *http.Request) {
 	tenantID := strings.TrimSpace(r.Header.Get("X-Tenant-ID"))
 	actorID := strings.TrimSpace(r.Header.Get("X-User-ID"))
 	idempotencyKey := strings.TrimSpace(r.Header.Get("Idempotency-Key"))
-	_ = idempotencyKey
+	if idempotencyKey == "" {
+		WriteError(w, reqID, ErrIdempotencyRequired)
+		return
+	}
 
 	expectedRevisionVersion, err := parseIfMatch(r.Header.Get("If-Match"))
 	if err != nil {
@@ -56,10 +59,11 @@ func (h *Handler) SubmitHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("ETag", "\"v"+strconv.Itoa(expectedRevisionVersion+1)+"\"")
+	newETag := "\"v" + strconv.Itoa(expectedRevisionVersion+1) + "\""
+	w.Header().Set("ETag", newETag)
 	WriteJSON(w, http.StatusCreated, contracts.SubmitResponse{
 		InstanceID: result.InstanceID,
 		WasReplay:  false,
-		ETag:       "",
+		ETag:       newETag,
 	})
 }

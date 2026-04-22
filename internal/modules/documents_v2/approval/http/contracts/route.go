@@ -98,6 +98,7 @@ type RouteResponse struct {
 	ProfileCode string          `json:"profile_code"`
 	Name        string          `json:"name"`
 	Version     int             `json:"version"`
+	NewVersion  int             `json:"new_version,omitempty"`
 	Active      bool            `json:"active"`
 	InUse       bool            `json:"in_use"`
 	Stages      []StageResponse `json:"stages"`

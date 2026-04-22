@@ -28,6 +28,12 @@ type readService interface {
 	ListPendingForActor(ctx context.Context, db *sql.DB, tenantID, actorID string, areaCode string, limit, offset int) ([]domain.Instance, error)
 }
 
+type routeAdminService interface {
+	Create(ctx context.Context, db *sql.DB, in application.CreateRouteInput) (application.CreateRouteResult, error)
+	Update(ctx context.Context, db *sql.DB, in application.UpdateRouteInput) (application.UpdateRouteResult, error)
+	Deactivate(ctx context.Context, db *sql.DB, in application.DeactivateRouteInput) (application.DeactivateRouteResult, error)
+}
+
 var (
 	ErrIfMatchRequired  = errors.New("precondition: If-Match header required")
 	ErrIfMatchMalformed = errors.New("precondition: If-Match header malformed; expected \"v<N>\" or \"*\"")
@@ -42,6 +48,7 @@ type Handler struct {
 	submitSvc   submitService
 	decisionSvc decisionService
 	readSvc     readService
+	routeAdmin  routeAdminService
 }
 
 func NewHandler(services *application.Services, db *sql.DB) *Handler {
@@ -53,6 +60,7 @@ func NewHandler(services *application.Services, db *sql.DB) *Handler {
 		h.submitSvc = services.Submit
 		h.decisionSvc = services.Decision
 		h.readSvc = services.Read
+		h.routeAdmin = services.RouteAdmin
 	}
 	return h
 }
@@ -69,6 +77,10 @@ func actorIDFromRequest(r *http.Request) string {
 		return id
 	}
 	return iamdomain.UserIDFromContext(r.Context())
+}
+
+func tenantIDFromReq(r *http.Request) string {
+	return strings.TrimSpace(r.Header.Get("X-Tenant-ID"))
 }
 
 func parseIfMatch(header string) (int, error) {

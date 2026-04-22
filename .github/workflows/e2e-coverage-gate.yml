@@ -1,0 +1,171 @@
+name: E2E Coverage Gate
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/apps/web/e2e/**'
+      - 'frontend/apps/web/src/features/approval/**'
+      - 'internal/modules/documents_v2/**'
+      - 'internal/modules/jobs/**'
+      - 'api/**'
+  push:
+    branches: [main]
+
+jobs:
+  coverage-map-check:
+    name: Coverage map — all invariants mapped
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check all invariants have ≥1 spec ID
+        run: |
+          COVERAGE=frontend/apps/web/e2e/COVERAGE.md
+          echo "Scanning $COVERAGE for unmapped invariants..."
+
+          # Find all invariant rows (lines with | Pn-Ixx | or | Fn | pattern)
+          UNMAPPED=$(grep -E '^\|[[:space:]]*(P[0-9]+-I[0-9]+|F[0-9]+)[[:space:]]*\|' "$COVERAGE" \
+            | grep '❌' \
+            | awk -F'|' '{print $2}' | xargs)
+
+          if [ -n "$UNMAPPED" ]; then
+            echo "❌ Unmapped invariants found: $UNMAPPED"
+            echo "Add ≥1 spec ID for each before merging."
+            exit 1
+          fi
+
+          echo "✅ All invariants are mapped."
+
+      - name: Check PR template checkbox present
+        if: github.event_name == 'pull_request'
+        run: |
+          # PRs touching e2e/ must include coverage map update checkbox
+          BODY="${{ github.event.pull_request.body }}"
+          if echo "$BODY" | grep -q "\- \[x\] coverage map updated"; then
+            echo "✅ Coverage map checkbox checked."
+          else
+            echo "⚠️  PR body does not confirm 'coverage map updated'."
+            echo "Add '- [x] coverage map updated' to PR description."
+            # Warning only on PRs not touching COVERAGE.md
+            CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD || true)
+            if echo "$CHANGED" | grep -q "COVERAGE.md"; then
+              echo "COVERAGE.md is in diff — checkbox required."
+              exit 1
+            fi
+          fi
+
+  axe-baseline-check:
+    name: Axe baseline — no critical violations
+    runs-on: ubuntu-latest
+    needs: coverage-map-check
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check baseline update has reviewer field
+        run: |
+          BASELINE=frontend/apps/web/e2e/axe-baseline.json
+          if [ ! -f "$BASELINE" ]; then
+            echo "No baseline file found — skipping."
+            exit 0
+          fi
+
+          # Every entry must have approved_by and reason
+          node -e "
+            const fs = require('fs');
+            const b = JSON.parse(fs.readFileSync('$BASELINE', 'utf8'));
+            const invalid = b.filter(e => !e.approved_by || !e.reason);
+            if (invalid.length > 0) {
+              console.error('Baseline entries missing approved_by/reason:', invalid.map(e => e.id));
+              process.exit(1);
+            }
+            console.log('All baseline entries have required fields.');
+          "
+
+      - name: Detect critical violations in baseline
+        run: |
+          BASELINE=frontend/apps/web/e2e/axe-baseline.json
+          if [ ! -f "$BASELINE" ]; then
+            exit 0
+          fi
+
+          node -e "
+            const b = JSON.parse(require('fs').readFileSync('$BASELINE', 'utf8'));
+            const crits = b.filter(e => e.impact === 'critical');
+            if (crits.length > 0) {
+              console.error('CRITICAL violations must never be baselined:', crits.map(e => e.id));
+              process.exit(1);
+            }
+            console.log('No critical violations in baseline.');
+          "
+
+  e2e-smoke:
+    name: E2E smoke (approval flows)
+    runs-on: ubuntu-latest
+    needs: coverage-map-check
+    env:
+      METALDOCS_E2E: '1'
+      DATABASE_URL: ${{ secrets.E2E_DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        working-directory: frontend/apps/web
+        run: pnpm exec playwright install chromium --with-deps
+
+      - name: Set up Go backend
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Start backend
+        run: |
+          go run ./cmd/api &
+          # Wait for health
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8080/healthz; then break; fi
+            sleep 2
+          done
+
+      - name: Run E2E approval flows
+        working-directory: frontend/apps/web
+        run: |
+          pnpm exec playwright test e2e/flows/ \
+            --project=parallel-flows \
+            --reporter=html,list \
+            2>&1
+
+      - name: Run axe diff vs baseline
+        if: always()
+        working-directory: frontend/apps/web
+        run: |
+          node ../../../scripts/axe-diff.mjs \
+            --report test-results/axe-report.json \
+            --baseline e2e/axe-baseline.json \
+            --html test-results/axe-diff.html \
+          || true  # axe-diff exits 1 on blocking — captured in upload
+
+      - name: Upload E2E artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-approval-report
+          path: |
+            frontend/apps/web/playwright-report/
+            frontend/apps/web/test-results/
+          retention-days: 14

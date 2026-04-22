@@ -13,7 +13,6 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	"metaldocs/tests/integration/fixtures"
 	"metaldocs/tests/integration/testdb"
@@ -23,6 +22,7 @@ import (
 )
 
 const concurrencyTestSeed = 0xDEADBEEF
+const occRaceWorkers = 2
 
 func TestConcurrencyScenarios(t *testing.T) {
 	t.Logf("testSeed=0x%X", concurrencyTestSeed)
@@ -42,11 +42,12 @@ func TestConcurrencyScenarios(t *testing.T) {
 	t.Run("OCC_Race_N50", func(t *testing.T) {
 		db := openDirectDB(t)
 		ctx := context.Background()
+		workers := occRaceWorkers
 		for i := 0; i < 50; i++ {
 			t.Run(fmt.Sprintf("iter_%02d", i+1), func(t *testing.T) {
-				winners, losers := runSingleOCCRace(t, ctx, db, fmt.Sprintf("n50-%02d", i+1))
-				if winners != 1 || losers != 1 {
-					t.Fatalf("expected exactly one winner and one stale loser; got winners=%d losers=%d", winners, losers)
+				winners, losers := runSingleOCCRace(t, ctx, db, fmt.Sprintf("n50-%02d", i+1), workers)
+				if winners != 1 || losers != workers-1 {
+					t.Fatalf("expected exactly one winner and %d stale loser(s); got winners=%d losers=%d", workers-1, winners, losers)
 				}
 			})
 		}
@@ -56,14 +57,17 @@ func TestConcurrencyScenarios(t *testing.T) {
 func testOCCStaleRevision(t *testing.T) {
 	db := openDirectDB(t)
 	ctx := context.Background()
-	winners, losers := runSingleOCCRace(t, ctx, db, "single")
-	if winners != 1 || losers != 1 {
-		t.Fatalf("expected exactly one winner and one stale loser; got winners=%d losers=%d", winners, losers)
+	winners, losers := runSingleOCCRace(t, ctx, db, "single", occRaceWorkers)
+	if winners != 1 || losers != occRaceWorkers-1 {
+		t.Fatalf("expected exactly one winner and %d stale loser(s); got winners=%d losers=%d", occRaceWorkers-1, winners, losers)
 	}
 }
 
-func runSingleOCCRace(t *testing.T, ctx context.Context, db *sql.DB, suffix string) (int, int) {
+func runSingleOCCRace(t *testing.T, ctx context.Context, db *sql.DB, suffix string, workers int) (int, int) {
 	t.Helper()
+	if workers < 2 {
+		t.Fatalf("workers must be >=2, got %d", workers)
+	}
 	tenantID := testdb.DeterministicID(t, "tenant-"+suffix)
 	docID := testdb.DeterministicID(t, "doc-"+suffix)
 	userID := testdb.DeterministicID(t, "user-"+suffix)
@@ -77,12 +81,12 @@ func runSingleOCCRace(t *testing.T, ctx context.Context, db *sql.DB, suffix stri
 
 	start := make(chan struct{})
 	var wg sync.WaitGroup
-	wg.Add(2)
+	wg.Add(workers)
 
-	results := make([]int64, 2)
-	errs := make([]error, 2)
+	results := make([]int64, workers)
+	errs := make([]error, workers)
 
-	for i := 0; i < 2; i++ {
+	for i := 0; i < workers; i++ {
 		i := i
 		go func() {
 			defer wg.Done()
@@ -172,6 +176,8 @@ func testSkipLockedNoDuplicateProcessing(t *testing.T) {
 	processed := map[string]int{}
 
 	start := make(chan struct{})
+	selected := sync.WaitGroup{}
+	selected.Add(3)
 	var wg sync.WaitGroup
 	errs := make([]error, 3)
 	wg.Add(3)
@@ -180,6 +186,7 @@ func testSkipLockedNoDuplicateProcessing(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			<-start
+			defer selected.Done()
 
 			tx, err := db.BeginTx(ctx, nil)
 			if err != nil {
@@ -221,7 +228,7 @@ func testSkipLockedNoDuplicateProcessing(t *testing.T) {
 			}
 			_ = rows.Close()
 
-			time.Sleep(10 * time.Millisecond)
+			selected.Wait()
 
 			for _, r := range picked {
 				res, err := tx.ExecContext(ctx, `

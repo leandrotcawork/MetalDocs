@@ -303,7 +303,7 @@ SELECT
 		s.quietCount = 0
 	}
 
-	return current
+	return s.inPressure
 }
 
 func (s *Scheduler) currentPressure() bool {

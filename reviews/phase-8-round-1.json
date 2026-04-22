@@ -1,0 +1,50 @@
+{
+  "phase": 8,
+  "mode": "OPERATIONS",
+  "verdict": "PASS_WITH_NOTES",
+  "critical_issues": [
+    {
+      "id": "CRIT-001",
+      "title": "Lease epoch can be reused after release, weakening fencing",
+      "detail": "`release_lease` deletes the row (`migrations/0148_job_leases.sql:122-133`), while new acquisition inserts `lease_epoch = 1` (`migrations/0148_job_leases.sql:47-57`). `assert_lease_epoch` only checks `job_name + lease_epoch` (`migrations/0148_job_leases.sql:147-152`). This allows an old stale epoch value to become valid again after release+reacquire, violating strict fencing guarantees.",
+      "fix": "Make epoch monotonic per job across the full lifecycle: avoid resetting to 1 on reinsert. Either keep the lease row and mark ownership released while preserving/incrementing epoch, or persist last epoch separately and seed new acquisition from it. Also consider asserting leader and epoch together when fencing at write points.",
+      "status": "FIXED"
+    }
+  ],
+  "important_issues": [
+    {
+      "id": "IMP-001",
+      "title": "Backpressure probe returns stale state",
+      "detail": "`probePressure` snapshots `current := s.currentPressure()` before updating counters/state (`internal/modules/jobs/scheduler/scheduler.go:263`) and returns `current` (`internal/modules/jobs/scheduler/scheduler.go:306`) instead of the updated `s.inPressure`. Job loops therefore act on previous-tick pressure state, delaying enter/exit behavior and weakening hysteresis correctness.",
+      "fix": "Return the updated pressure state from inside the lock (or recompute after update), e.g. `return s.inPressure` after the threshold logic.",
+      "status": "FIXED"
+    }
+  ],
+  "minor_issues": [],
+  "quality_checks": {
+    "1_lease_correctness": "PASS (after CRIT-001) — release_lease now expires row; epoch never resets. Was: FAIL� Core acquire/heartbeat/release paths are implemented, but epoch reuse after release allows stale epoch values to become valid again in assert checks.",
+    "2_epoch_fencing": "PASS (after CRIT-001) — migration 0149 enforces monotonic epoch. Was: FAIL� Takeover increments epoch, but fencing is not strictly monotonic across release+reacquire because epoch resets to 1 and assert checks only job+epoch.",
+    "3_drain_correctness": "PASS � Drain waits for in-flight jobs, then cancels after 30s (`drainWait`), then waits 5s (`forceWait`) before force release/join path.",
+    "4_heartbeat_cancel": "PASS � Heartbeat false triggers `cancel()` and exits heartbeat loop, propagating cancellation via job context.",
+    "5_backpressure_hysteresis": "PASS (after IMP-001) — probePressure now returns s.inPressure inside lock. Was: FAIL� Threshold counters are coded for >70%/3 and <60%/3, but returned state is previous tick, so effective behavior is lagged and not strictly maintained.",
+    "6_janitor_bounded": "PASS � `idempotency_janitor` is bounded by `MaxIterations = 10` in the delete loop.",
+    "7_reaper_skip_locked": "PASS � Lease reaper delete subquery uses `FOR UPDATE SKIP LOCKED`.",
+    "8_env_gate_completeness": "PASS � All 4 jobs are individually env-gated in API wiring and default enabled unless env var equals `false`.",
+    "9_leader_id_uniqueness": "PASS � Leader ID is stable `hostname:pid`, not random, so heartbeats are consistent per process.",
+    "10_governance_events_on_reclaim": "PASS � Reaper inserts one `governance_events` row per reclaimed lease inside the row loop."
+  },
+  "fixes_required": [
+    {
+      "file": "migrations/0148_job_leases.sql",
+      "description": "Enforce monotonic lease epochs across release/reacquire (no reset to 1) and strengthen fencing assertion semantics.",
+      "severity": "critical",
+      "status": "APPLIED"
+    },
+    {
+      "file": "internal/modules/jobs/scheduler/scheduler.go",
+      "description": "Return updated in-pressure state from `probePressure` so hysteresis decisions are applied on current state, not previous tick.",
+      "severity": "important",
+      "status": "APPLIED"
+    }
+  ]
+}

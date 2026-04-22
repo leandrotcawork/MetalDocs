@@ -15,6 +15,7 @@ var (
 )
 
 type UserAreaWriteRepository interface {
+	ListActive(ctx context.Context, userID, tenantID string, now time.Time) ([]domain.UserProcessArea, error)
 	Insert(ctx context.Context, membership domain.UserProcessArea) error
 	CloseActive(ctx context.Context, userID, tenantID, areaCode string, effectiveTo time.Time) error
 	GrantAtomic(ctx context.Context, oldMembership, newMembership domain.UserProcessArea) error
@@ -39,6 +40,10 @@ func NewAreaMembershipService(repo UserAreaWriteRepository, logger MembershipGov
 			return time.Now().UTC()
 		},
 	}
+}
+
+func (s *AreaMembershipService) ListActive(ctx context.Context, userID, tenantID string) ([]domain.UserProcessArea, error) {
+	return s.repo.ListActive(ctx, userID, tenantID, s.nowFn())
 }
 
 func (s *AreaMembershipService) Grant(

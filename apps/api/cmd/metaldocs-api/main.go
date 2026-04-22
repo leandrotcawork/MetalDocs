@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
@@ -28,11 +29,15 @@ import (
 	authdelivery "metaldocs/internal/modules/auth/delivery/http"
 	iamapp "metaldocs/internal/modules/iam/application"
 	iamdelivery "metaldocs/internal/modules/iam/delivery/http"
+	iampg "metaldocs/internal/modules/iam/infrastructure/postgres"
 	notificationapp "metaldocs/internal/modules/notifications/application"
 	notificationdelivery "metaldocs/internal/modules/notifications/delivery/http"
+	"metaldocs/internal/modules/registry"
 	searchapp "metaldocs/internal/modules/search/application"
 	searchdelivery "metaldocs/internal/modules/search/delivery/http"
 	searchdocs "metaldocs/internal/modules/search/infrastructure/documents"
+	"metaldocs/internal/modules/taxonomy"
+	taxonomyinfra "metaldocs/internal/modules/taxonomy/infrastructure"
 	workflowapp "metaldocs/internal/modules/workflow/application"
 	workflowdelivery "metaldocs/internal/modules/workflow/delivery/http"
 	"metaldocs/internal/platform/authn"
@@ -127,13 +132,36 @@ func main() {
 	workflowHandler.RegisterRoutes(mux)
 	iamAdminHandler.RegisterRoutes(mux)
 
+	taxonomyModule := taxonomy.New(taxonomy.Dependencies{
+		DB:         deps.SQLDB,
+		TplChecker: taxonomyinfra.NewTemplateVersionChecker(deps.SQLDB),
+	})
+	taxonomyModule.RegisterRoutes(mux)
+
+	registryModule := registry.New(registry.Dependencies{
+		DB:     deps.SQLDB,
+		Logger: slog.Default(),
+	})
+	registryModule.RegisterRoutes(mux)
+	if deps.SQLDB != nil {
+		if err := registryModule.RunStartupMigrations(context.Background(), deps.SQLDB, slog.Default()); err != nil {
+			log.Printf("registry startup migration failed: %v", err)
+		}
+	}
+
+	var membershipService *iamapp.AreaMembershipService
+	if deps.SQLDB != nil {
+		membershipService = iamapp.NewAreaMembershipService(iampg.NewUserAreaRepository(deps.SQLDB), nil)
+	}
+	iamdelivery.NewMembershipHandler(membershipService).RegisterRoutes(mux)
+
 	// Legacy templates module routes removed — templates_v2 owns /api/v2/templates/*
 
 	docPresigner := objectstore.NewDocumentPresigner(deps.MinioClient, deps.MinioBucket, 15*time.Minute, 25*1024*1024)
 	docDeps := documents_v2.Dependencies{
-		DB:            deps.SQLDB,
-		Docgen:        nil,
-		Presign:       docPresigner,
+		DB:      deps.SQLDB,
+		Docgen:  nil,
+		Presign: docPresigner,
 		TplRead: docgenv2.NewFanoutTemplateReader(
 			docgenv2.NewTemplateReader(deps.SQLDB, deps.MinioClient, deps.MinioBucket),
 			docgenv2.NewTemplatesV2TemplateReader(deps.SQLDB),

@@ -21,6 +21,22 @@ func NewAreaService(areas domain.AreaRepository, govLogger domain.GovernanceLogg
 	}
 }
 
+func (s *AreaService) List(ctx context.Context, tenantID string, includeArchived bool) ([]domain.ProcessArea, error) {
+	return s.areas.List(ctx, tenantID, includeArchived)
+}
+
+func (s *AreaService) Get(ctx context.Context, tenantID, code string) (*domain.ProcessArea, error) {
+	return s.areas.GetByCode(ctx, tenantID, code)
+}
+
+func (s *AreaService) Create(ctx context.Context, a *domain.ProcessArea) error {
+	return s.areas.Create(ctx, a)
+}
+
+func (s *AreaService) Update(ctx context.Context, a *domain.ProcessArea) error {
+	return s.areas.Update(ctx, a)
+}
+
 func (s *AreaService) SetParent(ctx context.Context, tenantID, areaCode string, parentCode *string, actorID string) error {
 	area, err := s.areas.GetByCode(ctx, tenantID, areaCode)
 	if err != nil {

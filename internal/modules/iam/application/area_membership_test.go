@@ -10,6 +10,7 @@ import (
 )
 
 type userAreaWriteRepoStub struct {
+	activeList       []domain.UserProcessArea
 	active           *domain.UserProcessArea
 	closeCalls       int
 	insertCalls      int
@@ -22,6 +23,10 @@ type userAreaWriteRepoStub struct {
 	closeActiveErr   error
 	insertErr        error
 	grantAtomicErr   error
+}
+
+func (s *userAreaWriteRepoStub) ListActive(ctx context.Context, userID, tenantID string, now time.Time) ([]domain.UserProcessArea, error) {
+	return append([]domain.UserProcessArea(nil), s.activeList...), nil
 }
 
 func (s *userAreaWriteRepoStub) Insert(ctx context.Context, membership domain.UserProcessArea) error {

@@ -30,6 +30,22 @@ func NewProfileService(
 	return &ProfileService{profiles: profiles, tplCheck: tplCheck, govLogger: govLogger, now: time.Now}
 }
 
+func (s *ProfileService) List(ctx context.Context, tenantID string, includeArchived bool) ([]domain.DocumentProfile, error) {
+	return s.profiles.List(ctx, tenantID, includeArchived)
+}
+
+func (s *ProfileService) Get(ctx context.Context, tenantID, code string) (*domain.DocumentProfile, error) {
+	return s.profiles.GetByCode(ctx, tenantID, code)
+}
+
+func (s *ProfileService) Create(ctx context.Context, p *domain.DocumentProfile) error {
+	return s.profiles.Create(ctx, p)
+}
+
+func (s *ProfileService) Update(ctx context.Context, p *domain.DocumentProfile) error {
+	return s.profiles.Update(ctx, p)
+}
+
 func (s *ProfileService) SetDefaultTemplate(ctx context.Context, tenantID, profileCode, templateVersionID, actorID string) error {
 	profile, err := s.profiles.GetByCode(ctx, tenantID, profileCode)
 	if err != nil {

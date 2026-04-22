@@ -24,6 +24,9 @@ type AreaReader interface {
 	GetByCode(ctx context.Context, tenantID, code string) (*taxonomydomain.ProcessArea, error)
 }
 
+type ControlledDocument = registrydomain.ControlledDocument
+type CDFilter = registrydomain.CDFilter
+
 type RegistryService struct {
 	db        *sql.DB
 	docs      registrydomain.ControlledDocumentRepository
@@ -240,6 +243,14 @@ func (s *RegistryService) Obsolete(ctx context.Context, tenantID, controlledDocu
 
 func (s *RegistryService) Supersede(ctx context.Context, tenantID, controlledDocumentID string) error {
 	return s.changeStatus(ctx, tenantID, controlledDocumentID, registrydomain.CDStatusSuperseded)
+}
+
+func (s *RegistryService) List(ctx context.Context, tenantID string, filter CDFilter) ([]ControlledDocument, error) {
+	return s.docs.List(ctx, tenantID, filter)
+}
+
+func (s *RegistryService) Get(ctx context.Context, tenantID, id string) (*ControlledDocument, error) {
+	return s.docs.GetByID(ctx, tenantID, id)
 }
 
 func (s *RegistryService) changeStatus(ctx context.Context, tenantID, controlledDocumentID string, next registrydomain.CDStatus) error {

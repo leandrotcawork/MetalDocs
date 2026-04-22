@@ -1,0 +1,80 @@
+﻿{
+  "phase": 6,
+  "mode": "ARCHITECTURE",
+  "verdict": "PASS_WITH_NOTES",
+  "critical_issues": [],
+  "important_issues": [
+    {
+      "id": "IMP-001",
+      "title": "Duplicate route create is mis-mapped to ErrActorAlreadySigned",
+      "detail": "`repository.MapPgError` maps most SQLSTATE 23505 cases to `ErrActorAlreadySigned`; `RouteAdminService.Create` does not pass a unique-constraint hint for `approval_routes_tenant_profile_key`. A duplicate `(tenant_id, profile_code)` route therefore surfaces as an unrelated signoff error.",
+      "impact": "Wrong domain error contract for route administration; weak API behavior and confusing operator diagnostics.",
+      "evidence": [
+        "internal/modules/documents_v2/approval/repository/errors.go",
+        "internal/modules/documents_v2/approval/application/route_admin_service.go",
+        "migrations/0134_approval_routes.sql"
+      ]
+    },
+    {
+      "id": "IMP-002",
+      "title": "ErrRouteInUse depends on brittle message parsing",
+      "detail": "`MapPgError` maps SQLSTATE `P0001` to `ErrRouteInUse` only when `pgErr.Message` contains `ErrRouteInUse`. This is fragile under message text edits/localization and not tied to a durable DB identifier.",
+      "impact": "Behavior can regress silently if trigger text changes.",
+      "evidence": [
+        "internal/modules/documents_v2/approval/repository/errors.go",
+        "migrations/0145_route_config_immutable_trigger.sql"
+      ]
+    },
+    {
+      "id": "IMP-003",
+      "title": "Cancel area read is unlocked (TOCTOU window)",
+      "detail": "`CancelService` reads `documents.area_code` without lock prior to authz decision. While document delete is constrained by FK from `approval_instances`, area metadata can change between authz check and document update unless the row is locked or area immutability is guaranteed elsewhere.",
+      "impact": "Potential authorization inconsistency under concurrent metadata updates.",
+      "evidence": [
+        "internal/modules/documents_v2/approval/application/cancel_service.go",
+        "migrations/0135_approval_instances.sql"
+      ]
+    }
+  ],
+  "minor_issues": [
+    {
+      "id": "MIN-001",
+      "title": "Capability cache key is not actor/tenant scoped",
+      "detail": "`WithCapCache` uses capability+area only. It is request-safe in normal usage, but context reuse across principals would be unsafe."
+    },
+    {
+      "id": "MIN-002",
+      "title": "Tripwire currently validates capability name only",
+      "detail": "`enforce_capability_asserted()` intentionally ignores asserted area tuple in this phase; acceptable per comment, but weaker than intended final model."
+    }
+  ],
+  "questions_answered": {
+    "1_guc_tripwire_sound": "Mostly sound for defense-in-depth: `set_config(..., true)` is transaction-local, and trigger reads via `current_setting(..., true)`, avoiding cross-transaction contamination. Main caveat: this is not a hard security boundary against arbitrary SQL running in the same transaction/session, and current trigger checks cap presence (not area tuple).",
+    "2_cap_cache_concurrent_safety": "`capCache` is mutex-protected, so concurrent goroutine access is memory-safe. Scope is request-context based; in standard request-scoped context usage this is fine. Residual risk is accidental context reuse across different principals because cache key excludes actor/tenant.",
+    "3_cancel_doc_race": "Concurrent document delete is effectively prevented by FK `approval_instances.document_v2_id -> documents(id)` while instance exists, so hard delete race is low. However, area read is unlocked and can drift before update; adding `FOR UPDATE` (or stronger invariant on area immutability) would close TOCTOU.",
+    "4_route_lock_ordering": "`SELECT ... FOR UPDATE` on `approval_routes` is a correct serialization anchor against concurrent inserts referencing the route, because FK checks take key-share locks that conflict with route row update/delete locks. Ordering appears safe; no obvious deadlock cycle in the reviewed path.",
+    "5_bypass_scheduler_in_trigger": "Yes. Migration 0142b trigger explicitly reads `metaldocs.bypass_authz`; token `scheduler` is accepted and audited to governance_events, so scheduler inserts can bypass cap assertion as designed.",
+    "6_tenant_area_skip_security": "The `($2 = 'tenant' OR upa.area_code = $2)` predicate means tenant-scoped checks ignore area filter and require only role-capability membership in any active area row. This is acceptable only if such capabilities are intentionally tenant-global; otherwise it is over-broad.",
+    "7_workflow_cancel_cap_in_migration": "Yes. 0142a inserts `('qms_admin', 'workflow.instance.cancel', ...)`.",
+    "8_route_admin_cap_in_migration": "Yes. 0142a inserts `('qms_admin', 'route.admin', ...)`.",
+    "9_err_route_in_use_robustness": "Not robust enough currently. Mapping relies on substring match of `PgError.Message`. Prefer stable discrimination (dedicated SQLSTATE/code convention, or DB detail field/token contract) independent of message wording.",
+    "10_duplicate_route_error_mapping": "Not mapped correctly today. Duplicate `(tenant_id, profile_code)` route uniqueness violations (`approval_routes_tenant_profile_key`, SQLSTATE 23505) are not translated to a route-domain duplicate sentinel and can surface as unrelated errors."
+  },
+  "fixes_required": [
+    {
+      "file": "internal/modules/documents_v2/approval/repository/errors.go",
+      "description": "Add explicit mapping for `approval_routes_tenant_profile_key` (and introduce a dedicated sentinel like `ErrDuplicateRouteProfile`) instead of falling through to `ErrActorAlreadySigned`.",
+      "severity": "important"
+    },
+    {
+      "file": "internal/modules/documents_v2/approval/repository/errors.go",
+      "description": "Replace message-substring detection for `ErrRouteInUse` with a stable identifier contract (e.g., dedicated SQLSTATE/token strategy agreed with trigger).",
+      "severity": "important"
+    },
+    {
+      "file": "internal/modules/documents_v2/approval/application/cancel_service.go",
+      "description": "Lock document row when fetching `area_code` (e.g., `SELECT area_code ... FOR UPDATE`) or enforce area immutability invariant to prevent TOCTOU during cancel authz.",
+      "severity": "important"
+    }
+  ]
+}

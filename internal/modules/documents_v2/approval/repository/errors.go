@@ -21,6 +21,7 @@ var (
 	ErrInsufficientPrivilege = errors.New("approval: insufficient privilege — GUC context missing")
 	ErrUnknownDB             = errors.New("approval: unknown database error")
 	ErrRouteInUse            = errors.New("approval: route is referenced by one or more instances and cannot be modified")
+	ErrDuplicateRouteProfile = errors.New("approval: a route already exists for this tenant+profile combination")
 )
 
 // MapHints carries constraint-name hints for SQLSTATE 23505 disambiguation.
@@ -43,6 +44,8 @@ func MapPgError(err error, hints MapHints) error {
 		case "approval_signoffs_approval_instance_id_actor_user_id_key",
 			"approval_signoffs_stage_instance_id_actor_user_id_key":
 			return ErrActorAlreadySigned
+		case "approval_routes_tenant_profile_key":
+			return ErrDuplicateRouteProfile
 		default:
 			if hints.UniqueConstraint != "" && pgErr.ConstraintName == hints.UniqueConstraint {
 				return ErrDuplicateSubmission
@@ -59,7 +62,10 @@ func MapPgError(err error, hints MapHints) error {
 	case "42501": // insufficient_privilege
 		return ErrInsufficientPrivilege
 	case "P0001":
-		if strings.Contains(pgErr.Message, "ErrRouteInUse") {
+		// enforce_route_immutable() sets message prefix "ErrRouteInUse:" as a stable
+		// contract token (migration 0145). String check is intentional; if the trigger
+		// message text ever changes, update both here and the migration.
+		if strings.HasPrefix(pgErr.Message, "ErrRouteInUse") {
 			return ErrRouteInUse
 		}
 		return fmt.Errorf("%w: %s (SQLSTATE %s)", ErrUnknownDB, pgErr.Message, pgErr.Code)

@@ -68,10 +68,11 @@ func (s *CancelService) CancelInstance(ctx context.Context, db *sql.DB, in Cance
 
 	docID := inst.DocumentID
 
-	// Fetch document area_code for authz check.
+	// Fetch document area_code for authz check. FOR UPDATE locks the document row
+	// to prevent concurrent area_code changes between authz decision and status update.
 	var areaCode string
 	err = tx.QueryRowContext(ctx,
-		`SELECT area_code FROM documents WHERE id = $1 AND tenant_id = $2`,
+		`SELECT area_code FROM documents WHERE id = $1 AND tenant_id = $2 FOR UPDATE`,
 		docID, in.TenantID,
 	).Scan(&areaCode)
 	if err != nil {

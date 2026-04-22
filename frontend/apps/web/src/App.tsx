@@ -24,6 +24,8 @@ import { isPathForView, parseTemplateEditorPath, pathFromView, viewFromPath } fr
 import { TemplateEditorView } from "./features/templates/TemplateEditorView";
 import { TemplatesV2View, type TemplatesV2Route } from "./features/templates/v2/routes";
 import { renderDocumentsV2View, routeFromPath as docsRouteFromPath, pathFromRoute as docsPathFromRoute, type DocumentsV2Route } from "./features/documents/v2/routes";
+import { RegistryListPage } from "./features/registry";
+import { AreaMembershipAdminPage } from "./features/iam/AreaMembershipAdminPage";
 import { Toaster } from "sonner";
 
 type AppErrorBoundaryState = {
@@ -487,6 +489,14 @@ function AppContent() {
     }
     if (activeView === "documents-v2") {
       return renderDocumentsV2View(docsRoute, setDocsRoute);
+    }
+
+    if (activeView === "registry-v2") {
+      return <RegistryListPage />;
+    }
+
+    if (activeView === "iam-memberships" && isAdmin) {
+      return <AreaMembershipAdminPage />;
     }
 
     return (

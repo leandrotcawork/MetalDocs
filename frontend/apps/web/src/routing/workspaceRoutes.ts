@@ -35,8 +35,10 @@ export function viewFromPath(pathname: string): WorkspaceView {
   if (path.startsWith("/documents")) return "library";
   if (path.startsWith("/create")) return "create";
   if (path.startsWith("/content-builder")) return "content-builder";
+  if (path.startsWith("/registry-v2")) return "registry-v2";
   if (path.startsWith("/registry")) return "registry";
   if (path.startsWith("/notifications")) return "notifications";
+  if (path.startsWith("/admin/memberships")) return "iam-memberships";
   if (path.startsWith("/admin/taxonomy")) return "taxonomy-admin";
   if (path.startsWith("/admin")) return "admin";
   if (path.startsWith("/approvals")) return "approvals";
@@ -82,6 +84,10 @@ export function pathFromView(view: WorkspaceView): string {
       return "/templates-v2";
     case "documents-v2":
       return "/documents-v2/new";
+    case "registry-v2":
+      return "/registry-v2";
+    case "iam-memberships":
+      return "/admin/memberships";
     default:
       return "/";
   }
@@ -107,6 +113,8 @@ export function isPathForView(pathname: string, view: WorkspaceView): boolean {
   if (view === "operations") return path === "/" || path.startsWith("/operations");
   if (view === "templates-v2") return path === "/templates-v2" || path.startsWith("/templates-v2/");
   if (view === "documents-v2") return path === "/documents-v2" || path === "/documents-v2/new" || path.startsWith("/documents-v2/");
+  if (view === "registry-v2") return path.startsWith("/registry-v2");
+  if (view === "iam-memberships") return path.startsWith("/admin/memberships");
 
   return false;
 }

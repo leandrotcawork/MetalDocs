@@ -3,7 +3,7 @@ import { buildProfileAccordions } from "../features/documents/adapters/catalogSu
 import type { DocumentProfileItem, ProcessAreaItem, SearchDocumentItem } from "../lib.types";
 import styles from "./DocumentWorkspaceShell.module.css";
 
-export type WorkspaceView = "operations" | "approvals" | "audit" | "library" | "my-docs" | "recent" | "create" | "content-builder" | "registry" | "notifications" | "admin" | "taxonomy-admin" | "templates-v2" | "documents-v2";
+export type WorkspaceView = "operations" | "approvals" | "audit" | "library" | "my-docs" | "recent" | "create" | "content-builder" | "registry" | "notifications" | "admin" | "taxonomy-admin" | "templates-v2" | "documents-v2" | "registry-v2" | "iam-memberships";
 
 type WorkspaceShellProps = {
   userDisplayName: string;
@@ -146,6 +146,17 @@ function sections(props: WorkspaceShellProps): NavSection[] {
             </svg>
           ),
         },
+        {
+          key: "registry-v2" as WorkspaceView,
+          label: "Docs Controlados",
+          icon: (
+            <svg viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.4">
+              <path d="M3 2h6.5L12 4.5V13H3V2z" strokeLinejoin="round" />
+              <path d="M9.5 2v2.5H12" strokeLinejoin="round" />
+              <path d="M5 6h5M5 8.5h5M5 11h3" strokeLinecap="round" />
+            </svg>
+          ),
+        },
       ],
     },
   ];
@@ -172,6 +183,18 @@ function sections(props: WorkspaceShellProps): NavSection[] {
               <rect x="1.5" y="2.5" width="12" height="3" rx="1" />
               <rect x="1.5" y="7.5" width="8" height="2.5" rx="1" />
               <rect x="1.5" y="11.5" width="5" height="2" rx="1" />
+            </svg>
+          ),
+        },
+        {
+          key: "iam-memberships" as WorkspaceView,
+          label: "Memberships de Area",
+          icon: (
+            <svg viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.4">
+              <circle cx="5" cy="5" r="2" />
+              <circle cx="10.5" cy="5" r="2" />
+              <path d="M1 13c0-2.2 1.8-4 4-4s4 1.8 4 4" strokeLinecap="round" />
+              <path d="M8.5 9.5c.4-.3.9-.5 2-.5s2.5.9 3 3" strokeLinecap="round" />
             </svg>
           ),
         },
@@ -228,6 +251,10 @@ function activeTitle(activeView: WorkspaceView): string {
       return "Templates";
     case "documents-v2":
       return "Documents v2";
+    case "registry-v2":
+      return "Documentos Controlados";
+    case "iam-memberships":
+      return "Memberships de Area";
     default:
       return "Workspace";
   }

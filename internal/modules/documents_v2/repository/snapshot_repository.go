@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	"metaldocs/internal/modules/documents_v2/domain"
 )
@@ -73,4 +74,13 @@ func (r *SnapshotRepository) ReadSnapshot(ctx context.Context, tenantID, docID s
 		&s.BodyDocxS3Key,
 	)
 	return s, err
+}
+
+func (r *SnapshotRepository) WriteFreeze(ctx context.Context, tenant, docID string, valuesHash []byte, frozenAt time.Time) error {
+	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`
+        UPDATE %s
+           SET values_hash=$1, values_frozen_at=$2
+         WHERE tenant_id=$3 AND id=$4`, r.table("documents")),
+		valuesHash, frozenAt, tenant, docID)
+	return err
 }

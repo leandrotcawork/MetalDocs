@@ -57,6 +57,15 @@ Tracked out-of-band items found during Phase reviews. Not blockers; address oppo
 - **Duplicated snapshot call site**: `if s.snapshotSvc != nil` block copy-pasted in docgen/no-docgen branches of `Service.CreateDocument`. Extract helper.
 - **Double required-filter**: `parseRequiredPlaceholders` filters Required; `FillInRepository.SeedDefaults` also filters `!p.Required`. Redundant. Keep filter in service layer, drop repo-side check.
 
+## Phase 11 followups
+- **Tx threading deferred to Phase 16.1**: `WriteFreeze` and `WriteFinalDocx` still take no `*sql.Tx`. Phase 16.1 (DecisionService wiring) must extend both to accept an optional tx so signoff + freeze + final-docx write commit atomically. On fanout error today, values_hash persists without final_docx_s3_key — partial state acceptable only because re-Freeze is idempotent on values_hash.
+- **`containsStr` helper in `freeze_service_test.go` duplicates `strings.Contains`**: drop helper, import `strings`.
+- **`fakeFinalDocxWriter.err` branch skips `calls` increment**: misleading if a test asserts "called once despite error". Increment before returning err.
+- **Fanout `Client` drops server error-body on non-200** (`internal/modules/render/fanout/client.go:54-55`): `fmt.Errorf("fanout status %d", ...)` loses debugging detail. Read up to N bytes of body and include.
+- **No request timeout in `Client.Fanout`**: relies on caller's `http.Client` timeout. Phase 13 orchestration wiring must set an explicit client timeout.
+- **Internal auth for `/render/fanout`**: route is service-to-service and protected by `x-service-token` hook today. Decide if that's sufficient or if mTLS / IP allow-list is required before Phase 13 exposes it.
+- **Migration 0152 retroactive edit risk**: `content_hash BYTEA` was added by amending commit `c94d046` to the existing 0152 file (not a new 0153). Safe because branch is unmerged and no env has applied it — but if any dev already ran `migrate up` against 0152, they must drop/recreate the schema or we ship a 0153 patch. Verify before merging to main.
+
 ## From Phase 3 review
 - `ValidatePlaceholders` accreting responsibilities (~140 lines). Consider extracting `validateConstraints(p)` per-placeholder helper before Phase 4 adds more. Flag at Phase 4 entry.
 - Date comparison uses lexicographic string `>` — correct only for ISO-8601 `2006-01-02`. Add comment at compare site noting the invariant.

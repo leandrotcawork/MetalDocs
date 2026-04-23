@@ -19,6 +19,12 @@ const (
 	PHComputed PlaceholderType = "computed"
 )
 
+type VisibilityCondition struct {
+	PlaceholderID string `json:"placeholder_id"`
+	Op            string `json:"op"`
+	Value         any    `json:"value"`
+}
+
 type Placeholder struct {
 	ID       string          `json:"id"`
 	Label    string          `json:"label"`
@@ -26,6 +32,16 @@ type Placeholder struct {
 	Required bool            `json:"required"`
 	Default  any             `json:"default,omitempty"`
 	Options  []string        `json:"options,omitempty"`
+
+	Regex       *string              `json:"regex,omitempty"`
+	MinNumber   *float64             `json:"min_number,omitempty"`
+	MaxNumber   *float64             `json:"max_number,omitempty"`
+	MinDate     *string              `json:"min_date,omitempty"`
+	MaxDate     *string              `json:"max_date,omitempty"`
+	MaxLength   *int                 `json:"max_length,omitempty"`
+	VisibleIf   *VisibilityCondition `json:"visible_if,omitempty"`
+	Computed    bool                 `json:"computed,omitempty"`
+	ResolverKey *string              `json:"resolver_key,omitempty"`
 }
 
 type EditableZone struct {

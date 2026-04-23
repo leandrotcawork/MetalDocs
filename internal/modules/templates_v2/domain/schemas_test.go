@@ -1,6 +1,9 @@
 package domain
 
-import "testing"
+import (
+	"encoding/json"
+	"testing"
+)
 
 func TestPlaceholderType_AllConstants(t *testing.T) {
 	types := []PlaceholderType{PHText, PHDate, PHNumber, PHSelect, PHUser, PHPicture, PHComputed}
@@ -13,31 +16,30 @@ func TestPlaceholderType_AllConstants(t *testing.T) {
 }
 
 func TestPlaceholder_JSONRoundTrip_AllFields(t *testing.T) {
-	t.Skip("Task 1.2 - not yet implemented")
-	// regex := "^[A-Z]{3}-\\d{4}$"
-	// mn, mx := 0.0, 100.0
-	// maxLen := 120
-	// rkey := "doc_code"
-	// ph := Placeholder{
-	// 	ID: "p1", Label: "Doc Code", Type: PHText, Required: true,
-	// 	Regex: &regex, MaxLength: &maxLen, MinNumber: &mn, MaxNumber: &mx,
-	// 	VisibleIf: &VisibilityCondition{PlaceholderID: "p0", Op: "eq", Value: "x"},
-	// 	Computed: true, ResolverKey: &rkey,
-	// }
-	// b, err := json.Marshal(ph)
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
-	// var back Placeholder
-	// if err := json.Unmarshal(b, &back); err != nil {
-	// 	t.Fatal(err)
-	// }
-	// if back.ID != "p1" || !back.Computed || back.ResolverKey == nil || *back.ResolverKey != "doc_code" {
-	// 	t.Fatalf("round-trip mismatch: %+v", back)
-	// }
-	// if back.VisibleIf == nil || back.VisibleIf.Op != "eq" {
-	// 	t.Fatalf("visible_if lost: %+v", back.VisibleIf)
-	// }
+	regex := "^[A-Z]{3}-\\d{4}$"
+	mn, mx := 0.0, 100.0
+	maxLen := 120
+	rkey := "doc_code"
+	ph := Placeholder{
+		ID: "p1", Label: "Doc Code", Type: PHText, Required: true,
+		Regex: &regex, MaxLength: &maxLen, MinNumber: &mn, MaxNumber: &mx,
+		VisibleIf: &VisibilityCondition{PlaceholderID: "p0", Op: "eq", Value: "x"},
+		Computed: true, ResolverKey: &rkey,
+	}
+	b, err := json.Marshal(ph)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var back Placeholder
+	if err := json.Unmarshal(b, &back); err != nil {
+		t.Fatal(err)
+	}
+	if back.ID != "p1" || !back.Computed || back.ResolverKey == nil || *back.ResolverKey != "doc_code" {
+		t.Fatalf("round-trip mismatch: %+v", back)
+	}
+	if back.VisibleIf == nil || back.VisibleIf.Op != "eq" {
+		t.Fatalf("visible_if lost: %+v", back.VisibleIf)
+	}
 }
 
 func TestEditableZone_ContentPolicy_RoundTrip(t *testing.T) {

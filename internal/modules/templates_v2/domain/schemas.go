@@ -10,11 +10,13 @@ type MetadataSchema struct {
 type PlaceholderType string
 
 const (
-	PHText   PlaceholderType = "text"
-	PHDate   PlaceholderType = "date"
-	PHNumber PlaceholderType = "number"
-	PHSelect PlaceholderType = "select"
-	PHUser   PlaceholderType = "user"
+	PHText     PlaceholderType = "text"
+	PHDate     PlaceholderType = "date"
+	PHNumber   PlaceholderType = "number"
+	PHSelect   PlaceholderType = "select"
+	PHUser     PlaceholderType = "user"
+	PHPicture  PlaceholderType = "picture"
+	PHComputed PlaceholderType = "computed"
 )
 
 type Placeholder struct {

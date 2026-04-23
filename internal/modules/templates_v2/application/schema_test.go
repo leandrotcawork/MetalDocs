@@ -193,3 +193,13 @@ func TestUpdateSchemas_OptionsOnNonSelect(t *testing.T) {
 		t.Fatalf("expected options_allowed_only_for_select error, got %v", err)
 	}
 }
+
+func TestValidatePlaceholders_DuplicateID_Error(t *testing.T) {
+	err := application.ValidatePlaceholders([]domain.Placeholder{
+		{ID: "p1", Type: domain.PHText},
+		{ID: "p1", Type: domain.PHText},
+	})
+	if !errors.Is(err, domain.ErrDuplicatePlaceholderID) {
+		t.Fatalf("expected ErrDuplicatePlaceholderID, got %v", err)
+	}
+}

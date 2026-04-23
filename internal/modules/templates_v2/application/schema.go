@@ -28,13 +28,10 @@ func (s *Service) UpdateSchemas(ctx context.Context, cmd UpdateSchemasCmd) (*dom
 		return nil, domain.ErrStaleBase
 	}
 
-	placeholderIDs := map[string]struct{}{}
+	if err := ValidatePlaceholders(cmd.PlaceholderSchema); err != nil {
+		return nil, err
+	}
 	for _, p := range cmd.PlaceholderSchema {
-		if _, exists := placeholderIDs[p.ID]; exists {
-			return nil, fmt.Errorf("duplicate_placeholder_id: %s", p.ID)
-		}
-		placeholderIDs[p.ID] = struct{}{}
-
 		if p.Type == domain.PHSelect && len(p.Options) == 0 {
 			return nil, fmt.Errorf("select_placeholder_requires_options: %s", p.ID)
 		}
@@ -72,4 +69,18 @@ func (s *Service) UpdateSchemas(ctx context.Context, cmd UpdateSchemasCmd) (*dom
 	}
 
 	return version, nil
+}
+
+func ValidatePlaceholders(phs []domain.Placeholder) error {
+	seen := make(map[string]struct{}, len(phs))
+	for i, p := range phs {
+		if p.ID == "" {
+			return fmt.Errorf("placeholder[%d]: %w", i, domain.ErrPlaceholderIDEmpty)
+		}
+		if _, exists := seen[p.ID]; exists {
+			return fmt.Errorf("duplicate_placeholder_id: %s: %w", p.ID, domain.ErrDuplicatePlaceholderID)
+		}
+		seen[p.ID] = struct{}{}
+	}
+	return nil
 }

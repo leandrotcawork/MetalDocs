@@ -242,14 +242,16 @@ func (s *DecisionService) RecordSignoff(ctx context.Context, db *sql.DB, req Sig
 				_ = tx.Rollback()
 				return SignoffResult{}, fmt.Errorf("recordSignoff: complete instance: %w", err)
 			}
-			if s.freezeInvoker != nil {
-				if err := s.freezeInvoker.Freeze(ctx, tx, req.TenantID, instance.DocumentID, docapp.ApproverContext{
-					UserID:       req.ActorUserID,
-					Capabilities: req.Capabilities,
-				}); err != nil {
-					_ = tx.Rollback()
-					return SignoffResult{}, fmt.Errorf("recordSignoff: freeze: %w", err)
-				}
+			if s.freezeInvoker == nil {
+				_ = tx.Rollback()
+				return SignoffResult{}, fmt.Errorf("recordSignoff: freezeInvoker not configured")
+			}
+			if err := s.freezeInvoker.Freeze(ctx, tx, req.TenantID, instance.DocumentID, docapp.ApproverContext{
+				UserID:       req.ActorUserID,
+				Capabilities: req.Capabilities,
+			}); err != nil {
+				_ = tx.Rollback()
+				return SignoffResult{}, fmt.Errorf("recordSignoff: freeze: %w", err)
 			}
 			// Transition document under_review → approved.
 			if _, err := tx.ExecContext(ctx, `

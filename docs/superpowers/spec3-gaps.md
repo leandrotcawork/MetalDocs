@@ -2,6 +2,15 @@
 
 Tracked out-of-band items found during Phase reviews. Not blockers; address opportunistically.
 
+## From Phase 7 review
+- **`InputsHash` does not mix ResolverKey/Version**: `revision_number`, `effective_date`, `author`, `approvers`, `approval_date` all hash `{tenant_id, revision_id}` with identical bytes. If a consumer dedupes on `InputsHash` alone, it will collide across resolvers. Safer: include `resolver_key` + `resolver_version` in the hashed struct (or rely on the caller storing `(ResolverKey, ResolverVer, InputsHash)` as the composite cache key). Defer to Phase 9 freeze service contract — if freeze already stores the tuple, no fix needed.
+- **Shared `hashInputs` helper**: plan Phase 7 intro said "copy per resolver; no reuse". Codex extracted `hash.go`. Minor spec deviation, DRY win. Accepted.
+- **`TaxonomyReader` port is empty**: `type TaxonomyReader interface{}` defined in `resolver.go` but no v1 resolver uses it. Either delete (YAGNI) or leave as placeholder for Phase 5b / Phase 7b future resolvers. Tracking here so it isn't forgotten.
+- **Tests don't assert `ResolverKey` / `ResolverVer` on `ResolvedValue`**: current tests only check `Value` and `InputsHash`. Add one-line assertions per resolver test to catch accidental typos in the literal strings.
+- **Error-path not tested**: no test exercises reader returning an error (all fakes return `err: nil`). Low priority — the wiring is `if err != nil { return ..., err }` and trivially correct.
+- **Zero-time date formatting**: `EffectiveDateResolver` and `ApprovalDateResolver` emit `"0001-01-01"` when reader returns `time.Time{}`. Phase 5b may resolve these while still unset; decide there whether to short-circuit or emit empty string.
+- **Plan text expected `registry.Reader` / `v2docs.RevisionReader` / `workflow.Reader` / `taxonomy.Reader` imports**: overridden by Opus in Phase 7 brief to consumer-defined local ports. Document this deviation so Phase 9/10 wiring knows to build adapters in the wiring layer, not in the resolvers package.
+
 ## From Phase 6 review
 - **Stale spike test** (`src/editor-adapters/__spike__/eigenpal-zone-spike.test.ts`): intentionally RED, calls old `wrapZone("observations", [...])` two-arg signature. Header comment says "kept RED for documentation only". Decide: delete now that Phase 6 regression test covers the current API, or convert to GREEN against the bookmark-pair signature. Low priority.
 - **No pnpm-workspace.yaml**: monorepo uses `file:` deps across `frontend/apps/web`, `packages/editor-ui`, `packages/shared-tokens`. Works but fragile (any new `"*"` specifier in a package.json breaks fresh install). Consider adding `pnpm-workspace.yaml` + standardizing on `workspace:*` for true workspace semantics.

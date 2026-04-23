@@ -44,8 +44,17 @@ type Placeholder struct {
 	ResolverKey *string              `json:"resolver_key,omitempty"`
 }
 
+type ContentPolicy struct {
+	AllowTables   bool `json:"allow_tables"`
+	AllowImages   bool `json:"allow_images"`
+	AllowHeadings bool `json:"allow_headings"`
+	AllowLists    bool `json:"allow_lists"`
+}
+
 type EditableZone struct {
-	ID       string `json:"id"`
-	Label    string `json:"label"`
-	Required bool   `json:"required"`
+	ID            string        `json:"id"`
+	Label         string        `json:"label"`
+	Required      bool          `json:"required"`
+	ContentPolicy ContentPolicy `json:"content_policy"`
+	MaxLength     *int          `json:"max_length,omitempty"`
 }

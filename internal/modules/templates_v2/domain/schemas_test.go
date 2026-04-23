@@ -43,24 +43,23 @@ func TestPlaceholder_JSONRoundTrip_AllFields(t *testing.T) {
 }
 
 func TestEditableZone_ContentPolicy_RoundTrip(t *testing.T) {
-	t.Skip("Task 1.3 - not yet implemented")
-	// ml := 5000
-	// z := EditableZone{
-	// 	ID: "z1", Label: "Intro", Required: true,
-	// 	ContentPolicy: ContentPolicy{AllowTables: true, AllowImages: false, AllowHeadings: true, AllowLists: true},
-	// 	MaxLength:     &ml,
-	// }
-	// b, _ := json.Marshal(z)
-	// var back EditableZone
-	// if err := json.Unmarshal(b, &back); err != nil {
-	// 	t.Fatal(err)
-	// }
-	// if !back.ContentPolicy.AllowTables || back.ContentPolicy.AllowImages {
-	// 	t.Fatalf("content policy: %+v", back.ContentPolicy)
-	// }
-	// if back.MaxLength == nil || *back.MaxLength != 5000 {
-	// 	t.Fatalf("max_length: %v", back.MaxLength)
-	// }
+	ml := 5000
+	z := EditableZone{
+		ID: "z1", Label: "Intro", Required: true,
+		ContentPolicy: ContentPolicy{AllowTables: true, AllowImages: false, AllowHeadings: true, AllowLists: true},
+		MaxLength:     &ml,
+	}
+	b, _ := json.Marshal(z)
+	var back EditableZone
+	if err := json.Unmarshal(b, &back); err != nil {
+		t.Fatal(err)
+	}
+	if !back.ContentPolicy.AllowTables || back.ContentPolicy.AllowImages {
+		t.Fatalf("content policy: %+v", back.ContentPolicy)
+	}
+	if back.MaxLength == nil || *back.MaxLength != 5000 {
+		t.Fatalf("max_length: %v", back.MaxLength)
+	}
 }
 
 func TestCompositionConfig_RoundTrip(t *testing.T) {

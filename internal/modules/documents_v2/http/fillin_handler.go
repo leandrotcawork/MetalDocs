@@ -15,24 +15,8 @@ import (
 )
 
 type FillInService interface {
-	SetPlaceholderValue(ctx context.Context, req SetPlaceholderValueRequest) error
-	SetZoneContent(ctx context.Context, req SetZoneContentRequest) error
-}
-
-type SetPlaceholderValueRequest struct {
-	TenantID      string
-	ActorID       string
-	RevisionID    string
-	PlaceholderID string
-	Value         string
-}
-
-type SetZoneContentRequest struct {
-	TenantID     string
-	ActorID      string
-	RevisionID   string
-	ZoneID       string
-	ContentOOXML string
+	SetPlaceholderValue(ctx context.Context, tenantID, actorID, revisionID, placeholderID, value string) error
+	SetZoneContent(ctx context.Context, tenantID, actorID, revisionID, zoneID, ooxml string) error
 }
 
 type FillInHandler struct {
@@ -57,13 +41,13 @@ func (h *FillInHandler) PutPlaceholderValue(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	err := h.service.SetPlaceholderValue(r.Context(), SetPlaceholderValueRequest{
-		TenantID:      strings.TrimSpace(r.Header.Get("X-Tenant-ID")),
-		ActorID:       strings.TrimSpace(r.Header.Get("X-User-ID")),
-		RevisionID:    r.PathValue("id"),
-		PlaceholderID: r.PathValue("pid"),
-		Value:         body.Value,
-	})
+	err := h.service.SetPlaceholderValue(r.Context(),
+		strings.TrimSpace(r.Header.Get("X-Tenant-ID")),
+		strings.TrimSpace(r.Header.Get("X-User-ID")),
+		r.PathValue("id"),
+		r.PathValue("pid"),
+		body.Value,
+	)
 	if err != nil {
 		writeFillInError(w, requestID(r), err)
 		return
@@ -84,13 +68,13 @@ func (h *FillInHandler) PutZoneContent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.service.SetZoneContent(r.Context(), SetZoneContentRequest{
-		TenantID:     strings.TrimSpace(r.Header.Get("X-Tenant-ID")),
-		ActorID:      strings.TrimSpace(r.Header.Get("X-User-ID")),
-		RevisionID:   r.PathValue("id"),
-		ZoneID:       r.PathValue("zid"),
-		ContentOOXML: body.ContentOOXML,
-	})
+	err := h.service.SetZoneContent(r.Context(),
+		strings.TrimSpace(r.Header.Get("X-Tenant-ID")),
+		strings.TrimSpace(r.Header.Get("X-User-ID")),
+		r.PathValue("id"),
+		r.PathValue("zid"),
+		body.ContentOOXML,
+	)
 	if err != nil {
 		writeFillInError(w, requestID(r), err)
 		return

@@ -17,17 +17,17 @@ type fakeFillInService struct {
 	setPlaceholderErr error
 	setZoneErr        error
 
-	gotPlaceholderReq SetPlaceholderValueRequest
-	gotZoneReq        SetZoneContentRequest
+	gotTenantID, gotActorID, gotRevisionID, gotPlaceholderID, gotValue string
+	gotZoneID, gotOOXML                                                string
 }
 
-func (f *fakeFillInService) SetPlaceholderValue(_ context.Context, req SetPlaceholderValueRequest) error {
-	f.gotPlaceholderReq = req
+func (f *fakeFillInService) SetPlaceholderValue(_ context.Context, tenantID, actorID, revisionID, placeholderID, value string) error {
+	f.gotTenantID, f.gotActorID, f.gotRevisionID, f.gotPlaceholderID, f.gotValue = tenantID, actorID, revisionID, placeholderID, value
 	return f.setPlaceholderErr
 }
 
-func (f *fakeFillInService) SetZoneContent(_ context.Context, req SetZoneContentRequest) error {
-	f.gotZoneReq = req
+func (f *fakeFillInService) SetZoneContent(_ context.Context, tenantID, actorID, revisionID, zoneID, ooxml string) error {
+	f.gotTenantID, f.gotActorID, f.gotRevisionID, f.gotZoneID, f.gotOOXML = tenantID, actorID, revisionID, zoneID, ooxml
 	return f.setZoneErr
 }
 

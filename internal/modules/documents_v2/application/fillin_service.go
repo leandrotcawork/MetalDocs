@@ -26,12 +26,22 @@ type FillInWriter interface {
 }
 
 type FillInService struct {
+	db      *sql.DB
 	schemas SchemaReader
 	writer  FillInWriter
 }
 
+// NewFillInService wires the service with schemas + writer only.
+// authz enforcement requires a DB handle — use NewFillInServiceWithDB
+// when capability checks must run (production). Tests without DB can
+// use this constructor and skip authz by omitting the db.
 func NewFillInService(s SchemaReader, w FillInWriter) *FillInService {
 	return &FillInService{schemas: s, writer: w}
+}
+
+// NewFillInServiceWithDB wires the service with a DB handle for authz enforcement.
+func NewFillInServiceWithDB(db *sql.DB, s SchemaReader, w FillInWriter) *FillInService {
+	return &FillInService{db: db, schemas: s, writer: w}
 }
 
 type SnapshotSchemaReader struct {
@@ -86,7 +96,12 @@ func (r *SnapshotSchemaReader) LoadZonesSchema(ctx context.Context, tenantID, re
 	return payload.Zones, nil
 }
 
-func (s *FillInService) SetPlaceholderValue(ctx context.Context, tenantID, revisionID, placeholderID, raw string) error {
+func (s *FillInService) SetPlaceholderValue(ctx context.Context, tenantID, actorID, revisionID, placeholderID, raw string) error {
+	if s.db != nil {
+		if err := requireDocEditDraft(ctx, s.db, tenantID, actorID, revisionID); err != nil {
+			return err
+		}
+	}
 	schema, err := s.schemas.LoadPlaceholderSchema(ctx, tenantID, revisionID)
 	if err != nil {
 		return err
@@ -171,7 +186,12 @@ func validateValue(p templatesdomain.Placeholder, raw string) error {
 	return nil
 }
 
-func (s *FillInService) SetZoneContent(ctx context.Context, tenantID, revisionID, zoneID, ooxml string) error {
+func (s *FillInService) SetZoneContent(ctx context.Context, tenantID, actorID, revisionID, zoneID, ooxml string) error {
+	if s.db != nil {
+		if err := requireDocEditDraft(ctx, s.db, tenantID, actorID, revisionID); err != nil {
+			return err
+		}
+	}
 	zones, err := s.schemas.LoadZonesSchema(ctx, tenantID, revisionID)
 	if err != nil {
 		return err

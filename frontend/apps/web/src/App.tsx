@@ -26,6 +26,7 @@ import { TemplatesV2View, type TemplatesV2Route } from "./features/templates/v2/
 import { renderDocumentsV2View, routeFromPath as docsRouteFromPath, pathFromRoute as docsPathFromRoute, type DocumentsV2Route } from "./features/documents/v2/routes";
 import { RegistryListPage } from "./features/registry";
 import { AreaMembershipAdminPage } from "./features/iam/AreaMembershipAdminPage";
+import { InboxPage } from "./features/approval/pages/InboxPage";
 import { Toaster } from "sonner";
 
 type AppErrorBoundaryState = {
@@ -348,11 +349,15 @@ function AppContent() {
   }
 
   function renderWorkspaceView() {
-    if (activeView === "operations" || activeView === "approvals" || activeView === "audit") {
+    if (activeView === "approvals") {
+      return <InboxPage />;
+    }
+
+    if (activeView === "operations" || activeView === "audit") {
       return (
         <OperationsCenter
           loadState={loadState}
-          documents={activeView === "approvals" ? documents.filter((item) => item.status === "IN_REVIEW") : documents}
+          documents={documents}
           notifications={notifications}
           documentProfiles={documentProfiles}
           processAreas={processAreas}

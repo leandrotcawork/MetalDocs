@@ -15,7 +15,12 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 
 	// Read
 	mux.HandleFunc("GET /api/v2/approval/instances/{instance_id}", h.GetInstanceHandler)
+	mux.HandleFunc("GET /api/v2/documents/{id}/approval-instance", h.GetInstanceByDocumentHandler)
 	mux.HandleFunc("GET /api/v2/approval/inbox", h.InboxHandler)
+
+	// Doc-centric mutation shims
+	mux.HandleFunc("POST /api/v2/documents/{id}/signoff", h.SignoffByDocumentHandler)
+	mux.HandleFunc("POST /api/v2/documents/{id}/cancel", h.CancelByDocumentHandler)
 
 	// Route admin
 	mux.HandleFunc("POST /api/v2/approval/routes", h.CreateRouteHandler)

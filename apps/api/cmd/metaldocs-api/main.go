@@ -23,6 +23,7 @@ import (
 	auditdomain "metaldocs/internal/modules/audit/domain"
 	documents_v2 "metaldocs/internal/modules/documents_v2"
 	approvalapp "metaldocs/internal/modules/documents_v2/approval/application"
+	approvalhttp "metaldocs/internal/modules/documents_v2/approval/http"
 	approvalrepo "metaldocs/internal/modules/documents_v2/approval/repository"
 	"metaldocs/internal/modules/documents_v2/jobs"
 	"metaldocs/internal/modules/jobs/effective_date_publisher"
@@ -205,6 +206,8 @@ func main() {
 	approvalRepo := approvalrepo.NewPostgresApprovalRepository(deps.SQLDB)
 	approvalEmitter := approvalapp.NewSQLEmitter()
 	approvalServices := approvalapp.NewServices(approvalRepo, approvalEmitter, approvalapp.RealClock{})
+	approvalHandler := approvalhttp.NewHandler(approvalServices, deps.SQLDB)
+	approvalHandler.RegisterRoutes(mux)
 	e2etest.RegisterE2EHandlers(mux, deps.SQLDB, func(ctx context.Context) error {
 		_, err := approvalServices.Scheduler.RunDuePublishes(ctx, deps.SQLDB)
 		return err

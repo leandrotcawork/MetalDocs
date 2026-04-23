@@ -16,7 +16,13 @@ ALTER TABLE documents
     ADD COLUMN final_pdf_s3_key                TEXT,
     ADD COLUMN pdf_hash                        BYTEA,
     ADD COLUMN pdf_generated_at                TIMESTAMPTZ,
-    ADD COLUMN reconstruction_attempts         JSONB NOT NULL DEFAULT '[]'::jsonb;
+    ADD COLUMN reconstruction_attempts         JSONB NOT NULL DEFAULT '[]'::jsonb,
+    ADD CONSTRAINT documents_placeholder_schema_hash_len CHECK (placeholder_schema_hash IS NULL OR octet_length(placeholder_schema_hash) = 32),
+    ADD CONSTRAINT documents_composition_config_hash_len CHECK (composition_config_hash IS NULL OR octet_length(composition_config_hash) = 32),
+    ADD CONSTRAINT documents_body_docx_hash_len CHECK (body_docx_hash IS NULL OR octet_length(body_docx_hash) = 32),
+    ADD CONSTRAINT documents_values_hash_len CHECK (values_hash IS NULL OR octet_length(values_hash) = 32),
+    ADD CONSTRAINT documents_pdf_hash_len CHECK (pdf_hash IS NULL OR octet_length(pdf_hash) = 32),
+    ADD CONSTRAINT documents_reconstruction_attempts_is_array CHECK (jsonb_typeof(reconstruction_attempts) = 'array');
 
 CREATE OR REPLACE FUNCTION enforce_snapshot_on_submit() RETURNS trigger AS $$
 BEGIN
@@ -49,7 +55,7 @@ CREATE TABLE document_placeholder_values (
     source           TEXT        NOT NULL CHECK (source IN ('user','computed','default')),
     computed_from    TEXT,
     resolver_version INT,
-    inputs_hash      BYTEA,
+    inputs_hash      BYTEA CHECK (inputs_hash IS NULL OR octet_length(inputs_hash) = 32),
     validated_at     TIMESTAMPTZ,
     created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -57,20 +63,16 @@ CREATE TABLE document_placeholder_values (
     FOREIGN KEY (revision_id) REFERENCES documents(id) ON DELETE CASCADE
 );
 
-CREATE INDEX idx_dpv_revision ON document_placeholder_values(revision_id);
-
 CREATE TABLE document_editable_zone_content (
     tenant_id     UUID  NOT NULL,
     revision_id   UUID  NOT NULL,
     zone_id       TEXT  NOT NULL,
     content_ooxml TEXT  NOT NULL,
-    content_hash  BYTEA NOT NULL,
+    content_hash  BYTEA NOT NULL CHECK (octet_length(content_hash) = 32),
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (tenant_id, revision_id, zone_id),
     FOREIGN KEY (revision_id) REFERENCES documents(id) ON DELETE CASCADE
 );
-
-CREATE INDEX idx_dezc_revision ON document_editable_zone_content(revision_id);
 
 COMMIT;

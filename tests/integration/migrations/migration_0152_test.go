@@ -76,31 +76,40 @@ func TestMigration0152_Tables(t *testing.T) {
 }
 
 // TestMigration0152_SnapshotTrigger verifies enforce_snapshot_on_submit blocks
-// a transition to under_review when snapshot columns are NULL.
+// transitions to guarded statuses (under_review, approved, scheduled, published)
+// when snapshot columns are NULL.
 func TestMigration0152_SnapshotTrigger(t *testing.T) {
 	ctx := context.Background()
 	db, schema := testdb.Open(t)
 
 	tenantID := testdb.DeterministicID(t, "tenant")
-	docID := testdb.DeterministicID(t, "doc")
 	userID := testdb.DeterministicID(t, "user")
 
 	fixtures.SeedUser(t, ctx, db, schema, userID, "Snapshot Test User")
-	fixtures.SeedDocument(t, ctx, db, schema, docID, tenantID, userID)
 
-	_, err := db.ExecContext(ctx, fmt.Sprintf(`
-		UPDATE %s SET status = 'under_review'
-		 WHERE id = $1::uuid`,
-		testdb.Qualified(schema, "documents")),
-		docID,
-	)
-	if err == nil {
-		t.Fatal("expected error from enforce_snapshot_on_submit trigger, got nil")
-	}
-	if !strings.Contains(err.Error(), "snapshot columns required") &&
-		!strings.Contains(err.Error(), "check_violation") &&
-		!strings.Contains(err.Error(), "23514") {
-		t.Fatalf("unexpected error (wanted snapshot enforcement): %v", err)
+	guardedStatuses := []string{"under_review", "approved", "scheduled", "published"}
+
+	for _, status := range guardedStatuses {
+		t.Run(status, func(t *testing.T) {
+			docID := testdb.DeterministicID(t, fmt.Sprintf("doc-%s", status))
+			fixtures.SeedDocument(t, ctx, db, schema, docID, tenantID, userID)
+
+			_, err := db.ExecContext(ctx, fmt.Sprintf(`
+				UPDATE %s SET status = $2
+				 WHERE id = $1::uuid`,
+				testdb.Qualified(schema, "documents")),
+				docID,
+				status,
+			)
+			if err == nil {
+				t.Fatalf("expected error from enforce_snapshot_on_submit trigger for status=%s, got nil", status)
+			}
+			if !strings.Contains(err.Error(), "snapshot columns required") &&
+				!strings.Contains(err.Error(), "check_violation") &&
+				!strings.Contains(err.Error(), "23514") {
+				t.Fatalf("unexpected error for status=%s (wanted snapshot enforcement): %v", status, err)
+			}
+		})
 	}
 }
 

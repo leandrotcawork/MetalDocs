@@ -3,17 +3,35 @@ package application
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	v2dom "metaldocs/internal/modules/documents_v2/domain"
 	"metaldocs/internal/modules/documents_v2/repository"
+	"metaldocs/internal/modules/render/fanout"
 	"metaldocs/internal/modules/render/resolvers"
 	tmpldom "metaldocs/internal/modules/templates_v2/domain"
 )
 
 type FreezeFinalizer interface {
 	WriteFreeze(ctx context.Context, tenantID, revisionID string, valuesHash []byte, frozenAt time.Time) error
+}
+
+type SnapshotReader interface {
+	ReadSnapshot(ctx context.Context, tenantID, revisionID string) (v2dom.TemplateSnapshot, error)
+}
+
+type FinalDocxWriter interface {
+	WriteFinalDocx(ctx context.Context, tenantID, revisionID, s3Key string, contentHash []byte) error
+}
+
+type ZoneContentReader interface {
+	ListZoneContent(ctx context.Context, tenantID, revisionID string) ([]repository.ZoneContent, error)
+}
+
+type FanoutClient interface {
+	Fanout(ctx context.Context, req fanout.FanoutRequest) (fanout.FanoutResponse, error)
 }
 
 type FreezeService struct {
@@ -25,6 +43,10 @@ type FreezeService struct {
 	resolvers  *resolvers.Registry
 	finalize   FreezeFinalizer
 	resolveCtx ResolverContextBuilder
+	snapshots  SnapshotReader
+	finalDocx  FinalDocxWriter
+	zonesRead  ZoneContentReader
+	fanout     FanoutClient
 }
 
 type ResolverContextBuilder interface {
@@ -37,8 +59,15 @@ func NewFreezeService(
 		ListValues(ctx context.Context, tenantID, revisionID string) ([]repository.PlaceholderValue, error)
 	},
 	reg *resolvers.Registry, final FreezeFinalizer, ctxBuilder ResolverContextBuilder,
+	snapshots SnapshotReader, finalDocx FinalDocxWriter,
+	zonesRead ZoneContentReader, fanoutClient FanoutClient,
 ) *FreezeService {
-	return &FreezeService{schemas, values, valuesRead, reg, final, ctxBuilder}
+	return &FreezeService{
+		schemas: schemas, values: values, valuesRead: valuesRead,
+		resolvers: reg, finalize: final, resolveCtx: ctxBuilder,
+		snapshots: snapshots, finalDocx: finalDocx,
+		zonesRead: zonesRead, fanout: fanoutClient,
+	}
 }
 
 func (s *FreezeService) Freeze(ctx context.Context, tenantID, revisionID string) error {
@@ -109,6 +138,57 @@ func (s *FreezeService) Freeze(ctx context.Context, tenantID, revisionID string)
 		}
 	}
 	hashHex := v2dom.ComputeValuesHash(valMap)
-	hashBytes, _ := hex.DecodeString(hashHex)
-	return s.finalize.WriteFreeze(ctx, tenantID, revisionID, hashBytes, time.Now().UTC())
+	hashBytes, err := hex.DecodeString(hashHex)
+	if err != nil {
+		return fmt.Errorf("decode values_hash: %w", err)
+	}
+	if err := s.finalize.WriteFreeze(ctx, tenantID, revisionID, hashBytes, time.Now().UTC()); err != nil {
+		return err
+	}
+
+	snap, err := s.snapshots.ReadSnapshot(ctx, tenantID, revisionID)
+	if err != nil {
+		return fmt.Errorf("read snapshot: %w", err)
+	}
+	zones, err := s.zonesRead.ListZoneContent(ctx, tenantID, revisionID)
+	if err != nil {
+		return fmt.Errorf("list zones: %w", err)
+	}
+
+	placeholderVals := map[string]string{}
+	resolvedForSubblocks := map[string]any{}
+	for id, v := range valMap {
+		if sv, ok := v.(string); ok {
+			placeholderVals[id] = sv
+			resolvedForSubblocks[id] = sv
+		}
+	}
+	zoneMap := map[string]string{}
+	for _, z := range zones {
+		zoneMap[z.ZoneID] = z.ContentOOXML
+	}
+
+	composition := snap.CompositionJSON
+	if len(composition) == 0 {
+		composition = json.RawMessage(`{}`)
+	}
+
+	resp, err := s.fanout.Fanout(ctx, fanout.FanoutRequest{
+		TenantID:          tenantID,
+		RevisionID:        revisionID,
+		BodyDocxS3Key:     snap.BodyDocxS3Key,
+		PlaceholderValues: placeholderVals,
+		ZoneContent:       zoneMap,
+		Composition:       json.RawMessage(composition),
+		ResolvedValues:    resolvedForSubblocks,
+	})
+	if err != nil {
+		return fmt.Errorf("fanout: %w", err)
+	}
+
+	contentHashBytes, err := hex.DecodeString(resp.ContentHash)
+	if err != nil {
+		return fmt.Errorf("decode content_hash: %w", err)
+	}
+	return s.finalDocx.WriteFinalDocx(ctx, tenantID, revisionID, resp.FinalDocxS3Key, contentHashBytes)
 }

@@ -2,15 +2,68 @@ package application
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
 
 	v2dom "metaldocs/internal/modules/documents_v2/domain"
 	"metaldocs/internal/modules/documents_v2/repository"
+	"metaldocs/internal/modules/render/fanout"
 	"metaldocs/internal/modules/render/resolvers"
 	tmpldom "metaldocs/internal/modules/templates_v2/domain"
 )
+
+type fakeSnapshotReader struct {
+	snap v2dom.TemplateSnapshot
+	err  error
+}
+
+func (f fakeSnapshotReader) ReadSnapshot(_ context.Context, _, _ string) (v2dom.TemplateSnapshot, error) {
+	return f.snap, f.err
+}
+
+type fakeFinalDocxWriter struct {
+	calls int
+	key   string
+	hash  []byte
+	err   error
+}
+
+func (f *fakeFinalDocxWriter) WriteFinalDocx(_ context.Context, _, _, s3Key string, contentHash []byte) error {
+	if f.err != nil {
+		return f.err
+	}
+	f.calls++
+	f.key = s3Key
+	f.hash = append([]byte(nil), contentHash...)
+	return nil
+}
+
+type fakeZonesReader struct {
+	zones []repository.ZoneContent
+	err   error
+}
+
+func (f fakeZonesReader) ListZoneContent(_ context.Context, _, _ string) ([]repository.ZoneContent, error) {
+	return f.zones, f.err
+}
+
+type fakeFanoutClient struct {
+	req   fanout.FanoutRequest
+	resp  fanout.FanoutResponse
+	err   error
+	calls int
+}
+
+func (f *fakeFanoutClient) Fanout(_ context.Context, req fanout.FanoutRequest) (fanout.FanoutResponse, error) {
+	f.calls++
+	f.req = req
+	if f.err != nil {
+		return fanout.FanoutResponse{}, f.err
+	}
+	return f.resp, nil
+}
 
 type fakeValuesReader struct {
 	values []repository.PlaceholderValue
@@ -88,10 +141,44 @@ func TestFreezeService_Freeze_ValidatesResolvesHashesAndFinalizes(t *testing.T) 
 	reg.Register(fixedResolver{key: "doc_code", ver: 3, val: "DOC-001"})
 	finalize := &fakeFreezeFinalizer{}
 	ctxBuilder := &fakeResolverContextBuilder{input: resolvers.ResolveInput{TenantID: "t", RevisionID: "r"}}
-	svc := NewFreezeService(fakeSchemaReader{placeholders: schema}, writer, valuesRead, reg, finalize, ctxBuilder)
+	snapReader := fakeSnapshotReader{snap: v2dom.TemplateSnapshot{
+		BodyDocxS3Key:   "templates/body.docx",
+		CompositionJSON: []byte(`{"header_sub_blocks":["h1"]}`),
+	}}
+	finalDocx := &fakeFinalDocxWriter{}
+	zonesReader := fakeZonesReader{zones: []repository.ZoneContent{
+		{ZoneID: "intro", ContentOOXML: "<w:p>Z</w:p>"},
+	}}
+	fanoutClient := &fakeFanoutClient{resp: fanout.FanoutResponse{
+		ContentHash:    "deadbeef00000000000000000000000000000000000000000000000000000000",
+		FinalDocxS3Key: "final/r.docx",
+		UnreplacedVars: []string{},
+	}}
+	svc := NewFreezeService(fakeSchemaReader{placeholders: schema}, writer, valuesRead, reg, finalize, ctxBuilder, snapReader, finalDocx, zonesReader, fanoutClient)
 
 	if err := svc.Freeze(context.Background(), "t", "r"); err != nil {
 		t.Fatalf("Freeze error: %v", err)
+	}
+	if fanoutClient.calls != 1 {
+		t.Fatalf("expected 1 fanout call, got %d", fanoutClient.calls)
+	}
+	if fanoutClient.req.BodyDocxS3Key != "templates/body.docx" {
+		t.Errorf("fanout body key = %q", fanoutClient.req.BodyDocxS3Key)
+	}
+	if fanoutClient.req.PlaceholderValues["p_user"] != "user-value" || fanoutClient.req.PlaceholderValues["p_comp"] != "DOC-001" {
+		t.Errorf("fanout placeholder values = %+v", fanoutClient.req.PlaceholderValues)
+	}
+	if fanoutClient.req.ZoneContent["intro"] != "<w:p>Z</w:p>" {
+		t.Errorf("fanout zones = %+v", fanoutClient.req.ZoneContent)
+	}
+	if string(fanoutClient.req.Composition) != `{"header_sub_blocks":["h1"]}` {
+		t.Errorf("fanout composition = %s", fanoutClient.req.Composition)
+	}
+	if finalDocx.calls != 1 || finalDocx.key != "final/r.docx" {
+		t.Fatalf("WriteFinalDocx calls=%d key=%q", finalDocx.calls, finalDocx.key)
+	}
+	if bytesToHex(finalDocx.hash) != "deadbeef00000000000000000000000000000000000000000000000000000000" {
+		t.Errorf("content_hash = %s", bytesToHex(finalDocx.hash))
 	}
 	if ctxBuilder.calls != 1 {
 		t.Fatalf("expected context build call, got %d", ctxBuilder.calls)
@@ -127,6 +214,10 @@ func TestFreezeService_Freeze_MissingRequiredUserPlaceholder(t *testing.T) {
 		resolvers.NewRegistry(),
 		&fakeFreezeFinalizer{},
 		&fakeResolverContextBuilder{},
+		fakeSnapshotReader{},
+		&fakeFinalDocxWriter{},
+		fakeZonesReader{},
+		&fakeFanoutClient{},
 	)
 
 	err := svc.Freeze(context.Background(), "t", "r")
@@ -144,6 +235,10 @@ func TestFreezeService_Freeze_ComputedMissingResolverKey(t *testing.T) {
 		resolvers.NewRegistry(),
 		&fakeFreezeFinalizer{},
 		&fakeResolverContextBuilder{},
+		fakeSnapshotReader{},
+		&fakeFinalDocxWriter{},
+		fakeZonesReader{},
+		&fakeFanoutClient{},
 	)
 
 	err := svc.Freeze(context.Background(), "t", "r")
@@ -162,12 +257,86 @@ func TestFreezeService_Freeze_UnknownResolverKey(t *testing.T) {
 		resolvers.NewRegistry(),
 		&fakeFreezeFinalizer{},
 		&fakeResolverContextBuilder{},
+		fakeSnapshotReader{},
+		&fakeFinalDocxWriter{},
+		fakeZonesReader{},
+		&fakeFanoutClient{},
 	)
 
 	err := svc.Freeze(context.Background(), "t", "r")
 	if !errors.Is(err, tmpldom.ErrUnknownResolver) {
 		t.Fatalf("expected ErrUnknownResolver, got %v", err)
 	}
+}
+
+func TestFreezeService_Freeze_FanoutErrorSkipsFinalDocxWrite(t *testing.T) {
+	schema := []tmpldom.Placeholder{{ID: "p_user", Required: true}}
+	existing := []repository.PlaceholderValue{
+		{PlaceholderID: "p_user", ValueText: strPtr("value"), Source: "user"},
+	}
+	finalDocx := &fakeFinalDocxWriter{}
+	fanoutClient := &fakeFanoutClient{err: errors.New("docgen down")}
+	svc := NewFreezeService(
+		fakeSchemaReader{placeholders: schema},
+		&fakeFillInWriter{},
+		fakeValuesReader{values: existing},
+		resolvers.NewRegistry(),
+		&fakeFreezeFinalizer{},
+		&fakeResolverContextBuilder{},
+		fakeSnapshotReader{snap: v2dom.TemplateSnapshot{BodyDocxS3Key: "body", CompositionJSON: []byte(`{}`)}},
+		finalDocx,
+		fakeZonesReader{},
+		fanoutClient,
+	)
+
+	err := svc.Freeze(context.Background(), "t", "r")
+	if err == nil || !containsStr(err.Error(), "fanout") {
+		t.Fatalf("expected fanout error, got %v", err)
+	}
+	if finalDocx.calls != 0 {
+		t.Fatalf("WriteFinalDocx should not run on fanout error, got %d calls", finalDocx.calls)
+	}
+}
+
+func TestFreezeService_Freeze_DefaultsEmptyComposition(t *testing.T) {
+	schema := []tmpldom.Placeholder{{ID: "p_user", Required: true}}
+	existing := []repository.PlaceholderValue{
+		{PlaceholderID: "p_user", ValueText: strPtr("v"), Source: "user"},
+	}
+	fanoutClient := &fakeFanoutClient{resp: fanout.FanoutResponse{
+		ContentHash:    "aa" + "00000000000000000000000000000000000000000000000000000000000000",
+		FinalDocxS3Key: "out.docx",
+	}}
+	svc := NewFreezeService(
+		fakeSchemaReader{placeholders: schema},
+		&fakeFillInWriter{},
+		fakeValuesReader{values: existing},
+		resolvers.NewRegistry(),
+		&fakeFreezeFinalizer{},
+		&fakeResolverContextBuilder{},
+		fakeSnapshotReader{snap: v2dom.TemplateSnapshot{BodyDocxS3Key: "body"}},
+		&fakeFinalDocxWriter{},
+		fakeZonesReader{},
+		fanoutClient,
+	)
+
+	if err := svc.Freeze(context.Background(), "t", "r"); err != nil {
+		t.Fatalf("Freeze: %v", err)
+	}
+	if string(fanoutClient.req.Composition) != `{}` {
+		t.Fatalf("empty composition should default to {}, got %s", fanoutClient.req.Composition)
+	}
+	var raw json.RawMessage = fanoutClient.req.Composition
+	_ = raw
+}
+
+func containsStr(s, sub string) bool {
+	for i := 0; i+len(sub) <= len(s); i++ {
+		if s[i:i+len(sub)] == sub {
+			return true
+		}
+	}
+	return false
 }
 
 func strPtr(v string) *string { return &v }

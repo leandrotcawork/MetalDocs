@@ -108,5 +108,8 @@ func ValidatePlaceholders(phs []domain.Placeholder) error {
 			return fmt.Errorf("placeholder[%s] max_length must be positive: %w", p.ID, domain.ErrInvalidConstraint)
 		}
 	}
+	if err := DetectVisibilityCycle(phs); err != nil {
+		return err
+	}
 	return nil
 }

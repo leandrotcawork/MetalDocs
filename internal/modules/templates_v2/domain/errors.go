@@ -10,3 +10,4 @@ var ErrInvalidApprovalConfig = errors.New("templates_v2: invalid_approval_config
 var ErrPlaceholderIDEmpty = errors.New("placeholder id empty")
 var ErrDuplicatePlaceholderID = errors.New("duplicate placeholder id")
 var ErrInvalidConstraint = errors.New("invalid constraint")
+var ErrPlaceholderCycle = errors.New("placeholder visibility cycle")

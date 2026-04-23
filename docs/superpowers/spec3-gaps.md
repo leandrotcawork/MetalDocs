@@ -57,6 +57,14 @@ Tracked out-of-band items found during Phase reviews. Not blockers; address oppo
 - **Duplicated snapshot call site**: `if s.snapshotSvc != nil` block copy-pasted in docgen/no-docgen branches of `Service.CreateDocument`. Extract helper.
 - **Double required-filter**: `parseRequiredPlaceholders` filters Required; `FillInRepository.SeedDefaults` also filters `!p.Required`. Redundant. Keep filter in service layer, drop repo-side check.
 
+## Phase 12 followups
+- **Backend bus consumer missing**: Phase 11 Task 11.3 publishes to `docgen_v2_pdf`; no subscriber exists yet. `runPdfJob` (TS) is a pure function awaiting a caller. Land the subscriber (likely in `internal/platform/messaging` worker loop) in Phase 16 tenant wiring.
+- **Webhook + worker route wiring in main.go**: `PDFWebhookHandler.RegisterRoutes` and the bus-worker → `runPdfJob` bridge are not wired into any `main.go`. Address during Phase 16.
+- **Replay protection absent on webhook**: captured signed body can be re-submitted. Low risk because `WritePDF` is idempotent on (final_pdf_s3_key, pdf_hash, pdf_generated_at), but consider adding a timestamp-window check (reject bodies more than 5 min old) with a secondary `X-Docgen-Timestamp` header also covered by HMAC.
+- **Rename `writeFillInJSON` → `writeJSON`**: shared across `fillin_handler.go` and `pdf_webhook_handler.go`; name is misleading for PDF webhook. Rename when a third handler appears.
+- **Document HMAC contract**: add package doc comment specifying `X-Docgen-Signature` = `hex.EncodeToString(hmac_sha256(secret, raw_body))`.
+- **TS worker timeout**: `runPdfJob` relies on global `fetch` default — no explicit timeout. Add `AbortController` with configurable timeout from deps.
+
 ## Phase 11 followups
 - **Tx threading deferred to Phase 16.1**: `WriteFreeze` and `WriteFinalDocx` still take no `*sql.Tx`. Phase 16.1 (DecisionService wiring) must extend both to accept an optional tx so signoff + freeze + final-docx write commit atomically. On fanout error today, values_hash persists without final_docx_s3_key — partial state acceptable only because re-Freeze is idempotent on values_hash.
 - **`containsStr` helper in `freeze_service_test.go` duplicates `strings.Contains`**: drop helper, import `strings`.

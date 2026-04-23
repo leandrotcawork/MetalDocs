@@ -31,17 +31,16 @@ type FillInService struct {
 	writer  FillInWriter
 }
 
-// NewFillInService wires the service with schemas + writer only.
-// authz enforcement requires a DB handle — use NewFillInServiceWithDB
-// when capability checks must run (production). Tests without DB can
-// use this constructor and skip authz by omitting the db.
-func NewFillInService(s SchemaReader, w FillInWriter) *FillInService {
-	return &FillInService{schemas: s, writer: w}
+// NewFillInService wires the service with a DB handle for authz enforcement.
+// Production callers MUST use this constructor — it enforces doc.edit_draft capability.
+func NewFillInService(db *sql.DB, s SchemaReader, w FillInWriter) *FillInService {
+	return &FillInService{db: db, schemas: s, writer: w}
 }
 
-// NewFillInServiceWithDB wires the service with a DB handle for authz enforcement.
-func NewFillInServiceWithDB(db *sql.DB, s SchemaReader, w FillInWriter) *FillInService {
-	return &FillInService{db: db, schemas: s, writer: w}
+// NewFillInServiceNoAuthz is a TEST-ONLY constructor that skips capability checks.
+// Never use in production wiring — authz bypass is intentional and audited here.
+func NewFillInServiceNoAuthz(s SchemaReader, w FillInWriter) *FillInService {
+	return &FillInService{schemas: s, writer: w}
 }
 
 type SnapshotSchemaReader struct {

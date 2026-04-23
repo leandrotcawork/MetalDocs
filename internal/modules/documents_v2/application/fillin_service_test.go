@@ -55,7 +55,7 @@ func (f *fakeFillInWriter) UpsertZoneContent(_ context.Context, z repository.Zon
 func TestFillInService_ValueRejectedIfFailsRegex(t *testing.T) {
 	re := "^[A-Z]{3}$"
 	schema := []templatesdomain.Placeholder{{ID: "p1", Type: templatesdomain.PHText, Regex: &re}}
-	svc := NewFillInService(fakeSchemaReader{placeholders: schema}, &fakeFillInWriter{})
+	svc := NewFillInServiceNoAuthz(fakeSchemaReader{placeholders: schema}, &fakeFillInWriter{})
 	err := svc.SetPlaceholderValue(context.Background(), "tenant", "actor", "rev", "p1", "abc")
 	if !errors.Is(err, v2domain.ErrValidationFailed) {
 		t.Fatalf("got %v", err)
@@ -66,7 +66,7 @@ func TestFillInService_ValueAcceptedIfMatches(t *testing.T) {
 	re := "^[A-Z]{3}$"
 	schema := []templatesdomain.Placeholder{{ID: "p1", Type: templatesdomain.PHText, Regex: &re}}
 	writer := &fakeFillInWriter{}
-	svc := NewFillInService(fakeSchemaReader{placeholders: schema}, writer)
+	svc := NewFillInServiceNoAuthz(fakeSchemaReader{placeholders: schema}, writer)
 	if err := svc.SetPlaceholderValue(context.Background(), "tenant", "actor", "rev", "p1", "ABC"); err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +112,7 @@ func TestFillInService_SetPlaceholderValue_ValidationMatrix(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			writer := &fakeFillInWriter{}
-			svc := NewFillInService(fakeSchemaReader{placeholders: schema}, writer)
+			svc := NewFillInServiceNoAuthz(fakeSchemaReader{placeholders: schema}, writer)
 			err := svc.SetPlaceholderValue(context.Background(), "tenant", "actor", "rev", tc.placeholderID, tc.value)
 			if tc.wantErr {
 				if !errors.Is(err, v2domain.ErrValidationFailed) {
@@ -158,7 +158,7 @@ func TestFillInService_SetZoneContent_RejectsDisallowedContent(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			writer := &fakeFillInWriter{}
-			svc := NewFillInService(fakeSchemaReader{zones: zones}, writer)
+			svc := NewFillInServiceNoAuthz(fakeSchemaReader{zones: zones}, writer)
 			err := svc.SetZoneContent(context.Background(), "tenant", "actor", "rev", "z1", tc.value)
 			if !errors.Is(err, v2domain.ErrValidationFailed) {
 				t.Fatalf("expected ErrValidationFailed, got %v", err)
@@ -183,7 +183,7 @@ func TestFillInService_SetZoneContent_AcceptsAllowedContent(t *testing.T) {
 	}
 
 	writer := &fakeFillInWriter{}
-	svc := NewFillInService(fakeSchemaReader{zones: zones}, writer)
+	svc := NewFillInServiceNoAuthz(fakeSchemaReader{zones: zones}, writer)
 	if err := svc.SetZoneContent(context.Background(), "tenant", "actor", "rev", "z1", "<w:p>ok</w:p>"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -210,7 +210,7 @@ func TestFillInService_SetZoneContent_MaxLength(t *testing.T) {
 		},
 	}
 
-	svc := NewFillInService(fakeSchemaReader{zones: zones}, &fakeFillInWriter{})
+	svc := NewFillInServiceNoAuthz(fakeSchemaReader{zones: zones}, &fakeFillInWriter{})
 	err := svc.SetZoneContent(context.Background(), "tenant", "actor", "rev", "z1", "<w:p>long</w:p>")
 	if !errors.Is(err, v2domain.ErrValidationFailed) {
 		t.Fatalf("expected ErrValidationFailed, got %v", err)

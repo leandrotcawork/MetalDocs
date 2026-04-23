@@ -12,7 +12,9 @@ import (
 const goldenVectorA_input_tenant = "t-1"
 const goldenVectorA_input_doc = "doc-1"
 const goldenVectorA_input_rev = 1
+
 var goldenVectorA_input_form = map[string]any{"field": "value"}
+
 // SHA256 of: {"document_id":"doc-1","form_data":{"field":"value"},"revision_number":1,"tenant_id":"t-1"}
 const goldenVectorA_hash = "9cfc3bd1eead4a74ac69b82c7c0c93c21b19fa3c97e0deb1ed048c5f0ee56a01"
 
@@ -101,5 +103,31 @@ func TestComputeContentHashNilFormData(t *testing.T) {
 	_, err := ComputeContentHash(ContentHashInput{TenantID: "t", DocumentID: "d", RevisionNumber: 1, FormData: nil})
 	if err != nil {
 		t.Fatalf("nil form_data should be allowed: %v", err)
+	}
+}
+
+func TestComputeContentHashChangesWithValuesHash(t *testing.T) {
+	base := ContentHashInput{
+		TenantID:       "t",
+		DocumentID:     "d",
+		RevisionNumber: 1,
+		FormData:       map[string]any{"k": "v"},
+		ValuesHash:     "values-hash-a",
+		SchemaHash:     "schema-hash-a",
+	}
+	h1, err := ComputeContentHash(base)
+	if err != nil {
+		t.Fatalf("base hash: %v", err)
+	}
+
+	changed := base
+	changed.ValuesHash = "values-hash-b"
+	h2, err := ComputeContentHash(changed)
+	if err != nil {
+		t.Fatalf("changed hash: %v", err)
+	}
+
+	if h1 == h2 {
+		t.Fatal("expected different hash when values_hash changes")
 	}
 }

@@ -20,6 +20,8 @@ type ContentHashInput struct {
 	DocumentID     string         `json:"document_id"`
 	RevisionNumber int            `json:"revision_number"`
 	FormData       map[string]any `json:"form_data"`
+	ValuesHash     string         `json:"values_hash"`
+	SchemaHash     string         `json:"schema_hash"`
 }
 
 // ComputeContentHash returns the lowercase hex SHA-256 of the canonical JSON encoding.
@@ -40,6 +42,8 @@ func ComputeContentHash(input ContentHashInput) (string, error) {
 		"document_id":     input.DocumentID,
 		"revision_number": input.RevisionNumber,
 		"form_data":       input.FormData,
+		"values_hash":     input.ValuesHash,
+		"schema_hash":     input.SchemaHash,
 	})
 	if err != nil {
 		return "", fmt.Errorf("content hash: canonicalize: %w", err)

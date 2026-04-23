@@ -202,3 +202,53 @@ func (u *fakeUUID) New() string {
 	u.counter++
 	return fmt.Sprintf("id_%d", u.counter)
 }
+
+type fakeResolverRegistry struct {
+	known map[string]int
+}
+
+func (r fakeResolverRegistry) Known() map[string]int {
+	return r.known
+}
+
+type serviceOption func(*serviceOptions)
+
+type serviceOptions struct {
+	resolvers application.ResolverRegistryReader
+}
+
+func WithKnownResolvers(keys ...string) serviceOption {
+	return func(opts *serviceOptions) {
+		known := make(map[string]int, len(keys))
+		for i, key := range keys {
+			known[key] = i + 1
+		}
+		opts.resolvers = fakeResolverRegistry{known: known}
+	}
+}
+
+func newService(repo *fakeRepo, opts ...serviceOption) *application.Service {
+	options := serviceOptions{}
+	for _, opt := range opts {
+		opt(&options)
+	}
+	if options.resolvers != nil {
+		return application.New(repo, &fakePresigner{}, fakeClock{}, &fakeUUID{}, options.resolvers)
+	}
+	return application.New(repo, &fakePresigner{}, fakeClock{}, &fakeUUID{})
+}
+
+func updateCmdWithComputed(phID, resolverKey string) application.UpdateSchemasCmd {
+	return application.UpdateSchemasCmd{
+		TemplateID:    "tpl-1",
+		VersionNumber: 1,
+		PlaceholderSchema: []domain.Placeholder{
+			{
+				ID:          phID,
+				Type:        domain.PHComputed,
+				Computed:    true,
+				ResolverKey: &resolverKey,
+			},
+		},
+	}
+}

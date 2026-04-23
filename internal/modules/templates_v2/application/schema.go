@@ -33,6 +33,17 @@ func (s *Service) UpdateSchemas(ctx context.Context, cmd UpdateSchemasCmd) (*dom
 	if err := ValidatePlaceholders(cmd.PlaceholderSchema); err != nil {
 		return nil, err
 	}
+	if s.resolvers != nil {
+		knownResolvers := s.resolvers.Known()
+		for _, p := range cmd.PlaceholderSchema {
+			if p.ResolverKey == nil {
+				continue
+			}
+			if _, ok := knownResolvers[*p.ResolverKey]; !ok {
+				return nil, fmt.Errorf("placeholder[%s] resolver_key %q: %w", p.ID, *p.ResolverKey, domain.ErrUnknownResolver)
+			}
+		}
+	}
 	for _, p := range cmd.PlaceholderSchema {
 		if p.Type == domain.PHSelect && len(p.Options) == 0 {
 			return nil, fmt.Errorf("select_placeholder_requires_options: %s", p.ID)

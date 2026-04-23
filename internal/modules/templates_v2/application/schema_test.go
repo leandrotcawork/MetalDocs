@@ -244,3 +244,19 @@ func TestValidatePlaceholders_ComputedRequiresResolverKey(t *testing.T) {
 		t.Fatalf("expected ErrInvalidConstraint, got %v", err)
 	}
 }
+
+func TestUpdateSchemas_UnknownResolverKey_Error(t *testing.T) {
+	repo := newFakeRepo()
+	repo.versions["v1"] = &domain.TemplateVersion{
+		ID:            "v1",
+		TemplateID:    "tpl-1",
+		VersionNumber: 1,
+		Status:        domain.VersionStatusDraft,
+	}
+	svc := newService(repo, WithKnownResolvers("doc_code"))
+
+	_, err := svc.UpdateSchemas(context.Background(), updateCmdWithComputed("p1", "missing_resolver"))
+	if !errors.Is(err, domain.ErrUnknownResolver) {
+		t.Fatalf("expected ErrUnknownResolver, got %v", err)
+	}
+}

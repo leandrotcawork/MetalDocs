@@ -36,6 +36,7 @@ type Presigner interface {
 
 type Clock interface{ Now() time.Time }
 type UUIDGen interface{ New() string }
+type ResolverRegistryReader interface{ Known() map[string]int }
 
 type ListFilter struct {
 	TenantID         string

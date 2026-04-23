@@ -213,3 +213,25 @@ func TestValidatePlaceholders_InvalidRegex_Error(t *testing.T) {
 		t.Fatalf("expected ErrInvalidConstraint, got %v", err)
 	}
 }
+
+func TestValidatePlaceholders_NumberRangeInverted_Error(t *testing.T) {
+	min := 10.0
+	max := 5.0
+	err := application.ValidatePlaceholders([]domain.Placeholder{
+		{ID: "p1", Type: domain.PHNumber, MinNumber: &min, MaxNumber: &max},
+	})
+	if !errors.Is(err, domain.ErrInvalidConstraint) {
+		t.Fatalf("expected ErrInvalidConstraint, got %v", err)
+	}
+}
+
+func TestValidatePlaceholders_DateRangeInverted_Error(t *testing.T) {
+	minDate := "2026-05-02"
+	maxDate := "2026-04-01"
+	err := application.ValidatePlaceholders([]domain.Placeholder{
+		{ID: "p1", Type: domain.PHDate, MinDate: &minDate, MaxDate: &maxDate},
+	})
+	if !errors.Is(err, domain.ErrInvalidConstraint) {
+		t.Fatalf("expected ErrInvalidConstraint, got %v", err)
+	}
+}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"time"
 
 	"metaldocs/internal/modules/templates_v2/domain"
 )
@@ -86,6 +87,25 @@ func ValidatePlaceholders(phs []domain.Placeholder) error {
 			if _, err := regexp.Compile(*p.Regex); err != nil {
 				return fmt.Errorf("placeholder[%s] regex: %w", p.ID, domain.ErrInvalidConstraint)
 			}
+		}
+		if p.MinNumber != nil && p.MaxNumber != nil && *p.MinNumber > *p.MaxNumber {
+			return fmt.Errorf("placeholder[%s] min_number greater than max_number: %w", p.ID, domain.ErrInvalidConstraint)
+		}
+		if p.MinDate != nil {
+			if _, err := time.Parse("2006-01-02", *p.MinDate); err != nil {
+				return fmt.Errorf("placeholder[%s] min_date invalid: %w", p.ID, domain.ErrInvalidConstraint)
+			}
+		}
+		if p.MaxDate != nil {
+			if _, err := time.Parse("2006-01-02", *p.MaxDate); err != nil {
+				return fmt.Errorf("placeholder[%s] max_date invalid: %w", p.ID, domain.ErrInvalidConstraint)
+			}
+		}
+		if p.MinDate != nil && p.MaxDate != nil && *p.MinDate > *p.MaxDate {
+			return fmt.Errorf("placeholder[%s] min_date greater than max_date: %w", p.ID, domain.ErrInvalidConstraint)
+		}
+		if p.MaxLength != nil && *p.MaxLength <= 0 {
+			return fmt.Errorf("placeholder[%s] max_length must be positive: %w", p.ID, domain.ErrInvalidConstraint)
 		}
 	}
 	return nil

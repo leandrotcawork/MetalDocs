@@ -40,7 +40,10 @@ type pdfCompleteBody struct {
 	PDFGeneratedAt  string `json:"pdf_generated_at"`
 }
 
+const pdfWebhookMaxBytes = 64 << 10 // 64 KiB
+
 func (h *PDFWebhookHandler) HandlePDFComplete(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, pdfWebhookMaxBytes)
 	raw, err := io.ReadAll(r.Body)
 	if err != nil {
 		writeFillInJSON(w, http.StatusBadRequest, map[string]any{"error": "read_body"})
@@ -59,7 +62,7 @@ func (h *PDFWebhookHandler) HandlePDFComplete(w http.ResponseWriter, r *http.Req
 		writeFillInJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid_json"})
 		return
 	}
-	if strings.TrimSpace(body.TenantID) == "" || strings.TrimSpace(body.FinalPDFS3Key) == "" || body.PDFHash == "" {
+	if strings.TrimSpace(body.TenantID) == "" || strings.TrimSpace(body.FinalPDFS3Key) == "" || body.PDFHash == "" || body.PDFGeneratedAt == "" {
 		writeFillInJSON(w, http.StatusBadRequest, map[string]any{"error": "missing_fields"})
 		return
 	}
@@ -70,12 +73,12 @@ func (h *PDFWebhookHandler) HandlePDFComplete(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	generatedAt := time.Now().UTC()
-	if body.PDFGeneratedAt != "" {
-		if parsed, err := time.Parse(time.RFC3339, body.PDFGeneratedAt); err == nil {
-			generatedAt = parsed.UTC()
-		}
+	generatedAt, err := time.Parse(time.RFC3339, body.PDFGeneratedAt)
+	if err != nil {
+		writeFillInJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid_generated_at"})
+		return
 	}
+	generatedAt = generatedAt.UTC()
 
 	if err := h.writer.WritePDF(r.Context(), body.TenantID, r.PathValue("id"), body.FinalPDFS3Key, hashBytes, generatedAt); err != nil {
 		writeFillInJSON(w, http.StatusInternalServerError, map[string]any{"error": "persist_failed"})

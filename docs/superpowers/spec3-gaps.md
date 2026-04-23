@@ -7,6 +7,11 @@ Tracked out-of-band items found during Phase reviews. Not blockers; address oppo
 - Add godoc comments on exported Placeholder fields (Regex, MinNumber, etc.).
 - Wire-level test for `omitempty` behavior on new optional fields.
 
+## From Phase 5 review
+- **Authz coverage**: `requireDocEditDraft` wired in `FillInService.SetPlaceholderValue`/`SetZoneContent`. No integration test yet proves `authz.ErrCapabilityDenied` returns for user without `doc.edit_draft`. Add integration test that seeds `user_process_areas` with a role lacking `doc.edit_draft`, calls service, expects denial. Follow pattern of approval-module integration tests.
+- **Non-atomic authz+write**: authz tx separate from writer tx. Small race window if perms change mid-request. Acceptable for draft edits. Revisit if contention observed.
+- **Duplicated authz helpers**: `setAuthzGUC`/`loadDocumentAreaCode` now exist in both `approval/application` and `documents_v2/application`. Move to shared `internal/modules/iam/authz` package when third consumer appears.
+
 ## From Phase 4 review
 - **TX boundary (4.4)**: `SnapshotFromTemplate` runs after `repo.CreateDocument` commits. Failure leaves orphan document with NULL snapshot columns + leaked S3 tmp blob (cleanupKey already neutralized). Fix via threading `*sql.Tx` through `Repository.CreateDocument` OR add reconciliation/NOT NULL + rollback in Phase 5. Decide at Phase 5 entry.
 - **Partial-failure (4.5)**: `WriteSnapshot` + `SeedDefaults` not atomic with each other; no retry path. Idempotent seeder makes this recoverable on manual retry. Consider wrapping both in outer tx in Phase 5.

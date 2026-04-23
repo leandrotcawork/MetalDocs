@@ -2,6 +2,10 @@
 
 Tracked out-of-band items found during Phase reviews. Not blockers; address opportunistically.
 
+## From Phase 6 review
+- **Stale spike test** (`src/editor-adapters/__spike__/eigenpal-zone-spike.test.ts`): intentionally RED, calls old `wrapZone("observations", [...])` two-arg signature. Header comment says "kept RED for documentation only". Decide: delete now that Phase 6 regression test covers the current API, or convert to GREEN against the bookmark-pair signature. Low priority.
+- **No pnpm-workspace.yaml**: monorepo uses `file:` deps across `frontend/apps/web`, `packages/editor-ui`, `packages/shared-tokens`. Works but fragile (any new `"*"` specifier in a package.json breaks fresh install). Consider adding `pnpm-workspace.yaml` + standardizing on `workspace:*` for true workspace semantics.
+
 ## From Phase 1 review
 - `Placeholder.Computed *PHComputed` vs `Type == PHComputed` redundancy — consider single source of truth.
 - Add godoc comments on exported Placeholder fields (Regex, MinNumber, etc.).

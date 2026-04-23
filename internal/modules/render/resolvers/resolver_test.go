@@ -30,3 +30,16 @@ func TestResolver_InterfaceShape(t *testing.T) {
 		t.Fatalf("got %s", v.ResolverKey)
 	}
 }
+
+func TestRegistry_Known_ReturnsAllResolvers(t *testing.T) {
+	r := NewRegistry()
+	r.Register(fixedResolver{})
+
+	known := r.Known()
+	if len(known) != 1 {
+		t.Fatalf("expected 1 resolver, got %d", len(known))
+	}
+	if known["doc_code"] != 1 {
+		t.Fatalf("expected doc_code version 1, got %d", known["doc_code"])
+	}
+}

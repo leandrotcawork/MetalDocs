@@ -41,7 +41,7 @@ func TestSnapshotService_CopiesTemplateToRevision(t *testing.T) {
 	repo := repository.NewSnapshotRepositoryWithSchema(db, schema)
 	svc := application.NewSnapshotService(fakeTemplateReader{tmpl}, repo)
 
-	if err := svc.SnapshotFromTemplate(ctx, tenant, docID, "tmpl-1"); err != nil {
+	if err := svc.SnapshotFromTemplate(ctx, tenant, docID, docID, "tmpl-1"); err != nil {
 		t.Fatalf("SnapshotFromTemplate: %v", err)
 	}
 

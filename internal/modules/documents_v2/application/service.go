@@ -310,7 +310,7 @@ func (s *Service) CreateDocument(ctx context.Context, cmd CreateDocumentInput) (
 		}
 
 		if s.snapshotSvc != nil {
-			if err := s.snapshotSvc.SnapshotFromTemplate(ctx, cmd.TenantID, docID, resolvedTemplateVersionID); err != nil {
+			if err := s.snapshotSvc.SnapshotFromTemplate(ctx, cmd.TenantID, docID, revID, resolvedTemplateVersionID); err != nil {
 				return nil, fmt.Errorf("snapshot template: %w", err)
 			}
 		}
@@ -336,7 +336,7 @@ func (s *Service) CreateDocument(ctx context.Context, cmd CreateDocumentInput) (
 	}
 
 	if s.snapshotSvc != nil {
-		if err := s.snapshotSvc.SnapshotFromTemplate(ctx, cmd.TenantID, docID, resolvedTemplateVersionID); err != nil {
+		if err := s.snapshotSvc.SnapshotFromTemplate(ctx, cmd.TenantID, docID, revID, resolvedTemplateVersionID); err != nil {
 			return nil, fmt.Errorf("snapshot template: %w", err)
 		}
 	}

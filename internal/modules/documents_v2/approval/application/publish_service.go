@@ -68,6 +68,11 @@ func (s *PublishService) PublishApproved(ctx context.Context, db *sql.DB, req Pu
 		return PublishResult{}, ErrInstanceNotApproved
 	}
 
+	if err := setAuthzGUC(ctx, tx, req.TenantID, req.PublishedBy); err != nil {
+		_ = tx.Rollback()
+		return PublishResult{}, fmt.Errorf("publishApproved: %w", err)
+	}
+
 	areaCode, err := loadDocumentAreaCode(ctx, tx, req.TenantID, instance.DocumentID)
 	if err != nil {
 		_ = tx.Rollback()
@@ -78,16 +83,16 @@ func (s *PublishService) PublishApproved(ctx context.Context, db *sql.DB, req Pu
 		return PublishResult{}, err
 	}
 
-	// Step 3: OCC transition the document from "approved" to "published".
-	// Uses revision_version as the optimistic concurrency guard.
+	// Step 3: transition the document from "approved" to "published".
+	// Status check is the concurrency guard — atomic UPDATE catches any racing transition.
 	result, err := tx.ExecContext(ctx, `
 		UPDATE documents
-		   SET status = 'published'
-		 WHERE id             = $1
-		   AND tenant_id      = $2
-		   AND status         = 'approved'
-		   AND revision_version = $3`,
-		instance.DocumentID, req.TenantID, instance.RevisionVersion,
+		   SET status           = 'published',
+		       revision_version = revision_version + 1
+		 WHERE id        = $1
+		   AND tenant_id = $2
+		   AND status    = 'approved'`,
+		instance.DocumentID, req.TenantID,
 	)
 	if err != nil {
 		_ = tx.Rollback()
@@ -188,6 +193,11 @@ func (s *PublishService) SchedulePublish(ctx context.Context, db *sql.DB, req Sc
 	if instance.Status != domain.InstanceApproved {
 		_ = tx.Rollback()
 		return SchedulePublishResult{}, ErrInstanceNotApproved
+	}
+
+	if err := setAuthzGUC(ctx, tx, req.TenantID, req.ScheduledBy); err != nil {
+		_ = tx.Rollback()
+		return SchedulePublishResult{}, fmt.Errorf("schedulePublish: %w", err)
 	}
 
 	areaCode, err := loadDocumentAreaCode(ctx, tx, req.TenantID, instance.DocumentID)

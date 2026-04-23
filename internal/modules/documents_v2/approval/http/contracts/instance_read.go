@@ -1,12 +1,13 @@
 package contracts
 
 type InstanceResponse struct {
-	InstanceID  string          `json:"instance_id"`
+	ID          string          `json:"id"`
 	DocumentID  string          `json:"document_id"`
+	RouteID     string          `json:"route_id"`
 	TenantID    string          `json:"tenant_id"`
 	Status      string          `json:"status"`
 	SubmittedBy string          `json:"submitted_by"`
-	CreatedAt   string          `json:"created_at"`
+	SubmittedAt string          `json:"submitted_at"`
 	CompletedAt *string         `json:"completed_at,omitempty"`
 	Stages      []StageInstance `json:"stages"`
 	ETag        string          `json:"etag"`
@@ -29,18 +30,17 @@ type SignoffRecord struct {
 }
 
 type InboxItem struct {
-	InstanceID   string `json:"instance_id"`
-	DocumentID   string `json:"document_id"`
-	DocumentName string `json:"document_name"`
-	StageID      string `json:"stage_id"`
-	StageName    string `json:"stage_name"`
-	SubmittedBy  string `json:"submitted_by"`
-	CreatedAt    string `json:"created_at"`
-	AreaCode     string `json:"area_code"`
+	InstanceID     string `json:"instance_id"`
+	DocumentID     string `json:"document_id"`
+	DocumentTitle  string `json:"document_title"`
+	AreaCode       string `json:"area_code"`
+	SubmittedBy    string `json:"submitted_by"`
+	SubmittedAt    string `json:"submitted_at"`
+	StageLabel     string `json:"stage_label"`
+	QuorumProgress string `json:"quorum_progress"`
 }
 
 type InboxResponse struct {
-	Items      []InboxItem `json:"items"`
-	NextCursor string      `json:"next_cursor,omitempty"`
-	HasMore    bool        `json:"has_more"`
+	Items []InboxItem `json:"items"`
+	Total int         `json:"total"`
 }

@@ -72,6 +72,11 @@ func (s *SubmitService) SubmitRevisionForReview(ctx context.Context, db *sql.DB,
 
 	ctx = authz.WithCapCache(ctx)
 
+	if err := setAuthzGUC(ctx, tx, req.TenantID, req.SubmittedBy); err != nil {
+		_ = tx.Rollback()
+		return SubmitResult{}, fmt.Errorf("submit: %w", err)
+	}
+
 	areaCode, err := loadDocumentAreaCode(ctx, tx, req.TenantID, req.DocumentID)
 	if err != nil {
 		_ = tx.Rollback()
@@ -152,6 +157,26 @@ func (s *SubmitService) SubmitRevisionForReview(ctx context.Context, db *sql.DB,
 	if err := s.repo.InsertStageInstances(ctx, tx, stageInstances); err != nil {
 		_ = tx.Rollback()
 		return SubmitResult{}, fmt.Errorf("submit: %w", err)
+	}
+
+	// Step 8b: transition document draft → under_review.
+	res, err := tx.ExecContext(ctx, `
+		UPDATE documents
+		   SET status           = 'under_review',
+		       revision_version = revision_version + 1
+		 WHERE id               = $1
+		   AND tenant_id        = $2
+		   AND status           = 'draft'
+		   AND revision_version = $3`,
+		req.DocumentID, req.TenantID, req.RevisionVersion,
+	)
+	if err != nil {
+		_ = tx.Rollback()
+		return SubmitResult{}, fmt.Errorf("submit: transition document to under_review: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		_ = tx.Rollback()
+		return SubmitResult{}, repository.ErrStaleRevision
 	}
 
 	// Step 9: emit governance event.

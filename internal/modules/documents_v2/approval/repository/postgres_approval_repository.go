@@ -266,7 +266,9 @@ func (r *postgresApprovalRepository) LoadActiveInstanceByDocument(ctx context.Co
 		FROM approval_instances
 		WHERE document_v2_id = $1
 		  AND tenant_id = $2
-		  AND status = 'in_progress'`,
+		  AND status IN ('in_progress', 'approved')
+			ORDER BY submitted_at DESC
+			LIMIT 1`,
 		docID, tenantID,
 	).Scan(
 		&inst.ID, &inst.TenantID, &inst.DocumentID, &inst.RouteID, &inst.RouteVersionSnapshot,
@@ -366,8 +368,8 @@ func (r *postgresApprovalRepository) UpdateStageStatus(ctx context.Context, tx *
 	res, err := tx.ExecContext(ctx, `
 		UPDATE approval_stage_instances asi
 		SET status = $1,
-		    opened_at    = CASE WHEN $1 = 'active'    THEN now() ELSE opened_at    END,
-		    completed_at = CASE WHEN $1 IN ('completed','skipped','rejected_here') THEN now() ELSE completed_at END
+		    opened_at    = CASE WHEN $1 = 'active'    THEN now() ELSE asi.opened_at    END,
+		    completed_at = CASE WHEN $1 IN ('completed','skipped','rejected_here') THEN now() ELSE asi.completed_at END
 		FROM approval_instances ai
 		WHERE asi.id = $2
 		  AND asi.status = $3

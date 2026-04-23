@@ -46,6 +46,31 @@ func (s *ReadService) LoadInstance(ctx context.Context, db *sql.DB, tenantID, ac
 	return inst, nil
 }
 
+// LoadActiveInstanceByDocument finds the current active approval instance for a document.
+func (s *ReadService) LoadActiveInstanceByDocument(ctx context.Context, db *sql.DB, tenantID, documentID string) (*domain.Instance, error) {
+	tx, err := db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
+	if err != nil {
+		return nil, fmt.Errorf("read load instance by document: begin tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	inst, err := s.repo.LoadActiveInstanceByDocument(ctx, tx, tenantID, documentID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, repository.ErrNoActiveInstance
+		}
+		return nil, err
+	}
+	if inst == nil {
+		return nil, repository.ErrNoActiveInstance
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("read load instance by document: commit tx: %w", err)
+	}
+	return inst, nil
+}
+
 // ListPendingForActor lists inbox items pending actor action.
 func (s *ReadService) ListPendingForActor(ctx context.Context, db *sql.DB, tenantID, actorID string, areaCode string, limit, offset int) ([]domain.Instance, error) {
 	_ = ctx

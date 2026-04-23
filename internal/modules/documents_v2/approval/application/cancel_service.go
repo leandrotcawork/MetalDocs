@@ -92,6 +92,11 @@ func (s *CancelService) CancelInstance(ctx context.Context, db *sql.DB, in Cance
 			tx.Rollback()
 			return CancelResult{}, fmt.Errorf("cancel: set bypass_authz GUC: %w", err)
 		}
+	} else {
+		if err = setAuthzGUC(ctx, tx, in.TenantID, in.ActorUserID); err != nil {
+			tx.Rollback()
+			return CancelResult{}, fmt.Errorf("cancel: %w", err)
+		}
 	}
 
 	// Authz gate: require workflow.instance.cancel capability.

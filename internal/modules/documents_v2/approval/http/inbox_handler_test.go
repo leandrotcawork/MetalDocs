@@ -26,6 +26,10 @@ func (f *fakeReadServiceInbox) LoadInstance(_ context.Context, _ *sql.DB, _, _, 
 	return nil, nil
 }
 
+func (f *fakeReadServiceInbox) LoadActiveInstanceByDocument(_ context.Context, _ *sql.DB, _, _ string) (*domain.Instance, error) {
+	return nil, nil
+}
+
 func (f *fakeReadServiceInbox) ListPendingForActor(_ context.Context, _ *sql.DB, tenantID, actorID string, areaCode string, limit, offset int) ([]domain.Instance, error) {
 	f.called = true
 	f.gotTenantID = tenantID

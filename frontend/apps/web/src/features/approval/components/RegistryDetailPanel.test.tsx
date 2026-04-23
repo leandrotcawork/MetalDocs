@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import * as approvalApi from '../api/approvalApi';
@@ -92,7 +92,8 @@ describe('RegistryDetailPanel', () => {
 
     expect(await screen.findByRole('button', { name: 'Assinar' })).toBeTruthy();
     expect(screen.getByText(/Documento em revisão por/i)).toBeTruthy();
-    expect(screen.getByText('Documento em revisão — edição bloqueada')).toBeTruthy();
+    // Text may be split across child elements — use partial/regex match
+    expect(screen.getByText(/Documento em revisão — edição bloqueada/i)).toBeTruthy();
   });
 
   it('approved state shows "Publicar / Agendar" button', async () => {
@@ -150,13 +151,20 @@ describe('RegistryDetailPanel', () => {
       />,
     );
 
-    await screen.findByRole('button', { name: 'Submeter para revisão' });
-    vi.advanceTimersByTime(31_000);
-
-    await waitFor(() => {
-      expect(screen.getByText('Dados podem estar desatualizados.')).toBeTruthy();
-      expect(screen.getByRole('button', { name: 'Atualizar' })).toBeTruthy();
+    // findByRole polls via setTimeout — blocked by fake timers.
+    // Use queueMicrotask (not faked) inside act() to flush fetchInstance's promise chain.
+    await act(async () => {
+      await new Promise<void>((r) => queueMicrotask(r));
+      await new Promise<void>((r) => queueMicrotask(r));
     });
+    expect(screen.getByRole('button', { name: 'Submeter para revisão' })).toBeTruthy();
+
+    // Advance fake clock 31s: setInterval fires 31×, setNow updates, isStale becomes true.
+    await act(async () => {
+      vi.advanceTimersByTime(31_000);
+    });
+    expect(screen.getByText('Dados podem estar desatualizados.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Atualizar' })).toBeTruthy();
   });
 
   it('embedded timeline renders when instance present', async () => {

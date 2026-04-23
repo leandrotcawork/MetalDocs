@@ -33,6 +33,10 @@ func (f *fakeReadServiceGetInstance) LoadInstance(_ context.Context, _ *sql.DB, 
 	return f.instance, nil
 }
 
+func (f *fakeReadServiceGetInstance) LoadActiveInstanceByDocument(_ context.Context, _ *sql.DB, _, _ string) (*domain.Instance, error) {
+	return nil, nil
+}
+
 func (f *fakeReadServiceGetInstance) ListPendingForActor(_ context.Context, _ *sql.DB, _, _, _ string, _, _ int) ([]domain.Instance, error) {
 	return nil, nil
 }
@@ -77,11 +81,11 @@ func TestGetInstanceHandler_HappyPath(t *testing.T) {
 	if err := json.NewDecoder(rr.Body).Decode(&out); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if out.InstanceID != "inst-1" {
-		t.Fatalf("instance_id = %q, want %q", out.InstanceID, "inst-1")
+	if out.ID != "inst-1" {
+		t.Fatalf("id = %q, want %q", out.ID, "inst-1")
 	}
-	if out.CreatedAt != ts.Format(time.RFC3339) {
-		t.Fatalf("created_at = %q, want %q", out.CreatedAt, ts.Format(time.RFC3339))
+	if out.SubmittedAt != ts.Format(time.RFC3339) {
+		t.Fatalf("submitted_at = %q, want %q", out.SubmittedAt, ts.Format(time.RFC3339))
 	}
 	if out.ETag != "\"v1\"" {
 		t.Fatalf("etag body = %q, want %q", out.ETag, "\"v1\"")

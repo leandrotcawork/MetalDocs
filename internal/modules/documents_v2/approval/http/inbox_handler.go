@@ -47,8 +47,8 @@ func (h *Handler) InboxHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	WriteJSON(w, http.StatusOK, contracts.InboxResponse{
-		Items:   respItems,
-		HasMore: false,
+		Items: respItems,
+		Total: len(respItems),
 	})
 }
 
@@ -85,13 +85,12 @@ func mapInboxItem(inst domain.Instance) contracts.InboxItem {
 		InstanceID:  inst.ID,
 		DocumentID:  inst.DocumentID,
 		SubmittedBy: inst.SubmittedBy,
-		CreatedAt:   inst.SubmittedAt.UTC().Format(time.RFC3339),
+		SubmittedAt: inst.SubmittedAt.UTC().Format(time.RFC3339),
 	}
 
 	active := inst.Active()
 	if active != nil {
-		item.StageID = active.ID
-		item.StageName = active.NameSnapshot
+		item.StageLabel = active.NameSnapshot
 		item.AreaCode = active.AreaCodeSnapshot
 	}
 

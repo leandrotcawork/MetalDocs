@@ -36,6 +36,11 @@ type Document struct {
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
 	CreatedBy         string
+	// Bridge fields (Spec 1 — added as nullable for Phase A; NOT NULL enforced in migration 0129)
+	ControlledDocumentID    *string
+	ProfileCodeSnapshot     *string
+	ProcessAreaCodeSnapshot *string
+	// TemplateVersionID is already present above — now semantically write-once after this migration
 }
 
 type Session struct {

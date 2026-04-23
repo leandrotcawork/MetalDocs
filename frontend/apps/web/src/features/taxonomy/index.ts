@@ -1,0 +1,1 @@
+export { TaxonomyAdminPage } from "./TaxonomyAdminPage";

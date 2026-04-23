@@ -24,7 +24,7 @@ func (r *TemplatesV2TemplateReader) GetPublishedVersion(ctx context.Context, ten
 	err = r.db.QueryRowContext(ctx, `
 		SELECT tv.docx_storage_key
 		FROM templates_v2_template_version tv
-		JOIN templates_v2_templates tpl ON tpl.id = tv.template_id
+		JOIN templates_v2_template tpl ON tpl.id = tv.template_id
 		WHERE tv.id = $1
 		  AND tpl.tenant_id = $2
 		  AND tv.status = 'published'`,

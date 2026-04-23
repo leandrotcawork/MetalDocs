@@ -36,7 +36,7 @@ type fakeSvc struct {
 
 var _ httphandler.Service = (*fakeSvc)(nil)
 
-func (f *fakeSvc) CreateDocument(_ context.Context, _ application.CreateDocumentCmd) (*application.CreateDocumentResult, error) {
+func (f *fakeSvc) CreateDocument(_ context.Context, _ application.CreateDocumentInput) (*application.CreateDocumentResult, error) {
 	if f.createErr != nil {
 		return nil, f.createErr
 	}
@@ -163,7 +163,7 @@ func withAuthHeaders(req *http.Request, roles string) {
 func TestCreateDocument_Happy(t *testing.T) {
 	mux := newMux(t, &fakeSvc{})
 
-	body := []byte(`{"template_version_id":"tpl_ver_1","name":"Contract","form_data":{"a":1}}`)
+	body := []byte(`{"controlled_document_id":"cd_1","template_version_id":"tpl_ver_1","name":"Contract","form_data":{"a":1}}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v2/documents", bytes.NewReader(body))
 	withAuthHeaders(req, "document_filler")
 	rr := httptest.NewRecorder()
@@ -177,7 +177,7 @@ func TestCreateDocument_Happy(t *testing.T) {
 func TestCreateDocument_Forbidden(t *testing.T) {
 	mux := newMux(t, &fakeSvc{})
 
-	body := []byte(`{"template_version_id":"tpl_ver_1","name":"Contract","form_data":{"a":1}}`)
+	body := []byte(`{"controlled_document_id":"cd_1","template_version_id":"tpl_ver_1","name":"Contract","form_data":{"a":1}}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v2/documents", bytes.NewReader(body))
 	withAuthHeaders(req, "template_author")
 	rr := httptest.NewRecorder()

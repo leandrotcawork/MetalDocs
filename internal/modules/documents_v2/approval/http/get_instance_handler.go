@@ -45,14 +45,15 @@ func mapInstanceResponse(inst *domain.Instance) contracts.InstanceResponse {
 	}
 
 	return contracts.InstanceResponse{
-		InstanceID:  inst.ID,
+		ID:          inst.ID,
 		DocumentID:  inst.DocumentID,
+		RouteID:     inst.RouteID,
 		TenantID:    inst.TenantID,
 		Status:      string(inst.Status),
 		SubmittedBy: inst.SubmittedBy,
-		CreatedAt:   inst.SubmittedAt.UTC().Format(time.RFC3339),
+		SubmittedAt: inst.SubmittedAt.UTC().Format(time.RFC3339),
 		CompletedAt: completedAt,
-		Stages:      nil, // deferred - no stage list in domain.Instance yet
+		Stages:      nil,
 		ETag:        "\"v1\"",
 	}
 }

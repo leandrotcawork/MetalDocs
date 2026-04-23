@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -22,6 +23,7 @@ import (
 	auditdomain "metaldocs/internal/modules/audit/domain"
 	documents_v2 "metaldocs/internal/modules/documents_v2"
 	approvalapp "metaldocs/internal/modules/documents_v2/approval/application"
+	approvalhttp "metaldocs/internal/modules/documents_v2/approval/http"
 	approvalrepo "metaldocs/internal/modules/documents_v2/approval/repository"
 	"metaldocs/internal/modules/documents_v2/jobs"
 	"metaldocs/internal/modules/jobs/effective_date_publisher"
@@ -38,11 +40,18 @@ import (
 	authdelivery "metaldocs/internal/modules/auth/delivery/http"
 	iamapp "metaldocs/internal/modules/iam/application"
 	iamdelivery "metaldocs/internal/modules/iam/delivery/http"
+	iamdomain "metaldocs/internal/modules/iam/domain"
+	iampg "metaldocs/internal/modules/iam/infrastructure/postgres"
 	notificationapp "metaldocs/internal/modules/notifications/application"
 	notificationdelivery "metaldocs/internal/modules/notifications/delivery/http"
+	"metaldocs/internal/modules/registry"
+	registryinfra "metaldocs/internal/modules/registry/infrastructure"
 	searchapp "metaldocs/internal/modules/search/application"
 	searchdelivery "metaldocs/internal/modules/search/delivery/http"
 	searchdocs "metaldocs/internal/modules/search/infrastructure/documents"
+	"metaldocs/internal/modules/taxonomy"
+	taxonomyinfra "metaldocs/internal/modules/taxonomy/infrastructure"
+	taxonomydomain "metaldocs/internal/modules/taxonomy/domain"
 	workflowapp "metaldocs/internal/modules/workflow/application"
 	workflowdelivery "metaldocs/internal/modules/workflow/delivery/http"
 	"metaldocs/internal/platform/authn"
@@ -141,9 +150,34 @@ func main() {
 	workflowHandler.RegisterRoutes(mux)
 	iamAdminHandler.RegisterRoutes(mux)
 
+	taxonomyModule := taxonomy.New(taxonomy.Dependencies{
+		DB:         deps.SQLDB,
+		TplChecker: taxonomyinfra.NewTemplateVersionChecker(deps.SQLDB),
+	})
+	taxonomyModule.RegisterRoutes(mux)
+
+	registryModule := registry.New(registry.Dependencies{
+		DB:     deps.SQLDB,
+		Logger: slog.Default(),
+	})
+	registryModule.RegisterRoutes(mux)
+	if deps.SQLDB != nil {
+		if err := registryModule.RunStartupMigrations(context.Background(), deps.SQLDB, slog.Default()); err != nil {
+			log.Printf("registry startup migration failed: %v", err)
+		}
+	}
+
+	var membershipService *iamapp.AreaMembershipService
+	if deps.SQLDB != nil {
+		membershipService = iamapp.NewAreaMembershipService(iampg.NewUserAreaRepository(deps.SQLDB), nil)
+	}
+	iamdelivery.NewMembershipHandler(membershipService).RegisterRoutes(mux)
+
 	// Legacy templates module routes removed — templates_v2 owns /api/v2/templates/*
 
 	docPresigner := objectstore.NewDocumentPresigner(deps.MinioClient, deps.MinioBucket, 15*time.Minute, 25*1024*1024)
+	cdRepo := registryinfra.NewPostgresControlledDocumentRepository(deps.SQLDB)
+	profileRepo := taxonomyinfra.NewProfileRepository(deps.SQLDB)
 	docDeps := documents_v2.Dependencies{
 		DB:      deps.SQLDB,
 		Docgen:  nil,
@@ -152,9 +186,12 @@ func main() {
 			docgenv2.NewTemplateReader(deps.SQLDB, deps.MinioClient, deps.MinioBucket),
 			docgenv2.NewTemplatesV2TemplateReader(deps.SQLDB),
 		),
-		FormVal:       formval.NewGojsonschema(),
-		Audit:         newDocumentsV2AuditAdapter(deps.AuditWriter),
-		ExportPresign: docPresigner,
+		FormVal:         formval.NewGojsonschema(),
+		Audit:           newDocumentsV2AuditAdapter(deps.AuditWriter),
+		ExportPresign:   docPresigner,
+		RegistryReader:  cdRepo,
+		AuthzChecker:    permissiveAuthzChecker{},
+		ProfileDefaults: &profileDefaultsAdapter{profileRepo: profileRepo},
 	}
 	if deps.DocgenV2Client != nil {
 		docDeps.ExportDocgen = deps.DocgenV2Client
@@ -169,6 +206,8 @@ func main() {
 	approvalRepo := approvalrepo.NewPostgresApprovalRepository(deps.SQLDB)
 	approvalEmitter := approvalapp.NewSQLEmitter()
 	approvalServices := approvalapp.NewServices(approvalRepo, approvalEmitter, approvalapp.RealClock{})
+	approvalHandler := approvalhttp.NewHandler(approvalServices, deps.SQLDB)
+	approvalHandler.RegisterRoutes(mux)
 	e2etest.RegisterE2EHandlers(mux, deps.SQLDB, func(ctx context.Context) error {
 		_, err := approvalServices.Scheduler.RunDuePublishes(ctx, deps.SQLDB)
 		return err
@@ -318,4 +357,30 @@ func schedulerLeaderID() string {
 		hostname = "unknown"
 	}
 	return fmt.Sprintf("%s:%d", hostname, os.Getpid())
+}
+
+// permissiveAuthzChecker always grants access (dev/MVP only — IAM area check not yet enforced).
+type permissiveAuthzChecker struct{}
+
+func (permissiveAuthzChecker) Check(_ context.Context, _, _ string, _ iamdomain.Capability, _ iamapp.ResourceCtx) error {
+	return nil
+}
+
+// profileDefaultsAdapter bridges taxonomy ProfileRepository → documents_v2 ProfileDefaultTemplateReader.
+type profileDefaultsAdapter struct {
+	profileRepo interface {
+		GetByCode(ctx context.Context, tenantID, code string) (*taxonomydomain.DocumentProfile, error)
+	}
+}
+
+func (a *profileDefaultsAdapter) GetDefaultTemplateVersionID(ctx context.Context, tenantID, profileCode string) (*string, *string, error) {
+	profile, err := a.profileRepo.GetByCode(ctx, tenantID, profileCode)
+	if err != nil {
+		return nil, nil, err
+	}
+	if profile.DefaultTemplateVersionID == nil {
+		return nil, nil, nil
+	}
+	status := "published"
+	return profile.DefaultTemplateVersionID, &status, nil
 }

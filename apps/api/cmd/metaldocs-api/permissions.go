@@ -167,6 +167,37 @@ func newPermissionResolver() iamdelivery.PermissionResolver {
 				return iamdomain.PermDocumentRead, true
 			}
 		}
+		if strings.HasPrefix(path, "/api/v2/taxonomy/profiles") {
+			switch method {
+			case http.MethodGet:
+				return iamdomain.PermDocumentRead, true
+			case http.MethodPost, http.MethodPut, http.MethodDelete:
+				return iamdomain.PermIAMManageRoles, true
+			}
+		}
+		if strings.HasPrefix(path, "/api/v2/taxonomy/areas") {
+			switch method {
+			case http.MethodGet:
+				return iamdomain.PermDocumentRead, true
+			case http.MethodPost, http.MethodPut, http.MethodDelete:
+				return iamdomain.PermIAMManageRoles, true
+			}
+		}
+		if strings.HasPrefix(path, "/api/v2/controlled-documents") {
+			switch {
+			case method == http.MethodGet:
+				return iamdomain.PermDocumentRead, true
+			case method == http.MethodPost && path == "/api/v2/controlled-documents":
+				return iamdomain.PermDocumentCreate, true
+			case method == http.MethodPut && strings.HasSuffix(path, "/obsolete"):
+				return iamdomain.PermDocumentEdit, true
+			case method == http.MethodPut && strings.HasSuffix(path, "/supersede"):
+				return iamdomain.PermDocumentEdit, true
+			}
+		}
+		if strings.HasPrefix(path, "/api/v2/iam/area-memberships") {
+			return iamdomain.PermIAMManageRoles, true
+		}
 		if method == http.MethodGet && path == "/api/v2/signed" {
 			return iamdomain.PermTemplateView, true
 		}

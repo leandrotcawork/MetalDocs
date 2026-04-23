@@ -13,6 +13,7 @@ ALTER TABLE documents
     ADD COLUMN values_frozen_at                TIMESTAMPTZ,
     ADD COLUMN values_hash                     BYTEA,
     ADD COLUMN final_docx_s3_key               TEXT,
+    ADD COLUMN content_hash                    BYTEA,
     ADD COLUMN final_pdf_s3_key                TEXT,
     ADD COLUMN pdf_hash                        BYTEA,
     ADD COLUMN pdf_generated_at                TIMESTAMPTZ,
@@ -21,6 +22,7 @@ ALTER TABLE documents
     ADD CONSTRAINT documents_composition_config_hash_len CHECK (composition_config_hash IS NULL OR octet_length(composition_config_hash) = 32),
     ADD CONSTRAINT documents_body_docx_hash_len CHECK (body_docx_hash IS NULL OR octet_length(body_docx_hash) = 32),
     ADD CONSTRAINT documents_values_hash_len CHECK (values_hash IS NULL OR octet_length(values_hash) = 32),
+    ADD CONSTRAINT documents_content_hash_len CHECK (content_hash IS NULL OR octet_length(content_hash) = 32),
     ADD CONSTRAINT documents_pdf_hash_len CHECK (pdf_hash IS NULL OR octet_length(pdf_hash) = 32),
     ADD CONSTRAINT documents_reconstruction_attempts_is_array CHECK (jsonb_typeof(reconstruction_attempts) = 'array');
 

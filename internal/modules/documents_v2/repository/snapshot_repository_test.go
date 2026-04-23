@@ -81,3 +81,38 @@ func TestSnapshotRepository_WriteFreeze_PersistsHashAndFrozenAt(t *testing.T) {
 		t.Fatalf("values_frozen_at mismatch: got %v want %v", gotFrozenAt, frozenAt)
 	}
 }
+
+func TestSnapshotRepository_WriteFinalDocx_PersistsKeyAndContentHash(t *testing.T) {
+	ctx := context.Background()
+	db, schema := testdb.Open(t)
+
+	docID, tenant := testdb.InsertDraftDocument(t, db, schema, snapshotTestTenantID)
+	repo := repository.NewSnapshotRepositoryWithSchema(db, schema)
+
+	contentHash, err := hex.DecodeString("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+	if err != nil {
+		t.Fatalf("decode hash: %v", err)
+	}
+	s3Key := "final/doc.docx"
+
+	if err := repo.WriteFinalDocx(ctx, tenant, docID, s3Key, contentHash); err != nil {
+		t.Fatalf("WriteFinalDocx: %v", err)
+	}
+
+	var gotKey string
+	var gotHash []byte
+	if err := db.QueryRowContext(ctx, `
+		SELECT coalesce(final_docx_s3_key, ''), content_hash
+		  FROM `+`"`+schema+`"`+`.documents
+		 WHERE tenant_id=$1::uuid AND id=$2::uuid`,
+		tenant, docID,
+	).Scan(&gotKey, &gotHash); err != nil {
+		t.Fatalf("read final columns: %v", err)
+	}
+	if gotKey != s3Key {
+		t.Fatalf("final_docx_s3_key mismatch: got %q want %q", gotKey, s3Key)
+	}
+	if hex.EncodeToString(gotHash) != hex.EncodeToString(contentHash) {
+		t.Fatalf("content_hash mismatch: got %x want %x", gotHash, contentHash)
+	}
+}

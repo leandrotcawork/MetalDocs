@@ -84,3 +84,13 @@ func (r *SnapshotRepository) WriteFreeze(ctx context.Context, tenant, docID stri
 		valuesHash, frozenAt, tenant, docID)
 	return err
 }
+
+// WriteFinalDocx persists the fanout output pointer and content hash onto a document.
+func (r *SnapshotRepository) WriteFinalDocx(ctx context.Context, tenant, docID, s3Key string, contentHash []byte) error {
+	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`
+        UPDATE %s
+           SET final_docx_s3_key=$1, content_hash=$2
+         WHERE tenant_id=$3::uuid AND id=$4::uuid`, r.table("documents")),
+		s3Key, contentHash, tenant, docID)
+	return err
+}

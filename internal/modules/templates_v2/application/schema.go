@@ -107,6 +107,9 @@ func ValidatePlaceholders(phs []domain.Placeholder) error {
 		if p.MaxLength != nil && *p.MaxLength <= 0 {
 			return fmt.Errorf("placeholder[%s] max_length must be positive: %w", p.ID, domain.ErrInvalidConstraint)
 		}
+		if p.Computed && (p.ResolverKey == nil || *p.ResolverKey == "") {
+			return fmt.Errorf("placeholder[%s] computed requires resolver_key: %w", p.ID, domain.ErrInvalidConstraint)
+		}
 	}
 	if err := DetectVisibilityCycle(phs); err != nil {
 		return err

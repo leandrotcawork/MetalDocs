@@ -235,3 +235,12 @@ func TestValidatePlaceholders_DateRangeInverted_Error(t *testing.T) {
 		t.Fatalf("expected ErrInvalidConstraint, got %v", err)
 	}
 }
+
+func TestValidatePlaceholders_ComputedRequiresResolverKey(t *testing.T) {
+	err := application.ValidatePlaceholders([]domain.Placeholder{
+		{ID: "p1", Type: domain.PHComputed, Computed: true},
+	})
+	if !errors.Is(err, domain.ErrInvalidConstraint) {
+		t.Fatalf("expected ErrInvalidConstraint, got %v", err)
+	}
+}

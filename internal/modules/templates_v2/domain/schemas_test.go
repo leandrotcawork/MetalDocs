@@ -63,23 +63,22 @@ func TestEditableZone_ContentPolicy_RoundTrip(t *testing.T) {
 }
 
 func TestCompositionConfig_RoundTrip(t *testing.T) {
-	t.Skip("Task 1.4 - not yet implemented")
-	// c := CompositionConfig{
-	// 	HeaderSubBlocks: []string{"doc_header_standard"},
-	// 	FooterSubBlocks: []string{"footer_page_numbers", "footer_controlled_copy_notice"},
-	// 	SubBlockParams: map[string]map[string]any{
-	// 		"doc_header_standard": {"show_logo": true},
-	// 	},
-	// }
-	// b, _ := json.Marshal(c)
-	// var back CompositionConfig
-	// if err := json.Unmarshal(b, &back); err != nil {
-	// 	t.Fatal(err)
-	// }
-	// if len(back.FooterSubBlocks) != 2 {
-	// 	t.Fatalf("footer: %+v", back.FooterSubBlocks)
-	// }
-	// if back.SubBlockParams["doc_header_standard"]["show_logo"] != true {
-	// 	t.Fatalf("params lost: %+v", back.SubBlockParams)
-	// }
+	c := CompositionConfig{
+		HeaderSubBlocks: []string{"doc_header_standard"},
+		FooterSubBlocks: []string{"footer_page_numbers", "footer_controlled_copy_notice"},
+		SubBlockParams: map[string]map[string]any{
+			"doc_header_standard": {"show_logo": true},
+		},
+	}
+	b, _ := json.Marshal(c)
+	var back CompositionConfig
+	if err := json.Unmarshal(b, &back); err != nil {
+		t.Fatal(err)
+	}
+	if len(back.FooterSubBlocks) != 2 {
+		t.Fatalf("footer: %+v", back.FooterSubBlocks)
+	}
+	if back.SubBlockParams["doc_header_standard"]["show_logo"] != true {
+		t.Fatalf("params lost: %+v", back.SubBlockParams)
+	}
 }

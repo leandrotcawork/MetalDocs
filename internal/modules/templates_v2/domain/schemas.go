@@ -58,3 +58,9 @@ type EditableZone struct {
 	ContentPolicy ContentPolicy `json:"content_policy"`
 	MaxLength     *int          `json:"max_length,omitempty"`
 }
+
+type CompositionConfig struct {
+	HeaderSubBlocks []string                       `json:"header_sub_blocks"`
+	FooterSubBlocks []string                       `json:"footer_sub_blocks"`
+	SubBlockParams  map[string]map[string]any      `json:"sub_block_params"`
+}

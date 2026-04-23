@@ -104,3 +104,14 @@ func (r *SnapshotRepository) WritePDF(ctx context.Context, tenant, docID, s3Key 
 		s3Key, pdfHash, generatedAt, tenant, docID)
 	return err
 }
+
+// AppendReconstruction appends a forensic attempt entry onto documents.reconstruction_attempts.
+// Never touches final_docx_s3_key or content_hash.
+func (r *SnapshotRepository) AppendReconstruction(ctx context.Context, tenant, docID string, entry []byte) error {
+	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`
+        UPDATE %s
+           SET reconstruction_attempts = reconstruction_attempts || $1::jsonb
+         WHERE tenant_id=$2::uuid AND id=$3::uuid`, r.table("documents")),
+		entry, tenant, docID)
+	return err
+}

@@ -44,6 +44,11 @@ func (s *SupersedeService) PublishSuperseding(ctx context.Context, db *sql.DB, r
 		return SupersedeResult{}, fmt.Errorf("publishSuperseding: begin tx: %w", err)
 	}
 
+	if err := setAuthzGUC(ctx, tx, req.TenantID, req.SupersededBy); err != nil {
+		_ = tx.Rollback()
+		return SupersedeResult{}, fmt.Errorf("publishSuperseding: %w", err)
+	}
+
 	areaCode, err := loadDocumentAreaCode(ctx, tx, req.TenantID, req.NewDocumentID)
 	if err != nil {
 		_ = tx.Rollback()

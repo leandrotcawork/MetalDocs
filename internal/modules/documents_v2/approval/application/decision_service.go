@@ -67,6 +67,11 @@ func (s *DecisionService) RecordSignoff(ctx context.Context, db *sql.DB, req Sig
 		return SignoffResult{}, fmt.Errorf("recordSignoff: begin tx: %w", err)
 	}
 
+	if err := setAuthzGUC(ctx, tx, req.TenantID, req.ActorUserID); err != nil {
+		_ = tx.Rollback()
+		return SignoffResult{}, fmt.Errorf("recordSignoff: %w", err)
+	}
+
 	// Step 4: load the approval instance (FOR UPDATE via LoadInstance).
 	instance, err := s.repo.LoadInstance(ctx, tx, req.TenantID, req.InstanceID)
 	if err != nil {
@@ -205,6 +210,19 @@ func (s *DecisionService) RecordSignoff(ctx context.Context, db *sql.DB, req Sig
 				domain.InstanceApproved, domain.InstanceInProgress, &now); err != nil {
 				_ = tx.Rollback()
 				return SignoffResult{}, fmt.Errorf("recordSignoff: complete instance: %w", err)
+			}
+			// Transition document under_review → approved.
+			if _, err := tx.ExecContext(ctx, `
+				UPDATE documents
+				   SET status           = 'approved',
+				       revision_version = revision_version + 1
+				 WHERE id        = $1
+				   AND tenant_id = $2
+				   AND status    = 'under_review'`,
+				instance.DocumentID, req.TenantID,
+			); err != nil {
+				_ = tx.Rollback()
+				return SignoffResult{}, fmt.Errorf("recordSignoff: approve document: %w", err)
 			}
 			result.InstanceApproved = true
 		} else {

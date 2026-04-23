@@ -203,3 +203,13 @@ func TestValidatePlaceholders_DuplicateID_Error(t *testing.T) {
 		t.Fatalf("expected ErrDuplicatePlaceholderID, got %v", err)
 	}
 }
+
+func TestValidatePlaceholders_InvalidRegex_Error(t *testing.T) {
+	regex := "["
+	err := application.ValidatePlaceholders([]domain.Placeholder{
+		{ID: "p1", Type: domain.PHText, Regex: &regex},
+	})
+	if !errors.Is(err, domain.ErrInvalidConstraint) {
+		t.Fatalf("expected ErrInvalidConstraint, got %v", err)
+	}
+}

@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"fmt"
+	"regexp"
 
 	"metaldocs/internal/modules/templates_v2/domain"
 )
@@ -81,6 +82,11 @@ func ValidatePlaceholders(phs []domain.Placeholder) error {
 			return fmt.Errorf("duplicate_placeholder_id: %s: %w", p.ID, domain.ErrDuplicatePlaceholderID)
 		}
 		seen[p.ID] = struct{}{}
+		if p.Regex != nil {
+			if _, err := regexp.Compile(*p.Regex); err != nil {
+				return fmt.Errorf("placeholder[%s] regex: %w", p.ID, domain.ErrInvalidConstraint)
+			}
+		}
 	}
 	return nil
 }

@@ -94,3 +94,13 @@ func (r *SnapshotRepository) WriteFinalDocx(ctx context.Context, tenant, docID, 
 		s3Key, contentHash, tenant, docID)
 	return err
 }
+
+// WritePDF persists the rendered PDF pointer, hash, and generation timestamp.
+func (r *SnapshotRepository) WritePDF(ctx context.Context, tenant, docID, s3Key string, pdfHash []byte, generatedAt time.Time) error {
+	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`
+        UPDATE %s
+           SET final_pdf_s3_key=$1, pdf_hash=$2, pdf_generated_at=$3
+         WHERE tenant_id=$4::uuid AND id=$5::uuid`, r.table("documents")),
+		s3Key, pdfHash, generatedAt, tenant, docID)
+	return err
+}

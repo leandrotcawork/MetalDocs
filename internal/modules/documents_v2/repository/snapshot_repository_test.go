@@ -116,3 +116,43 @@ func TestSnapshotRepository_WriteFinalDocx_PersistsKeyAndContentHash(t *testing.
 		t.Fatalf("content_hash mismatch: got %x want %x", gotHash, contentHash)
 	}
 }
+
+func TestSnapshotRepository_WritePDF_PersistsAllColumns(t *testing.T) {
+	ctx := context.Background()
+	db, schema := testdb.Open(t)
+
+	docID, tenant := testdb.InsertDraftDocument(t, db, schema, snapshotTestTenantID)
+	repo := repository.NewSnapshotRepositoryWithSchema(db, schema)
+
+	pdfHash, err := hex.DecodeString("cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc")
+	if err != nil {
+		t.Fatalf("decode hash: %v", err)
+	}
+	pdfKey := "final/doc.pdf"
+	generated := time.Date(2026, 4, 23, 19, 0, 0, 0, time.UTC)
+
+	if err := repo.WritePDF(ctx, tenant, docID, pdfKey, pdfHash, generated); err != nil {
+		t.Fatalf("WritePDF: %v", err)
+	}
+
+	var gotKey string
+	var gotHash []byte
+	var gotAt *time.Time
+	if err := db.QueryRowContext(ctx, `
+		SELECT coalesce(final_pdf_s3_key,''), pdf_hash, pdf_generated_at
+		  FROM `+`"`+schema+`"`+`.documents
+		 WHERE tenant_id=$1::uuid AND id=$2::uuid`,
+		tenant, docID,
+	).Scan(&gotKey, &gotHash, &gotAt); err != nil {
+		t.Fatalf("read pdf columns: %v", err)
+	}
+	if gotKey != pdfKey {
+		t.Fatalf("final_pdf_s3_key mismatch: got %q want %q", gotKey, pdfKey)
+	}
+	if hex.EncodeToString(gotHash) != hex.EncodeToString(pdfHash) {
+		t.Fatalf("pdf_hash mismatch: got %x want %x", gotHash, pdfHash)
+	}
+	if gotAt == nil || !gotAt.Equal(generated) {
+		t.Fatalf("pdf_generated_at mismatch: got %v want %v", gotAt, generated)
+	}
+}

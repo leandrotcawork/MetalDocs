@@ -32,6 +32,7 @@ type Document struct {
 	CurrentRevisionID string
 	ActiveSessionID   string
 	FinalizedAt       *time.Time
+	ValuesFrozenAt    *time.Time
 	ArchivedAt        *time.Time
 	CreatedAt         time.Time
 	UpdatedAt         time.Time

@@ -15,12 +15,13 @@ import (
 )
 
 type fakeSnapshotReader struct {
-	snap v2dom.TemplateSnapshot
-	err  error
+	snap           v2dom.TemplateSnapshot
+	valuesFrozenAt *time.Time
+	err            error
 }
 
-func (f fakeSnapshotReader) ReadSnapshot(_ context.Context, _, _ string) (v2dom.TemplateSnapshot, error) {
-	return f.snap, f.err
+func (f fakeSnapshotReader) ReadSnapshotWithFreezeAt(_ context.Context, _, _ string, _ ...repository.DBTX) (v2dom.TemplateSnapshot, *time.Time, error) {
+	return f.snap, f.valuesFrozenAt, f.err
 }
 
 type fakeFinalDocxWriter struct {
@@ -30,7 +31,7 @@ type fakeFinalDocxWriter struct {
 	err   error
 }
 
-func (f *fakeFinalDocxWriter) WriteFinalDocx(_ context.Context, _, _, s3Key string, contentHash []byte) error {
+func (f *fakeFinalDocxWriter) WriteFinalDocx(_ context.Context, _, _, s3Key string, contentHash []byte, _ ...repository.DBTX) error {
 	if f.err != nil {
 		return f.err
 	}
@@ -68,9 +69,11 @@ func (f *fakeFanoutClient) Fanout(_ context.Context, req fanout.FanoutRequest) (
 type fakeValuesReader struct {
 	values []repository.PlaceholderValue
 	err    error
+	calls  int
 }
 
-func (f fakeValuesReader) ListValues(_ context.Context, _, _ string) ([]repository.PlaceholderValue, error) {
+func (f *fakeValuesReader) ListValues(_ context.Context, _, _ string) ([]repository.PlaceholderValue, error) {
+	f.calls++
 	if f.err != nil {
 		return nil, f.err
 	}
@@ -84,7 +87,7 @@ type fakeFreezeFinalizer struct {
 	err   error
 }
 
-func (f *fakeFreezeFinalizer) WriteFreeze(_ context.Context, _, _ string, valuesHash []byte, frozenAt time.Time) error {
+func (f *fakeFreezeFinalizer) WriteFreeze(_ context.Context, _, _ string, valuesHash []byte, frozenAt time.Time, _ ...repository.DBTX) error {
 	if f.err != nil {
 		return f.err
 	}
@@ -100,7 +103,7 @@ type fakeResolverContextBuilder struct {
 	calls int
 }
 
-func (f *fakeResolverContextBuilder) Build(_ context.Context, _, _ string) (resolvers.ResolveInput, error) {
+func (f *fakeResolverContextBuilder) Build(_ context.Context, _, _ string, _ ApproverContext) (resolvers.ResolveInput, error) {
 	if f.err != nil {
 		return resolvers.ResolveInput{}, f.err
 	}
@@ -114,7 +117,7 @@ type fixedResolver struct {
 	val any
 }
 
-func (r fixedResolver) Key() string { return r.key }
+func (r fixedResolver) Key() string  { return r.key }
 func (r fixedResolver) Version() int { return r.ver }
 func (r fixedResolver) Resolve(_ context.Context, _ resolvers.ResolveInput) (resolvers.ResolvedValue, error) {
 	return resolvers.ResolvedValue{
@@ -136,7 +139,7 @@ func TestFreezeService_Freeze_ValidatesResolvesHashesAndFinalizes(t *testing.T) 
 		{PlaceholderID: "p_user", ValueText: strPtr("user-value"), Source: "user"},
 	}
 	writer := &fakeFillInWriter{}
-	valuesRead := fakeValuesReader{values: existing}
+	valuesRead := &fakeValuesReader{values: existing}
 	reg := resolvers.NewRegistry()
 	reg.Register(fixedResolver{key: "doc_code", ver: 3, val: "DOC-001"})
 	finalize := &fakeFreezeFinalizer{}
@@ -156,7 +159,7 @@ func TestFreezeService_Freeze_ValidatesResolvesHashesAndFinalizes(t *testing.T) 
 	}}
 	svc := NewFreezeService(fakeSchemaReader{placeholders: schema}, writer, valuesRead, reg, finalize, ctxBuilder, snapReader, finalDocx, zonesReader, fanoutClient)
 
-	if err := svc.Freeze(context.Background(), "t", "r"); err != nil {
+	if err := svc.Freeze(context.Background(), nil, "t", "r", ApproverContext{}); err != nil {
 		t.Fatalf("Freeze error: %v", err)
 	}
 	if fanoutClient.calls != 1 {
@@ -210,7 +213,7 @@ func TestFreezeService_Freeze_MissingRequiredUserPlaceholder(t *testing.T) {
 	svc := NewFreezeService(
 		fakeSchemaReader{placeholders: schema},
 		&fakeFillInWriter{},
-		fakeValuesReader{},
+		&fakeValuesReader{},
 		resolvers.NewRegistry(),
 		&fakeFreezeFinalizer{},
 		&fakeResolverContextBuilder{},
@@ -220,7 +223,7 @@ func TestFreezeService_Freeze_MissingRequiredUserPlaceholder(t *testing.T) {
 		&fakeFanoutClient{},
 	)
 
-	err := svc.Freeze(context.Background(), "t", "r")
+	err := svc.Freeze(context.Background(), nil, "t", "r", ApproverContext{})
 	if !errors.Is(err, v2dom.ErrValidationFailed) {
 		t.Fatalf("expected ErrValidationFailed, got %v", err)
 	}
@@ -231,7 +234,7 @@ func TestFreezeService_Freeze_ComputedMissingResolverKey(t *testing.T) {
 	svc := NewFreezeService(
 		fakeSchemaReader{placeholders: schema},
 		&fakeFillInWriter{},
-		fakeValuesReader{},
+		&fakeValuesReader{},
 		resolvers.NewRegistry(),
 		&fakeFreezeFinalizer{},
 		&fakeResolverContextBuilder{},
@@ -241,7 +244,7 @@ func TestFreezeService_Freeze_ComputedMissingResolverKey(t *testing.T) {
 		&fakeFanoutClient{},
 	)
 
-	err := svc.Freeze(context.Background(), "t", "r")
+	err := svc.Freeze(context.Background(), nil, "t", "r", ApproverContext{})
 	if !errors.Is(err, v2dom.ErrValidationFailed) {
 		t.Fatalf("expected ErrValidationFailed, got %v", err)
 	}
@@ -253,7 +256,7 @@ func TestFreezeService_Freeze_UnknownResolverKey(t *testing.T) {
 	svc := NewFreezeService(
 		fakeSchemaReader{placeholders: schema},
 		&fakeFillInWriter{},
-		fakeValuesReader{},
+		&fakeValuesReader{},
 		resolvers.NewRegistry(),
 		&fakeFreezeFinalizer{},
 		&fakeResolverContextBuilder{},
@@ -263,7 +266,7 @@ func TestFreezeService_Freeze_UnknownResolverKey(t *testing.T) {
 		&fakeFanoutClient{},
 	)
 
-	err := svc.Freeze(context.Background(), "t", "r")
+	err := svc.Freeze(context.Background(), nil, "t", "r", ApproverContext{})
 	if !errors.Is(err, tmpldom.ErrUnknownResolver) {
 		t.Fatalf("expected ErrUnknownResolver, got %v", err)
 	}
@@ -279,7 +282,7 @@ func TestFreezeService_Freeze_FanoutErrorSkipsFinalDocxWrite(t *testing.T) {
 	svc := NewFreezeService(
 		fakeSchemaReader{placeholders: schema},
 		&fakeFillInWriter{},
-		fakeValuesReader{values: existing},
+		&fakeValuesReader{values: existing},
 		resolvers.NewRegistry(),
 		&fakeFreezeFinalizer{},
 		&fakeResolverContextBuilder{},
@@ -289,7 +292,7 @@ func TestFreezeService_Freeze_FanoutErrorSkipsFinalDocxWrite(t *testing.T) {
 		fanoutClient,
 	)
 
-	err := svc.Freeze(context.Background(), "t", "r")
+	err := svc.Freeze(context.Background(), nil, "t", "r", ApproverContext{})
 	if err == nil || !containsStr(err.Error(), "fanout") {
 		t.Fatalf("expected fanout error, got %v", err)
 	}
@@ -310,7 +313,7 @@ func TestFreezeService_Freeze_DefaultsEmptyComposition(t *testing.T) {
 	svc := NewFreezeService(
 		fakeSchemaReader{placeholders: schema},
 		&fakeFillInWriter{},
-		fakeValuesReader{values: existing},
+		&fakeValuesReader{values: existing},
 		resolvers.NewRegistry(),
 		&fakeFreezeFinalizer{},
 		&fakeResolverContextBuilder{},
@@ -320,7 +323,7 @@ func TestFreezeService_Freeze_DefaultsEmptyComposition(t *testing.T) {
 		fanoutClient,
 	)
 
-	if err := svc.Freeze(context.Background(), "t", "r"); err != nil {
+	if err := svc.Freeze(context.Background(), nil, "t", "r", ApproverContext{}); err != nil {
 		t.Fatalf("Freeze: %v", err)
 	}
 	if string(fanoutClient.req.Composition) != `{}` {

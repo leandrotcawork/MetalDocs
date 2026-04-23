@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -15,15 +16,15 @@ import (
 )
 
 type FreezeFinalizer interface {
-	WriteFreeze(ctx context.Context, tenantID, revisionID string, valuesHash []byte, frozenAt time.Time) error
+	WriteFreeze(ctx context.Context, tenantID, revisionID string, valuesHash []byte, frozenAt time.Time, q ...repository.DBTX) error
 }
 
 type SnapshotReader interface {
-	ReadSnapshot(ctx context.Context, tenantID, revisionID string) (v2dom.TemplateSnapshot, error)
+	ReadSnapshotWithFreezeAt(ctx context.Context, tenantID, revisionID string, q ...repository.DBTX) (v2dom.TemplateSnapshot, *time.Time, error)
 }
 
 type FinalDocxWriter interface {
-	WriteFinalDocx(ctx context.Context, tenantID, revisionID, s3Key string, contentHash []byte) error
+	WriteFinalDocx(ctx context.Context, tenantID, revisionID, s3Key string, contentHash []byte, q ...repository.DBTX) error
 }
 
 type ZoneContentReader interface {
@@ -49,8 +50,13 @@ type FreezeService struct {
 	fanout     FanoutClient
 }
 
+type ApproverContext struct {
+	UserID       string
+	Capabilities []string
+}
+
 type ResolverContextBuilder interface {
-	Build(ctx context.Context, tenantID, revisionID string) (resolvers.ResolveInput, error)
+	Build(ctx context.Context, tenantID, revisionID string, approver ApproverContext) (resolvers.ResolveInput, error)
 }
 
 func NewFreezeService(
@@ -70,7 +76,24 @@ func NewFreezeService(
 	}
 }
 
-func (s *FreezeService) Freeze(ctx context.Context, tenantID, revisionID string) error {
+func (s *FreezeService) Freeze(ctx context.Context, tx *sql.Tx, tenantID, revisionID string, approver ApproverContext) error {
+	var (
+		snap           v2dom.TemplateSnapshot
+		valuesFrozenAt *time.Time
+		err            error
+	)
+	if tx != nil {
+		snap, valuesFrozenAt, err = s.snapshots.ReadSnapshotWithFreezeAt(ctx, tenantID, revisionID, tx)
+	} else {
+		snap, valuesFrozenAt, err = s.snapshots.ReadSnapshotWithFreezeAt(ctx, tenantID, revisionID)
+	}
+	if err != nil {
+		return fmt.Errorf("read snapshot: %w", err)
+	}
+	if valuesFrozenAt != nil {
+		return nil
+	}
+
 	schema, err := s.schemas.LoadPlaceholderSchema(ctx, tenantID, revisionID)
 	if err != nil {
 		return err
@@ -96,7 +119,7 @@ func (s *FreezeService) Freeze(ctx context.Context, tenantID, revisionID string)
 	}
 
 	// Resolve computed
-	resolveIn, err := s.resolveCtx.Build(ctx, tenantID, revisionID)
+	resolveIn, err := s.resolveCtx.Build(ctx, tenantID, revisionID, approver)
 	if err != nil {
 		return err
 	}
@@ -142,13 +165,14 @@ func (s *FreezeService) Freeze(ctx context.Context, tenantID, revisionID string)
 	if err != nil {
 		return fmt.Errorf("decode values_hash: %w", err)
 	}
-	if err := s.finalize.WriteFreeze(ctx, tenantID, revisionID, hashBytes, time.Now().UTC()); err != nil {
-		return err
-	}
-
-	snap, err := s.snapshots.ReadSnapshot(ctx, tenantID, revisionID)
-	if err != nil {
-		return fmt.Errorf("read snapshot: %w", err)
+	if tx != nil {
+		if err := s.finalize.WriteFreeze(ctx, tenantID, revisionID, hashBytes, time.Now().UTC(), tx); err != nil {
+			return err
+		}
+	} else {
+		if err := s.finalize.WriteFreeze(ctx, tenantID, revisionID, hashBytes, time.Now().UTC()); err != nil {
+			return err
+		}
 	}
 	zones, err := s.zonesRead.ListZoneContent(ctx, tenantID, revisionID)
 	if err != nil {
@@ -189,6 +213,9 @@ func (s *FreezeService) Freeze(ctx context.Context, tenantID, revisionID string)
 	contentHashBytes, err := hex.DecodeString(resp.ContentHash)
 	if err != nil {
 		return fmt.Errorf("decode content_hash: %w", err)
+	}
+	if tx != nil {
+		return s.finalDocx.WriteFinalDocx(ctx, tenantID, revisionID, resp.FinalDocxS3Key, contentHashBytes, tx)
 	}
 	return s.finalDocx.WriteFinalDocx(ctx, tenantID, revisionID, resp.FinalDocxS3Key, contentHashBytes)
 }

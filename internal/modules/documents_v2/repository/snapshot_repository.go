@@ -15,6 +15,11 @@ type SnapshotRepository struct {
 	schema string // optional schema prefix; empty = bare table name
 }
 
+type DBTX interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
 // NewSnapshotRepository creates a SnapshotRepository using bare table names.
 // In tests, use NewSnapshotRepositoryWithSchema to point at the isolated test schema.
 func NewSnapshotRepository(db *sql.DB) *SnapshotRepository {
@@ -58,12 +63,28 @@ func (r *SnapshotRepository) WriteSnapshot(ctx context.Context, tenantID, docID 
 
 // ReadSnapshot reads the snapshot columns for a document.
 func (r *SnapshotRepository) ReadSnapshot(ctx context.Context, tenantID, docID string) (domain.TemplateSnapshot, error) {
+	s, _, err := r.readSnapshot(ctx, r.db, tenantID, docID)
+	return s, err
+}
+
+// ReadSnapshotWithFreezeAt reads snapshot columns and values_frozen_at for idempotency checks.
+func (r *SnapshotRepository) ReadSnapshotWithFreezeAt(ctx context.Context, tenantID, docID string, q ...DBTX) (domain.TemplateSnapshot, *time.Time, error) {
+	exec := DBTX(r.db)
+	if len(q) > 0 && q[0] != nil {
+		exec = q[0]
+	}
+	return r.readSnapshot(ctx, exec, tenantID, docID)
+}
+
+func (r *SnapshotRepository) readSnapshot(ctx context.Context, exec DBTX, tenantID, docID string) (domain.TemplateSnapshot, *time.Time, error) {
 	var s domain.TemplateSnapshot
-	err := r.db.QueryRowContext(ctx, fmt.Sprintf(`
+	var valuesFrozenAt *time.Time
+	err := exec.QueryRowContext(ctx, fmt.Sprintf(`
 		SELECT placeholder_schema_snapshot,
 		       composition_config_snapshot,
 		       editable_zones_schema_snapshot,
-		       coalesce(body_docx_snapshot_s3_key, '')
+		       coalesce(body_docx_snapshot_s3_key, ''),
+		       values_frozen_at
 		  FROM %s
 		 WHERE tenant_id = $1::uuid AND id = $2::uuid`, r.table("documents")),
 		tenantID, docID,
@@ -72,12 +93,17 @@ func (r *SnapshotRepository) ReadSnapshot(ctx context.Context, tenantID, docID s
 		&s.CompositionJSON,
 		&s.ZonesSchemaJSON,
 		&s.BodyDocxS3Key,
+		&valuesFrozenAt,
 	)
-	return s, err
+	return s, valuesFrozenAt, err
 }
 
-func (r *SnapshotRepository) WriteFreeze(ctx context.Context, tenant, docID string, valuesHash []byte, frozenAt time.Time) error {
-	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`
+func (r *SnapshotRepository) WriteFreeze(ctx context.Context, tenant, docID string, valuesHash []byte, frozenAt time.Time, q ...DBTX) error {
+	exec := DBTX(r.db)
+	if len(q) > 0 && q[0] != nil {
+		exec = q[0]
+	}
+	_, err := exec.ExecContext(ctx, fmt.Sprintf(`
         UPDATE %s
            SET values_hash=$1, values_frozen_at=$2
          WHERE tenant_id=$3 AND id=$4`, r.table("documents")),
@@ -86,8 +112,12 @@ func (r *SnapshotRepository) WriteFreeze(ctx context.Context, tenant, docID stri
 }
 
 // WriteFinalDocx persists the fanout output pointer and content hash onto a document.
-func (r *SnapshotRepository) WriteFinalDocx(ctx context.Context, tenant, docID, s3Key string, contentHash []byte) error {
-	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`
+func (r *SnapshotRepository) WriteFinalDocx(ctx context.Context, tenant, docID, s3Key string, contentHash []byte, q ...DBTX) error {
+	exec := DBTX(r.db)
+	if len(q) > 0 && q[0] != nil {
+		exec = q[0]
+	}
+	_, err := exec.ExecContext(ctx, fmt.Sprintf(`
         UPDATE %s
            SET final_docx_s3_key=$1, content_hash=$2
          WHERE tenant_id=$3::uuid AND id=$4::uuid`, r.table("documents")),

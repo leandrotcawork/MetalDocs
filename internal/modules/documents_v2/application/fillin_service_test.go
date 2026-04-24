@@ -254,3 +254,41 @@ func TestFillInService_SetPlaceholderValue_DraftResolverError_IsBestEffort(t *te
 		t.Fatalf("expected nil but got: %v", err)
 	}
 }
+
+// --- IAM user placeholder validation ---
+
+type fakeIAMOptionsReader struct {
+	opts []UserOption
+	err  error
+}
+
+func (f *fakeIAMOptionsReader) ListUserOptions(_ context.Context, _ string) ([]UserOption, error) {
+	return f.opts, f.err
+}
+
+func TestFillInService_UserPlaceholder_KnownUser_Accepted(t *testing.T) {
+	schema := []templatesdomain.Placeholder{{ID: "p-user", Type: templatesdomain.PHUser}}
+	iam := &fakeIAMOptionsReader{opts: []UserOption{
+		{UserID: "u1", DisplayName: "Alice"},
+	}}
+	svc := NewFillInServiceNoAuthz(fakeSchemaReader{placeholders: schema}, &fakeFillInWriter{}).
+		WithIAMReader(iam)
+
+	if err := svc.SetPlaceholderValue(context.Background(), "t", "actor", "r", "p-user", "u1"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestFillInService_UserPlaceholder_UnknownUser_Returns422(t *testing.T) {
+	schema := []templatesdomain.Placeholder{{ID: "p-user", Type: templatesdomain.PHUser}}
+	iam := &fakeIAMOptionsReader{opts: []UserOption{
+		{UserID: "u1", DisplayName: "Alice"},
+	}}
+	svc := NewFillInServiceNoAuthz(fakeSchemaReader{placeholders: schema}, &fakeFillInWriter{}).
+		WithIAMReader(iam)
+
+	err := svc.SetPlaceholderValue(context.Background(), "t", "actor", "r", "p-user", "unknown-uid")
+	if !errors.Is(err, v2domain.ErrValidationFailed) {
+		t.Fatalf("expected ErrValidationFailed, got %v", err)
+	}
+}

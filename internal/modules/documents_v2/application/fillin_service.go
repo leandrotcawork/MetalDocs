@@ -31,10 +31,11 @@ type draftResolver interface {
 }
 
 type FillInService struct {
-	db             *sql.DB
-	schemas        SchemaReader
-	writer         FillInWriter
-	draftResolver  draftResolver
+	db            *sql.DB
+	schemas       SchemaReader
+	writer        FillInWriter
+	draftResolver draftResolver
+	iam           IAMUserOptionsReader
 }
 
 // NewFillInService wires the service with a DB handle for authz enforcement.
@@ -53,6 +54,12 @@ func NewFillInServiceNoAuthz(s SchemaReader, w FillInWriter) *FillInService {
 // each user placeholder upsert. Errors are logged but not propagated.
 func (s *FillInService) WithDraftResolver(r draftResolver) *FillInService {
 	s.draftResolver = r
+	return s
+}
+
+// WithIAMReader attaches an IAMUserOptionsReader for validating user-typed placeholders.
+func (s *FillInService) WithIAMReader(r IAMUserOptionsReader) *FillInService {
+	s.iam = r
 	return s
 }
 
@@ -123,7 +130,7 @@ func (s *FillInService) SetPlaceholderValue(ctx context.Context, tenantID, actor
 	if !ok {
 		return fmt.Errorf("%w: unknown placeholder %s", v2domain.ErrValidationFailed, placeholderID)
 	}
-	if err := validateValue(p, raw); err != nil {
+	if err := validateValue(ctx, tenantID, p, raw, s.iam); err != nil {
 		return err
 	}
 
@@ -155,7 +162,7 @@ func findPlaceholder(phs []templatesdomain.Placeholder, id string) (templatesdom
 	return templatesdomain.Placeholder{}, false
 }
 
-func validateValue(p templatesdomain.Placeholder, raw string) error {
+func validateValue(ctx context.Context, tenantID string, p templatesdomain.Placeholder, raw string, iam IAMUserOptionsReader) error {
 	if p.Required && raw == "" {
 		return fmt.Errorf("%w: %s required", v2domain.ErrValidationFailed, p.ID)
 	}
@@ -201,6 +208,20 @@ func validateValue(p templatesdomain.Placeholder, raw string) error {
 			}
 		}
 		return fmt.Errorf("%w: %s not in options", v2domain.ErrValidationFailed, p.ID)
+	case templatesdomain.PHUser:
+		if iam == nil {
+			return nil // no IAM reader wired — skip validation
+		}
+		opts, err := iam.ListUserOptions(ctx, tenantID)
+		if err != nil {
+			return err
+		}
+		for _, o := range opts {
+			if o.UserID == raw {
+				return nil
+			}
+		}
+		return fmt.Errorf("%w: %s unknown user %s", v2domain.ErrValidationFailed, p.ID, raw)
 	}
 
 	return nil

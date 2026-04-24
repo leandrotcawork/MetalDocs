@@ -104,6 +104,9 @@ func mapFillInError(err error) (int, fillInErrorResponse) {
 	case errors.As(err, &authz.ErrCapabilityDenied{}):
 		status = http.StatusForbidden
 		code = "authz.capability_denied"
+	case errors.As(err, &notChoicePlaceholderError{}):
+		status = http.StatusBadRequest
+		code = "not_a_choice_placeholder"
 	case errors.Is(err, v2domain.ErrNotFound):
 		status = http.StatusNotFound
 		code = "not_found.revision"

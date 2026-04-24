@@ -1,5 +1,14 @@
 ﻿export type VersionStatus = 'draft' | 'in_review' | 'approved' | 'published' | 'obsolete';
 
+import type { Placeholder, EditableZone, CompositionConfig } from '../../../placeholder-types';
+export type { Placeholder, EditableZone, CompositionConfig };
+
+export interface TemplateSchemas {
+  placeholders: Placeholder[];
+  zones: EditableZone[];
+  composition: CompositionConfig | null;
+}
+
 export interface TemplateDTO {
   id: string;
   tenant_id: string;
@@ -278,4 +287,19 @@ export async function approveVersion(
   }
   const data = (await res.json()) as { data: { version: VersionDTO } };
   return data.data.version;
+}
+
+export async function getTemplateSchemas(templateId: string, versionNum: number): Promise<TemplateSchemas> {
+  const res = await fetch(`/api/v2/templates/${templateId}/versions/${versionNum}/schemas`);
+  const body = await apiJson<{ data: TemplateSchemas }>(res);
+  return body.data;
+}
+
+export async function putTemplateSchemas(templateId: string, versionNum: number, schemas: TemplateSchemas): Promise<void> {
+  const res = await fetch(`/api/v2/templates/${templateId}/versions/${versionNum}/schemas`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(schemas),
+  });
+  await apiJson<unknown>(res);
 }

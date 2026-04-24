@@ -111,6 +111,13 @@ func (f *fakeResolverContextBuilder) Build(_ context.Context, _, _ string, _ App
 	return f.input, nil
 }
 
+func (f *fakeResolverContextBuilder) BuildForDraft(_ context.Context, _, _ string) (resolvers.ResolveInput, error) {
+	if f.err != nil {
+		return resolvers.ResolveInput{}, f.err
+	}
+	return f.input, nil
+}
+
 type fixedResolver struct {
 	key string
 	ver int

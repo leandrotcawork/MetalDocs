@@ -57,6 +57,7 @@ type ApproverContext struct {
 
 type ResolverContextBuilder interface {
 	Build(ctx context.Context, tenantID, revisionID string, approver ApproverContext) (resolvers.ResolveInput, error)
+	BuildForDraft(ctx context.Context, tenantID, revisionID string) (resolvers.ResolveInput, error)
 }
 
 func NewFreezeService(

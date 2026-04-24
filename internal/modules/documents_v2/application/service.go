@@ -100,6 +100,7 @@ type Service struct {
 	registry         RegistryReader
 	authz            AuthorizationChecker
 	profileTemplates ProfileDefaultTemplateReader
+	snapshotSvc      *SnapshotService
 }
 
 func New(r Repository, d DocgenRenderer, p Presigner, t TemplateReader, fv FormValidator, a Audit) *Service {
@@ -134,6 +135,34 @@ func NewService(
 		registry:         reg,
 		authz:            authz,
 		profileTemplates: profileTemplates,
+	}
+}
+
+// NewServiceWithSnapshot is like NewService but also wires a SnapshotService
+// that will copy template artifacts onto the document at create time.
+func NewServiceWithSnapshot(
+	r Repository,
+	d DocgenRenderer,
+	p Presigner,
+	t TemplateReader,
+	fv FormValidator,
+	a Audit,
+	reg RegistryReader,
+	authz AuthorizationChecker,
+	profileTemplates ProfileDefaultTemplateReader,
+	snap *SnapshotService,
+) *Service {
+	return &Service{
+		repo:             r,
+		docgen:           d,
+		presigner:        p,
+		tpl:              t,
+		fv:               fv,
+		audit:            a,
+		registry:         reg,
+		authz:            authz,
+		profileTemplates: profileTemplates,
+		snapshotSvc:      snap,
 	}
 }
 
@@ -280,6 +309,12 @@ func (s *Service) CreateDocument(ctx context.Context, cmd CreateDocumentInput) (
 			return nil, fmt.Errorf("set revision key: %w", err)
 		}
 
+		if s.snapshotSvc != nil {
+			if err := s.snapshotSvc.SnapshotFromTemplate(ctx, cmd.TenantID, docID, revID, resolvedTemplateVersionID); err != nil {
+				return nil, fmt.Errorf("snapshot template: %w", err)
+			}
+		}
+
 		s.audit.Write(ctx, cmd.TenantID, cmd.ActorUserID, "document.created", docID, map[string]any{"template_version_id": resolvedTemplateVersionID})
 		return &CreateDocumentResult{DocumentID: docID, InitialRevisionID: revID, SessionID: sessionID}, nil
 	}
@@ -298,6 +333,12 @@ func (s *Service) CreateDocument(ctx context.Context, cmd CreateDocumentInput) (
 	finalKey = docxKey // point to template docx directly
 	if err := s.repo.SetRevisionStorageKey(ctx, revID, finalKey); err != nil {
 		return nil, fmt.Errorf("set revision key: %w", err)
+	}
+
+	if s.snapshotSvc != nil {
+		if err := s.snapshotSvc.SnapshotFromTemplate(ctx, cmd.TenantID, docID, revID, resolvedTemplateVersionID); err != nil {
+			return nil, fmt.Errorf("snapshot template: %w", err)
+		}
 	}
 
 	s.audit.Write(ctx, cmd.TenantID, cmd.ActorUserID, "document.created", docID, map[string]any{"template_version_id": resolvedTemplateVersionID})

@@ -6,45 +6,27 @@ import (
 	"testing"
 )
 
-// Golden vectors: manually computed SHA-256 of canonical JSON.
-// Vector A: simple doc, no nested form_data.
-// echo -n '{"document_id":"doc-1","form_data":{"field":"value"},"revision_number":1,"tenant_id":"t-1"}' | sha256sum
-const goldenVectorA_input_tenant = "t-1"
-const goldenVectorA_input_doc = "doc-1"
-const goldenVectorA_input_rev = 1
-var goldenVectorA_input_form = map[string]any{"field": "value"}
-// SHA256 of: {"document_id":"doc-1","form_data":{"field":"value"},"revision_number":1,"tenant_id":"t-1"}
-const goldenVectorA_hash = "9cfc3bd1eead4a74ac69b82c7c0c93c21b19fa3c97e0deb1ed048c5f0ee56a01"
-
-// Vector B: nested form_data, sorted keys.
-// echo -n '{"document_id":"doc-2","form_data":{"z":"last","a":"first"},"revision_number":2,"tenant_id":"t-2"}' | sha256sum
-const goldenVectorB_hash = "a0f2fc70cb4f2a0b3fc44cc4dc2d7c1a3e7e5e8e99c4fc23ef5b0c3f1dc14c53"
-
-func TestComputeContentHashGoldenA(t *testing.T) {
+func TestComputeContentHashFormat(t *testing.T) {
 	got, err := ComputeContentHash(ContentHashInput{
-		TenantID:       goldenVectorA_input_tenant,
-		DocumentID:     goldenVectorA_input_doc,
-		RevisionNumber: goldenVectorA_input_rev,
-		FormData:       goldenVectorA_input_form,
+		TenantID: "t-1", DocumentID: "doc-1", RevisionNumber: 1,
+		FormData: map[string]any{"field": "value"},
 	})
 	if err != nil {
 		t.Fatalf("ComputeContentHash: %v", err)
 	}
-	// Verify format (lowercase hex sha256).
 	if len(got) != 64 {
 		t.Errorf("hash length = %d; want 64", len(got))
 	}
-	// Deterministic: same input → same hash.
-	got2, _ := ComputeContentHash(ContentHashInput{
-		TenantID: goldenVectorA_input_tenant, DocumentID: goldenVectorA_input_doc,
-		RevisionNumber: goldenVectorA_input_rev, FormData: goldenVectorA_input_form,
-	})
-	if got != got2 {
-		t.Error("same input should produce same hash (deterministic)")
-	}
-	// Lowercase output.
 	if got != strings.ToLower(got) {
 		t.Error("hash output should be lowercase")
+	}
+	// Deterministic.
+	got2, _ := ComputeContentHash(ContentHashInput{
+		TenantID: "t-1", DocumentID: "doc-1", RevisionNumber: 1,
+		FormData: map[string]any{"field": "value"},
+	})
+	if got != got2 {
+		t.Error("same input should produce same hash")
 	}
 }
 
@@ -101,5 +83,31 @@ func TestComputeContentHashNilFormData(t *testing.T) {
 	_, err := ComputeContentHash(ContentHashInput{TenantID: "t", DocumentID: "d", RevisionNumber: 1, FormData: nil})
 	if err != nil {
 		t.Fatalf("nil form_data should be allowed: %v", err)
+	}
+}
+
+func TestComputeContentHashChangesWithValuesHash(t *testing.T) {
+	base := ContentHashInput{
+		TenantID:       "t",
+		DocumentID:     "d",
+		RevisionNumber: 1,
+		FormData:       map[string]any{"k": "v"},
+		ValuesHash:     "values-hash-a",
+		SchemaHash:     "schema-hash-a",
+	}
+	h1, err := ComputeContentHash(base)
+	if err != nil {
+		t.Fatalf("base hash: %v", err)
+	}
+
+	changed := base
+	changed.ValuesHash = "values-hash-b"
+	h2, err := ComputeContentHash(changed)
+	if err != nil {
+		t.Fatalf("changed hash: %v", err)
+	}
+
+	if h1 == h2 {
+		t.Fatal("expected different hash when values_hash changes")
 	}
 }

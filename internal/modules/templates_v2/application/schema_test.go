@@ -193,3 +193,70 @@ func TestUpdateSchemas_OptionsOnNonSelect(t *testing.T) {
 		t.Fatalf("expected options_allowed_only_for_select error, got %v", err)
 	}
 }
+
+func TestValidatePlaceholders_DuplicateID_Error(t *testing.T) {
+	err := application.ValidatePlaceholders([]domain.Placeholder{
+		{ID: "p1", Type: domain.PHText},
+		{ID: "p1", Type: domain.PHText},
+	})
+	if !errors.Is(err, domain.ErrDuplicatePlaceholderID) {
+		t.Fatalf("expected ErrDuplicatePlaceholderID, got %v", err)
+	}
+}
+
+func TestValidatePlaceholders_InvalidRegex_Error(t *testing.T) {
+	regex := "["
+	err := application.ValidatePlaceholders([]domain.Placeholder{
+		{ID: "p1", Type: domain.PHText, Regex: &regex},
+	})
+	if !errors.Is(err, domain.ErrInvalidConstraint) {
+		t.Fatalf("expected ErrInvalidConstraint, got %v", err)
+	}
+}
+
+func TestValidatePlaceholders_NumberRangeInverted_Error(t *testing.T) {
+	min := 10.0
+	max := 5.0
+	err := application.ValidatePlaceholders([]domain.Placeholder{
+		{ID: "p1", Type: domain.PHNumber, MinNumber: &min, MaxNumber: &max},
+	})
+	if !errors.Is(err, domain.ErrInvalidConstraint) {
+		t.Fatalf("expected ErrInvalidConstraint, got %v", err)
+	}
+}
+
+func TestValidatePlaceholders_DateRangeInverted_Error(t *testing.T) {
+	minDate := "2026-05-02"
+	maxDate := "2026-04-01"
+	err := application.ValidatePlaceholders([]domain.Placeholder{
+		{ID: "p1", Type: domain.PHDate, MinDate: &minDate, MaxDate: &maxDate},
+	})
+	if !errors.Is(err, domain.ErrInvalidConstraint) {
+		t.Fatalf("expected ErrInvalidConstraint, got %v", err)
+	}
+}
+
+func TestValidatePlaceholders_ComputedRequiresResolverKey(t *testing.T) {
+	err := application.ValidatePlaceholders([]domain.Placeholder{
+		{ID: "p1", Type: domain.PHComputed, Computed: true},
+	})
+	if !errors.Is(err, domain.ErrInvalidConstraint) {
+		t.Fatalf("expected ErrInvalidConstraint, got %v", err)
+	}
+}
+
+func TestUpdateSchemas_UnknownResolverKey_Error(t *testing.T) {
+	repo := newFakeRepo()
+	repo.versions["v1"] = &domain.TemplateVersion{
+		ID:            "v1",
+		TemplateID:    "tpl-1",
+		VersionNumber: 1,
+		Status:        domain.VersionStatusDraft,
+	}
+	svc := newService(repo, WithKnownResolvers("doc_code"))
+
+	_, err := svc.UpdateSchemas(context.Background(), updateCmdWithComputed("p1", "missing_resolver"))
+	if !errors.Is(err, domain.ErrUnknownResolver) {
+		t.Fatalf("expected ErrUnknownResolver, got %v", err)
+	}
+}

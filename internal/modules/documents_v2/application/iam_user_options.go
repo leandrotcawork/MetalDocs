@@ -15,24 +15,26 @@ type IAMUserOptionsReader interface {
 	ListUserOptions(ctx context.Context, tenantID string) ([]UserOption, error)
 }
 
-// iamUser is a minimal user record from the auth system.
-type iamUser struct {
+// IAMUser is a minimal user record from the auth system.
+// Exported so that adapters in cmd/ or infrastructure packages can implement IAMUserLister.
+type IAMUser struct {
 	UserID      string
 	DisplayName string
 }
 
-// iamUserLister is the narrow auth-system port consumed by IAMUserOptionsAdapter.
-type iamUserLister interface {
-	ListUsers(ctx context.Context) ([]iamUser, error)
+// IAMUserLister is the narrow auth-system port consumed by IAMUserOptionsAdapter.
+// Production wiring: wrap auth.Service with an adapter that maps authdomain.ManagedUser → IAMUser.
+type IAMUserLister interface {
+	ListUsers(ctx context.Context) ([]IAMUser, error)
 }
 
-// IAMUserOptionsAdapter adapts an iamUserLister to IAMUserOptionsReader.
+// IAMUserOptionsAdapter adapts an IAMUserLister to IAMUserOptionsReader.
 // tenantID is accepted for API compatibility but currently ignored (auth.Service is global-scoped).
 type IAMUserOptionsAdapter struct {
-	lister iamUserLister
+	lister IAMUserLister
 }
 
-func NewIAMUserOptionsAdapter(lister iamUserLister) *IAMUserOptionsAdapter {
+func NewIAMUserOptionsAdapter(lister IAMUserLister) *IAMUserOptionsAdapter {
 	return &IAMUserOptionsAdapter{lister: lister}
 }
 

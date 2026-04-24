@@ -210,7 +210,8 @@ func validateValue(ctx context.Context, tenantID string, p templatesdomain.Place
 		return fmt.Errorf("%w: %s not in options", v2domain.ErrValidationFailed, p.ID)
 	case templatesdomain.PHUser:
 		if iam == nil {
-			return nil // no IAM reader wired — skip validation
+			// IAM not wired: skip user validation. Production wiring MUST call WithIAMReader.
+			return nil
 		}
 		opts, err := iam.ListUserOptions(ctx, tenantID)
 		if err != nil {

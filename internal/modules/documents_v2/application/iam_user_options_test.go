@@ -7,11 +7,11 @@ import (
 )
 
 type fakeIAMUserLister struct {
-	users []iamUser
+	users []IAMUser
 	err   error
 }
 
-func (f *fakeIAMUserLister) ListUsers(_ context.Context) ([]iamUser, error) {
+func (f *fakeIAMUserLister) ListUsers(_ context.Context) ([]IAMUser, error) {
 	if f.err != nil {
 		return nil, f.err
 	}
@@ -19,7 +19,7 @@ func (f *fakeIAMUserLister) ListUsers(_ context.Context) ([]iamUser, error) {
 }
 
 func TestIAMUserOptionsAdapter_SortsByDisplayName(t *testing.T) {
-	lister := &fakeIAMUserLister{users: []iamUser{
+	lister := &fakeIAMUserLister{users: []IAMUser{
 		{UserID: "u3", DisplayName: "Charlie"},
 		{UserID: "u1", DisplayName: "Alice"},
 		{UserID: "u2", DisplayName: "Bob"},

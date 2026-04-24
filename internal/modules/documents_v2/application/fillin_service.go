@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"regexp"
 	"strconv"
 	"strings"
@@ -25,10 +26,15 @@ type FillInWriter interface {
 	UpsertZoneContent(ctx context.Context, z repository.ZoneContent) error
 }
 
+type draftResolver interface {
+	ResolveComputedIfStale(ctx context.Context, tenantID, revisionID string) error
+}
+
 type FillInService struct {
-	db      *sql.DB
-	schemas SchemaReader
-	writer  FillInWriter
+	db             *sql.DB
+	schemas        SchemaReader
+	writer         FillInWriter
+	draftResolver  draftResolver
 }
 
 // NewFillInService wires the service with a DB handle for authz enforcement.
@@ -41,6 +47,13 @@ func NewFillInService(db *sql.DB, s SchemaReader, w FillInWriter) *FillInService
 // Never use in production wiring — authz bypass is intentional and audited here.
 func NewFillInServiceNoAuthz(s SchemaReader, w FillInWriter) *FillInService {
 	return &FillInService{schemas: s, writer: w}
+}
+
+// WithDraftResolver attaches a DraftResolverService that runs best-effort after
+// each user placeholder upsert. Errors are logged but not propagated.
+func (s *FillInService) WithDraftResolver(r draftResolver) *FillInService {
+	s.draftResolver = r
+	return s
 }
 
 type SnapshotSchemaReader struct {
@@ -115,14 +128,22 @@ func (s *FillInService) SetPlaceholderValue(ctx context.Context, tenantID, actor
 	}
 
 	value := raw
-	return s.writer.UpsertValue(ctx, repository.PlaceholderValue{
+	if err := s.writer.UpsertValue(ctx, repository.PlaceholderValue{
 		TenantID:        tenantID,
 		RevisionID:      revisionID,
 		PlaceholderID:   placeholderID,
 		ValueText:       &value,
 		Source:          "user",
 		ResolverVersion: nil,
-	})
+	}); err != nil {
+		return err
+	}
+	if s.draftResolver != nil {
+		if rerr := s.draftResolver.ResolveComputedIfStale(ctx, tenantID, revisionID); rerr != nil {
+			log.Printf("draft resolver best-effort error: %v", rerr)
+		}
+	}
+	return nil
 }
 
 func findPlaceholder(phs []templatesdomain.Placeholder, id string) (templatesdomain.Placeholder, bool) {

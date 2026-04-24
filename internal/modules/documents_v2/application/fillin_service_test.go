@@ -216,3 +216,41 @@ func TestFillInService_SetZoneContent_MaxLength(t *testing.T) {
 		t.Fatalf("expected ErrValidationFailed, got %v", err)
 	}
 }
+
+// --- Draft resolver wiring tests ---
+
+type fakeDraftResolver struct {
+	calls int
+	err   error
+}
+
+func (f *fakeDraftResolver) ResolveComputedIfStale(_ context.Context, _, _ string) error {
+	f.calls++
+	return f.err
+}
+
+func TestFillInService_SetPlaceholderValue_TriggersDraftResolver(t *testing.T) {
+	schema := []templatesdomain.Placeholder{{ID: "p1", Type: templatesdomain.PHText}}
+	resolver := &fakeDraftResolver{}
+	svc := NewFillInServiceNoAuthz(fakeSchemaReader{placeholders: schema}, &fakeFillInWriter{}).
+		WithDraftResolver(resolver)
+
+	if err := svc.SetPlaceholderValue(context.Background(), "t", "actor", "r", "p1", "hello"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resolver.calls != 1 {
+		t.Errorf("draft resolver calls=%d, want 1", resolver.calls)
+	}
+}
+
+func TestFillInService_SetPlaceholderValue_DraftResolverError_IsBestEffort(t *testing.T) {
+	schema := []templatesdomain.Placeholder{{ID: "p1", Type: templatesdomain.PHText}}
+	resolver := &fakeDraftResolver{err: errors.New("resolver boom")}
+	svc := NewFillInServiceNoAuthz(fakeSchemaReader{placeholders: schema}, &fakeFillInWriter{}).
+		WithDraftResolver(resolver)
+
+	// Resolver error must NOT propagate — best-effort.
+	if err := svc.SetPlaceholderValue(context.Background(), "t", "actor", "r", "p1", "hello"); err != nil {
+		t.Fatalf("expected nil but got: %v", err)
+	}
+}

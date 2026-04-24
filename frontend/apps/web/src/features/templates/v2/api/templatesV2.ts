@@ -289,17 +289,97 @@ export async function approveVersion(
   return data.data.version;
 }
 
+// Wire-format types (backend snake_case)
+interface WireContentPolicy { allow_tables: boolean; allow_images: boolean; allow_headings: boolean; allow_lists: boolean; }
+interface WireZone { id: string; label: string; required: boolean; content_policy: WireContentPolicy; max_length?: number; }
+interface WirePlaceholder { id: string; label: string; type: string; required: boolean; options?: string[]; regex?: string; min_number?: number; max_number?: number; min_date?: string; max_date?: string; max_length?: number; resolver_key?: string; visible_if?: { placeholder_id: string; op: string; value?: unknown }; }
+
+function zoneFromWire(w: WireZone): EditableZone {
+  return {
+    id: w.id,
+    label: w.label,
+    ...(w.max_length != null ? { maxLength: w.max_length } : {}),
+    contentPolicy: {
+      allowTables: w.content_policy.allow_tables,
+      allowImages: w.content_policy.allow_images,
+      allowHeadings: w.content_policy.allow_headings,
+      allowLists: w.content_policy.allow_lists,
+    },
+  };
+}
+
+function zoneToWire(z: EditableZone): WireZone {
+  return {
+    id: z.id,
+    label: z.label,
+    required: false,
+    content_policy: {
+      allow_tables: z.contentPolicy.allowTables,
+      allow_images: z.contentPolicy.allowImages,
+      allow_headings: z.contentPolicy.allowHeadings,
+      allow_lists: z.contentPolicy.allowLists,
+    },
+    ...(z.maxLength != null ? { max_length: z.maxLength } : {}),
+  };
+}
+
+function placeholderFromWire(w: WirePlaceholder): Placeholder {
+  return {
+    id: w.id,
+    label: w.label,
+    type: w.type as Placeholder['type'],
+    ...(w.required ? { required: true } : {}),
+    ...(w.options ? { options: w.options } : {}),
+    ...(w.regex != null ? { regex: w.regex } : {}),
+    ...(w.min_number != null ? { minNumber: w.min_number } : {}),
+    ...(w.max_number != null ? { maxNumber: w.max_number } : {}),
+    ...(w.min_date != null ? { minDate: w.min_date } : {}),
+    ...(w.max_date != null ? { maxDate: w.max_date } : {}),
+    ...(w.max_length != null ? { maxLength: w.max_length } : {}),
+    ...(w.resolver_key != null ? { resolverKey: w.resolver_key } : {}),
+    ...(w.visible_if ? { visibleIf: { placeholderID: w.visible_if.placeholder_id, operator: w.visible_if.op as Placeholder['visibleIf']['operator'], value: w.visible_if.value as string | undefined } } : {}),
+  };
+}
+
+function placeholderToWire(p: Placeholder): WirePlaceholder {
+  return {
+    id: p.id,
+    label: p.label,
+    type: p.type,
+    required: p.required ?? false,
+    ...(p.options ? { options: p.options } : {}),
+    ...(p.regex != null ? { regex: p.regex } : {}),
+    ...(p.minNumber != null ? { min_number: p.minNumber } : {}),
+    ...(p.maxNumber != null ? { max_number: p.maxNumber } : {}),
+    ...(p.minDate != null ? { min_date: p.minDate } : {}),
+    ...(p.maxDate != null ? { max_date: p.maxDate } : {}),
+    ...(p.maxLength != null ? { max_length: p.maxLength } : {}),
+    ...(p.resolverKey != null ? { resolver_key: p.resolverKey } : {}),
+    ...(p.visibleIf ? { visible_if: { placeholder_id: p.visibleIf.placeholderID, op: p.visibleIf.operator, value: p.visibleIf.value } } : {}),
+  };
+}
+
 export async function getTemplateSchemas(templateId: string, versionNum: number): Promise<TemplateSchemas> {
-  const res = await fetch(`/api/v2/templates/${templateId}/versions/${versionNum}/schemas`);
-  const body = await apiJson<{ data: TemplateSchemas }>(res);
-  return body.data;
+  const res = await fetch(`/api/v2/templates/${templateId}/versions/${versionNum}`);
+  const body = await apiJson<{ data: { version: VersionDTO & { placeholder_schema: WirePlaceholder[] | null; editable_zones: WireZone[] | null } } }>(res);
+  const v = body.data.version;
+  return {
+    placeholders: Array.isArray(v.placeholder_schema) ? v.placeholder_schema.map(placeholderFromWire) : [],
+    zones: Array.isArray(v.editable_zones) ? v.editable_zones.map(zoneFromWire) : [],
+    composition: null,
+  };
 }
 
 export async function putTemplateSchemas(templateId: string, versionNum: number, schemas: TemplateSchemas): Promise<void> {
-  const res = await fetch(`/api/v2/templates/${templateId}/versions/${versionNum}/schemas`, {
+  const res = await fetch(`/api/v2/templates/${templateId}/versions/${versionNum}/schema`, {
     method: 'PUT',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(schemas),
+    body: JSON.stringify({
+      metadata_schema: {},
+      placeholder_schema: schemas.placeholders.map(placeholderToWire),
+      editable_zones: schemas.zones.map(zoneToWire),
+      expected_content_hash: '',
+    }),
   });
   await apiJson<unknown>(res);
 }

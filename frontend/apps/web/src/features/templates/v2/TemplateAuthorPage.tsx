@@ -2,10 +2,18 @@ import '@eigenpal/docx-js-editor/styles.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DocxEditor, type DocxEditorRef } from '@eigenpal/docx-js-editor/react';
 import { createEmptyDocument } from '@eigenpal/docx-js-editor/core';
-import { filterTransactionGuard } from '../../../../editor-adapters/filter-transaction-guard';
-import { type VersionDTO, submitForReview } from './api/templatesV2';
+import { toast } from 'sonner';
+import { filterTransactionGuard } from '../../../editor-adapters/filter-transaction-guard';
+import { type TemplateSchemas, type VersionDTO, submitForReview } from './api/templatesV2';
+import { PlaceholderChip, usePlaceholderDrop } from '../placeholder-chip';
+import { ZoneChip, useZoneDrop } from '../zone-chip';
+import { PlaceholderInspector } from '../placeholder-inspector';
+import { ZoneInspector } from '../zone-inspector';
+import { CompositionConfigPanel } from '../composition-config-panel';
+import type { EditableZone, Placeholder, SubBlockDef } from '../placeholder-types';
 import { useTemplateDraft } from './hooks/useTemplateDraft';
 import { useTemplateAutosave } from './hooks/useTemplateAutosave';
+import { useTemplateSchemas } from './hooks/useTemplateSchemas';
 import { VersionActionPanel } from './VersionActionPanel';
 import styles from './TemplateAuthorPage.module.css';
 
@@ -23,17 +31,38 @@ type RailItem = {
   icon: JSX.Element;
 };
 
+const DEFAULT_RESOLVERS = [
+  { key: 'DocCode', version: 1 },
+  { key: 'RevisionNumber', version: 1 },
+  { key: 'EffectiveDate', version: 1 },
+  { key: 'Author', version: 1 },
+  { key: 'ApprovalDate', version: 1 },
+];
+
+const SUB_BLOCK_CATALOGUE: SubBlockDef[] = [
+  { key: 'doc-header', label: 'Document Header', params: [] },
+  { key: 'approval-footer', label: 'Approval Footer', params: [] },
+  { key: 'revision-history', label: 'Revision History', params: [] },
+];
+
+const EMPTY_COMPOSITION = { headerSubBlocks: [], footerSubBlocks: [], subBlockParams: {} };
+
 export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion: _nav, onBack }: TemplateAuthorPageProps) {
   const draft = useTemplateDraft(templateId, versionNum);
   const autosave = useTemplateAutosave(templateId, versionNum);
+  const schemaState = useTemplateSchemas(templateId, versionNum);
   const editorRef = useRef<DocxEditorRef>(null);
+  const schemaSnapshotRef = useRef<string | null>(null);
   const blankDoc = useMemo(() => createEmptyDocument(), []);
   const editorPlugins = useMemo(() => [filterTransactionGuard()], []);
   const [submitting, setSubmitting] = useState(false);
   const [submitErr, setSubmitErr] = useState<string | null>(null);
   const [liveVersion, setLiveVersion] = useState<VersionDTO | null>(null);
-  const [leftActive, setLeftActive] = useState<string>('blocks');
+  const [leftActive, setLeftActive] = useState<string>('variables');
   const [rightActive, setRightActive] = useState<string>('inspector');
+  const [localSchemas, setLocalSchemas] = useState<TemplateSchemas | null>(null);
+  const [selectedType, setSelectedType] = useState<'placeholder' | 'zone' | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const queueDocx = autosave.queueDocx;
   const handleEditorChange = useCallback(() => {
@@ -49,6 +78,124 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
   useEffect(() => {
     setLiveVersion(draft.version ?? null);
   }, [draft.version]);
+
+  useEffect(() => {
+    if (!schemaState.schemas) return;
+    setLocalSchemas(schemaState.schemas);
+    schemaSnapshotRef.current = JSON.stringify(schemaState.schemas);
+  }, [schemaState.schemas]);
+
+  const currentVersion = liveVersion ?? draft.version ?? null;
+  const isDraft = currentVersion?.status === 'draft';
+
+  useEffect(() => {
+    if (!localSchemas || !isDraft) return;
+    const nextSnapshot = JSON.stringify(localSchemas);
+    if (schemaSnapshotRef.current === nextSnapshot) return;
+    const timer = window.setTimeout(() => {
+      void schemaState.save(localSchemas).then(() => {
+        schemaSnapshotRef.current = nextSnapshot;
+      }).catch(() => {
+        // ignore schema save errors here; hook exposes error state
+      });
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [isDraft, localSchemas, schemaState]);
+
+  const insertTokenAtCursor = useCallback((token: string) => {
+    const pagedRef = editorRef.current?.getEditorRef();
+    if (!pagedRef) { toast.error('Editor not ready'); return; }
+    const view = pagedRef.getView();
+    if (!view) { toast.error('Editor not ready'); return; }
+    const { state } = view;
+    const tr = state.tr.insertText(token, state.selection.from, state.selection.to);
+    view.dispatch(tr);
+    view.focus();
+  }, []);
+
+  const insertPlaceholder = useCallback((id: string) => {
+    insertTokenAtCursor(`{{${id}}}`);
+  }, [insertTokenAtCursor]);
+
+  const insertZone = useCallback((id: string) => {
+    insertTokenAtCursor(`[[${id}]]`);
+  }, [insertTokenAtCursor]);
+  const placeholderDrop = usePlaceholderDrop(insertPlaceholder);
+  const zoneDrop = useZoneDrop(insertZone);
+
+  const handleCanvasDrop = useCallback((e: React.DragEvent) => {
+    placeholderDrop.onDrop(e);
+    zoneDrop.onDrop(e);
+  }, [placeholderDrop, zoneDrop]);
+
+  const updatePlaceholder = useCallback((updated: Placeholder) => {
+    if (!isDraft) return;
+    setLocalSchemas((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        placeholders: prev.placeholders.map((p) => (p.id === updated.id ? updated : p)),
+      };
+    });
+  }, [isDraft]);
+
+  const updateZone = useCallback((updated: EditableZone) => {
+    if (!isDraft) return;
+    setLocalSchemas((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        zones: prev.zones.map((z) => (z.id === updated.id ? updated : z)),
+      };
+    });
+  }, [isDraft]);
+
+  const updateComposition = useCallback((updated: TemplateSchemas['composition']) => {
+    if (!isDraft) return;
+    setLocalSchemas((prev) => {
+      if (!prev) return prev;
+      return { ...prev, composition: updated };
+    });
+  }, [isDraft]);
+
+  const addPlaceholder = useCallback(() => {
+    if (!isDraft) return;
+    const next: Placeholder = {
+      id: crypto.randomUUID(),
+      label: 'New placeholder',
+      type: 'text',
+    };
+    setLocalSchemas((prev) => {
+      if (!prev) return prev;
+      return { ...prev, placeholders: [...prev.placeholders, next] };
+    });
+    setSelectedType('placeholder');
+    setSelectedId(next.id);
+    setRightActive('inspector');
+  }, [isDraft]);
+
+  const addZone = useCallback(() => {
+    if (!isDraft) return;
+    const next: EditableZone = {
+      id: crypto.randomUUID(),
+      label: 'New zone',
+      contentPolicy: { allowTables: false, allowImages: false, allowHeadings: false, allowLists: true },
+    };
+    setLocalSchemas((prev) => {
+      if (!prev) return prev;
+      return { ...prev, zones: [...prev.zones, next] };
+    });
+    setSelectedType('zone');
+    setSelectedId(next.id);
+    setRightActive('inspector');
+  }, [isDraft]);
+
+  const selectedPlaceholder = selectedType === 'placeholder'
+    ? localSchemas?.placeholders.find((p) => p.id === selectedId) ?? null
+    : null;
+  const selectedZone = selectedType === 'zone'
+    ? localSchemas?.zones.find((z) => z.id === selectedId) ?? null
+    : null;
 
   // Eigenpal closes its popovers on any capture-phase scroll event. Scrolling
   // inside its own listbox (e.g. to reach font size 48) triggers the close.
@@ -82,11 +229,10 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
     }
   }
 
-  if (draft.loading) return <div className={styles.loading}>Loading template...</div>;
+  if (draft.loading || (schemaState.loading && !localSchemas)) return <div className={styles.loading}>Loading template...</div>;
   if (draft.error) return <div role="alert" className={styles.error}>{draft.error}</div>;
+  if (schemaState.error && !localSchemas) return <div role="alert" className={styles.error}>{schemaState.error}</div>;
 
-  const currentVersion = liveVersion ?? draft.version ?? null;
-  const isDraft = currentVersion?.status === 'draft';
   const statusPillClass =
     currentVersion?.status === 'draft' ? styles.draft :
     currentVersion?.status === 'in_review' ? styles.inReview :
@@ -95,7 +241,7 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
     '';
 
   const leftRailItems: (RailItem | { divider: true })[] = [
-    { key: 'blocks',  tip: 'Blocks (soon)',  kbd: 'B',  icon: IconBlocks },
+    { key: 'variables', tip: 'Variables',                icon: IconBraces },
     { key: 'layout',  tip: 'Layout (soon)',              icon: IconLayout },
     { key: 'media',   tip: 'Media (soon)',               icon: IconImage },
     { divider: true },
@@ -103,7 +249,8 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
     { key: 'search',  tip: 'Find',           kbd: '⌘F', icon: IconSearch },
   ];
   const rightRailItems: (RailItem | { divider: true })[] = [
-    { key: 'inspector', tip: 'Inspector (soon)', icon: IconInspector },
+    { key: 'inspector', tip: 'Inspector',        icon: IconInspector },
+    { key: 'composition', tip: 'Composition',    icon: IconBlocks },
     { key: 'variables', tip: 'Variables',        icon: IconBraces },
     { key: 'comments',  tip: 'Comments',         icon: IconComment },
     { divider: true },
@@ -154,7 +301,58 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
           )}
         </aside>
 
-        <main className={styles.canvas}>
+        {leftActive === 'variables' && (
+          <aside className={styles.sidePanel}>
+            <section className={styles.panelSection}>
+              <div className={styles.panelHeader}>Placeholders</div>
+              <div className={styles.chipList}>
+                {(localSchemas?.placeholders ?? []).map((placeholder) => (
+                  <PlaceholderChip
+                    key={placeholder.id}
+                    placeholder={placeholder}
+                    onInsert={(p) => {
+                      setSelectedType('placeholder');
+                      setSelectedId(p.id);
+                      setRightActive('inspector');
+                    }}
+                  />
+                ))}
+              </div>
+              <button type="button" className={styles.addBtn} onClick={addPlaceholder} disabled={!isDraft}>
+                + Add placeholder
+              </button>
+            </section>
+
+            <section className={styles.panelSection}>
+              <div className={styles.panelHeader}>Zones</div>
+              <div className={styles.chipList}>
+                {(localSchemas?.zones ?? []).map((zone) => (
+                  <ZoneChip
+                    key={zone.id}
+                    zone={zone}
+                    onInsert={(z) => {
+                      setSelectedType('zone');
+                      setSelectedId(z.id);
+                      setRightActive('inspector');
+                    }}
+                  />
+                ))}
+              </div>
+              <button type="button" className={styles.addBtn} onClick={addZone} disabled={!isDraft}>
+                + Add zone
+              </button>
+            </section>
+          </aside>
+        )}
+
+        <main
+          className={styles.canvas}
+          onDragOver={(e) => {
+            placeholderDrop.onDragOver(e);
+            zoneDrop.onDragOver(e);
+          }}
+          onDrop={handleCanvasDrop}
+        >
           <div className={styles.editorWrapper}>
             <div className={styles.overlayTitle}>
               <span className={styles.docTitle}>{draft.template?.name ?? 'Untitled template'}</span>
@@ -196,6 +394,52 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
             />
           </div>
         </main>
+
+        <aside className={styles.rightPanel}>
+          {rightActive === 'inspector' && (
+            <>
+              {selectedPlaceholder ? (
+                <fieldset className={styles.inspectorFieldset} disabled={!isDraft}>
+                  <PlaceholderInspector
+                    value={selectedPlaceholder}
+                    resolvers={DEFAULT_RESOLVERS}
+                    onChange={(updated) => {
+                      if (!isDraft) return;
+                      updatePlaceholder(updated);
+                    }}
+                  />
+                </fieldset>
+              ) : selectedZone ? (
+                <fieldset className={styles.inspectorFieldset} disabled={!isDraft}>
+                  <ZoneInspector
+                    value={selectedZone}
+                    onChange={(updated) => {
+                      if (!isDraft) return;
+                      updateZone(updated);
+                    }}
+                  />
+                </fieldset>
+              ) : (
+                <div className={styles.panelHeader}>Select a chip to inspect</div>
+              )}
+            </>
+          )}
+          {rightActive === 'composition' && (
+            <fieldset className={styles.inspectorFieldset} disabled={!isDraft}>
+              <CompositionConfigPanel
+                value={localSchemas?.composition ?? EMPTY_COMPOSITION}
+                subBlockCatalogue={SUB_BLOCK_CATALOGUE}
+                onChange={(updated) => {
+                  if (!isDraft) return;
+                  updateComposition(updated);
+                }}
+              />
+            </fieldset>
+          )}
+          {rightActive !== 'inspector' && rightActive !== 'composition' && (
+            <div className={styles.panelHeader} />
+          )}
+        </aside>
 
         <aside className={`${styles.rail} ${styles.railRight}`}>
           {rightRailItems.map((it, i) =>

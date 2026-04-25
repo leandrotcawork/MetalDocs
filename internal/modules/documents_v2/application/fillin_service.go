@@ -103,7 +103,7 @@ func (s *FillInService) SetPlaceholderValue(ctx context.Context, tenantID, actor
 		return err
 	}
 	if len(schema) == 0 && s.schemaFromTpl != nil {
-		schema, _, err = s.schemaFromTpl.LoadFillInSchema(ctx, tenantID, revisionID)
+		schema, err = s.schemaFromTpl.LoadFillInSchema(ctx, tenantID, revisionID)
 		if err != nil {
 			return err
 		}
@@ -226,34 +226,28 @@ func NewTemplateVersionSchemaReader(db *sql.DB) *TemplateVersionSchemaReader {
 	return &TemplateVersionSchemaReader{db: db}
 }
 
-func (r *TemplateVersionSchemaReader) LoadFillInSchema(ctx context.Context, tenantID, docID string) ([]templatesdomain.Placeholder, []templatesdomain.EditableZone, error) {
-	var pRaw, zRaw []byte
+func (r *TemplateVersionSchemaReader) LoadFillInSchema(ctx context.Context, tenantID, docID string) ([]templatesdomain.Placeholder, error) {
+	var pRaw []byte
 	err := r.db.QueryRowContext(ctx, `
-		SELECT tv.placeholder_schema, tv.editable_zones
+		SELECT tv.placeholder_schema
 		  FROM templates_v2_template_version tv
 		  JOIN documents d ON d.template_version_id = tv.id
 		 WHERE d.id = $1::uuid AND d.tenant_id = $2::uuid`,
 		docID, tenantID,
-	).Scan(&pRaw, &zRaw)
+	).Scan(&pRaw)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, nil, nil
+			return nil, nil
 		}
-		return nil, nil, err
+		return nil, err
 	}
 	var placeholders []templatesdomain.Placeholder
-	var zones []templatesdomain.EditableZone
 	if len(pRaw) > 0 {
 		if err := json.Unmarshal(pRaw, &placeholders); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	}
-	if len(zRaw) > 0 {
-		if err := json.Unmarshal(zRaw, &zones); err != nil {
-			return nil, nil, err
-		}
-	}
-	return placeholders, zones, nil
+	return placeholders, nil
 }
 
 // WithReader attaches a FillInReader for GET list operations.
@@ -275,9 +269,9 @@ func (s *FillInService) GetPlaceholderValues(ctx context.Context, tenantID, docI
 	return s.reader.ListValues(ctx, tenantID, docID)
 }
 
-func (s *FillInService) GetFillInSchema(ctx context.Context, tenantID, docID string) ([]templatesdomain.Placeholder, []templatesdomain.EditableZone, error) {
+func (s *FillInService) GetFillInSchema(ctx context.Context, tenantID, docID string) ([]templatesdomain.Placeholder, error) {
 	if s.schemaFromTpl == nil {
-		return nil, nil, nil
+		return nil, nil
 	}
 	return s.schemaFromTpl.LoadFillInSchema(ctx, tenantID, docID)
 }

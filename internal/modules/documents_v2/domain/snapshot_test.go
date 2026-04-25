@@ -9,7 +9,6 @@ func TestTemplateSnapshot_StableHash(t *testing.T) {
 	s1 := TemplateSnapshot{
 		PlaceholderSchemaJSON: []byte(`{"placeholders":[{"id":"a","type":"text"}]}`),
 		CompositionJSON:       []byte(`{"header_sub_blocks":["h1"]}`),
-		ZonesSchemaJSON:       []byte(`{"zones":[{"id":"z1"}]}`),
 		BodyDocxBytes:         []byte("DOCXBYTES"),
 	}
 	h1 := s1.Hashes()

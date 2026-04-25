@@ -33,7 +33,6 @@ func TestSnapshotService_CopiesTemplateToRevision(t *testing.T) {
 	tmpl := domain.TemplateSnapshot{
 		PlaceholderSchemaJSON: []byte(`{"placeholders":[]}`),
 		CompositionJSON:       []byte(`{"header_sub_blocks":[]}`),
-		ZonesSchemaJSON:       []byte(`{"zones":[]}`),
 		BodyDocxBytes:         []byte("DOCX"),
 		BodyDocxS3Key:         "s3://t/k",
 	}

@@ -6,7 +6,6 @@ import "crypto/sha256"
 type TemplateSnapshot struct {
 	PlaceholderSchemaJSON []byte
 	CompositionJSON       []byte
-	ZonesSchemaJSON       []byte
 	BodyDocxBytes         []byte
 	BodyDocxS3Key         string
 }

@@ -31,8 +31,8 @@ func (f *fakeFillInService) GetPlaceholderValues(_ context.Context, _, _ string)
 	return nil, nil
 }
 
-func (f *fakeFillInService) GetFillInSchema(_ context.Context, _, _ string) ([]templatesdomain.Placeholder, []templatesdomain.EditableZone, error) {
-	return nil, nil, nil
+func (f *fakeFillInService) GetFillInSchema(_ context.Context, _, _ string) ([]templatesdomain.Placeholder, error) {
+	return nil, nil
 }
 
 func fillInTestMux(h *FillInHandler) *http.ServeMux {

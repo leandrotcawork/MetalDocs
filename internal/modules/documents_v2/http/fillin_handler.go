@@ -20,7 +20,7 @@ import (
 type FillInService interface {
 	SetPlaceholderValue(ctx context.Context, tenantID, actorID, revisionID, placeholderID, value string) error
 	GetPlaceholderValues(ctx context.Context, tenantID, docID string) ([]repository.PlaceholderValue, error)
-	GetFillInSchema(ctx context.Context, tenantID, docID string) ([]templatesdomain.Placeholder, []templatesdomain.EditableZone, error)
+	GetFillInSchema(ctx context.Context, tenantID, docID string) ([]templatesdomain.Placeholder, error)
 }
 
 type FillInHandler struct {
@@ -40,7 +40,7 @@ func (h *FillInHandler) RegisterRoutes(mux *http.ServeMux) {
 func (h *FillInHandler) GetFillInSchema(w http.ResponseWriter, r *http.Request) {
 	tid := tenantID(r)
 	docID := r.PathValue("id")
-	phs, zones, err := h.service.GetFillInSchema(r.Context(), tid, docID)
+	phs, err := h.service.GetFillInSchema(r.Context(), tid, docID)
 	if err != nil {
 		writeFillInError(w, requestID(r), err)
 		return
@@ -48,13 +48,9 @@ func (h *FillInHandler) GetFillInSchema(w http.ResponseWriter, r *http.Request) 
 	if phs == nil {
 		phs = []templatesdomain.Placeholder{}
 	}
-	if zones == nil {
-		zones = []templatesdomain.EditableZone{}
-	}
 	writeFillInJSON(w, http.StatusOK, map[string]any{
 		"data": map[string]any{
 			"placeholder_schema": phs,
-			"zone_schema":        zones,
 		},
 	})
 }

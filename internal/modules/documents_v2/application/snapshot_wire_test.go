@@ -24,7 +24,6 @@ func (wireSnapshotReader) LoadForSnapshot(_ context.Context, _, _ string) (domai
 	return domain.TemplateSnapshot{
 		PlaceholderSchemaJSON: []byte(`{"placeholders":[]}`),
 		CompositionJSON:       []byte(`{}`),
-		ZonesSchemaJSON:       []byte(`{}`),
 		BodyDocxBytes:         []byte("DOCX"),
 		BodyDocxS3Key:         "s3://t/k",
 	}, nil

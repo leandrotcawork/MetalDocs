@@ -48,7 +48,6 @@ func (seedTemplateReader) LoadForSnapshot(_ context.Context, _, _ string) (domai
 	return domain.TemplateSnapshot{
 		PlaceholderSchemaJSON: b,
 		CompositionJSON:       []byte(`{}`),
-		ZonesSchemaJSON:       []byte(`{}`),
 	}, nil
 }
 

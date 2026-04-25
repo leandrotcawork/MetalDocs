@@ -29,13 +29,6 @@ export interface ContentPolicy {
   allowLists: boolean;
 }
 
-export interface EditableZone {
-  id: string;
-  label: string;
-  maxLength?: number;
-  contentPolicy: ContentPolicy;
-}
-
 export interface SubBlockParam {
   name: string;
   type: 'string' | 'number' | 'boolean';

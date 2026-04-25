@@ -7,7 +7,6 @@ vi.mock('../../api/templatesV2');
 
 const schemas = {
   placeholders: [{ id: 'p1', label: 'Title', type: 'text' as const }],
-  zones: [],
   composition: null,
 };
 

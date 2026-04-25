@@ -1,11 +1,10 @@
 ﻿export type VersionStatus = 'draft' | 'in_review' | 'approved' | 'published' | 'obsolete';
 
-import type { Placeholder, EditableZone, CompositionConfig } from '../../../placeholder-types';
-export type { Placeholder, EditableZone, CompositionConfig };
+import type { Placeholder, CompositionConfig } from '../../placeholder-types';
+export type { Placeholder, CompositionConfig };
 
 export interface TemplateSchemas {
   placeholders: Placeholder[];
-  zones: EditableZone[];
   composition: CompositionConfig | null;
 }
 
@@ -35,7 +34,6 @@ export interface VersionDTO {
   content_hash: string | null;
   metadata_schema: Record<string, unknown> | null;
   placeholder_schema: Record<string, unknown> | null;
-  editable_zones: Record<string, unknown> | null;
   author_id: string;
   pending_reviewer_role: string | null;
   pending_approver_role: string | null;
@@ -290,38 +288,7 @@ export async function approveVersion(
 }
 
 // Wire-format types (backend snake_case)
-interface WireContentPolicy { allow_tables: boolean; allow_images: boolean; allow_headings: boolean; allow_lists: boolean; }
-interface WireZone { id: string; label: string; required: boolean; content_policy: WireContentPolicy; max_length?: number; }
 interface WirePlaceholder { id: string; label: string; type: string; required: boolean; options?: string[]; regex?: string; min_number?: number; max_number?: number; min_date?: string; max_date?: string; max_length?: number; resolver_key?: string; visible_if?: { placeholder_id: string; op: string; value?: unknown }; }
-
-function zoneFromWire(w: WireZone): EditableZone {
-  return {
-    id: w.id,
-    label: w.label,
-    ...(w.max_length != null ? { maxLength: w.max_length } : {}),
-    contentPolicy: {
-      allowTables: w.content_policy.allow_tables,
-      allowImages: w.content_policy.allow_images,
-      allowHeadings: w.content_policy.allow_headings,
-      allowLists: w.content_policy.allow_lists,
-    },
-  };
-}
-
-function zoneToWire(z: EditableZone): WireZone {
-  return {
-    id: z.id,
-    label: z.label,
-    required: false,
-    content_policy: {
-      allow_tables: z.contentPolicy.allowTables,
-      allow_images: z.contentPolicy.allowImages,
-      allow_headings: z.contentPolicy.allowHeadings,
-      allow_lists: z.contentPolicy.allowLists,
-    },
-    ...(z.maxLength != null ? { max_length: z.maxLength } : {}),
-  };
-}
 
 function placeholderFromWire(w: WirePlaceholder): Placeholder {
   return {
@@ -337,7 +304,7 @@ function placeholderFromWire(w: WirePlaceholder): Placeholder {
     ...(w.max_date != null ? { maxDate: w.max_date } : {}),
     ...(w.max_length != null ? { maxLength: w.max_length } : {}),
     ...(w.resolver_key != null ? { resolverKey: w.resolver_key } : {}),
-    ...(w.visible_if ? { visibleIf: { placeholderID: w.visible_if.placeholder_id, operator: w.visible_if.op as Placeholder['visibleIf']['operator'], value: w.visible_if.value as string | undefined } } : {}),
+    ...(w.visible_if ? { visibleIf: { placeholderID: w.visible_if.placeholder_id, operator: w.visible_if.op as NonNullable<Placeholder['visibleIf']>['operator'], value: w.visible_if.value as string | undefined } } : {}),
   };
 }
 
@@ -361,11 +328,10 @@ function placeholderToWire(p: Placeholder): WirePlaceholder {
 
 export async function getTemplateSchemas(templateId: string, versionNum: number): Promise<TemplateSchemas> {
   const res = await fetch(`/api/v2/templates/${templateId}/versions/${versionNum}`);
-  const body = await apiJson<{ data: { version: VersionDTO & { placeholder_schema: WirePlaceholder[] | null; editable_zones: WireZone[] | null } } }>(res);
+  const body = await apiJson<{ data: { version: VersionDTO & { placeholder_schema: WirePlaceholder[] | null } } }>(res);
   const v = body.data.version;
   return {
     placeholders: Array.isArray(v.placeholder_schema) ? v.placeholder_schema.map(placeholderFromWire) : [],
-    zones: Array.isArray(v.editable_zones) ? v.editable_zones.map(zoneFromWire) : [],
     composition: null,
   };
 }
@@ -377,7 +343,6 @@ export async function putTemplateSchemas(templateId: string, versionNum: number,
     body: JSON.stringify({
       metadata_schema: {},
       placeholder_schema: schemas.placeholders.map(placeholderToWire),
-      editable_zones: schemas.zones.map(zoneToWire),
       expected_content_hash: '',
     }),
   });

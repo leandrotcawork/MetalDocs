@@ -60,8 +60,6 @@ describe('loadFillInData', () => {
     const data = await loadFillInData('doc-1');
     expect(data.placeholderSchema).toHaveLength(1);
     expect(data.placeholderSchema[0].id).toBe('p1');
-    expect(data.zoneSchema).toHaveLength(1);
-    expect(data.zoneSchema[0].id).toBe('z1');
   });
 
   it('concurrent: all three fetches happen in parallel', async () => {

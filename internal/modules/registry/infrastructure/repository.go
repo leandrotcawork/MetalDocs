@@ -208,9 +208,7 @@ func (a *PostgresSequenceAllocator) EnsureCounter(ctx context.Context, tenantID,
 	return a.ensureCounter(ctx, a.db, tenantID, profileCode)
 }
 
-func (a *PostgresSequenceAllocator) ensureCounter(ctx context.Context, execer interface {
-	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
-}, tenantID, profileCode string) error {
+func (a *PostgresSequenceAllocator) ensureCounter(ctx context.Context, execer registrydomain.DBExecutor, tenantID, profileCode string) error {
 	_, err := execer.ExecContext(ctx, `
 		INSERT INTO profile_sequence_counters (tenant_id, profile_code, next_seq)
 		VALUES ($1, $2, 1)

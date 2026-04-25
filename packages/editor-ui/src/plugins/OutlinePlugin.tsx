@@ -13,6 +13,10 @@ type OutlineState = {
   activeId: string | null;
 };
 
+type EditorViewLike = {
+  state: { doc: { descendants: (fn: (node: unknown, pos: number) => void) => void } };
+};
+
 function OutlinePanel(props: PluginPanelProps<OutlineState>) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const headings = props.pluginState?.headings ?? [];
@@ -20,7 +24,7 @@ function OutlinePanel(props: PluginPanelProps<OutlineState>) {
   useEffect(() => {
     const ctx = props.renderedDomContext;
     if (!ctx) {
-      setActiveId((prev) => (prev === null ? prev : null));
+      setActiveId((prev: string | null) => (prev === null ? prev : null));
       return;
     }
 
@@ -28,7 +32,7 @@ function OutlinePanel(props: PluginPanelProps<OutlineState>) {
     const tick = () => {
       raf = 0;
       if (headings.length === 0) {
-        setActiveId((prev) => (prev === null ? prev : null));
+        setActiveId((prev: string | null) => (prev === null ? prev : null));
       } else {
         const targetY = ctx.pagesContainer.scrollTop + 80;
         let bestId: string | null = null;
@@ -42,7 +46,7 @@ function OutlinePanel(props: PluginPanelProps<OutlineState>) {
             bestId = heading.id;
           }
         }
-        setActiveId((prev) => (prev === bestId ? prev : bestId));
+        setActiveId((prev: string | null) => (prev === bestId ? prev : bestId));
       }
     };
 
@@ -65,7 +69,7 @@ function OutlinePanel(props: PluginPanelProps<OutlineState>) {
       {headings.length === 0 ? (
         <div style={{ padding: 8, color: '#6b7280', fontSize: 12 }}>(no headings)</div>
       ) : (
-        headings.map((heading) => (
+        headings.map((heading: OutlineHeading) => (
           <button
             key={heading.id}
             type="button"
@@ -96,7 +100,7 @@ export function createOutlinePlugin(): EditorPlugin<OutlineState> {
       collapsible: true,
     },
     initialize: () => ({ headings: [], activeId: null }),
-    onStateChange(view) {
+    onStateChange(view: EditorViewLike) {
       if (view.state.doc === cachedDoc) return;
       cachedDoc = view.state.doc;
 

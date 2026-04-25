@@ -11,7 +11,6 @@ type ResolveInput struct {
 	RegistryReader                             RegistryReader
 	RevisionReader                             RevisionReader
 	WorkflowReader                             WorkflowReader
-	TaxonomyReader                             TaxonomyReader
 }
 
 type ResolvedValue struct {
@@ -57,5 +56,3 @@ type WorkflowReader interface {
 	GetApprovers(ctx context.Context, tenantID, revisionID string) ([]ApproverInfo, error)
 	GetFinalApprovalDate(ctx context.Context, tenantID, revisionID string) (time.Time, error)
 }
-
-type TaxonomyReader interface{}

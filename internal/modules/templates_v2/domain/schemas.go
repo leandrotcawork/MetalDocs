@@ -44,23 +44,8 @@ type Placeholder struct {
 	ResolverKey *string              `json:"resolver_key,omitempty"`
 }
 
-type ContentPolicy struct {
-	AllowTables   bool `json:"allow_tables"`
-	AllowImages   bool `json:"allow_images"`
-	AllowHeadings bool `json:"allow_headings"`
-	AllowLists    bool `json:"allow_lists"`
-}
-
-type EditableZone struct {
-	ID            string        `json:"id"`
-	Label         string        `json:"label"`
-	Required      bool          `json:"required"`
-	ContentPolicy ContentPolicy `json:"content_policy"`
-	MaxLength     *int          `json:"max_length,omitempty"`
-}
-
 type CompositionConfig struct {
-	HeaderSubBlocks []string                       `json:"header_sub_blocks"`
-	FooterSubBlocks []string                       `json:"footer_sub_blocks"`
-	SubBlockParams  map[string]map[string]any      `json:"sub_block_params"`
+	HeaderSubBlocks []string                  `json:"header_sub_blocks"`
+	FooterSubBlocks []string                  `json:"footer_sub_blocks"`
+	SubBlockParams  map[string]map[string]any `json:"sub_block_params"`
 }

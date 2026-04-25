@@ -24,7 +24,7 @@ func TestPlaceholder_JSONRoundTrip_AllFields(t *testing.T) {
 		ID: "p1", Label: "Doc Code", Type: PHText, Required: true,
 		Regex: &regex, MaxLength: &maxLen, MinNumber: &mn, MaxNumber: &mx,
 		VisibleIf: &VisibilityCondition{PlaceholderID: "p0", Op: "eq", Value: "x"},
-		Computed: true, ResolverKey: &rkey,
+		Computed:  true, ResolverKey: &rkey,
 	}
 	b, err := json.Marshal(ph)
 	if err != nil {
@@ -39,26 +39,6 @@ func TestPlaceholder_JSONRoundTrip_AllFields(t *testing.T) {
 	}
 	if back.VisibleIf == nil || back.VisibleIf.Op != "eq" {
 		t.Fatalf("visible_if lost: %+v", back.VisibleIf)
-	}
-}
-
-func TestEditableZone_ContentPolicy_RoundTrip(t *testing.T) {
-	ml := 5000
-	z := EditableZone{
-		ID: "z1", Label: "Intro", Required: true,
-		ContentPolicy: ContentPolicy{AllowTables: true, AllowImages: false, AllowHeadings: true, AllowLists: true},
-		MaxLength:     &ml,
-	}
-	b, _ := json.Marshal(z)
-	var back EditableZone
-	if err := json.Unmarshal(b, &back); err != nil {
-		t.Fatal(err)
-	}
-	if !back.ContentPolicy.AllowTables || back.ContentPolicy.AllowImages {
-		t.Fatalf("content policy: %+v", back.ContentPolicy)
-	}
-	if back.MaxLength == nil || *back.MaxLength != 5000 {
-		t.Fatalf("max_length: %v", back.MaxLength)
 	}
 }
 

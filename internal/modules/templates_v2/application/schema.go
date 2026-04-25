@@ -14,7 +14,6 @@ type UpdateSchemasCmd struct {
 	VersionNumber                     int
 	MetadataSchema                    domain.MetadataSchema
 	PlaceholderSchema                 []domain.Placeholder
-	EditableZones                     []domain.EditableZone
 	ExpectedContentHash               string
 }
 
@@ -53,17 +52,8 @@ func (s *Service) UpdateSchemas(ctx context.Context, cmd UpdateSchemasCmd) (*dom
 		}
 	}
 
-	zoneIDs := map[string]struct{}{}
-	for _, z := range cmd.EditableZones {
-		if _, exists := zoneIDs[z.ID]; exists {
-			return nil, fmt.Errorf("duplicate_zone_id: %s", z.ID)
-		}
-		zoneIDs[z.ID] = struct{}{}
-	}
-
 	version.MetadataSchema = cloneMetadataSchema(cmd.MetadataSchema)
 	version.PlaceholderSchema = clonePlaceholders(cmd.PlaceholderSchema)
-	version.EditableZones = cloneEditableZones(cmd.EditableZones)
 
 	if err := s.repo.UpdateVersion(ctx, version); err != nil {
 		return nil, err

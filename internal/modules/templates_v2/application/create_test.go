@@ -174,7 +174,6 @@ func TestCreateNextVersion_FromPublished(t *testing.T) {
 		Status:            domain.VersionStatusPublished,
 		MetadataSchema:    domain.MetadataSchema{DocCodePattern: "ABC-###", RequiredMetadata: []string{"department"}},
 		PlaceholderSchema: []domain.Placeholder{{ID: "ph-1", Label: "Signer", Type: domain.PHUser, Required: true}},
-		EditableZones:     []domain.EditableZone{{ID: "zone-1", Label: "Body", Required: true}},
 	}
 	repo.templates[template.ID] = template
 	repo.versions[v1.ID] = v1
@@ -197,17 +196,9 @@ func TestCreateNextVersion_FromPublished(t *testing.T) {
 	if !reflect.DeepEqual(got.PlaceholderSchema, v1.PlaceholderSchema) {
 		t.Fatalf("expected placeholder schema to be cloned from published version")
 	}
-	if !reflect.DeepEqual(got.EditableZones, v1.EditableZones) {
-		t.Fatalf("expected editable zones to be cloned from published version")
-	}
-
 	v1.PlaceholderSchema[0].Label = "Mutated"
-	v1.EditableZones[0].Label = "Mutated"
 	if got.PlaceholderSchema[0].Label == "Mutated" {
 		t.Fatal("expected placeholder schema to be deep-cloned, but got aliasing")
-	}
-	if got.EditableZones[0].Label == "Mutated" {
-		t.Fatal("expected editable zones to be deep-cloned, but got aliasing")
 	}
 }
 
@@ -225,7 +216,6 @@ func TestCreateNextVersion_NoPublished_ClonesLatest(t *testing.T) {
 		Status:            domain.VersionStatusDraft,
 		MetadataSchema:    domain.MetadataSchema{DocCodePattern: "XYZ-###", RequiredMetadata: []string{"site"}},
 		PlaceholderSchema: []domain.Placeholder{{ID: "ph-1", Label: "Department", Type: domain.PHText}},
-		EditableZones:     []domain.EditableZone{{ID: "zone-1", Label: "Footer"}},
 	}
 	repo.templates[template.ID] = template
 	repo.versions[v1.ID] = v1
@@ -247,9 +237,6 @@ func TestCreateNextVersion_NoPublished_ClonesLatest(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got.PlaceholderSchema, v1.PlaceholderSchema) {
 		t.Fatalf("expected placeholder schema to be cloned from latest version")
-	}
-	if !reflect.DeepEqual(got.EditableZones, v1.EditableZones) {
-		t.Fatalf("expected editable zones to be cloned from latest version")
 	}
 }
 

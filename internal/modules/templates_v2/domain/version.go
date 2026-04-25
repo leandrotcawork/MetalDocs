@@ -24,7 +24,6 @@ type TemplateVersion struct {
 	ContentHash         string
 	MetadataSchema      MetadataSchema
 	PlaceholderSchema   []Placeholder
-	EditableZones       []EditableZone
 	AuthorID            string
 	PendingReviewerRole *string
 	PendingApproverRole string

@@ -34,9 +34,6 @@ func TestUpdateSchemas_Happy(t *testing.T) {
 		"placeholder_schema": []map[string]any{
 			{"id": "ph-1", "label": "Signer", "type": "select", "options": []string{"a", "b"}},
 		},
-		"editable_zones": []map[string]any{
-			{"id": "zone-1", "label": "Body", "required": true},
-		},
 		"expected_content_hash": "hash_abc",
 	}
 	raw, _ := json.Marshal(body)

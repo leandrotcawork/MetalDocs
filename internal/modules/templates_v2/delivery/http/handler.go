@@ -9,7 +9,7 @@ import (
 	"metaldocs/internal/platform/httpresponse"
 )
 
-const devTenantID = "00000000-0000-0000-0000-000000000001"
+const devTenantID = "ffffffff-ffff-ffff-ffff-ffffffffffff"
 
 type AuthzFunc func(r *http.Request, tenantID, area string, action string) error
 

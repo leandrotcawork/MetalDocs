@@ -100,6 +100,7 @@ func (m *Middleware) Wrap(next http.Handler) http.Handler {
 		if _, ok := authdomain.CurrentUserFromContext(ctx); !ok {
 			ctx = iamdomain.WithAuthContext(ctx, userID, roles)
 		}
+		r.Header.Del("X-User-ID")
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

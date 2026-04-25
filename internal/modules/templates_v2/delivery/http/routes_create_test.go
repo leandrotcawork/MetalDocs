@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	iamdomain "metaldocs/internal/modules/iam/domain"
 	"metaldocs/internal/modules/templates_v2/application"
 	tmplhttp "metaldocs/internal/modules/templates_v2/delivery/http"
 	"metaldocs/internal/modules/templates_v2/domain"
@@ -199,7 +200,7 @@ func createBody(key, visibility string) []byte {
 func withHeaders(req *http.Request) {
 	req.Header.Set("content-type", "application/json")
 	req.Header.Set("X-Tenant-ID", "tenant-a")
-	req.Header.Set("X-User-ID", "user-a")
+	*req = *req.WithContext(iamdomain.WithAuthContext(req.Context(), "user-a", []iamdomain.Role{}))
 }
 
 func TestCreateTemplate_Happy(t *testing.T) {

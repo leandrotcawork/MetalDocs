@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strings"
 
+	iamdomain "metaldocs/internal/modules/iam/domain"
 	"metaldocs/internal/modules/templates_v2/application"
 	"metaldocs/internal/platform/httpresponse"
 )
@@ -56,7 +57,7 @@ func tenantIDFromReq(r *http.Request) string {
 }
 
 func userIDFromReq(r *http.Request) string {
-	return strings.TrimSpace(r.Header.Get("X-User-ID"))
+	return iamdomain.UserIDFromContext(r.Context())
 }
 
 func writeErr(w http.ResponseWriter, status int, code, message string) {

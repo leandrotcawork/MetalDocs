@@ -10,12 +10,13 @@ import (
 
 	"metaldocs/internal/modules/documents_v2/approval/domain"
 	"metaldocs/internal/modules/documents_v2/approval/http/contracts"
+	iamdomain "metaldocs/internal/modules/iam/domain"
 )
 
 func (h *Handler) InboxHandler(w http.ResponseWriter, r *http.Request) {
 	reqID := requestID(r)
 	tenantID := strings.TrimSpace(r.Header.Get("X-Tenant-ID"))
-	actorID := strings.TrimSpace(r.Header.Get("X-User-ID"))
+	actorID := iamdomain.UserIDFromContext(r.Context())
 	areaCode := strings.TrimSpace(r.URL.Query().Get("area_code"))
 
 	limit, err := parseInboxLimit(r.URL.Query().Get("limit"))
@@ -47,8 +48,8 @@ func (h *Handler) InboxHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	WriteJSON(w, http.StatusOK, contracts.InboxResponse{
-		Items:   respItems,
-		HasMore: false,
+		Items: respItems,
+		Total: len(respItems),
 	})
 }
 
@@ -85,13 +86,12 @@ func mapInboxItem(inst domain.Instance) contracts.InboxItem {
 		InstanceID:  inst.ID,
 		DocumentID:  inst.DocumentID,
 		SubmittedBy: inst.SubmittedBy,
-		CreatedAt:   inst.SubmittedAt.UTC().Format(time.RFC3339),
+		SubmittedAt: inst.SubmittedAt.UTC().Format(time.RFC3339),
 	}
 
 	active := inst.Active()
 	if active != nil {
-		item.StageID = active.ID
-		item.StageName = active.NameSnapshot
+		item.StageLabel = active.NameSnapshot
 		item.AreaCode = active.AreaCodeSnapshot
 	}
 

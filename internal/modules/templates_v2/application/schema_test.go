@@ -33,7 +33,6 @@ func TestUpdateSchemas_Happy(t *testing.T) {
 		PlaceholderSchema: []domain.Placeholder{
 			{ID: "ph-1", Label: "Signer", Type: domain.PHSelect, Options: []string{"a", "b"}},
 		},
-		EditableZones:       []domain.EditableZone{{ID: "zone-1", Label: "Body"}},
 		ExpectedContentHash: "hash-1",
 	})
 	if err != nil {
@@ -47,9 +46,6 @@ func TestUpdateSchemas_Happy(t *testing.T) {
 	}
 	if len(got.PlaceholderSchema) != 1 || got.PlaceholderSchema[0].ID != "ph-1" {
 		t.Fatalf("expected placeholder schema to be updated, got %v", got.PlaceholderSchema)
-	}
-	if len(got.EditableZones) != 1 || got.EditableZones[0].ID != "zone-1" {
-		t.Fatalf("expected editable zones to be updated, got %v", got.EditableZones)
 	}
 	if len(repo.audit) != 1 {
 		t.Fatalf("expected 1 audit event, got %d", len(repo.audit))
@@ -94,10 +90,10 @@ func TestUpdateSchemas_StaleHash(t *testing.T) {
 	svc := application.New(repo, &fakePresigner{}, fakeClock{}, &fakeUUID{})
 
 	_, err := svc.UpdateSchemas(context.Background(), application.UpdateSchemasCmd{
-		TemplateID:           "tpl-1",
-		VersionNumber:        1,
-		ExpectedContentHash:  "hash-2",
-		PlaceholderSchema:    []domain.Placeholder{{ID: "ph-1", Type: domain.PHText}},
+		TemplateID:          "tpl-1",
+		VersionNumber:       1,
+		ExpectedContentHash: "hash-2",
+		PlaceholderSchema:   []domain.Placeholder{{ID: "ph-1", Type: domain.PHText}},
 	})
 	if !errors.Is(err, domain.ErrStaleBase) {
 		t.Fatalf("expected ErrStaleBase, got %v", err)
@@ -124,29 +120,6 @@ func TestUpdateSchemas_DuplicatePlaceholderID(t *testing.T) {
 	})
 	if err == nil || !strings.Contains(err.Error(), "duplicate_placeholder_id") {
 		t.Fatalf("expected duplicate_placeholder_id error, got %v", err)
-	}
-}
-
-func TestUpdateSchemas_DuplicateZoneID(t *testing.T) {
-	repo := newFakeRepo()
-	repo.versions["v1"] = &domain.TemplateVersion{
-		ID:            "v1",
-		TemplateID:    "tpl-1",
-		VersionNumber: 1,
-		Status:        domain.VersionStatusDraft,
-	}
-	svc := application.New(repo, &fakePresigner{}, fakeClock{}, &fakeUUID{})
-
-	_, err := svc.UpdateSchemas(context.Background(), application.UpdateSchemasCmd{
-		TemplateID:    "tpl-1",
-		VersionNumber: 1,
-		EditableZones: []domain.EditableZone{
-			{ID: "zone-1"},
-			{ID: "zone-1"},
-		},
-	})
-	if err == nil || !strings.Contains(err.Error(), "duplicate_zone_id") {
-		t.Fatalf("expected duplicate_zone_id error, got %v", err)
 	}
 }
 
@@ -191,5 +164,72 @@ func TestUpdateSchemas_OptionsOnNonSelect(t *testing.T) {
 	})
 	if err == nil || !strings.Contains(err.Error(), "options_allowed_only_for_select") {
 		t.Fatalf("expected options_allowed_only_for_select error, got %v", err)
+	}
+}
+
+func TestValidatePlaceholders_DuplicateID_Error(t *testing.T) {
+	err := application.ValidatePlaceholders([]domain.Placeholder{
+		{ID: "p1", Type: domain.PHText},
+		{ID: "p1", Type: domain.PHText},
+	})
+	if !errors.Is(err, domain.ErrDuplicatePlaceholderID) {
+		t.Fatalf("expected ErrDuplicatePlaceholderID, got %v", err)
+	}
+}
+
+func TestValidatePlaceholders_InvalidRegex_Error(t *testing.T) {
+	regex := "["
+	err := application.ValidatePlaceholders([]domain.Placeholder{
+		{ID: "p1", Type: domain.PHText, Regex: &regex},
+	})
+	if !errors.Is(err, domain.ErrInvalidConstraint) {
+		t.Fatalf("expected ErrInvalidConstraint, got %v", err)
+	}
+}
+
+func TestValidatePlaceholders_NumberRangeInverted_Error(t *testing.T) {
+	min := 10.0
+	max := 5.0
+	err := application.ValidatePlaceholders([]domain.Placeholder{
+		{ID: "p1", Type: domain.PHNumber, MinNumber: &min, MaxNumber: &max},
+	})
+	if !errors.Is(err, domain.ErrInvalidConstraint) {
+		t.Fatalf("expected ErrInvalidConstraint, got %v", err)
+	}
+}
+
+func TestValidatePlaceholders_DateRangeInverted_Error(t *testing.T) {
+	minDate := "2026-05-02"
+	maxDate := "2026-04-01"
+	err := application.ValidatePlaceholders([]domain.Placeholder{
+		{ID: "p1", Type: domain.PHDate, MinDate: &minDate, MaxDate: &maxDate},
+	})
+	if !errors.Is(err, domain.ErrInvalidConstraint) {
+		t.Fatalf("expected ErrInvalidConstraint, got %v", err)
+	}
+}
+
+func TestValidatePlaceholders_ComputedRequiresResolverKey(t *testing.T) {
+	err := application.ValidatePlaceholders([]domain.Placeholder{
+		{ID: "p1", Type: domain.PHComputed, Computed: true},
+	})
+	if !errors.Is(err, domain.ErrInvalidConstraint) {
+		t.Fatalf("expected ErrInvalidConstraint, got %v", err)
+	}
+}
+
+func TestUpdateSchemas_UnknownResolverKey_Error(t *testing.T) {
+	repo := newFakeRepo()
+	repo.versions["v1"] = &domain.TemplateVersion{
+		ID:            "v1",
+		TemplateID:    "tpl-1",
+		VersionNumber: 1,
+		Status:        domain.VersionStatusDraft,
+	}
+	svc := newService(repo, WithKnownResolvers("doc_code"))
+
+	_, err := svc.UpdateSchemas(context.Background(), updateCmdWithComputed("p1", "missing_resolver"))
+	if !errors.Is(err, domain.ErrUnknownResolver) {
+		t.Fatalf("expected ErrUnknownResolver, got %v", err)
 	}
 }

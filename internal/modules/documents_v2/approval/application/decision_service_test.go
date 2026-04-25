@@ -312,7 +312,7 @@ func TestRecordSignoff_ApprovePath_QuorumMet(t *testing.T) {
 	}
 	emitter := &MemoryEmitter{}
 	clock := fixedClock{t: signedAt}
-	svc := &DecisionService{repo: repo, emitter: emitter, clock: clock}
+	svc := &DecisionService{repo: repo, emitter: emitter, clock: clock, freezeInvoker: &fakeFreezeInvoker{}, pdfDispatcher: &fakePDFDispatchInvoker{}}
 	db := newDecisionTestDB(t, conn)
 
 	req := SignoffRequest{
@@ -390,7 +390,7 @@ func TestRecordSignoff_ApprovePath_QuorumNotYetMet(t *testing.T) {
 	}
 	emitter := &MemoryEmitter{}
 	clock := fixedClock{t: signedAt}
-	svc := &DecisionService{repo: repo, emitter: emitter, clock: clock}
+	svc := &DecisionService{repo: repo, emitter: emitter, clock: clock, freezeInvoker: &fakeFreezeInvoker{}, pdfDispatcher: &fakePDFDispatchInvoker{}}
 	db := newDecisionTestDB(t, conn)
 
 	req := SignoffRequest{
@@ -457,7 +457,7 @@ func TestRecordSignoff_RejectPath(t *testing.T) {
 	}
 	emitter := &MemoryEmitter{}
 	clock := fixedClock{t: signedAt}
-	svc := &DecisionService{repo: repo, emitter: emitter, clock: clock}
+	svc := &DecisionService{repo: repo, emitter: emitter, clock: clock, freezeInvoker: &fakeFreezeInvoker{}, pdfDispatcher: &fakePDFDispatchInvoker{}}
 	db := newDecisionTestDB(t, conn)
 
 	req := SignoffRequest{
@@ -511,7 +511,7 @@ func TestRecordSignoff_SoDViolation(t *testing.T) {
 	repo := &fakeDecisionRepo{instance: inst}
 	emitter := &MemoryEmitter{}
 	clock := fixedClock{t: time.Date(2026, 4, 22, 12, 0, 0, 0, time.UTC)}
-	svc := &DecisionService{repo: repo, emitter: emitter, clock: clock}
+	svc := &DecisionService{repo: repo, emitter: emitter, clock: clock, freezeInvoker: &fakeFreezeInvoker{}, pdfDispatcher: &fakePDFDispatchInvoker{}}
 	db := newDecisionTestDB(t, conn)
 
 	req := SignoffRequest{
@@ -554,7 +554,7 @@ func TestRecordSignoff_CapabilityDenied(t *testing.T) {
 	repo := &fakeDecisionRepo{instance: inst}
 	emitter := &MemoryEmitter{}
 	clock := fixedClock{t: time.Date(2026, 4, 22, 12, 0, 0, 0, time.UTC)}
-	svc := &DecisionService{repo: repo, emitter: emitter, clock: clock}
+	svc := &DecisionService{repo: repo, emitter: emitter, clock: clock, freezeInvoker: &fakeFreezeInvoker{}, pdfDispatcher: &fakePDFDispatchInvoker{}}
 	db := newDecisionTestDB(t, conn)
 
 	req := SignoffRequest{

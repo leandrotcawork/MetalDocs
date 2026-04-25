@@ -27,6 +27,6 @@
   },
   "dependencies": {
     "@eigenpal/docx-js-editor": "0.0.34",
-    "@metaldocs/shared-tokens": "*"
+    "@metaldocs/shared-tokens": "file:../shared-tokens"
   }
 }

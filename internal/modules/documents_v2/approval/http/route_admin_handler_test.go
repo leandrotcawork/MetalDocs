@@ -14,6 +14,7 @@ import (
 	"metaldocs/internal/modules/documents_v2/approval/http/contracts"
 	"metaldocs/internal/modules/documents_v2/approval/repository"
 	"metaldocs/internal/modules/iam/authz"
+	iamdomain "metaldocs/internal/modules/iam/domain"
 )
 
 type fakeRouteAdminService struct {
@@ -82,7 +83,7 @@ func TestCreateRoute_HappyPath(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/api/v2/approval/routes", strings.NewReader(body))
 			req.Header.Set("Content-Type", "application/json")
 			req.Header.Set("X-Tenant-ID", "tenant-1")
-			req.Header.Set("X-User-ID", "actor-1")
+			req = req.WithContext(iamdomain.WithAuthContext(req.Context(), "actor-1", []iamdomain.Role{}))
 			req.Header.Set("Idempotency-Key", "idem-1")
 
 			rr := httptest.NewRecorder()
@@ -208,7 +209,7 @@ func TestUpdateRoute_HappyPath(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPut, "/api/v2/approval/routes/route-1", strings.NewReader(body))
 			req.Header.Set("Content-Type", "application/json")
 			req.Header.Set("X-Tenant-ID", "tenant-1")
-			req.Header.Set("X-User-ID", "actor-1")
+			req = req.WithContext(iamdomain.WithAuthContext(req.Context(), "actor-1", []iamdomain.Role{}))
 			req.Header.Set("Idempotency-Key", "idem-1")
 			req.Header.Set("If-Match", "\"v4\"")
 
@@ -295,7 +296,7 @@ func TestDeactivateRoute_HappyPath(t *testing.T) {
 
 			req := httptest.NewRequest(http.MethodDelete, "/api/v2/approval/routes/route-1", nil)
 			req.Header.Set("X-Tenant-ID", "tenant-1")
-			req.Header.Set("X-User-ID", "actor-1")
+			req = req.WithContext(iamdomain.WithAuthContext(req.Context(), "actor-1", []iamdomain.Role{}))
 			req.Header.Set("Idempotency-Key", "idem-1")
 			req.Header.Set("If-Match", "\"v3\"")
 

@@ -67,7 +67,6 @@ func (s *Service) CreateTemplate(ctx context.Context, cmd CreateTemplateCmd) (*C
 		ContentHash:         "",
 		MetadataSchema:      domain.MetadataSchema{},
 		PlaceholderSchema:   []domain.Placeholder{},
-		EditableZones:       []domain.EditableZone{},
 		AuthorID:            cmd.ActorUserID,
 		PendingApproverRole: cmd.ApproverRole,
 		PendingReviewerRole: cmd.ReviewerRole,
@@ -142,7 +141,6 @@ func (s *Service) CreateNextVersion(ctx context.Context, cmd CreateVersionCmd) (
 		ContentHash:       "",
 		MetadataSchema:    cloneMetadataSchema(source.MetadataSchema),
 		PlaceholderSchema: clonePlaceholders(source.PlaceholderSchema),
-		EditableZones:     cloneEditableZones(source.EditableZones),
 		AuthorID:          cmd.ActorUserID,
 		CreatedAt:         s.clock.Now(),
 	}
@@ -190,12 +188,6 @@ func clonePlaceholders(in []domain.Placeholder) []domain.Placeholder {
 		out[i] = in[i]
 		out[i].Options = cloneStringSlice(in[i].Options)
 	}
-	return out
-}
-
-func cloneEditableZones(in []domain.EditableZone) []domain.EditableZone {
-	out := make([]domain.EditableZone, len(in))
-	copy(out, in)
 	return out
 }
 

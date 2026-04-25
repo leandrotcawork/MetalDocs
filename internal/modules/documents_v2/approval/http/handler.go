@@ -25,6 +25,7 @@ type decisionService interface {
 
 type readService interface {
 	LoadInstance(ctx context.Context, db *sql.DB, tenantID, actorID, instanceID string) (*domain.Instance, error)
+	LoadActiveInstanceByDocument(ctx context.Context, db *sql.DB, tenantID, documentID string) (*domain.Instance, error)
 	ListPendingForActor(ctx context.Context, db *sql.DB, tenantID, actorID string, areaCode string, limit, offset int) ([]domain.Instance, error)
 }
 
@@ -73,9 +74,6 @@ func requestID(r *http.Request) string {
 }
 
 func actorIDFromRequest(r *http.Request) string {
-	if id := strings.TrimSpace(r.Header.Get("X-User-ID")); id != "" {
-		return id
-	}
 	return iamdomain.UserIDFromContext(r.Context())
 }
 

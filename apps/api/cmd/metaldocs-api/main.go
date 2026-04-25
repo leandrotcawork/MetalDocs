@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -16,14 +17,14 @@ import (
 
 	"github.com/google/uuid"
 
-	_ "metaldocs/internal/modules/document_revisions"
-	_ "metaldocs/internal/modules/editor_sessions"
-
 	auditdomain "metaldocs/internal/modules/audit/domain"
 	documents_v2 "metaldocs/internal/modules/documents_v2"
 	approvalapp "metaldocs/internal/modules/documents_v2/approval/application"
+	approvalhttp "metaldocs/internal/modules/documents_v2/approval/http"
 	approvalrepo "metaldocs/internal/modules/documents_v2/approval/repository"
+	docapp "metaldocs/internal/modules/documents_v2/application"
 	"metaldocs/internal/modules/documents_v2/jobs"
+	docrepo "metaldocs/internal/modules/documents_v2/repository"
 	"metaldocs/internal/modules/jobs/effective_date_publisher"
 	"metaldocs/internal/modules/jobs/idempotency_janitor"
 	jobscheduler "metaldocs/internal/modules/jobs/scheduler"
@@ -38,11 +39,21 @@ import (
 	authdelivery "metaldocs/internal/modules/auth/delivery/http"
 	iamapp "metaldocs/internal/modules/iam/application"
 	iamdelivery "metaldocs/internal/modules/iam/delivery/http"
+	iamdomain "metaldocs/internal/modules/iam/domain"
+	iampg "metaldocs/internal/modules/iam/infrastructure/postgres"
 	notificationapp "metaldocs/internal/modules/notifications/application"
 	notificationdelivery "metaldocs/internal/modules/notifications/delivery/http"
+	"metaldocs/internal/modules/registry"
+	registrydomain "metaldocs/internal/modules/registry/domain"
+	registryinfra "metaldocs/internal/modules/registry/infrastructure"
+	"metaldocs/internal/modules/render/fanout"
+	"metaldocs/internal/modules/render/resolvers"
 	searchapp "metaldocs/internal/modules/search/application"
 	searchdelivery "metaldocs/internal/modules/search/delivery/http"
 	searchdocs "metaldocs/internal/modules/search/infrastructure/documents"
+	"metaldocs/internal/modules/taxonomy"
+	taxonomyinfra "metaldocs/internal/modules/taxonomy/infrastructure"
+	taxonomydomain "metaldocs/internal/modules/taxonomy/domain"
 	workflowapp "metaldocs/internal/modules/workflow/application"
 	workflowdelivery "metaldocs/internal/modules/workflow/delivery/http"
 	"metaldocs/internal/platform/authn"
@@ -141,9 +152,57 @@ func main() {
 	workflowHandler.RegisterRoutes(mux)
 	iamAdminHandler.RegisterRoutes(mux)
 
+	taxonomyModule := taxonomy.New(taxonomy.Dependencies{
+		DB:         deps.SQLDB,
+		TplChecker: taxonomyinfra.NewTemplateVersionChecker(deps.SQLDB),
+	})
+	taxonomyModule.RegisterRoutes(mux)
+
+	registryModule := registry.New(registry.Dependencies{
+		DB:     deps.SQLDB,
+		Logger: slog.Default(),
+	})
+	registryModule.RegisterRoutes(mux)
+	if deps.SQLDB != nil {
+		if err := registryModule.RunStartupMigrations(context.Background(), deps.SQLDB, slog.Default()); err != nil {
+			log.Printf("registry startup migration failed: %v", err)
+		}
+	}
+
+	var membershipService *iamapp.AreaMembershipService
+	if deps.SQLDB != nil {
+		membershipService = iamapp.NewAreaMembershipService(iampg.NewUserAreaRepository(deps.SQLDB), nil)
+	}
+	iamdelivery.NewMembershipHandler(membershipService).RegisterRoutes(mux)
+
 	// Legacy templates module routes removed — templates_v2 owns /api/v2/templates/*
 
 	docPresigner := objectstore.NewDocumentPresigner(deps.MinioClient, deps.MinioBucket, 15*time.Minute, 25*1024*1024)
+	cdRepo := registryinfra.NewPostgresControlledDocumentRepository(deps.SQLDB)
+	profileRepo := taxonomyinfra.NewProfileRepository(deps.SQLDB)
+
+	// Fanout/eigenpal client — enabled when METALDOCS_FANOUT_URL is set.
+	fanoutURL := strings.TrimSpace(os.Getenv("METALDOCS_FANOUT_URL"))
+	var fanoutCli *fanout.Client
+	var freezeSvc *docapp.FreezeService
+	if fanoutURL != "" && deps.SQLDB != nil {
+		fanoutCli = fanout.NewClient(fanoutURL, nil)
+		snapRepo := docrepo.NewSnapshotRepository(deps.SQLDB)
+		fillInRepo := docrepo.NewFillInRepository(deps.SQLDB)
+		schemaReader := docapp.NewSnapshotSchemaReader(deps.SQLDB)
+		revReader := docrepo.NewRevisionReader(deps.SQLDB)
+		wfReader := docrepo.NewWorkflowReader(deps.SQLDB)
+		ctxBuilder := docapp.NewDocumentContextBuilder(deps.SQLDB, revReader, wfReader,
+			cdRegistryAdapter{cdRepo})
+		resolverReg := resolvers.NewRegistry()
+		resolvers.RegisterBuiltins(resolverReg)
+		freezeSvc = docapp.NewFreezeService(
+			schemaReader, fillInRepo, fillInRepo,
+			resolverReg, snapRepo, ctxBuilder,
+			snapRepo, snapRepo, fillInRepo, fanoutCli,
+		)
+	}
+
 	docDeps := documents_v2.Dependencies{
 		DB:      deps.SQLDB,
 		Docgen:  nil,
@@ -152,12 +211,24 @@ func main() {
 			docgenv2.NewTemplateReader(deps.SQLDB, deps.MinioClient, deps.MinioBucket),
 			docgenv2.NewTemplatesV2TemplateReader(deps.SQLDB),
 		),
-		FormVal:       formval.NewGojsonschema(),
-		Audit:         newDocumentsV2AuditAdapter(deps.AuditWriter),
-		ExportPresign: docPresigner,
+		FormVal:         formval.NewGojsonschema(),
+		Audit:           newDocumentsV2AuditAdapter(deps.AuditWriter),
+		ExportPresign:   docPresigner,
+		RegistryReader:  cdRepo,
+		AuthzChecker:    permissiveAuthzChecker{},
+		ProfileDefaults: &profileDefaultsAdapter{profileRepo: profileRepo},
 	}
 	if deps.DocgenV2Client != nil {
 		docDeps.ExportDocgen = deps.DocgenV2Client
+	}
+	if fanoutCli != nil && deps.SQLDB != nil {
+		snapRepo := docrepo.NewSnapshotRepository(deps.SQLDB)
+		inputsReader := docrepo.NewFanoutInputsReader(deps.SQLDB)
+		docDeps.ReconstructRunner = fanout.NewReconstructService(
+			inputsReader, fanoutCli, snapRepo,
+			fanout.EngineVersions{EigenpalVer: "local", DocxtemplaterVer: "local"},
+			nil,
+		)
 	}
 	docMod := documents_v2.New(docDeps)
 	docMod.RegisterRoutes(mux)
@@ -169,6 +240,13 @@ func main() {
 	approvalRepo := approvalrepo.NewPostgresApprovalRepository(deps.SQLDB)
 	approvalEmitter := approvalapp.NewSQLEmitter()
 	approvalServices := approvalapp.NewServices(approvalRepo, approvalEmitter, approvalapp.RealClock{})
+	if freezeSvc != nil {
+		approvalServices.Decision = approvalapp.NewDecisionService(
+			approvalRepo, approvalEmitter, approvalapp.RealClock{}, freezeSvc, nil,
+		)
+	}
+	approvalHandler := approvalhttp.NewHandler(approvalServices, deps.SQLDB)
+	approvalHandler.RegisterRoutes(mux)
 	e2etest.RegisterE2EHandlers(mux, deps.SQLDB, func(ctx context.Context) error {
 		_, err := approvalServices.Scheduler.RunDuePublishes(ctx, deps.SQLDB)
 		return err
@@ -318,4 +396,45 @@ func schedulerLeaderID() string {
 		hostname = "unknown"
 	}
 	return fmt.Sprintf("%s:%d", hostname, os.Getpid())
+}
+
+// permissiveAuthzChecker always grants access (dev/MVP only — IAM area check not yet enforced).
+type permissiveAuthzChecker struct{}
+
+func (permissiveAuthzChecker) Check(_ context.Context, _, _ string, _ iamdomain.Capability, _ iamapp.ResourceCtx) error {
+	return nil
+}
+
+// cdRegistryAdapter bridges the registry ControlledDocumentRepository → resolvers.RegistryReader.
+type cdRegistryAdapter struct {
+	repo interface {
+		GetByID(ctx context.Context, tenantID, id string) (*registrydomain.ControlledDocument, error)
+	}
+}
+
+func (a cdRegistryAdapter) GetControlledDocument(ctx context.Context, tenantID, controlledDocumentID string) (resolvers.ControlledDocumentInfo, error) {
+	cd, err := a.repo.GetByID(ctx, tenantID, controlledDocumentID)
+	if err != nil {
+		return resolvers.ControlledDocumentInfo{}, err
+	}
+	return resolvers.ControlledDocumentInfo{DocCode: cd.Code}, nil
+}
+
+// profileDefaultsAdapter bridges taxonomy ProfileRepository → documents_v2 ProfileDefaultTemplateReader.
+type profileDefaultsAdapter struct {
+	profileRepo interface {
+		GetByCode(ctx context.Context, tenantID, code string) (*taxonomydomain.DocumentProfile, error)
+	}
+}
+
+func (a *profileDefaultsAdapter) GetDefaultTemplateVersionID(ctx context.Context, tenantID, profileCode string) (*string, *string, error) {
+	profile, err := a.profileRepo.GetByCode(ctx, tenantID, profileCode)
+	if err != nil {
+		return nil, nil, err
+	}
+	if profile.DefaultTemplateVersionID == nil {
+		return nil, nil, nil
+	}
+	status := "published"
+	return profile.DefaultTemplateVersionID, &status, nil
 }

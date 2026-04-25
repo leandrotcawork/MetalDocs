@@ -1,5 +1,13 @@
 ﻿export type VersionStatus = 'draft' | 'in_review' | 'approved' | 'published' | 'obsolete';
 
+import type { Placeholder, CompositionConfig } from '../../placeholder-types';
+export type { Placeholder, CompositionConfig };
+
+export interface TemplateSchemas {
+  placeholders: Placeholder[];
+  composition: CompositionConfig | null;
+}
+
 export interface TemplateDTO {
   id: string;
   tenant_id: string;
@@ -26,7 +34,6 @@ export interface VersionDTO {
   content_hash: string | null;
   metadata_schema: Record<string, unknown> | null;
   placeholder_schema: Record<string, unknown> | null;
-  editable_zones: Record<string, unknown> | null;
   author_id: string;
   pending_reviewer_role: string | null;
   pending_approver_role: string | null;
@@ -278,4 +285,66 @@ export async function approveVersion(
   }
   const data = (await res.json()) as { data: { version: VersionDTO } };
   return data.data.version;
+}
+
+// Wire-format types (backend snake_case)
+interface WirePlaceholder { id: string; label: string; type: string; required: boolean; options?: string[]; regex?: string; min_number?: number; max_number?: number; min_date?: string; max_date?: string; max_length?: number; resolver_key?: string; visible_if?: { placeholder_id: string; op: string; value?: unknown }; }
+
+function placeholderFromWire(w: WirePlaceholder): Placeholder {
+  return {
+    id: w.id,
+    label: w.label,
+    type: w.type as Placeholder['type'],
+    ...(w.required ? { required: true } : {}),
+    ...(w.options ? { options: w.options } : {}),
+    ...(w.regex != null ? { regex: w.regex } : {}),
+    ...(w.min_number != null ? { minNumber: w.min_number } : {}),
+    ...(w.max_number != null ? { maxNumber: w.max_number } : {}),
+    ...(w.min_date != null ? { minDate: w.min_date } : {}),
+    ...(w.max_date != null ? { maxDate: w.max_date } : {}),
+    ...(w.max_length != null ? { maxLength: w.max_length } : {}),
+    ...(w.resolver_key != null ? { resolverKey: w.resolver_key } : {}),
+    ...(w.visible_if ? { visibleIf: { placeholderID: w.visible_if.placeholder_id, operator: w.visible_if.op as NonNullable<Placeholder['visibleIf']>['operator'], value: w.visible_if.value as string | undefined } } : {}),
+  };
+}
+
+function placeholderToWire(p: Placeholder): WirePlaceholder {
+  return {
+    id: p.id,
+    label: p.label,
+    type: p.type,
+    required: p.required ?? false,
+    ...(p.options ? { options: p.options } : {}),
+    ...(p.regex != null ? { regex: p.regex } : {}),
+    ...(p.minNumber != null ? { min_number: p.minNumber } : {}),
+    ...(p.maxNumber != null ? { max_number: p.maxNumber } : {}),
+    ...(p.minDate != null ? { min_date: p.minDate } : {}),
+    ...(p.maxDate != null ? { max_date: p.maxDate } : {}),
+    ...(p.maxLength != null ? { max_length: p.maxLength } : {}),
+    ...(p.resolverKey != null ? { resolver_key: p.resolverKey } : {}),
+    ...(p.visibleIf ? { visible_if: { placeholder_id: p.visibleIf.placeholderID, op: p.visibleIf.operator, value: p.visibleIf.value } } : {}),
+  };
+}
+
+export async function getTemplateSchemas(templateId: string, versionNum: number): Promise<TemplateSchemas> {
+  const res = await fetch(`/api/v2/templates/${templateId}/versions/${versionNum}`);
+  const body = await apiJson<{ data: { version: VersionDTO & { placeholder_schema: WirePlaceholder[] | null } } }>(res);
+  const v = body.data.version;
+  return {
+    placeholders: Array.isArray(v.placeholder_schema) ? v.placeholder_schema.map(placeholderFromWire) : [],
+    composition: null,
+  };
+}
+
+export async function putTemplateSchemas(templateId: string, versionNum: number, schemas: TemplateSchemas): Promise<void> {
+  const res = await fetch(`/api/v2/templates/${templateId}/versions/${versionNum}/schema`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      metadata_schema: {},
+      placeholder_schema: schemas.placeholders.map(placeholderToWire),
+      expected_content_hash: '',
+    }),
+  });
+  await apiJson<unknown>(res);
 }

@@ -11,6 +11,7 @@ import (
 	iamdomain "metaldocs/internal/modules/iam/domain"
 	workflowapp "metaldocs/internal/modules/workflow/application"
 	workflowdomain "metaldocs/internal/modules/workflow/domain"
+	"metaldocs/internal/platform/httpresponse"
 )
 
 type Handler struct {
@@ -95,7 +96,7 @@ func (h *Handler) handleTransition(w http.ResponseWriter, r *http.Request, docum
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	httpresponse.WriteJSON(w, http.StatusOK, map[string]any{
 		"documentId":       result.DocumentID,
 		"fromStatus":       result.FromStatus,
 		"toStatus":         result.ToStatus,
@@ -127,7 +128,7 @@ func (h *Handler) handleListApprovals(w http.ResponseWriter, r *http.Request, do
 			DecidedAt:        formatOptionalTime(item.DecidedAt),
 		})
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"items": out})
+	httpresponse.WriteJSON(w, http.StatusOK, map[string]any{"items": out})
 }
 
 func (h *Handler) writeDomainError(w http.ResponseWriter, err error, traceID string) {
@@ -166,7 +167,7 @@ func requestTraceID(r *http.Request) string {
 }
 
 func writeAPIError(w http.ResponseWriter, status int, code, message, traceID string) {
-	writeJSON(w, status, apiErrorEnvelope{
+	httpresponse.WriteJSON(w, status, apiErrorEnvelope{
 		Error: apiError{
 			Code:    code,
 			Message: message,
@@ -174,12 +175,6 @@ func writeAPIError(w http.ResponseWriter, status int, code, message, traceID str
 			TraceID: traceID,
 		},
 	})
-}
-
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
 }
 
 func formatOptionalTime(value *time.Time) string {

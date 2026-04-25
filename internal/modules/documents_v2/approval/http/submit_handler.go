@@ -8,13 +8,14 @@ import (
 
 	"metaldocs/internal/modules/documents_v2/approval/application"
 	"metaldocs/internal/modules/documents_v2/approval/http/contracts"
+	iamdomain "metaldocs/internal/modules/iam/domain"
 )
 
 func (h *Handler) SubmitHandler(w http.ResponseWriter, r *http.Request) {
 	reqID := requestID(r)
 	documentID := r.PathValue("id")
 	tenantID := strings.TrimSpace(r.Header.Get("X-Tenant-ID"))
-	actorID := strings.TrimSpace(r.Header.Get("X-User-ID"))
+	actorID := iamdomain.UserIDFromContext(r.Context())
 	idempotencyKey := strings.TrimSpace(r.Header.Get("Idempotency-Key"))
 	if idempotencyKey == "" {
 		WriteError(w, reqID, ErrIdempotencyRequired)

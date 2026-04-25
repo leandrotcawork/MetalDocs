@@ -18,7 +18,6 @@ injected by the gateway after token validation.
 
 Headers required on every request:
 - `X-Tenant-ID` — tenant UUID
-- `X-User-ID` — actor UUID
 - `X-User-Roles` — comma-separated role list
 
 ---

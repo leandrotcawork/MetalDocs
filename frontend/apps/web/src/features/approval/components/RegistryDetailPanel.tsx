@@ -39,14 +39,14 @@ const TRANSITION_POLICY: Record<ApprovalState, TransitionPolicy> = {
     actions: { submit: true, signoff: false, cancelInstance: false, publishOrSchedule: false },
   },
   under_review: {
-    disabledReason: 'Documento em revisão — edição bloqueada',
+    disabledReason: 'Documento em revisÃ£o â€” ediÃ§Ã£o bloqueada',
     actions: { submit: false, signoff: true, cancelInstance: true, publishOrSchedule: false },
   },
   approved: {
     actions: { submit: false, signoff: false, cancelInstance: false, publishOrSchedule: true },
   },
   scheduled: {
-    disabledReason: 'Aguardando data de vigência agendada',
+    disabledReason: 'Aguardando data de vigÃªncia agendada',
     readOnly: true,
     actions: { submit: false, signoff: false, cancelInstance: false, publishOrSchedule: false },
   },
@@ -54,21 +54,21 @@ const TRANSITION_POLICY: Record<ApprovalState, TransitionPolicy> = {
     actions: { submit: false, signoff: false, cancelInstance: false, publishOrSchedule: true },
   },
   superseded: {
-    disabledReason: 'Versão substituída — somente leitura',
+    disabledReason: 'VersÃ£o substituÃ­da â€” somente leitura',
     readOnly: true,
     actions: { submit: false, signoff: false, cancelInstance: false, publishOrSchedule: false },
   },
   rejected: {
-    disabledReason: 'Documento rejeitado — edite e submeta novamente',
+    disabledReason: 'Documento rejeitado â€” edite e submeta novamente',
     actions: { submit: false, signoff: false, cancelInstance: false, publishOrSchedule: false },
   },
   obsolete: {
-    disabledReason: 'Documento obsoleto — somente leitura',
+    disabledReason: 'Documento obsoleto â€” somente leitura',
     readOnly: true,
     actions: { submit: false, signoff: false, cancelInstance: false, publishOrSchedule: false },
   },
   cancelled: {
-    disabledReason: 'Aprovação cancelada',
+    disabledReason: 'AprovaÃ§Ã£o cancelada',
     readOnly: true,
     actions: { submit: false, signoff: false, cancelInstance: false, publishOrSchedule: false },
   },

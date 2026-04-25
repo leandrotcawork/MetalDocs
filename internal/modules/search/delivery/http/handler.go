@@ -1,7 +1,6 @@
 package httpdelivery
 
 import (
-	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
@@ -9,6 +8,7 @@ import (
 
 	searchapp "metaldocs/internal/modules/search/application"
 	searchdomain "metaldocs/internal/modules/search/domain"
+	"metaldocs/internal/platform/httpresponse"
 )
 
 type Handler struct {
@@ -117,7 +117,7 @@ func (h *Handler) handleSearchDocuments(w http.ResponseWriter, r *http.Request) 
 		})
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{"items": out})
+	httpresponse.WriteJSON(w, http.StatusOK, map[string]any{"items": out})
 }
 
 type apiErrorEnvelope struct {
@@ -139,7 +139,7 @@ func requestTraceID(r *http.Request) string {
 }
 
 func writeAPIError(w http.ResponseWriter, status int, code, message, traceID string) {
-	writeJSON(w, status, apiErrorEnvelope{
+	httpresponse.WriteJSON(w, status, apiErrorEnvelope{
 		Error: apiError{
 			Code:    code,
 			Message: message,
@@ -147,12 +147,6 @@ func writeAPIError(w http.ResponseWriter, status int, code, message, traceID str
 			TraceID: traceID,
 		},
 	})
-}
-
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
 }
 
 func parseOptionalDateTimeQuery(r *http.Request, key string) (*time.Time, error) {

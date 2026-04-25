@@ -70,6 +70,10 @@ func (s *RouteAdminService) Create(ctx context.Context, db *sql.DB, in CreateRou
 		return CreateRouteResult{}, fmt.Errorf("route_admin: begin tx: %w", err)
 	}
 
+	if err := setAuthzGUC(ctx, tx, in.TenantID, in.ActorUserID); err != nil {
+		_ = tx.Rollback()
+		return CreateRouteResult{}, fmt.Errorf("route_admin create: %w", err)
+	}
 	ctx = authz.WithCapCache(ctx)
 	if err := authz.Require(ctx, tx, "route.admin", "tenant"); err != nil {
 		_ = tx.Rollback()
@@ -137,6 +141,10 @@ func (s *RouteAdminService) Update(ctx context.Context, db *sql.DB, in UpdateRou
 		return UpdateRouteResult{}, fmt.Errorf("route_admin: begin tx: %w", err)
 	}
 
+	if err := setAuthzGUC(ctx, tx, in.TenantID, in.ActorUserID); err != nil {
+		_ = tx.Rollback()
+		return UpdateRouteResult{}, fmt.Errorf("route_admin update: %w", err)
+	}
 	ctx = authz.WithCapCache(ctx)
 	if err := authz.Require(ctx, tx, "route.admin", "tenant"); err != nil {
 		_ = tx.Rollback()
@@ -222,6 +230,10 @@ func (s *RouteAdminService) Deactivate(ctx context.Context, db *sql.DB, in Deact
 		return DeactivateRouteResult{}, fmt.Errorf("route_admin: begin tx: %w", err)
 	}
 
+	if err := setAuthzGUC(ctx, tx, in.TenantID, in.ActorUserID); err != nil {
+		_ = tx.Rollback()
+		return DeactivateRouteResult{}, fmt.Errorf("route_admin deactivate: %w", err)
+	}
 	ctx = authz.WithCapCache(ctx)
 	if err := authz.Require(ctx, tx, "route.admin", "tenant"); err != nil {
 		_ = tx.Rollback()

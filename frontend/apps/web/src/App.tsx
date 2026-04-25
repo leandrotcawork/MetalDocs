@@ -4,6 +4,7 @@ import { api } from "./lib.api";
 import { AuthShell } from "./components/AuthShell";
 import { DocumentCreateView } from "./components/DocumentCreateView";
 import { AdminCenterView } from "./features/iam/AdminCenterView";
+import { TaxonomyAdminPage } from "./features/taxonomy";
 import { NotificationsPanel } from "./components/NotificationsPanel";
 import { OperationsCenter } from "./components/OperationsCenter";
 import { PasswordChangePanel } from "./components/PasswordChangePanel";
@@ -19,10 +20,12 @@ import { statusOf } from "./features/shared/errors";
 import { DocumentsWorkspaceView } from "./features/documents/DocumentsWorkspaceView";
 import { RegistryExplorerView } from "./features/registry/RegistryExplorerView";
 import { WorkspaceShell } from "./features/shell/WorkspaceShell";
-import { isPathForView, parseTemplateEditorPath, pathFromView, viewFromPath } from "./routing/workspaceRoutes";
-import { TemplateEditorView } from "./features/templates/TemplateEditorView";
+import { isPathForView, pathFromView, viewFromPath } from "./routing/workspaceRoutes";
 import { TemplatesV2View, type TemplatesV2Route } from "./features/templates/v2/routes";
 import { renderDocumentsV2View, routeFromPath as docsRouteFromPath, pathFromRoute as docsPathFromRoute, type DocumentsV2Route } from "./features/documents/v2/routes";
+import { RegistryListPage } from "./features/registry";
+import { AreaMembershipAdminPage } from "./features/iam/AreaMembershipAdminPage";
+import { InboxPage } from "./features/approval/pages/InboxPage";
 import { Toaster } from "sonner";
 
 type AppErrorBoundaryState = {
@@ -182,7 +185,6 @@ function AppContent() {
       : documents;
 
   const locationView = useMemo(() => viewFromPath(location.pathname), [location.pathname]);
-  const templateEditorParams = useMemo(() => parseTemplateEditorPath(location.pathname), [location.pathname]);
   const [tplRoute, setTplRoute] = useState<TemplatesV2Route>({ kind: 'list' });
   const [docsRoute, setDocsRouteState] = useState<DocumentsV2Route>(() => docsRouteFromPath(location.pathname));
   const setDocsRoute = useCallback((next: DocumentsV2Route) => {
@@ -345,11 +347,15 @@ function AppContent() {
   }
 
   function renderWorkspaceView() {
-    if (activeView === "operations" || activeView === "approvals" || activeView === "audit") {
+    if (activeView === "approvals") {
+      return <InboxPage />;
+    }
+
+    if (activeView === "operations" || activeView === "audit") {
       return (
         <OperationsCenter
           loadState={loadState}
-          documents={activeView === "approvals" ? documents.filter((item) => item.status === "IN_REVIEW") : documents}
+          documents={documents}
           notifications={notifications}
           documentProfiles={documentProfiles}
           processAreas={processAreas}
@@ -421,15 +427,6 @@ function AppContent() {
     }
 
     if (activeView === "registry") {
-      if (templateEditorParams) {
-        return (
-          <TemplateEditorView
-            profileCode={templateEditorParams.profileCode}
-            templateKey={templateEditorParams.templateKey}
-          />
-        );
-      }
-
       return (
         <RegistryExplorerView
           loadState={loadState}
@@ -477,11 +474,23 @@ function AppContent() {
       );
     }
 
+    if (activeView === "taxonomy-admin" && isAdmin) {
+      return <TaxonomyAdminPage />;
+    }
+
     if (activeView === "templates-v2") {
       return <TemplatesV2View route={tplRoute} onNavigate={setTplRoute} />;
     }
     if (activeView === "documents-v2") {
       return renderDocumentsV2View(docsRoute, setDocsRoute);
+    }
+
+    if (activeView === "registry-v2") {
+      return <RegistryListPage />;
+    }
+
+    if (activeView === "iam-memberships" && isAdmin) {
+      return <AreaMembershipAdminPage />;
     }
 
     return (
@@ -550,7 +559,7 @@ function AppContent() {
           onPrimaryAction={handlePrimaryAction}
           onRefreshWorkspace={refreshWorkspace}
           isRefreshing={loadState === "loading"}
-          flushContent={Boolean(templateEditorParams) || tplRoute.kind === 'author'}
+          flushContent={tplRoute.kind === 'author'}
           editMode={tplRoute.kind === 'author'}
           onLogout={handleLogout}
         >

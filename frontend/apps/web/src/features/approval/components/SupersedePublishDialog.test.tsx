@@ -33,10 +33,11 @@ describe('SupersedePublishDialog', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar publicação' }));
 
-    await waitFor(() => {
-      expect(vi.mocked(approvalApi.publish)).toHaveBeenCalledWith('doc-1', {
-        content_hash: 'hash-1',
-      });
+    // With fake timers, waitFor's internal setInterval never fires.
+    // runAllTimersAsync advances fake timers AND flushes promise microtasks.
+    await vi.runAllTimersAsync();
+    expect(vi.mocked(approvalApi.publish)).toHaveBeenCalledWith('doc-1', {
+      content_hash: 'hash-1',
     });
   });
 
@@ -64,11 +65,10 @@ describe('SupersedePublishDialog', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar publicação' }));
 
-    await waitFor(() => {
-      expect(vi.mocked(approvalApi.schedulePublish)).toHaveBeenCalledWith('doc-1', {
-        content_hash: 'hash-1',
-        effective_from: '2026-04-22T13:10:00.000Z',
-      });
+    await vi.runAllTimersAsync();
+    expect(vi.mocked(approvalApi.schedulePublish)).toHaveBeenCalledWith('doc-1', {
+      content_hash: 'hash-1',
+      effective_from: '2026-04-22T13:10:00.000Z',
     });
   });
 
@@ -114,11 +114,10 @@ describe('SupersedePublishDialog', () => {
     fireEvent.click(screen.getByLabelText('Substituir versão publicada atual'));
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar publicação' }));
 
-    await waitFor(() => {
-      expect(vi.mocked(approvalApi.supersede)).toHaveBeenCalledWith('doc-1', {
-        content_hash: 'hash-2',
-        supersedes_document_id: 'doc-published',
-      });
+    await vi.runAllTimersAsync();
+    expect(vi.mocked(approvalApi.supersede)).toHaveBeenCalledWith('doc-1', {
+      content_hash: 'hash-2',
+      supersedes_document_id: 'doc-published',
     });
     expect(vi.mocked(approvalApi.publish)).not.toHaveBeenCalled();
   });

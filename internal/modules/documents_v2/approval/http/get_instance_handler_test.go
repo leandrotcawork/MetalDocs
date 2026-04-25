@@ -12,6 +12,7 @@ import (
 	"metaldocs/internal/modules/documents_v2/approval/domain"
 	"metaldocs/internal/modules/documents_v2/approval/http/contracts"
 	"metaldocs/internal/modules/documents_v2/approval/repository"
+	iamdomain "metaldocs/internal/modules/iam/domain"
 )
 
 type fakeReadServiceGetInstance struct {
@@ -31,6 +32,10 @@ func (f *fakeReadServiceGetInstance) LoadInstance(_ context.Context, _ *sql.DB, 
 		return nil, f.err
 	}
 	return f.instance, nil
+}
+
+func (f *fakeReadServiceGetInstance) LoadActiveInstanceByDocument(_ context.Context, _ *sql.DB, _, _ string) (*domain.Instance, error) {
+	return nil, nil
 }
 
 func (f *fakeReadServiceGetInstance) ListPendingForActor(_ context.Context, _ *sql.DB, _, _, _ string, _, _ int) ([]domain.Instance, error) {
@@ -61,7 +66,7 @@ func TestGetInstanceHandler_HappyPath(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v2/approval/instances/inst-1", nil)
 	req.Header.Set("X-Tenant-ID", "tenant-1")
-	req.Header.Set("X-User-ID", "actor-1")
+	req = req.WithContext(iamdomain.WithAuthContext(req.Context(), "actor-1", []iamdomain.Role{}))
 	rr := httptest.NewRecorder()
 
 	mux.ServeHTTP(rr, req)
@@ -77,11 +82,11 @@ func TestGetInstanceHandler_HappyPath(t *testing.T) {
 	if err := json.NewDecoder(rr.Body).Decode(&out); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if out.InstanceID != "inst-1" {
-		t.Fatalf("instance_id = %q, want %q", out.InstanceID, "inst-1")
+	if out.ID != "inst-1" {
+		t.Fatalf("id = %q, want %q", out.ID, "inst-1")
 	}
-	if out.CreatedAt != ts.Format(time.RFC3339) {
-		t.Fatalf("created_at = %q, want %q", out.CreatedAt, ts.Format(time.RFC3339))
+	if out.SubmittedAt != ts.Format(time.RFC3339) {
+		t.Fatalf("submitted_at = %q, want %q", out.SubmittedAt, ts.Format(time.RFC3339))
 	}
 	if out.ETag != "\"v1\"" {
 		t.Fatalf("etag body = %q, want %q", out.ETag, "\"v1\"")
@@ -98,7 +103,7 @@ func TestGetInstanceHandler_NotFound(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v2/approval/instances/inst-missing", nil)
 	req.Header.Set("X-Tenant-ID", "tenant-1")
-	req.Header.Set("X-User-ID", "actor-1")
+	req = req.WithContext(iamdomain.WithAuthContext(req.Context(), "actor-1", []iamdomain.Role{}))
 	rr := httptest.NewRecorder()
 
 	mux.ServeHTTP(rr, req)
@@ -123,7 +128,7 @@ func TestGetInstanceHandler_NoTenantHeader(t *testing.T) {
 	mux := getInstanceTestMux(h)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v2/approval/instances/inst-2", nil)
-	req.Header.Set("X-User-ID", "actor-1")
+	req = req.WithContext(iamdomain.WithAuthContext(req.Context(), "actor-1", []iamdomain.Role{}))
 	rr := httptest.NewRecorder()
 
 	mux.ServeHTTP(rr, req)

@@ -10,16 +10,43 @@ import (
 
 	"github.com/google/uuid"
 
+	docapp "metaldocs/internal/modules/documents_v2/application"
 	"metaldocs/internal/modules/documents_v2/approval/domain"
 	"metaldocs/internal/modules/documents_v2/approval/repository"
 	"metaldocs/internal/modules/iam/authz"
 )
 
+type FreezeInvoker interface {
+	Freeze(ctx context.Context, tx *sql.Tx, tenantID, revisionID string, approver docapp.ApproverContext) error
+}
+
+type PDFDispatchInvoker interface {
+	Dispatch(ctx context.Context, tenantID, revisionID string) error
+}
+
 // DecisionService handles approver approve/reject decisions.
 type DecisionService struct {
-	repo    repository.ApprovalRepository
-	emitter EventEmitter
-	clock   Clock
+	repo          repository.ApprovalRepository
+	emitter       EventEmitter
+	clock         Clock
+	freezeInvoker FreezeInvoker
+	pdfDispatcher PDFDispatchInvoker
+}
+
+func NewDecisionService(
+	repo repository.ApprovalRepository,
+	emitter EventEmitter,
+	clock Clock,
+	freezeInvoker FreezeInvoker,
+	pdfDispatcher PDFDispatchInvoker,
+) *DecisionService {
+	return &DecisionService{
+		repo:          repo,
+		emitter:       emitter,
+		clock:         clock,
+		freezeInvoker: freezeInvoker,
+		pdfDispatcher: pdfDispatcher,
+	}
 }
 
 // SignoffRequest carries all inputs for RecordSignoff.
@@ -33,6 +60,7 @@ type SignoffRequest struct {
 	SignatureMethod  string
 	SignaturePayload map[string]any
 	ContentFormData  map[string]any // current document content for hash
+	Capabilities     []string
 }
 
 // SignoffResult is returned by RecordSignoff.
@@ -65,6 +93,11 @@ func (s *DecisionService) RecordSignoff(ctx context.Context, db *sql.DB, req Sig
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return SignoffResult{}, fmt.Errorf("recordSignoff: begin tx: %w", err)
+	}
+
+	if err := setAuthzGUC(ctx, tx, req.TenantID, req.ActorUserID); err != nil {
+		_ = tx.Rollback()
+		return SignoffResult{}, fmt.Errorf("recordSignoff: %w", err)
 	}
 
 	// Step 4: load the approval instance (FOR UPDATE via LoadInstance).
@@ -183,6 +216,9 @@ func (s *DecisionService) RecordSignoff(ctx context.Context, db *sql.DB, req Sig
 	outcome := domain.EvaluateQuorum(*activeStage, approvals, rejections, effectiveDenominator)
 
 	var result SignoffResult
+	var shouldDispatchPDF bool
+	var pdfTenantID string
+	var pdfRevisionID string
 
 	switch outcome {
 	case domain.QuorumApprovedStage:
@@ -206,7 +242,34 @@ func (s *DecisionService) RecordSignoff(ctx context.Context, db *sql.DB, req Sig
 				_ = tx.Rollback()
 				return SignoffResult{}, fmt.Errorf("recordSignoff: complete instance: %w", err)
 			}
+			if s.freezeInvoker == nil {
+				_ = tx.Rollback()
+				return SignoffResult{}, fmt.Errorf("recordSignoff: freezeInvoker not configured")
+			}
+			if err := s.freezeInvoker.Freeze(ctx, tx, req.TenantID, instance.DocumentID, docapp.ApproverContext{
+				UserID:       req.ActorUserID,
+				Capabilities: req.Capabilities,
+			}); err != nil {
+				_ = tx.Rollback()
+				return SignoffResult{}, fmt.Errorf("recordSignoff: freeze: %w", err)
+			}
+			// Transition document under_review → approved.
+			if _, err := tx.ExecContext(ctx, `
+				UPDATE documents
+				   SET status           = 'approved',
+				       revision_version = revision_version + 1
+				 WHERE id        = $1
+				   AND tenant_id = $2
+				   AND status    = 'under_review'`,
+				instance.DocumentID, req.TenantID,
+			); err != nil {
+				_ = tx.Rollback()
+				return SignoffResult{}, fmt.Errorf("recordSignoff: approve document: %w", err)
+			}
 			result.InstanceApproved = true
+			shouldDispatchPDF = true
+			pdfTenantID = req.TenantID
+			pdfRevisionID = instance.DocumentID
 		} else {
 			// Activate the next stage that AdvanceStage marked active.
 			nextStage := instance.Active()
@@ -265,7 +328,9 @@ func (s *DecisionService) RecordSignoff(ctx context.Context, db *sql.DB, req Sig
 	if err := tx.Commit(); err != nil {
 		return SignoffResult{}, fmt.Errorf("recordSignoff: commit: %w", err)
 	}
-
+	if shouldDispatchPDF && s.pdfDispatcher != nil {
+		_ = s.pdfDispatcher.Dispatch(ctx, pdfTenantID, pdfRevisionID)
+	}
 	return result, nil
 }
 

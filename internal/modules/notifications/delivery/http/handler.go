@@ -12,6 +12,7 @@ import (
 	iamdomain "metaldocs/internal/modules/iam/domain"
 	notificationapp "metaldocs/internal/modules/notifications/application"
 	notificationdomain "metaldocs/internal/modules/notifications/domain"
+	"metaldocs/internal/platform/httpresponse"
 )
 
 type Handler struct {
@@ -108,7 +109,7 @@ func (h *Handler) handleNotifications(w http.ResponseWriter, r *http.Request) {
 		out = append(out, responseItem)
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{"items": out})
+	httpresponse.WriteJSON(w, http.StatusOK, map[string]any{"items": out})
 }
 
 func (h *Handler) handleNotificationRoute(w http.ResponseWriter, r *http.Request) {
@@ -139,7 +140,7 @@ func (h *Handler) handleNotificationRoute(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	writeJSON(w, http.StatusOK, MarkReadResponse{
+	httpresponse.WriteJSON(w, http.StatusOK, MarkReadResponse{
 		ID:     parts[0],
 		Status: notificationdomain.StatusRead,
 		ReadAt: readAt.Format(time.RFC3339),
@@ -245,7 +246,7 @@ func requestTraceID(r *http.Request) string {
 }
 
 func writeAPIError(w http.ResponseWriter, status int, code, message, traceID string) {
-	writeJSON(w, status, map[string]any{
+	httpresponse.WriteJSON(w, status, map[string]any{
 		"error": map[string]any{
 			"code":     code,
 			"message":  message,
@@ -253,10 +254,4 @@ func writeAPIError(w http.ResponseWriter, status int, code, message, traceID str
 			"trace_id": traceID,
 		},
 	})
-}
-
-func writeJSON(w http.ResponseWriter, status int, payload any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(payload)
 }

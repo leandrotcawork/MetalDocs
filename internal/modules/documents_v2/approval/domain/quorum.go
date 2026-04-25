@@ -35,21 +35,27 @@ func EvaluateQuorum(stage StageInstance, approvals []Signoff, rejections []Signo
 		return QuorumRejectedStage
 	}
 
-	eligible := make(map[string]bool, len(stage.EligibleActorIDs))
-	for _, id := range stage.EligibleActorIDs {
-		eligible[id] = true
-	}
-
 	approveCount := 0
-	for _, s := range approvals {
-		if eligible[s.ActorUserID()] {
-			approveCount++
-		}
-	}
 	rejectCount := 0
-	for _, s := range rejections {
-		if eligible[s.ActorUserID()] {
-			rejectCount++
+
+	if len(stage.EligibleActorIDs) == 0 {
+		// No eligible set configured — all signoffs count (matches effectiveDenominator=1 fallback).
+		approveCount = len(approvals)
+		rejectCount = len(rejections)
+	} else {
+		eligible := make(map[string]bool, len(stage.EligibleActorIDs))
+		for _, id := range stage.EligibleActorIDs {
+			eligible[id] = true
+		}
+		for _, s := range approvals {
+			if eligible[s.ActorUserID()] {
+				approveCount++
+			}
+		}
+		for _, s := range rejections {
+			if eligible[s.ActorUserID()] {
+				rejectCount++
+			}
 		}
 	}
 

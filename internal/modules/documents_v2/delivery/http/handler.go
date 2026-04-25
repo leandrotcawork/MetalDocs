@@ -11,7 +11,10 @@ import (
 
 	"metaldocs/internal/modules/documents_v2/application"
 	"metaldocs/internal/modules/documents_v2/domain"
+	iamapp "metaldocs/internal/modules/iam/application"
 	iamdomain "metaldocs/internal/modules/iam/domain"
+	registrydomain "metaldocs/internal/modules/registry/domain"
+	"metaldocs/internal/platform/httpresponse"
 	"metaldocs/internal/platform/ratelimit"
 )
 
@@ -22,7 +25,7 @@ const (
 )
 
 type Service interface {
-	CreateDocument(ctx context.Context, cmd application.CreateDocumentCmd) (*application.CreateDocumentResult, error)
+	CreateDocument(ctx context.Context, cmd application.CreateDocumentInput) (*application.CreateDocumentResult, error)
 	GetDocument(ctx context.Context, tenantID, id string) (*domain.Document, error)
 	RenameDocument(ctx context.Context, tenantID, userID, docID, newName string) error
 	ListDocuments(ctx context.Context, tenantID string) ([]domain.Document, error)
@@ -47,6 +50,8 @@ type Service interface {
 }
 
 type Handler struct{ svc Service }
+
+var writeJSON = httpresponse.WriteJSON
 
 func NewHandler(svc Service) *Handler { return &Handler{svc: svc} }
 
@@ -119,21 +124,23 @@ func (h *Handler) createDocument(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		TemplateVersionID string          `json:"template_version_id"`
-		Name              string          `json:"name"`
-		FormData          json.RawMessage `json:"form_data"`
+		ControlledDocumentID string          `json:"controlled_document_id"`
+		TemplateVersionID    string          `json:"template_version_id"`
+		Name                 string          `json:"name"`
+		FormData             json.RawMessage `json:"form_data"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		httpErr(w, http.StatusBadRequest, "invalid_body")
 		return
 	}
 
-	res, err := h.svc.CreateDocument(r.Context(), application.CreateDocumentCmd{
-		TenantID:          tenantIDFromReq(r),
-		ActorUserID:       userIDFromReq(r),
-		TemplateVersionID: req.TemplateVersionID,
-		Name:              req.Name,
-		FormData:          req.FormData,
+	res, err := h.svc.CreateDocument(r.Context(), application.CreateDocumentInput{
+		TenantID:             tenantIDFromReq(r),
+		ActorUserID:          userIDFromReq(r),
+		ControlledDocumentID: req.ControlledDocumentID,
+		TemplateVersionID:    req.TemplateVersionID,
+		Name:                 req.Name,
+		FormData:             req.FormData,
 	})
 	if err != nil {
 		status, msg := mapErr(err)
@@ -146,7 +153,7 @@ func (h *Handler) createDocument(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, map[string]string{
+	httpresponse.WriteJSON(w, http.StatusCreated, map[string]string{
 		"document_id":         res.DocumentID,
 		"initial_revision_id": res.InitialRevisionID,
 		"session_id":          res.SessionID,
@@ -177,7 +184,7 @@ func (h *Handler) listDocuments(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, docs)
+	httpresponse.WriteJSON(w, http.StatusOK, docs)
 }
 
 func (h *Handler) getDocument(w http.ResponseWriter, r *http.Request) {
@@ -194,7 +201,7 @@ func (h *Handler) getDocument(w http.ResponseWriter, r *http.Request) {
 		httpErr(w, status, msg)
 		return
 	}
-	writeJSON(w, http.StatusOK, doc)
+	httpresponse.WriteJSON(w, http.StatusOK, doc)
 }
 
 func (h *Handler) renameDocument(w http.ResponseWriter, r *http.Request) {
@@ -225,7 +232,7 @@ func (h *Handler) renameDocument(w http.ResponseWriter, r *http.Request) {
 		httpErr(w, status, msg)
 		return
 	}
-	writeJSON(w, http.StatusOK, doc)
+	httpresponse.WriteJSON(w, http.StatusOK, doc)
 }
 
 func (h *Handler) finalizeDocument(w http.ResponseWriter, r *http.Request) {
@@ -287,14 +294,14 @@ func (h *Handler) acquireSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if readonly {
-		writeJSON(w, http.StatusOK, map[string]any{
+		httpresponse.WriteJSON(w, http.StatusOK, map[string]any{
 			"mode":       "readonly",
 			"held_by":    sess.UserID,
 			"held_until": sess.ExpiresAt,
 		})
 		return
 	}
-	writeJSON(w, http.StatusCreated, map[string]any{
+	httpresponse.WriteJSON(w, http.StatusCreated, map[string]any{
 		"mode":                 "writer",
 		"session_id":           sess.ID,
 		"expires_at":           sess.ExpiresAt,
@@ -407,7 +414,7 @@ func (h *Handler) presignAutosave(w http.ResponseWriter, r *http.Request) {
 		httpErr(w, status, msg)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
+	httpresponse.WriteJSON(w, http.StatusOK, map[string]any{
 		"upload_url":        res.UploadURL,
 		"pending_upload_id": res.PendingUploadID,
 		"expires_at":        res.ExpiresAt,
@@ -445,7 +452,7 @@ func (h *Handler) commitAutosave(w http.ResponseWriter, r *http.Request) {
 		httpErr(w, status, msg)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
+	httpresponse.WriteJSON(w, http.StatusOK, map[string]any{
 		"revision_id":       res.RevisionID,
 		"revision_num":      res.RevisionNum,
 		"idempotent_replay": res.AlreadyConsumed,
@@ -466,7 +473,7 @@ func (h *Handler) listCheckpoints(w http.ResponseWriter, r *http.Request) {
 		httpErr(w, status, msg)
 		return
 	}
-	writeJSON(w, http.StatusOK, items)
+	httpresponse.WriteJSON(w, http.StatusOK, items)
 }
 
 func (h *Handler) createCheckpoint(w http.ResponseWriter, r *http.Request) {
@@ -491,7 +498,7 @@ func (h *Handler) createCheckpoint(w http.ResponseWriter, r *http.Request) {
 		httpErr(w, status, msg)
 		return
 	}
-	writeJSON(w, http.StatusCreated, cp)
+	httpresponse.WriteJSON(w, http.StatusCreated, cp)
 }
 
 func (h *Handler) restoreCheckpoint(w http.ResponseWriter, r *http.Request) {
@@ -514,7 +521,7 @@ func (h *Handler) restoreCheckpoint(w http.ResponseWriter, r *http.Request) {
 		httpErr(w, status, msg)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
+	httpresponse.WriteJSON(w, http.StatusOK, map[string]any{
 		"new_revision_id":               res.NewRevisionID,
 		"new_revision_num":              res.NewRevisionNum,
 		"source_checkpoint_version_num": versionNum,
@@ -536,7 +543,7 @@ func (h *Handler) signedRevisionURL(w http.ResponseWriter, r *http.Request) {
 		httpErr(w, status, msg)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"url": url})
+	httpresponse.WriteJSON(w, http.StatusOK, map[string]string{"url": url})
 }
 
 func (h *Handler) listComments(w http.ResponseWriter, r *http.Request) {
@@ -557,7 +564,7 @@ func (h *Handler) listComments(w http.ResponseWriter, r *http.Request) {
 	for i := range comments {
 		resp = append(resp, toCommentResponse(comments[i]))
 	}
-	writeJSON(w, http.StatusOK, resp)
+	httpresponse.WriteJSON(w, http.StatusOK, resp)
 }
 
 func (h *Handler) createComment(w http.ResponseWriter, r *http.Request) {
@@ -590,7 +597,7 @@ func (h *Handler) createComment(w http.ResponseWriter, r *http.Request) {
 		httpErr(w, status, msg)
 		return
 	}
-	writeJSON(w, http.StatusCreated, toCommentResponse(*comment))
+	httpresponse.WriteJSON(w, http.StatusCreated, toCommentResponse(*comment))
 }
 
 func (h *Handler) updateComment(w http.ResponseWriter, r *http.Request) {
@@ -624,7 +631,7 @@ func (h *Handler) updateComment(w http.ResponseWriter, r *http.Request) {
 		httpErr(w, status, msg)
 		return
 	}
-	writeJSON(w, http.StatusOK, toCommentResponse(*comment))
+	httpresponse.WriteJSON(w, http.StatusOK, toCommentResponse(*comment))
 }
 
 func (h *Handler) deleteComment(w http.ResponseWriter, r *http.Request) {
@@ -756,7 +763,7 @@ func rolesFromHeader(header string) []string {
 	return roles
 }
 
-const devTenantID = "00000000-0000-0000-0000-000000000001"
+const devTenantID = "ffffffff-ffff-ffff-ffff-ffffffffffff"
 
 func tenantIDFromReq(r *http.Request) string {
 	if t := strings.TrimSpace(r.Header.Get("X-Tenant-ID")); t != "" {
@@ -766,9 +773,6 @@ func tenantIDFromReq(r *http.Request) string {
 }
 
 func userIDFromReq(r *http.Request) string {
-	if u := strings.TrimSpace(r.Header.Get("X-User-ID")); u != "" {
-		return u
-	}
 	return iamdomain.UserIDFromContext(r.Context())
 }
 
@@ -788,8 +792,12 @@ func mapErr(err error) (int, string) {
 		return http.StatusNotFound, "not_found"
 	case errors.Is(err, domain.ErrInvalidName):
 		return http.StatusBadRequest, "invalid_name"
+	case errors.Is(err, application.ErrControlledDocumentRequired):
+		return http.StatusBadRequest, "controlled_document_required"
 	case errors.Is(err, domain.ErrCommentInvalid):
 		return http.StatusBadRequest, "comment_invalid"
+	case errors.Is(err, iamapp.ErrAccessDenied):
+		return http.StatusForbidden, "forbidden"
 	case errors.Is(err, domain.ErrExpiredUpload):
 		return http.StatusGone, "expired_upload"
 	case errors.Is(err, domain.ErrUploadMissing):
@@ -808,6 +816,12 @@ func mapErr(err error) (int, string) {
 		return http.StatusConflict, "misbound"
 	case errors.Is(err, domain.ErrInvalidStateTransition):
 		return http.StatusConflict, "invalid_state_transition"
+	case errors.Is(err, registrydomain.ErrCDNotFound):
+		return http.StatusNotFound, "controlled_document_not_found"
+	case errors.Is(err, registrydomain.ErrCDNotActive):
+		return http.StatusConflict, "controlled_document_not_active"
+	case errors.Is(err, registrydomain.ErrProfileHasNoDefaultTemplate):
+		return http.StatusConflict, "profile_has_no_default_template"
 	case strings.HasPrefix(err.Error(), "form_data_invalid"):
 		return http.StatusUnprocessableEntity, "form_data_invalid"
 	default:
@@ -815,12 +829,6 @@ func mapErr(err error) (int, string) {
 	}
 }
 
-func writeJSON(w http.ResponseWriter, code int, v any) {
-	w.Header().Set("content-type", "application/json")
-	w.WriteHeader(code)
-	_ = json.NewEncoder(w).Encode(v)
-}
-
 func httpErr(w http.ResponseWriter, code int, msg string) {
-	writeJSON(w, code, map[string]string{"error": msg})
+	httpresponse.WriteJSON(w, code, map[string]string{"error": msg})
 }

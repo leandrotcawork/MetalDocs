@@ -11,10 +11,28 @@ import (
 	"time"
 
 	"metaldocs/internal/modules/documents_v2/approval/application"
+	"metaldocs/internal/modules/documents_v2/approval/domain"
 	"metaldocs/internal/modules/documents_v2/approval/http/contracts"
 	"metaldocs/internal/modules/documents_v2/approval/repository"
 	"metaldocs/internal/modules/iam/authz"
+	iamdomain "metaldocs/internal/modules/iam/domain"
 )
+
+type fakeReadServicePublish struct {
+	inst *domain.Instance
+}
+
+func (f *fakeReadServicePublish) LoadInstance(_ context.Context, _ *sql.DB, _, _, _ string) (*domain.Instance, error) {
+	return nil, nil
+}
+
+func (f *fakeReadServicePublish) LoadActiveInstanceByDocument(_ context.Context, _ *sql.DB, _, _ string) (*domain.Instance, error) {
+	return f.inst, nil
+}
+
+func (f *fakeReadServicePublish) ListPendingForActor(_ context.Context, _ *sql.DB, _, _, _ string, _, _ int) ([]domain.Instance, error) {
+	return nil, nil
+}
 
 func publishTestMux(h *Handler) *http.ServeMux {
 	mux := http.NewServeMux()
@@ -66,20 +84,23 @@ func TestPublishHandler(t *testing.T) {
 				return application.PublishResult{DocumentID: "doc-1", NewStatus: "published"}, nil
 			}
 
+			fakeRead := &fakeReadServicePublish{
+				inst: &domain.Instance{ID: "inst-1", DocumentID: "doc-1"},
+			}
 			req := httptest.NewRequest(http.MethodPost, "/api/v2/documents/doc-1/publish", nil)
 			req.Header.Set("X-Tenant-ID", "tenant-1")
-			req.Header.Set("X-User-ID", "actor-1")
+			req = req.WithContext(iamdomain.WithAuthContext(req.Context(), "actor-1", []iamdomain.Role{}))
 			req.Header.Set("Idempotency-Key", "idem-1")
 			req.Header.Set("If-Match", "\"v3\"")
 
 			rr := httptest.NewRecorder()
-			publishTestMux(&Handler{}).ServeHTTP(rr, req)
+			publishTestMux(&Handler{readSvc: fakeRead}).ServeHTTP(rr, req)
 
 			if rr.Code != tt.wantStatus {
 				t.Fatalf("status = %d, want %d", rr.Code, tt.wantStatus)
 			}
 
-			if gotReq.TenantID != "tenant-1" || gotReq.InstanceID != "doc-1" || gotReq.PublishedBy != "actor-1" {
+			if gotReq.TenantID != "tenant-1" || gotReq.InstanceID != "inst-1" || gotReq.PublishedBy != "actor-1" {
 				t.Fatalf("unexpected service request: %+v", gotReq)
 			}
 
@@ -145,7 +166,7 @@ func TestSchedulePublishHandler(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/api/v2/documents/doc-1/schedule-publish", strings.NewReader(`{"effective_from":"2026-05-01T12:00:00Z"}`))
 			req.Header.Set("Content-Type", "application/json")
 			req.Header.Set("X-Tenant-ID", "tenant-1")
-			req.Header.Set("X-User-ID", "actor-1")
+			req = req.WithContext(iamdomain.WithAuthContext(req.Context(), "actor-1", []iamdomain.Role{}))
 			req.Header.Set("Idempotency-Key", "idem-1")
 			req.Header.Set("If-Match", "\"v4\"")
 

@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	iamdomain "metaldocs/internal/modules/iam/domain"
 	"metaldocs/internal/modules/templates_v2/domain"
 )
 
@@ -109,7 +110,7 @@ func TestReview_Accept_Happy(t *testing.T) {
 	raw, _ := json.Marshal(map[string]any{"accept": true})
 	req := httptest.NewRequest(http.MethodPost, "/api/v2/templates/tpl-1/versions/1/review", bytes.NewReader(raw))
 	withHeaders(req)
-	req.Header.Set("X-User-ID", "reviewer-1")
+	req = req.WithContext(iamdomain.WithAuthContext(req.Context(), "reviewer-1", []iamdomain.Role{}))
 	withActorRoles(req, "reviewer")
 	rr := httptest.NewRecorder()
 
@@ -152,7 +153,7 @@ func TestApprove_Accept_Happy(t *testing.T) {
 	raw, _ := json.Marshal(map[string]any{"accept": true})
 	req := httptest.NewRequest(http.MethodPost, "/api/v2/templates/tpl-1/versions/1/approve", bytes.NewReader(raw))
 	withHeaders(req)
-	req.Header.Set("X-User-ID", "approver-1")
+	req = req.WithContext(iamdomain.WithAuthContext(req.Context(), "approver-1", []iamdomain.Role{}))
 	withActorRoles(req, "approver")
 	rr := httptest.NewRecorder()
 

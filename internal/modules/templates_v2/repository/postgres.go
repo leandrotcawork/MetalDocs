@@ -160,7 +160,7 @@ WHERE id = $1 AND tenant_id = $2`
 }
 
 func (r *Repository) CreateVersion(ctx context.Context, v *domain.TemplateVersion) error {
-	metadataJSON, placeholderJSON, editableJSON, err := marshalVersionSchemas(v)
+	metadataJSON, placeholderJSON, err := marshalVersionSchemas(v)
 	if err != nil {
 		return err
 	}
@@ -168,18 +168,18 @@ func (r *Repository) CreateVersion(ctx context.Context, v *domain.TemplateVersio
 	const q = `
 INSERT INTO templates_v2_template_version (
 	id, template_id, version_number, status, docx_storage_key, content_hash,
-	metadata_schema, placeholder_schema, editable_zones, author_id,
+	metadata_schema, placeholder_schema, author_id,
 	pending_reviewer_role, pending_approver_role, reviewer_id, approver_id,
 	submitted_at, reviewed_at, approved_at, published_at, obsoleted_at, created_at
 ) VALUES (
 	$1, $2, $3, $4, $5, $6,
-	$7, $8, $9, $10,
-	$11, $12, $13, $14,
-	$15, $16, $17, $18, $19, $20
+	$7, $8, $9,
+	$10, $11, $12, $13,
+	$14, $15, $16, $17, $18, $19
 )`
 	_, err = r.db.ExecContext(ctx, q,
 		v.ID, v.TemplateID, v.VersionNumber, string(v.Status), v.DocxStorageKey, v.ContentHash,
-		metadataJSON, placeholderJSON, editableJSON, v.AuthorID,
+		metadataJSON, placeholderJSON, v.AuthorID,
 		v.PendingReviewerRole, v.PendingApproverRole, v.ReviewerID, v.ApproverID,
 		v.SubmittedAt, v.ReviewedAt, v.ApprovedAt, v.PublishedAt, v.ObsoletedAt, v.CreatedAt,
 	)
@@ -190,7 +190,7 @@ func (r *Repository) GetVersion(ctx context.Context, templateID string, n int) (
 	const q = `
 SELECT
 	id::text, template_id::text, version_number, status, docx_storage_key, content_hash,
-	metadata_schema, placeholder_schema, editable_zones, author_id,
+	metadata_schema, placeholder_schema, author_id,
 	pending_reviewer_role, pending_approver_role, reviewer_id, approver_id,
 	submitted_at, reviewed_at, approved_at, published_at, obsoleted_at, created_at
 FROM templates_v2_template_version
@@ -210,7 +210,7 @@ func (r *Repository) GetVersionByID(ctx context.Context, id string) (*domain.Tem
 	const q = `
 SELECT
 	id::text, template_id::text, version_number, status, docx_storage_key, content_hash,
-	metadata_schema, placeholder_schema, editable_zones, author_id,
+	metadata_schema, placeholder_schema, author_id,
 	pending_reviewer_role, pending_approver_role, reviewer_id, approver_id,
 	submitted_at, reviewed_at, approved_at, published_at, obsoleted_at, created_at
 FROM templates_v2_template_version
@@ -227,7 +227,7 @@ WHERE id = $1`
 }
 
 func (r *Repository) UpdateVersion(ctx context.Context, v *domain.TemplateVersion) error {
-	metadataJSON, placeholderJSON, editableJSON, err := marshalVersionSchemas(v)
+	metadataJSON, placeholderJSON, err := marshalVersionSchemas(v)
 	if err != nil {
 		return err
 	}
@@ -240,20 +240,19 @@ SET
 	content_hash = $4,
 	metadata_schema = $5,
 	placeholder_schema = $6,
-	editable_zones = $7,
-	pending_reviewer_role = $8,
-	pending_approver_role = $9,
-	reviewer_id = $10,
-	approver_id = $11,
-	submitted_at = $12,
-	reviewed_at = $13,
-	approved_at = $14,
-	published_at = $15,
-	obsoleted_at = $16
+	pending_reviewer_role = $7,
+	pending_approver_role = $8,
+	reviewer_id = $9,
+	approver_id = $10,
+	submitted_at = $11,
+	reviewed_at = $12,
+	approved_at = $13,
+	published_at = $14,
+	obsoleted_at = $15
 WHERE id = $1`
 	res, err := r.db.ExecContext(ctx, q,
 		v.ID, string(v.Status), v.DocxStorageKey, v.ContentHash,
-		metadataJSON, placeholderJSON, editableJSON,
+		metadataJSON, placeholderJSON,
 		v.PendingReviewerRole, v.PendingApproverRole, v.ReviewerID, v.ApproverID,
 		v.SubmittedAt, v.ReviewedAt, v.ApprovedAt, v.PublishedAt, v.ObsoletedAt,
 	)

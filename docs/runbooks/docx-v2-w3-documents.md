@@ -2,7 +2,7 @@
 
 ## Route map + RBAC (admin vs document_filler)
 
-All routes are under `/api/v2/documents` and require auth headers (`X-Tenant-ID`, `X-User-ID`, `X-User-Roles`).
+All routes are under `/api/v2/documents` and require auth headers (`X-Tenant-ID`, `X-User-Roles`).
 `document_filler` access is ownership-scoped unless otherwise noted.
 
 | # | Method | Path | admin | document_filler |

@@ -48,7 +48,6 @@ func scanTemplateVersion(row rowScanner) (*domain.TemplateVersion, error) {
 		status              string
 		metadataJSON        []byte
 		placeholderJSON     []byte
-		editableZonesJSON   []byte
 		pendingReviewerRole sql.NullString
 		reviewerID          sql.NullString
 		approverID          sql.NullString
@@ -60,7 +59,7 @@ func scanTemplateVersion(row rowScanner) (*domain.TemplateVersion, error) {
 	)
 	if err := row.Scan(
 		&v.ID, &v.TemplateID, &v.VersionNumber, &status, &v.DocxStorageKey, &v.ContentHash,
-		&metadataJSON, &placeholderJSON, &editableZonesJSON, &v.AuthorID,
+		&metadataJSON, &placeholderJSON, &v.AuthorID,
 		&pendingReviewerRole, &v.PendingApproverRole, &reviewerID, &approverID,
 		&submittedAt, &reviewedAt, &approvedAt, &publishedAt, &obsoletedAt, &v.CreatedAt,
 	); err != nil {
@@ -97,26 +96,19 @@ func scanTemplateVersion(row rowScanner) (*domain.TemplateVersion, error) {
 	if err := json.Unmarshal(placeholderJSON, &v.PlaceholderSchema); err != nil {
 		return nil, err
 	}
-	if err := json.Unmarshal(editableZonesJSON, &v.EditableZones); err != nil {
-		return nil, err
-	}
 	return &v, nil
 }
 
-func marshalVersionSchemas(v *domain.TemplateVersion) (metadataJSON, placeholderJSON, editableZonesJSON []byte, err error) {
+func marshalVersionSchemas(v *domain.TemplateVersion) (metadataJSON, placeholderJSON []byte, err error) {
 	metadataJSON, err = json.Marshal(v.MetadataSchema)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 	placeholderJSON, err = json.Marshal(v.PlaceholderSchema)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
-	editableZonesJSON, err = json.Marshal(v.EditableZones)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	return metadataJSON, placeholderJSON, editableZonesJSON, nil
+	return metadataJSON, placeholderJSON, nil
 }
 
 func marshalAuditDetails(details map[string]any) ([]byte, error) {

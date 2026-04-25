@@ -44,9 +44,15 @@ func (h *Handler) PublishHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	inst, err := h.readSvc.LoadActiveInstanceByDocument(r.Context(), h.db, tenantID, documentID)
+	if err != nil {
+		WriteError(w, reqID, err)
+		return
+	}
+
 	result, err := publishApproved(h, r.Context(), h.db, application.PublishRequest{
 		TenantID:    tenantID,
-		InstanceID:  documentID,
+		InstanceID:  inst.ID,
 		PublishedBy: actorID,
 	})
 	if err != nil {

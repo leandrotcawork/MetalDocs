@@ -1,14 +1,15 @@
 package http
 
 import (
-	"encoding/json"
 	"net/http"
 	"strings"
 
+	iamdomain "metaldocs/internal/modules/iam/domain"
 	"metaldocs/internal/modules/templates_v2/application"
+	"metaldocs/internal/platform/httpresponse"
 )
 
-const devTenantID = "00000000-0000-0000-0000-000000000001"
+const devTenantID = "ffffffff-ffff-ffff-ffff-ffffffffffff"
 
 type AuthzFunc func(r *http.Request, tenantID, area string, action string) error
 
@@ -43,15 +44,10 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v2/templates/{id}/audit", h.listAudit)
 }
 
-func writeJSON(w http.ResponseWriter, status int, body any) {
-	w.Header().Set("content-type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(body)
-}
-
-func readJSON(r *http.Request, v any) error {
-	return json.NewDecoder(r.Body).Decode(v)
-}
+var (
+	writeJSON = httpresponse.WriteJSON
+	readJSON  = httpresponse.ReadJSON
+)
 
 func tenantIDFromReq(r *http.Request) string {
 	if t := strings.TrimSpace(r.Header.Get("X-Tenant-ID")); t != "" {
@@ -61,11 +57,11 @@ func tenantIDFromReq(r *http.Request) string {
 }
 
 func userIDFromReq(r *http.Request) string {
-	return strings.TrimSpace(r.Header.Get("X-User-ID"))
+	return iamdomain.UserIDFromContext(r.Context())
 }
 
 func writeErr(w http.ResponseWriter, status int, code, message string) {
-	writeJSON(w, status, map[string]any{
+	httpresponse.WriteJSON(w, status, map[string]any{
 		"error": map[string]string{
 			"code":    code,
 			"message": message,

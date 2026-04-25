@@ -123,7 +123,6 @@ func toVersionResponse(v *domain.TemplateVersion) map[string]any {
 		"content_hash":          v.ContentHash,
 		"metadata_schema":       v.MetadataSchema,
 		"placeholder_schema":    v.PlaceholderSchema,
-		"editable_zones":        v.EditableZones,
 		"author_id":             v.AuthorID,
 		"pending_reviewer_role": v.PendingReviewerRole,
 		"pending_approver_role": v.PendingApproverRole,

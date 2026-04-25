@@ -9,6 +9,7 @@ import (
 
 	"metaldocs/internal/modules/audit/application"
 	"metaldocs/internal/modules/audit/domain"
+	"metaldocs/internal/platform/httpresponse"
 )
 
 type Handler struct {
@@ -78,7 +79,7 @@ func (h *Handler) handleEvents(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	httpresponse.WriteJSON(w, http.StatusOK, map[string]any{
 		"items": responseItems,
 	})
 }
@@ -94,7 +95,7 @@ func requestTraceID(r *http.Request) string {
 }
 
 func writeAPIError(w http.ResponseWriter, status int, code, message, traceID string) {
-	writeJSON(w, status, map[string]any{
+	httpresponse.WriteJSON(w, status, map[string]any{
 		"error": map[string]any{
 			"code":     code,
 			"message":  message,
@@ -102,10 +103,4 @@ func writeAPIError(w http.ResponseWriter, status int, code, message, traceID str
 			"trace_id": traceID,
 		},
 	})
-}
-
-func writeJSON(w http.ResponseWriter, status int, payload any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(payload)
 }

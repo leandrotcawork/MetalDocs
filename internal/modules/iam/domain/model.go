@@ -4,6 +4,7 @@ type Role string
 
 const (
 	RoleAdmin    Role = "admin"
+	RoleApprover Role = "approver"
 	RoleEditor   Role = "editor"
 	RoleReviewer Role = "reviewer"
 	RoleViewer   Role = "viewer"
@@ -25,4 +26,17 @@ const (
 	PermTemplateEdit              Permission = "template:edit"
 	PermTemplatePublish           Permission = "template:publish"
 	PermTemplateExport            Permission = "template:export"
+)
+
+type Capability string
+
+const (
+	CapDocumentView    Capability = "document.view"
+	CapDocumentCreate  Capability = "document.create"
+	CapDocumentEdit    Capability = "document.edit"
+	CapTemplateView    Capability = "template.view"
+	CapTemplatePublish Capability = "template.publish"
+	CapWorkflowReview  Capability = "workflow.review"
+	CapWorkflowApprove Capability = "workflow.approve"
+	CapRegistryCreate  Capability = "registry.create"
 )

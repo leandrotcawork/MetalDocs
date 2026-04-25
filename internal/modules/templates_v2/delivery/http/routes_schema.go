@@ -26,7 +26,6 @@ func (h *Handler) updateSchemas(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		MetadataSchema      domain.MetadataSchema `json:"metadata_schema"`
 		PlaceholderSchema   []domain.Placeholder  `json:"placeholder_schema"`
-		EditableZones       []domain.EditableZone `json:"editable_zones"`
 		ExpectedContentHash string                `json:"expected_content_hash"`
 	}
 	if err := readJSON(r, &req); err != nil {
@@ -41,7 +40,6 @@ func (h *Handler) updateSchemas(w http.ResponseWriter, r *http.Request) {
 		VersionNumber:       versionNum,
 		MetadataSchema:      req.MetadataSchema,
 		PlaceholderSchema:   req.PlaceholderSchema,
-		EditableZones:       req.EditableZones,
 		ExpectedContentHash: req.ExpectedContentHash,
 	})
 	if err != nil {

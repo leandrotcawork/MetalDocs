@@ -1,0 +1,277 @@
+package application
+
+import (
+	"context"
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	"log"
+	"regexp"
+	"strconv"
+	"time"
+
+	v2domain "metaldocs/internal/modules/documents_v2/domain"
+	"metaldocs/internal/modules/documents_v2/repository"
+	templatesdomain "metaldocs/internal/modules/templates_v2/domain"
+)
+
+type SchemaReader interface {
+	LoadPlaceholderSchema(ctx context.Context, tenantID, revisionID string) ([]templatesdomain.Placeholder, error)
+}
+
+type FillInWriter interface {
+	UpsertValue(ctx context.Context, v repository.PlaceholderValue) error
+}
+
+type draftResolver interface {
+	ResolveComputedIfStale(ctx context.Context, tenantID, revisionID string) error
+}
+
+type FillInService struct {
+	db            *sql.DB
+	schemas       SchemaReader
+	writer        FillInWriter
+	reader        FillInReader
+	schemaFromTpl *TemplateVersionSchemaReader
+	draftResolver draftResolver
+	iam           IAMUserOptionsReader
+}
+
+// NewFillInService wires the service with a DB handle for authz enforcement.
+// Production callers MUST use this constructor — it enforces doc.edit_draft capability.
+func NewFillInService(db *sql.DB, s SchemaReader, w FillInWriter) *FillInService {
+	return &FillInService{db: db, schemas: s, writer: w}
+}
+
+// NewFillInServiceNoAuthz is a TEST-ONLY constructor that skips capability checks.
+// Never use in production wiring — authz bypass is intentional and audited here.
+func NewFillInServiceNoAuthz(s SchemaReader, w FillInWriter) *FillInService {
+	return &FillInService{schemas: s, writer: w}
+}
+
+// WithDraftResolver attaches a DraftResolverService that runs best-effort after
+// each user placeholder upsert. Errors are logged but not propagated.
+func (s *FillInService) WithDraftResolver(r draftResolver) *FillInService {
+	s.draftResolver = r
+	return s
+}
+
+// WithIAMReader attaches an IAMUserOptionsReader for validating user-typed placeholders.
+func (s *FillInService) WithIAMReader(r IAMUserOptionsReader) *FillInService {
+	s.iam = r
+	return s
+}
+
+type SnapshotSchemaReader struct {
+	db *sql.DB
+}
+
+func NewSnapshotSchemaReader(db *sql.DB) *SnapshotSchemaReader {
+	return &SnapshotSchemaReader{db: db}
+}
+
+func (r *SnapshotSchemaReader) LoadPlaceholderSchema(ctx context.Context, tenantID, revisionID string) ([]templatesdomain.Placeholder, error) {
+	var raw []byte
+	if err := r.db.QueryRowContext(ctx, `
+		SELECT placeholder_schema_snapshot
+		  FROM documents
+		 WHERE tenant_id=$1::uuid AND id=$2::uuid`, tenantID, revisionID).
+		Scan(&raw); err != nil {
+		return nil, err
+	}
+
+	var payload struct {
+		Placeholders []templatesdomain.Placeholder `json:"placeholders"`
+	}
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return nil, err
+	}
+	return payload.Placeholders, nil
+}
+
+func (s *FillInService) SetPlaceholderValue(ctx context.Context, tenantID, actorID, revisionID, placeholderID, raw string) error {
+	if s.db != nil {
+		if err := requireDocEditDraft(ctx, s.db, tenantID, actorID, revisionID); err != nil {
+			return err
+		}
+	}
+	schema, err := s.schemas.LoadPlaceholderSchema(ctx, tenantID, revisionID)
+	if err != nil {
+		return err
+	}
+	if len(schema) == 0 && s.schemaFromTpl != nil {
+		schema, err = s.schemaFromTpl.LoadFillInSchema(ctx, tenantID, revisionID)
+		if err != nil {
+			return err
+		}
+	}
+
+	p, ok := findPlaceholder(schema, placeholderID)
+	if !ok {
+		return fmt.Errorf("%w: unknown placeholder %s", v2domain.ErrValidationFailed, placeholderID)
+	}
+	if err := validateValue(ctx, tenantID, p, raw, s.iam); err != nil {
+		return err
+	}
+
+	value := raw
+	if err := s.writer.UpsertValue(ctx, repository.PlaceholderValue{
+		TenantID:        tenantID,
+		RevisionID:      revisionID,
+		PlaceholderID:   placeholderID,
+		ValueText:       &value,
+		Source:          "user",
+		ResolverVersion: nil,
+	}); err != nil {
+		return err
+	}
+	if s.draftResolver != nil {
+		if rerr := s.draftResolver.ResolveComputedIfStale(ctx, tenantID, revisionID); rerr != nil {
+			log.Printf("draft resolver best-effort error: %v", rerr)
+		}
+	}
+	return nil
+}
+
+func findPlaceholder(phs []templatesdomain.Placeholder, id string) (templatesdomain.Placeholder, bool) {
+	for _, p := range phs {
+		if p.ID == id {
+			return p, true
+		}
+	}
+	return templatesdomain.Placeholder{}, false
+}
+
+func validateValue(ctx context.Context, tenantID string, p templatesdomain.Placeholder, raw string, iam IAMUserOptionsReader) error {
+	if p.Required && raw == "" {
+		return fmt.Errorf("%w: %s required", v2domain.ErrValidationFailed, p.ID)
+	}
+	if p.MaxLength != nil && len(raw) > *p.MaxLength {
+		return fmt.Errorf("%w: %s max_length exceeded", v2domain.ErrValidationFailed, p.ID)
+	}
+	if p.Regex != nil {
+		re, err := regexp.Compile(*p.Regex)
+		if err != nil {
+			return err
+		}
+		if !re.MatchString(raw) {
+			return fmt.Errorf("%w: %s regex mismatch", v2domain.ErrValidationFailed, p.ID)
+		}
+	}
+
+	switch p.Type {
+	case templatesdomain.PHNumber:
+		n, err := strconv.ParseFloat(raw, 64)
+		if err != nil {
+			return fmt.Errorf("%w: %s not a number", v2domain.ErrValidationFailed, p.ID)
+		}
+		if p.MinNumber != nil && n < *p.MinNumber {
+			return fmt.Errorf("%w: %s < min_number", v2domain.ErrValidationFailed, p.ID)
+		}
+		if p.MaxNumber != nil && n > *p.MaxNumber {
+			return fmt.Errorf("%w: %s > max_number", v2domain.ErrValidationFailed, p.ID)
+		}
+	case templatesdomain.PHDate:
+		if _, err := time.Parse("2006-01-02", raw); err != nil {
+			return fmt.Errorf("%w: %s not YYYY-MM-DD", v2domain.ErrValidationFailed, p.ID)
+		}
+		if p.MinDate != nil && raw < *p.MinDate {
+			return fmt.Errorf("%w: %s < min_date", v2domain.ErrValidationFailed, p.ID)
+		}
+		if p.MaxDate != nil && raw > *p.MaxDate {
+			return fmt.Errorf("%w: %s > max_date", v2domain.ErrValidationFailed, p.ID)
+		}
+	case templatesdomain.PHSelect:
+		for _, opt := range p.Options {
+			if opt == raw {
+				return nil
+			}
+		}
+		return fmt.Errorf("%w: %s not in options", v2domain.ErrValidationFailed, p.ID)
+	case templatesdomain.PHUser:
+		if iam == nil {
+			// IAM not wired: skip user validation. Production wiring MUST call WithIAMReader.
+			return nil
+		}
+		opts, err := iam.ListUserOptions(ctx, tenantID)
+		if err != nil {
+			return err
+		}
+		for _, o := range opts {
+			if o.UserID == raw {
+				return nil
+			}
+		}
+		return fmt.Errorf("%w: %s unknown user %s", v2domain.ErrValidationFailed, p.ID, raw)
+	}
+
+	return nil
+}
+
+// FillInReader reads current fill-in values from the DB.
+type FillInReader interface {
+	ListValues(ctx context.Context, tenantID, docID string) ([]repository.PlaceholderValue, error)
+}
+
+// TemplateVersionSchemaReader reads fill-in schema from the template version
+// referenced by the document. Works for draft documents without snapshots.
+type TemplateVersionSchemaReader struct {
+	db *sql.DB
+}
+
+func NewTemplateVersionSchemaReader(db *sql.DB) *TemplateVersionSchemaReader {
+	return &TemplateVersionSchemaReader{db: db}
+}
+
+func (r *TemplateVersionSchemaReader) LoadFillInSchema(ctx context.Context, tenantID, docID string) ([]templatesdomain.Placeholder, error) {
+	var pRaw []byte
+	err := r.db.QueryRowContext(ctx, `
+		SELECT tv.placeholder_schema
+		  FROM templates_v2_template_version tv
+		  JOIN documents d ON d.template_version_id = tv.id
+		 WHERE d.id = $1::uuid AND d.tenant_id = $2::uuid`,
+		docID, tenantID,
+	).Scan(&pRaw)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var placeholders []templatesdomain.Placeholder
+	if len(pRaw) > 0 {
+		if err := json.Unmarshal(pRaw, &placeholders); err != nil {
+			return nil, err
+		}
+	}
+	return placeholders, nil
+}
+
+// WithReader attaches a FillInReader for GET list operations.
+func (s *FillInService) WithReader(r FillInReader) *FillInService {
+	s.reader = r
+	return s
+}
+
+// WithTemplateSchemaReader attaches a reader that loads schema from the template version.
+func (s *FillInService) WithTemplateSchemaReader(r *TemplateVersionSchemaReader) *FillInService {
+	s.schemaFromTpl = r
+	return s
+}
+
+func (s *FillInService) GetPlaceholderValues(ctx context.Context, tenantID, docID string) ([]repository.PlaceholderValue, error) {
+	if s.reader == nil {
+		return nil, nil
+	}
+	return s.reader.ListValues(ctx, tenantID, docID)
+}
+
+func (s *FillInService) GetFillInSchema(ctx context.Context, tenantID, docID string) ([]templatesdomain.Placeholder, error) {
+	if s.schemaFromTpl == nil {
+		return nil, nil
+	}
+	return s.schemaFromTpl.LoadFillInSchema(ctx, tenantID, docID)
+}

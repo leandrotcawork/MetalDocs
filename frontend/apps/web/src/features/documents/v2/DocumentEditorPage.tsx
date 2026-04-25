@@ -6,6 +6,7 @@ import { useDocumentSession } from './hooks/useDocumentSession';
 import { useDocumentAutosave } from './hooks/useDocumentAutosave';
 import { useDocumentComments } from './hooks/useDocumentComments';
 import { getDocument, finalizeDocument, renameDocument, signedRevisionURL, putPlaceholderValue, getPlaceholderValues } from './api/documentsV2';
+import type { DocumentResponse } from './api/documentsV2';
 import { loadFillInData } from '../fill-in-loader';
 import type { FillInData } from '../fill-in-loader';
 import { PlaceholderForm } from '../placeholder-form';
@@ -21,7 +22,7 @@ export type DocumentEditorPageProps = {
 
 export function DocumentEditorPage({ documentID, onDone }: DocumentEditorPageProps): React.ReactElement {
   const session = useDocumentSession(documentID);
-  const [doc, setDoc] = useState<any>(null);
+  const [doc, setDoc] = useState<DocumentResponse | null>(null);
   const [documentName, setDocumentName] = useState('');
   const [buffer, setBuffer] = useState<ArrayBuffer | null | undefined>(undefined);
   const [checkpointsOpen, setCheckpointsOpen] = useState(false);

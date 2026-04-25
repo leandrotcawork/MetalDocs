@@ -11,13 +11,29 @@ export type DocumentRow = {
   current_revision_id?: string;
 };
 
-export type CreateDocumentResult = { DocumentID: string; InitialRevisionID: string; SessionID: string };
+export type CreateDocumentResult = { document_id: string; initial_revision_id: string; session_id: string };
 export type AcquireWriter = { mode: 'writer'; session_id: string; expires_at: string; last_ack_revision_id: string };
 export type AcquireReadonly = { mode: 'readonly'; held_by: string; held_until: string };
 export type AcquireResult = AcquireWriter | AcquireReadonly;
 export type PresignResult = { upload_url: string; pending_upload_id: string; expires_at: string };
 export type CommitResult = { revision_id: string; revision_num: number; idempotent_replay?: boolean };
 export type Checkpoint = { ID: string; DocumentID: string; RevisionID: string; VersionNum: number; Label: string; CreatedAt: string; CreatedBy: string };
+export type DocumentResponse = {
+  ID?: string;
+  id?: string;
+  Code?: string;
+  code?: string;
+  Status?: string;
+  status?: string;
+  Name?: string;
+  name?: string;
+  CreatedBy?: string;
+  created_by?: string;
+  CurrentRevisionID?: string;
+  current_revision_id?: string;
+  FormDataJSON?: unknown;
+  form_data?: unknown;
+};
 
 async function json<T>(res: Response): Promise<T> {
   if (!res.ok) throw Object.assign(new Error(`http_${res.status}`), { status: res.status, body: await res.text() });
@@ -27,11 +43,11 @@ async function json<T>(res: Response): Promise<T> {
 export async function listDocuments(): Promise<DocumentRow[]> {
   return json(await fetch('/api/v2/documents'));
 }
-export async function getDocument(id: string): Promise<any> {
+export async function getDocument(id: string): Promise<DocumentResponse> {
   return json(await fetch(`/api/v2/documents/${id}`));
 }
-export async function renameDocument(id: string, name: string): Promise<any> {
-  return json(await fetch(`/api/v2/documents/${id}`, {
+export async function renameDocument(id: string, name: string): Promise<void> {
+  await json(await fetch(`/api/v2/documents/${id}`, {
     method: 'PATCH',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ name }),

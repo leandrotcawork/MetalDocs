@@ -10,6 +10,7 @@ import (
 
 	authapp "metaldocs/internal/modules/auth/application"
 	authdomain "metaldocs/internal/modules/auth/domain"
+	"metaldocs/internal/platform/httpresponse"
 )
 
 type Handler struct {
@@ -57,7 +58,7 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.SetCookie(w, h.service.SessionCookie(session.RawToken, session.ExpiresAt))
-	writeJSON(w, http.StatusOK, map[string]any{
+	httpresponse.WriteJSON(w, http.StatusOK, map[string]any{
 		"user":      session.CurrentUser,
 		"expiresAt": session.ExpiresAt.UTC().Format(time.RFC3339),
 	})
@@ -86,7 +87,7 @@ func (h *Handler) handleMe(w http.ResponseWriter, r *http.Request) {
 		writeAPIError(w, http.StatusUnauthorized, "AUTH_UNAUTHORIZED", "Authentication required", traceID)
 		return
 	}
-	writeJSON(w, http.StatusOK, user)
+	httpresponse.WriteJSON(w, http.StatusOK, user)
 }
 
 func (h *Handler) handleChangePassword(w http.ResponseWriter, r *http.Request) {
@@ -116,7 +117,7 @@ func (h *Handler) handleChangePassword(w http.ResponseWriter, r *http.Request) {
 		writeAPIError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Internal server error", traceID)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
+	httpresponse.WriteJSON(w, http.StatusOK, map[string]any{
 		"changed": true,
 		"user":    currentUser,
 	})
@@ -158,11 +159,5 @@ func requestTraceID(r *http.Request) string {
 }
 
 func writeAPIError(w http.ResponseWriter, status int, code, message, traceID string) {
-	writeJSON(w, status, apiErrorEnvelope{Error: apiError{Code: code, Message: message, Details: map[string]any{}, TraceID: traceID}})
-}
-
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
+	httpresponse.WriteJSON(w, status, apiErrorEnvelope{Error: apiError{Code: code, Message: message, Details: map[string]any{}, TraceID: traceID}})
 }

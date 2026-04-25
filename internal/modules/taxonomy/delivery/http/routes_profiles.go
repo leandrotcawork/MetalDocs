@@ -9,9 +9,15 @@ import (
 
 	"metaldocs/internal/modules/taxonomy/domain"
 	"metaldocs/internal/platform/authn"
+	"metaldocs/internal/platform/httpresponse"
 )
 
 const defaultTenantID = "ffffffff-ffff-ffff-ffff-ffffffffffff"
+
+var (
+	writeJSON  = httpresponse.WriteJSON
+	writeError = httpresponse.WriteError
+)
 
 type profileUpsertRequest struct {
 	Code                     string  `json:"code"`
@@ -32,22 +38,22 @@ type setDefaultTemplateRequest struct {
 func (h *Handler) listProfiles(w http.ResponseWriter, r *http.Request) {
 	includeArchived, err := parseIncludeArchived(r)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "VALIDATION_ERROR", "includeArchived must be true or false")
+		httpresponse.WriteError(w, http.StatusBadRequest, "VALIDATION_ERROR", "includeArchived must be true or false")
 		return
 	}
 
 	items, err := h.profiles.List(r.Context(), tenantIDFromRequest(r), includeArchived)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to list profiles")
+		httpresponse.WriteError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to list profiles")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"items": items})
+	httpresponse.WriteJSON(w, http.StatusOK, map[string]any{"items": items})
 }
 
 func (h *Handler) createProfile(w http.ResponseWriter, r *http.Request) {
 	var req profileUpsertRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "VALIDATION_ERROR", "invalid JSON payload")
+		httpresponse.WriteError(w, http.StatusBadRequest, "VALIDATION_ERROR", "invalid JSON payload")
 		return
 	}
 
@@ -72,7 +78,7 @@ func (h *Handler) createProfile(w http.ResponseWriter, r *http.Request) {
 		EditableByRole:           strings.TrimSpace(req.EditableByRole),
 	}
 	if profile.Code == "" {
-		writeError(w, http.StatusBadRequest, "VALIDATION_ERROR", "code is required")
+		httpresponse.WriteError(w, http.StatusBadRequest, "VALIDATION_ERROR", "code is required")
 		return
 	}
 
@@ -80,7 +86,7 @@ func (h *Handler) createProfile(w http.ResponseWriter, r *http.Request) {
 		h.writeProfileError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, profile)
+	httpresponse.WriteJSON(w, http.StatusCreated, profile)
 }
 
 func (h *Handler) getProfile(w http.ResponseWriter, r *http.Request) {
@@ -89,13 +95,13 @@ func (h *Handler) getProfile(w http.ResponseWriter, r *http.Request) {
 		h.writeProfileError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, profile)
+	httpresponse.WriteJSON(w, http.StatusOK, profile)
 }
 
 func (h *Handler) updateProfile(w http.ResponseWriter, r *http.Request) {
 	var req profileUpsertRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "VALIDATION_ERROR", "invalid JSON payload")
+		httpresponse.WriteError(w, http.StatusBadRequest, "VALIDATION_ERROR", "invalid JSON payload")
 		return
 	}
 
@@ -123,17 +129,17 @@ func (h *Handler) updateProfile(w http.ResponseWriter, r *http.Request) {
 		h.writeProfileError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, profile)
+	httpresponse.WriteJSON(w, http.StatusOK, profile)
 }
 
 func (h *Handler) setDefaultTemplate(w http.ResponseWriter, r *http.Request) {
 	var req setDefaultTemplateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "VALIDATION_ERROR", "invalid JSON payload")
+		httpresponse.WriteError(w, http.StatusBadRequest, "VALIDATION_ERROR", "invalid JSON payload")
 		return
 	}
 	if strings.TrimSpace(req.TemplateVersionID) == "" {
-		writeError(w, http.StatusBadRequest, "VALIDATION_ERROR", "templateVersionId is required")
+		httpresponse.WriteError(w, http.StatusBadRequest, "VALIDATION_ERROR", "templateVersionId is required")
 		return
 	}
 
@@ -166,17 +172,17 @@ func (h *Handler) archiveProfile(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) writeProfileError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, domain.ErrProfileNotFound):
-		writeError(w, http.StatusNotFound, "PROFILE_NOT_FOUND", "profile not found")
+		httpresponse.WriteError(w, http.StatusNotFound, "PROFILE_NOT_FOUND", "profile not found")
 	case errors.Is(err, domain.ErrProfileArchived):
-		writeError(w, http.StatusConflict, "PROFILE_ARCHIVED", "profile is archived")
+		httpresponse.WriteError(w, http.StatusConflict, "PROFILE_ARCHIVED", "profile is archived")
 	case errors.Is(err, domain.ErrTemplateNotPublished):
-		writeError(w, http.StatusConflict, "TEMPLATE_NOT_PUBLISHED", "template version is not published")
+		httpresponse.WriteError(w, http.StatusConflict, "TEMPLATE_NOT_PUBLISHED", "template version is not published")
 	case errors.Is(err, domain.ErrTemplateProfileMismatch):
-		writeError(w, http.StatusConflict, "TEMPLATE_PROFILE_MISMATCH", "template version belongs to different profile")
+		httpresponse.WriteError(w, http.StatusConflict, "TEMPLATE_PROFILE_MISMATCH", "template version belongs to different profile")
 	case errors.Is(err, domain.ErrProfileCodeImmutable):
-		writeError(w, http.StatusBadRequest, "PROFILE_CODE_IMMUTABLE", "profile code is immutable")
+		httpresponse.WriteError(w, http.StatusBadRequest, "PROFILE_CODE_IMMUTABLE", "profile code is immutable")
 	default:
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal server error")
+		httpresponse.WriteError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal server error")
 	}
 }
 
@@ -194,17 +200,4 @@ func parseIncludeArchived(r *http.Request) (bool, error) {
 		return false, nil
 	}
 	return strconv.ParseBool(raw)
-}
-
-func writeError(w http.ResponseWriter, status int, code, message string) {
-	writeJSON(w, status, map[string]any{
-		"code":    code,
-		"message": message,
-	})
-}
-
-func writeJSON(w http.ResponseWriter, status int, payload any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(payload)
 }

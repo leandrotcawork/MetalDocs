@@ -11,6 +11,7 @@ import (
 	registrydomain "metaldocs/internal/modules/registry/domain"
 	taxonomydomain "metaldocs/internal/modules/taxonomy/domain"
 	"metaldocs/internal/platform/authn"
+	"metaldocs/internal/platform/httpresponse"
 )
 
 const defaultTenantID = "ffffffff-ffff-ffff-ffff-ffffffffffff"
@@ -30,7 +31,7 @@ type createDocRequest struct {
 func (h *Handler) listDocs(w http.ResponseWriter, r *http.Request) {
 	filter, err := parseFilter(r)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "VALIDATION_ERROR", err.Error())
+		httpresponse.WriteError(w, http.StatusBadRequest, "VALIDATION_ERROR", err.Error())
 		return
 	}
 
@@ -39,13 +40,13 @@ func (h *Handler) listDocs(w http.ResponseWriter, r *http.Request) {
 		h.writeDomainError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"items": items})
+	httpresponse.WriteJSON(w, http.StatusOK, map[string]any{"items": items})
 }
 
 func (h *Handler) createDoc(w http.ResponseWriter, r *http.Request) {
 	var req createDocRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "VALIDATION_ERROR", "invalid JSON payload")
+		httpresponse.WriteError(w, http.StatusBadRequest, "VALIDATION_ERROR", "invalid JSON payload")
 		return
 	}
 
@@ -66,7 +67,7 @@ func (h *Handler) createDoc(w http.ResponseWriter, r *http.Request) {
 		h.writeDomainError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, doc)
+	httpresponse.WriteJSON(w, http.StatusCreated, doc)
 }
 
 func (h *Handler) getDoc(w http.ResponseWriter, r *http.Request) {
@@ -75,7 +76,7 @@ func (h *Handler) getDoc(w http.ResponseWriter, r *http.Request) {
 		h.writeDomainError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, doc)
+	httpresponse.WriteJSON(w, http.StatusOK, doc)
 }
 
 func (h *Handler) obsoleteDoc(w http.ResponseWriter, r *http.Request) {
@@ -97,37 +98,37 @@ func (h *Handler) supersedeDoc(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) writeDomainError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, registrydomain.ErrCDNotFound):
-		writeError(w, http.StatusNotFound, "CONTROLLED_DOCUMENT_NOT_FOUND", "controlled document not found")
+		httpresponse.WriteError(w, http.StatusNotFound, "CONTROLLED_DOCUMENT_NOT_FOUND", "controlled document not found")
 	case errors.Is(err, registrydomain.ErrCDNotActive):
-		writeError(w, http.StatusConflict, "CONTROLLED_DOCUMENT_NOT_ACTIVE", "controlled document is not active")
+		httpresponse.WriteError(w, http.StatusConflict, "CONTROLLED_DOCUMENT_NOT_ACTIVE", "controlled document is not active")
 	case errors.Is(err, registrydomain.ErrCDCodeTaken):
-		writeError(w, http.StatusConflict, "CONTROLLED_DOCUMENT_CODE_TAKEN", "controlled document code already taken")
+		httpresponse.WriteError(w, http.StatusConflict, "CONTROLLED_DOCUMENT_CODE_TAKEN", "controlled document code already taken")
 	case errors.Is(err, registrydomain.ErrCDArchivedCodeReuse):
-		writeError(w, http.StatusConflict, "CONTROLLED_DOCUMENT_CODE_ARCHIVED", "cannot reuse code from archived controlled document")
+		httpresponse.WriteError(w, http.StatusConflict, "CONTROLLED_DOCUMENT_CODE_ARCHIVED", "cannot reuse code from archived controlled document")
 	case errors.Is(err, registrydomain.ErrManualCodeReasonRequired):
-		writeError(w, http.StatusBadRequest, "MANUAL_CODE_REASON_REQUIRED", "manual code reason is required")
+		httpresponse.WriteError(w, http.StatusBadRequest, "MANUAL_CODE_REASON_REQUIRED", "manual code reason is required")
 	case errors.Is(err, registrydomain.ErrOverrideReasonRequired):
-		writeError(w, http.StatusBadRequest, "OVERRIDE_REASON_REQUIRED", "override reason is required")
+		httpresponse.WriteError(w, http.StatusBadRequest, "OVERRIDE_REASON_REQUIRED", "override reason is required")
 	case errors.Is(err, registrydomain.ErrOverrideTemplateDeleted):
-		writeError(w, http.StatusConflict, "OVERRIDE_TEMPLATE_DELETED", "override template deleted")
+		httpresponse.WriteError(w, http.StatusConflict, "OVERRIDE_TEMPLATE_DELETED", "override template deleted")
 	case errors.Is(err, registrydomain.ErrOverrideNotPublished):
-		writeError(w, http.StatusConflict, "OVERRIDE_TEMPLATE_NOT_PUBLISHED", "override template is not published")
+		httpresponse.WriteError(w, http.StatusConflict, "OVERRIDE_TEMPLATE_NOT_PUBLISHED", "override template is not published")
 	case errors.Is(err, registrydomain.ErrTemplateProfileMismatch):
-		writeError(w, http.StatusConflict, "TEMPLATE_PROFILE_MISMATCH", "template profile mismatch")
+		httpresponse.WriteError(w, http.StatusConflict, "TEMPLATE_PROFILE_MISMATCH", "template profile mismatch")
 	case errors.Is(err, registrydomain.ErrProfileHasNoDefaultTemplate):
-		writeError(w, http.StatusConflict, "PROFILE_NO_DEFAULT_TEMPLATE", "profile has no default template")
+		httpresponse.WriteError(w, http.StatusConflict, "PROFILE_NO_DEFAULT_TEMPLATE", "profile has no default template")
 	case errors.Is(err, registrydomain.ErrDefaultObsolete):
-		writeError(w, http.StatusConflict, "DEFAULT_TEMPLATE_OBSOLETE", "default template is obsolete")
+		httpresponse.WriteError(w, http.StatusConflict, "DEFAULT_TEMPLATE_OBSOLETE", "default template is obsolete")
 	case errors.Is(err, taxonomydomain.ErrProfileNotFound):
-		writeError(w, http.StatusNotFound, "PROFILE_NOT_FOUND", "profile not found")
+		httpresponse.WriteError(w, http.StatusNotFound, "PROFILE_NOT_FOUND", "profile not found")
 	case errors.Is(err, taxonomydomain.ErrAreaNotFound):
-		writeError(w, http.StatusNotFound, "AREA_NOT_FOUND", "process area not found")
+		httpresponse.WriteError(w, http.StatusNotFound, "AREA_NOT_FOUND", "process area not found")
 	case errors.Is(err, taxonomydomain.ErrProfileArchived):
-		writeError(w, http.StatusConflict, "PROFILE_ARCHIVED", "profile is archived")
+		httpresponse.WriteError(w, http.StatusConflict, "PROFILE_ARCHIVED", "profile is archived")
 	case errors.Is(err, taxonomydomain.ErrAreaArchived):
-		writeError(w, http.StatusConflict, "AREA_ARCHIVED", "process area is archived")
+		httpresponse.WriteError(w, http.StatusConflict, "AREA_ARCHIVED", "process area is archived")
 	default:
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal server error")
+		httpresponse.WriteError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal server error")
 	}
 }
 
@@ -183,17 +184,4 @@ func parseFilter(r *http.Request) (application.CDFilter, error) {
 	}
 
 	return filter, nil
-}
-
-func writeError(w http.ResponseWriter, status int, code, message string) {
-	writeJSON(w, status, map[string]any{
-		"code":    code,
-		"message": message,
-	})
-}
-
-func writeJSON(w http.ResponseWriter, status int, payload any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(payload)
 }

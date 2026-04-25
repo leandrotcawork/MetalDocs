@@ -1,7 +1,6 @@
 package httpdelivery
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
@@ -9,11 +8,14 @@ import (
 	authdomain "metaldocs/internal/modules/auth/domain"
 	iamapp "metaldocs/internal/modules/iam/application"
 	iamdomain "metaldocs/internal/modules/iam/domain"
+	"metaldocs/internal/platform/httpresponse"
 )
 
 type ctxKeyCapability struct{}
 type ctxKeyAreaCode struct{}
 type ctxKeyResourceID struct{}
+
+var writeJSON = httpresponse.WriteJSON
 
 type Middleware struct {
 	authorizer   iamdomain.Authorizer
@@ -268,7 +270,7 @@ func requestTraceID(r *http.Request) string {
 }
 
 func writeAPIError(w http.ResponseWriter, status int, code, message, traceID string) {
-	writeJSON(w, status, apiErrorEnvelope{
+	httpresponse.WriteJSON(w, status, apiErrorEnvelope{
 		Error: apiError{
 			Code:    code,
 			Message: message,
@@ -276,12 +278,6 @@ func writeAPIError(w http.ResponseWriter, status int, code, message, traceID str
 			TraceID: traceID,
 		},
 	})
-}
-
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
 }
 
 func NewV2AuthzMiddleware(service *iamapp.AuthorizationService) func(http.Handler) http.Handler {
@@ -321,7 +317,7 @@ func NewV2AuthzMiddleware(service *iamapp.AuthorizationService) func(http.Handle
 			}
 			tenantID := strings.TrimSpace(r.Header.Get("X-Tenant-ID"))
 			if tenantID == "" {
-				writeJSON(w, http.StatusBadRequest, map[string]any{
+				httpresponse.WriteJSON(w, http.StatusBadRequest, map[string]any{
 					"code":                "missing_tenant",
 					"required_capability": capability,
 					"area_code":           areaCode,
@@ -336,7 +332,7 @@ func NewV2AuthzMiddleware(service *iamapp.AuthorizationService) func(http.Handle
 			if err != nil {
 				code := "forbidden"
 				code = err.Error()
-				writeJSON(w, http.StatusForbidden, map[string]any{
+				httpresponse.WriteJSON(w, http.StatusForbidden, map[string]any{
 					"code":                code,
 					"required_capability": capability,
 					"area_code":           areaCode,

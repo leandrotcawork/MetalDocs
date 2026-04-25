@@ -14,6 +14,7 @@ import (
 	iamapp "metaldocs/internal/modules/iam/application"
 	iamdomain "metaldocs/internal/modules/iam/domain"
 	registrydomain "metaldocs/internal/modules/registry/domain"
+	"metaldocs/internal/platform/httpresponse"
 	"metaldocs/internal/platform/ratelimit"
 )
 
@@ -49,6 +50,8 @@ type Service interface {
 }
 
 type Handler struct{ svc Service }
+
+var writeJSON = httpresponse.WriteJSON
 
 func NewHandler(svc Service) *Handler { return &Handler{svc: svc} }
 
@@ -150,7 +153,7 @@ func (h *Handler) createDocument(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, map[string]string{
+	httpresponse.WriteJSON(w, http.StatusCreated, map[string]string{
 		"document_id":         res.DocumentID,
 		"initial_revision_id": res.InitialRevisionID,
 		"session_id":          res.SessionID,
@@ -181,7 +184,7 @@ func (h *Handler) listDocuments(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, docs)
+	httpresponse.WriteJSON(w, http.StatusOK, docs)
 }
 
 func (h *Handler) getDocument(w http.ResponseWriter, r *http.Request) {
@@ -198,7 +201,7 @@ func (h *Handler) getDocument(w http.ResponseWriter, r *http.Request) {
 		httpErr(w, status, msg)
 		return
 	}
-	writeJSON(w, http.StatusOK, doc)
+	httpresponse.WriteJSON(w, http.StatusOK, doc)
 }
 
 func (h *Handler) renameDocument(w http.ResponseWriter, r *http.Request) {
@@ -229,7 +232,7 @@ func (h *Handler) renameDocument(w http.ResponseWriter, r *http.Request) {
 		httpErr(w, status, msg)
 		return
 	}
-	writeJSON(w, http.StatusOK, doc)
+	httpresponse.WriteJSON(w, http.StatusOK, doc)
 }
 
 func (h *Handler) finalizeDocument(w http.ResponseWriter, r *http.Request) {
@@ -291,14 +294,14 @@ func (h *Handler) acquireSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if readonly {
-		writeJSON(w, http.StatusOK, map[string]any{
+		httpresponse.WriteJSON(w, http.StatusOK, map[string]any{
 			"mode":       "readonly",
 			"held_by":    sess.UserID,
 			"held_until": sess.ExpiresAt,
 		})
 		return
 	}
-	writeJSON(w, http.StatusCreated, map[string]any{
+	httpresponse.WriteJSON(w, http.StatusCreated, map[string]any{
 		"mode":                 "writer",
 		"session_id":           sess.ID,
 		"expires_at":           sess.ExpiresAt,
@@ -411,7 +414,7 @@ func (h *Handler) presignAutosave(w http.ResponseWriter, r *http.Request) {
 		httpErr(w, status, msg)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
+	httpresponse.WriteJSON(w, http.StatusOK, map[string]any{
 		"upload_url":        res.UploadURL,
 		"pending_upload_id": res.PendingUploadID,
 		"expires_at":        res.ExpiresAt,
@@ -449,7 +452,7 @@ func (h *Handler) commitAutosave(w http.ResponseWriter, r *http.Request) {
 		httpErr(w, status, msg)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
+	httpresponse.WriteJSON(w, http.StatusOK, map[string]any{
 		"revision_id":       res.RevisionID,
 		"revision_num":      res.RevisionNum,
 		"idempotent_replay": res.AlreadyConsumed,
@@ -470,7 +473,7 @@ func (h *Handler) listCheckpoints(w http.ResponseWriter, r *http.Request) {
 		httpErr(w, status, msg)
 		return
 	}
-	writeJSON(w, http.StatusOK, items)
+	httpresponse.WriteJSON(w, http.StatusOK, items)
 }
 
 func (h *Handler) createCheckpoint(w http.ResponseWriter, r *http.Request) {
@@ -495,7 +498,7 @@ func (h *Handler) createCheckpoint(w http.ResponseWriter, r *http.Request) {
 		httpErr(w, status, msg)
 		return
 	}
-	writeJSON(w, http.StatusCreated, cp)
+	httpresponse.WriteJSON(w, http.StatusCreated, cp)
 }
 
 func (h *Handler) restoreCheckpoint(w http.ResponseWriter, r *http.Request) {
@@ -518,7 +521,7 @@ func (h *Handler) restoreCheckpoint(w http.ResponseWriter, r *http.Request) {
 		httpErr(w, status, msg)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
+	httpresponse.WriteJSON(w, http.StatusOK, map[string]any{
 		"new_revision_id":               res.NewRevisionID,
 		"new_revision_num":              res.NewRevisionNum,
 		"source_checkpoint_version_num": versionNum,
@@ -540,7 +543,7 @@ func (h *Handler) signedRevisionURL(w http.ResponseWriter, r *http.Request) {
 		httpErr(w, status, msg)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"url": url})
+	httpresponse.WriteJSON(w, http.StatusOK, map[string]string{"url": url})
 }
 
 func (h *Handler) listComments(w http.ResponseWriter, r *http.Request) {
@@ -561,7 +564,7 @@ func (h *Handler) listComments(w http.ResponseWriter, r *http.Request) {
 	for i := range comments {
 		resp = append(resp, toCommentResponse(comments[i]))
 	}
-	writeJSON(w, http.StatusOK, resp)
+	httpresponse.WriteJSON(w, http.StatusOK, resp)
 }
 
 func (h *Handler) createComment(w http.ResponseWriter, r *http.Request) {
@@ -594,7 +597,7 @@ func (h *Handler) createComment(w http.ResponseWriter, r *http.Request) {
 		httpErr(w, status, msg)
 		return
 	}
-	writeJSON(w, http.StatusCreated, toCommentResponse(*comment))
+	httpresponse.WriteJSON(w, http.StatusCreated, toCommentResponse(*comment))
 }
 
 func (h *Handler) updateComment(w http.ResponseWriter, r *http.Request) {
@@ -628,7 +631,7 @@ func (h *Handler) updateComment(w http.ResponseWriter, r *http.Request) {
 		httpErr(w, status, msg)
 		return
 	}
-	writeJSON(w, http.StatusOK, toCommentResponse(*comment))
+	httpresponse.WriteJSON(w, http.StatusOK, toCommentResponse(*comment))
 }
 
 func (h *Handler) deleteComment(w http.ResponseWriter, r *http.Request) {
@@ -829,12 +832,6 @@ func mapErr(err error) (int, string) {
 	}
 }
 
-func writeJSON(w http.ResponseWriter, code int, v any) {
-	w.Header().Set("content-type", "application/json")
-	w.WriteHeader(code)
-	_ = json.NewEncoder(w).Encode(v)
-}
-
 func httpErr(w http.ResponseWriter, code int, msg string) {
-	writeJSON(w, code, map[string]string{"error": msg})
+	httpresponse.WriteJSON(w, code, map[string]string{"error": msg})
 }

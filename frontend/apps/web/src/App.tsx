@@ -20,8 +20,7 @@ import { statusOf } from "./features/shared/errors";
 import { DocumentsWorkspaceView } from "./features/documents/DocumentsWorkspaceView";
 import { RegistryExplorerView } from "./features/registry/RegistryExplorerView";
 import { WorkspaceShell } from "./features/shell/WorkspaceShell";
-import { isPathForView, parseTemplateEditorPath, pathFromView, viewFromPath } from "./routing/workspaceRoutes";
-import { TemplateEditorView } from "./features/templates/TemplateEditorView";
+import { isPathForView, pathFromView, viewFromPath } from "./routing/workspaceRoutes";
 import { TemplatesV2View, type TemplatesV2Route } from "./features/templates/v2/routes";
 import { renderDocumentsV2View, routeFromPath as docsRouteFromPath, pathFromRoute as docsPathFromRoute, type DocumentsV2Route } from "./features/documents/v2/routes";
 import { RegistryListPage } from "./features/registry";
@@ -186,7 +185,6 @@ function AppContent() {
       : documents;
 
   const locationView = useMemo(() => viewFromPath(location.pathname), [location.pathname]);
-  const templateEditorParams = useMemo(() => parseTemplateEditorPath(location.pathname), [location.pathname]);
   const [tplRoute, setTplRoute] = useState<TemplatesV2Route>({ kind: 'list' });
   const [docsRoute, setDocsRouteState] = useState<DocumentsV2Route>(() => docsRouteFromPath(location.pathname));
   const setDocsRoute = useCallback((next: DocumentsV2Route) => {
@@ -429,15 +427,6 @@ function AppContent() {
     }
 
     if (activeView === "registry") {
-      if (templateEditorParams) {
-        return (
-          <TemplateEditorView
-            profileCode={templateEditorParams.profileCode}
-            templateKey={templateEditorParams.templateKey}
-          />
-        );
-      }
-
       return (
         <RegistryExplorerView
           loadState={loadState}
@@ -570,7 +559,7 @@ function AppContent() {
           onPrimaryAction={handlePrimaryAction}
           onRefreshWorkspace={refreshWorkspace}
           isRefreshing={loadState === "loading"}
-          flushContent={Boolean(templateEditorParams) || tplRoute.kind === 'author'}
+          flushContent={tplRoute.kind === 'author'}
           editMode={tplRoute.kind === 'author'}
           onLogout={handleLogout}
         >

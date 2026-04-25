@@ -31,9 +31,6 @@ func (h *Handler) CreateRouteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	routeAdminSvc := h.routeAdmin
-	if routeAdminSvc == nil && h.services != nil {
-		routeAdminSvc = h.services.RouteAdmin
-	}
 	if routeAdminSvc == nil {
 		WriteError(w, reqID, errors.New("route admin service not configured"))
 		return
@@ -82,9 +79,6 @@ func (h *Handler) UpdateRouteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	routeAdminSvc := h.routeAdmin
-	if routeAdminSvc == nil && h.services != nil {
-		routeAdminSvc = h.services.RouteAdmin
-	}
 	if routeAdminSvc == nil {
 		WriteError(w, reqID, errors.New("route admin service not configured"))
 		return
@@ -124,9 +118,6 @@ func (h *Handler) DeactivateRouteHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	routeAdminSvc := h.routeAdmin
-	if routeAdminSvc == nil && h.services != nil {
-		routeAdminSvc = h.services.RouteAdmin
-	}
 	if routeAdminSvc == nil {
 		WriteError(w, reqID, errors.New("route admin service not configured"))
 		return

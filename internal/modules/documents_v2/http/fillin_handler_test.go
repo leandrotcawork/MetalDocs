@@ -11,6 +11,7 @@ import (
 
 	v2domain "metaldocs/internal/modules/documents_v2/domain"
 	"metaldocs/internal/modules/iam/authz"
+	iamdomain "metaldocs/internal/modules/iam/domain"
 )
 
 type fakeFillInService struct {
@@ -61,7 +62,7 @@ func TestFillInHandler_PutPlaceholderValue(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPut, "/api/v2/documents/rev-1/placeholders/p1", bytes.NewBufferString(tt.body))
 			req.Header.Set("Content-Type", "application/json")
 			req.Header.Set("X-Tenant-ID", "tenant-1")
-			req.Header.Set("X-User-ID", "user-1")
+			req = req.WithContext(iamdomain.WithAuthContext(req.Context(), "user-1", []iamdomain.Role{}))
 			req.Header.Set("X-Request-ID", "req-1")
 			rr := httptest.NewRecorder()
 
@@ -120,7 +121,7 @@ func TestFillInHandler_PutZoneContent(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPut, "/api/v2/documents/rev-1/zones/z1", bytes.NewBufferString(tt.body))
 			req.Header.Set("Content-Type", "application/json")
 			req.Header.Set("X-Tenant-ID", "tenant-1")
-			req.Header.Set("X-User-ID", "user-1")
+			req = req.WithContext(iamdomain.WithAuthContext(req.Context(), "user-1", []iamdomain.Role{}))
 			req.Header.Set("X-Request-ID", "req-1")
 			rr := httptest.NewRecorder()
 

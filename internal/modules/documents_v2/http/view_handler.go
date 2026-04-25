@@ -8,6 +8,7 @@ import (
 
 	v2domain "metaldocs/internal/modules/documents_v2/domain"
 	"metaldocs/internal/modules/iam/authz"
+	iamdomain "metaldocs/internal/modules/iam/domain"
 )
 
 // ErrPDFPending distinguishes "approved but PDF not yet generated" from plain
@@ -37,7 +38,7 @@ func (h *ViewHandler) RegisterRoutes(mux *http.ServeMux) {
 func (h *ViewHandler) HandleView(w http.ResponseWriter, r *http.Request) {
 	result, err := h.svc.GetViewURL(r.Context(),
 		strings.TrimSpace(r.Header.Get("X-Tenant-ID")),
-		strings.TrimSpace(r.Header.Get("X-User-ID")),
+		iamdomain.UserIDFromContext(r.Context()),
 		r.PathValue("id"),
 	)
 	if err != nil {

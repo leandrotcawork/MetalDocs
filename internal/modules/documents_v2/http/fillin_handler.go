@@ -12,6 +12,7 @@ import (
 
 	v2domain "metaldocs/internal/modules/documents_v2/domain"
 	"metaldocs/internal/modules/iam/authz"
+	iamdomain "metaldocs/internal/modules/iam/domain"
 )
 
 type FillInService interface {
@@ -43,7 +44,7 @@ func (h *FillInHandler) PutPlaceholderValue(w http.ResponseWriter, r *http.Reque
 
 	err := h.service.SetPlaceholderValue(r.Context(),
 		strings.TrimSpace(r.Header.Get("X-Tenant-ID")),
-		strings.TrimSpace(r.Header.Get("X-User-ID")),
+		iamdomain.UserIDFromContext(r.Context()),
 		r.PathValue("id"),
 		r.PathValue("pid"),
 		body.Value,
@@ -70,7 +71,7 @@ func (h *FillInHandler) PutZoneContent(w http.ResponseWriter, r *http.Request) {
 
 	err := h.service.SetZoneContent(r.Context(),
 		strings.TrimSpace(r.Header.Get("X-Tenant-ID")),
-		strings.TrimSpace(r.Header.Get("X-User-ID")),
+		iamdomain.UserIDFromContext(r.Context()),
 		r.PathValue("id"),
 		r.PathValue("zid"),
 		body.ContentOOXML,

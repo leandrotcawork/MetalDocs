@@ -773,9 +773,6 @@ func tenantIDFromReq(r *http.Request) string {
 }
 
 func userIDFromReq(r *http.Request) string {
-	if u := strings.TrimSpace(r.Header.Get("X-User-ID")); u != "" {
-		return u
-	}
 	return iamdomain.UserIDFromContext(r.Context())
 }
 

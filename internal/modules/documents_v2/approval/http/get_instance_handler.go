@@ -9,12 +9,13 @@ import (
 	"metaldocs/internal/modules/documents_v2/approval/domain"
 	"metaldocs/internal/modules/documents_v2/approval/http/contracts"
 	"metaldocs/internal/modules/documents_v2/approval/repository"
+	iamdomain "metaldocs/internal/modules/iam/domain"
 )
 
 func (h *Handler) GetInstanceHandler(w http.ResponseWriter, r *http.Request) {
 	reqID := requestID(r)
 	tenantID := strings.TrimSpace(r.Header.Get("X-Tenant-ID"))
-	actorID := strings.TrimSpace(r.Header.Get("X-User-ID"))
+	actorID := iamdomain.UserIDFromContext(r.Context())
 	instanceID := r.PathValue("instance_id")
 
 	if h.readSvc == nil {

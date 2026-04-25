@@ -74,9 +74,6 @@ func requestID(r *http.Request) string {
 }
 
 func actorIDFromRequest(r *http.Request) string {
-	if id := strings.TrimSpace(r.Header.Get("X-User-ID")); id != "" {
-		return id
-	}
 	return iamdomain.UserIDFromContext(r.Context())
 }
 

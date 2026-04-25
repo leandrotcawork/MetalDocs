@@ -13,6 +13,7 @@ import (
 	"metaldocs/internal/modules/documents_v2/approval/http/contracts"
 	"metaldocs/internal/modules/documents_v2/approval/repository"
 	"metaldocs/internal/modules/iam/authz"
+	iamdomain "metaldocs/internal/modules/iam/domain"
 )
 
 func cancelTestMux(h *Handler) *http.ServeMux {
@@ -78,7 +79,7 @@ func TestCancelHandler(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/api/v2/approval/instances/inst-4/cancel", strings.NewReader(tt.body))
 			req.Header.Set("Content-Type", "application/json")
 			req.Header.Set("X-Tenant-ID", "tenant-1")
-			req.Header.Set("X-User-ID", "actor-1")
+			req = req.WithContext(iamdomain.WithAuthContext(req.Context(), "actor-1", []iamdomain.Role{}))
 			req.Header.Set("Idempotency-Key", "idem-1")
 			req.Header.Set("If-Match", "\"v9\"")
 

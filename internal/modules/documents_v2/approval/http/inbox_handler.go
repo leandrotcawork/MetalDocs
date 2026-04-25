@@ -10,12 +10,13 @@ import (
 
 	"metaldocs/internal/modules/documents_v2/approval/domain"
 	"metaldocs/internal/modules/documents_v2/approval/http/contracts"
+	iamdomain "metaldocs/internal/modules/iam/domain"
 )
 
 func (h *Handler) InboxHandler(w http.ResponseWriter, r *http.Request) {
 	reqID := requestID(r)
 	tenantID := strings.TrimSpace(r.Header.Get("X-Tenant-ID"))
-	actorID := strings.TrimSpace(r.Header.Get("X-User-ID"))
+	actorID := iamdomain.UserIDFromContext(r.Context())
 	areaCode := strings.TrimSpace(r.URL.Query().Get("area_code"))
 
 	limit, err := parseInboxLimit(r.URL.Query().Get("limit"))

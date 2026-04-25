@@ -12,6 +12,7 @@ import (
 	"metaldocs/internal/modules/documents_v2/approval/domain"
 	"metaldocs/internal/modules/documents_v2/approval/http/contracts"
 	"metaldocs/internal/modules/documents_v2/approval/repository"
+	iamdomain "metaldocs/internal/modules/iam/domain"
 )
 
 type fakeReadServiceGetInstance struct {
@@ -65,7 +66,7 @@ func TestGetInstanceHandler_HappyPath(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v2/approval/instances/inst-1", nil)
 	req.Header.Set("X-Tenant-ID", "tenant-1")
-	req.Header.Set("X-User-ID", "actor-1")
+	req = req.WithContext(iamdomain.WithAuthContext(req.Context(), "actor-1", []iamdomain.Role{}))
 	rr := httptest.NewRecorder()
 
 	mux.ServeHTTP(rr, req)
@@ -102,7 +103,7 @@ func TestGetInstanceHandler_NotFound(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v2/approval/instances/inst-missing", nil)
 	req.Header.Set("X-Tenant-ID", "tenant-1")
-	req.Header.Set("X-User-ID", "actor-1")
+	req = req.WithContext(iamdomain.WithAuthContext(req.Context(), "actor-1", []iamdomain.Role{}))
 	rr := httptest.NewRecorder()
 
 	mux.ServeHTTP(rr, req)
@@ -127,7 +128,7 @@ func TestGetInstanceHandler_NoTenantHeader(t *testing.T) {
 	mux := getInstanceTestMux(h)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v2/approval/instances/inst-2", nil)
-	req.Header.Set("X-User-ID", "actor-1")
+	req = req.WithContext(iamdomain.WithAuthContext(req.Context(), "actor-1", []iamdomain.Role{}))
 	rr := httptest.NewRecorder()
 
 	mux.ServeHTTP(rr, req)

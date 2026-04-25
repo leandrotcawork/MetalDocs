@@ -13,6 +13,7 @@ import (
 	"metaldocs/internal/modules/documents_v2/approval/domain"
 	"metaldocs/internal/modules/documents_v2/approval/http/contracts"
 	approvalsignature "metaldocs/internal/modules/documents_v2/approval/infra/signature"
+	iamdomain "metaldocs/internal/modules/iam/domain"
 )
 
 type fakeDecisionService struct {
@@ -44,7 +45,7 @@ func TestSignoffHandler_HappyApprove(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/api/v2/approval/instances/inst-1/stages/stg-1/signoff", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Tenant-ID", "tenant-1")
-	req.Header.Set("X-User-ID", "actor-1")
+	req = req.WithContext(iamdomain.WithAuthContext(req.Context(), "actor-1", []iamdomain.Role{}))
 	req.Header.Set("Idempotency-Key", "idem-1")
 	req.Header.Set("If-Match", "v3")
 

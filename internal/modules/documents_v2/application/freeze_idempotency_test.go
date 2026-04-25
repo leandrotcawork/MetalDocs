@@ -27,7 +27,6 @@ func TestFreezeService_Freeze_IdempotentWhenAlreadyFrozen(t *testing.T) {
 			valuesFrozenAt: &frozenAt,
 		},
 		finalDocx,
-		fakeZonesReader{},
 		&fakeFanoutClient{},
 	)
 

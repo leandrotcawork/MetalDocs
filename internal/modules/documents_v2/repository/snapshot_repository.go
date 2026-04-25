@@ -48,13 +48,11 @@ func (r *SnapshotRepository) WriteSnapshot(ctx context.Context, tenantID, docID 
 		       placeholder_schema_hash        = $2,
 		       composition_config_snapshot    = $3,
 		       composition_config_hash        = $4,
-		       editable_zones_schema_snapshot = $5,
-		       body_docx_snapshot_s3_key      = $6,
-		       body_docx_hash                 = $7
-		 WHERE tenant_id = $8::uuid AND id = $9::uuid`, r.table("documents")),
+		       body_docx_snapshot_s3_key      = $5,
+		       body_docx_hash                 = $6
+		 WHERE tenant_id = $7::uuid AND id = $8::uuid`, r.table("documents")),
 		s.PlaceholderSchemaJSON, h.PlaceholderSchemaHash,
 		s.CompositionJSON, h.CompositionHash,
-		s.ZonesSchemaJSON,
 		s.BodyDocxS3Key, h.BodyDocxHash,
 		tenantID, docID,
 	)
@@ -82,7 +80,6 @@ func (r *SnapshotRepository) readSnapshot(ctx context.Context, exec DBTX, tenant
 	err := exec.QueryRowContext(ctx, fmt.Sprintf(`
 		SELECT placeholder_schema_snapshot,
 		       composition_config_snapshot,
-		       editable_zones_schema_snapshot,
 		       coalesce(body_docx_snapshot_s3_key, ''),
 		       values_frozen_at
 		  FROM %s
@@ -91,7 +88,6 @@ func (r *SnapshotRepository) readSnapshot(ctx context.Context, exec DBTX, tenant
 	).Scan(
 		&s.PlaceholderSchemaJSON,
 		&s.CompositionJSON,
-		&s.ZonesSchemaJSON,
 		&s.BodyDocxS3Key,
 		&valuesFrozenAt,
 	)

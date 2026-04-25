@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"crypto/sha256"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -17,23 +16,15 @@ type FillInRepository struct {
 }
 
 type PlaceholderValue struct {
-	TenantID      string
-	RevisionID    string
-	PlaceholderID string
-	ValueText     *string
-	ValueTyped    map[string]any
-	Source        string
-	ComputedFrom  *string
+	TenantID        string
+	RevisionID      string
+	PlaceholderID   string
+	ValueText       *string
+	ValueTyped      map[string]any
+	Source          string
+	ComputedFrom    *string
 	ResolverVersion *int
-	InputsHash    []byte
-}
-
-type ZoneContent struct {
-	TenantID     string
-	RevisionID   string
-	ZoneID       string
-	ContentOOXML string
-	ContentHash  []byte
+	InputsHash      []byte
 }
 
 // NewFillInRepository creates a FillInRepository using bare table names.
@@ -147,45 +138,5 @@ func (r *FillInRepository) ListValues(ctx context.Context, tenantID, revisionID 
 		out = append(out, v)
 	}
 
-	return out, rows.Err()
-}
-
-func (r *FillInRepository) UpsertZoneContent(ctx context.Context, z ZoneContent) error {
-	hash := sha256.Sum256([]byte(z.ContentOOXML))
-	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`
-		INSERT INTO %s
-			(tenant_id, revision_id, zone_id, content_ooxml, content_hash, created_at, updated_at)
-		VALUES ($1::uuid, $2::uuid, $3, $4, $5, NOW(), NOW())
-		ON CONFLICT (tenant_id, revision_id, zone_id) DO UPDATE SET
-			content_ooxml = EXCLUDED.content_ooxml,
-			content_hash  = EXCLUDED.content_hash,
-			updated_at    = NOW()`, r.table("document_editable_zone_content")),
-		z.TenantID, z.RevisionID, z.ZoneID, z.ContentOOXML, hash[:],
-	)
-	return err
-}
-
-func (r *FillInRepository) ListZoneContent(ctx context.Context, tenantID, revisionID string) ([]ZoneContent, error) {
-	rows, err := r.db.QueryContext(ctx, fmt.Sprintf(`
-		SELECT zone_id, content_ooxml, content_hash
-		  FROM %s
-		 WHERE tenant_id=$1::uuid AND revision_id=$2::uuid`, r.table("document_editable_zone_content")),
-		tenantID, revisionID,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var out []ZoneContent
-	for rows.Next() {
-		var z ZoneContent
-		if err := rows.Scan(&z.ZoneID, &z.ContentOOXML, &z.ContentHash); err != nil {
-			return nil, err
-		}
-		z.TenantID = tenantID
-		z.RevisionID = revisionID
-		out = append(out, z)
-	}
 	return out, rows.Err()
 }

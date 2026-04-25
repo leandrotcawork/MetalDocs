@@ -26,7 +26,6 @@ func TestSnapshotRepository_WriteAndRead(t *testing.T) {
 	snap := domain.TemplateSnapshot{
 		PlaceholderSchemaJSON: []byte(`{}`),
 		CompositionJSON:       []byte(`{}`),
-		ZonesSchemaJSON:       []byte(`{}`),
 		BodyDocxBytes:         []byte("x"),
 		BodyDocxS3Key:         "s3://bucket/key",
 	}

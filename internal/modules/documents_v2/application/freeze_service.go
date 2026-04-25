@@ -62,13 +62,17 @@ func NewFreezeService(
 	},
 	reg *resolvers.Registry, final FreezeFinalizer, ctxBuilder ResolverContextBuilder,
 	snapshots SnapshotReader, finalDocx FinalDocxWriter,
-	fanoutClient FanoutClient,
+	fanoutClient any, legacyFanout ...FanoutClient,
 ) *FreezeService {
+	fanout, _ := fanoutClient.(FanoutClient)
+	if len(legacyFanout) > 0 {
+		fanout = legacyFanout[0]
+	}
 	return &FreezeService{
 		schemas: schemas, values: values, valuesRead: valuesRead,
 		resolvers: reg, finalize: final, resolveCtx: ctxBuilder,
 		snapshots: snapshots, finalDocx: finalDocx,
-		fanout: fanoutClient,
+		fanout: fanout,
 	}
 }
 

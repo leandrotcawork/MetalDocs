@@ -3,6 +3,7 @@ package http
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -182,6 +183,7 @@ func (h *Handler) writeProfileError(w http.ResponseWriter, err error) {
 	case errors.Is(err, domain.ErrProfileCodeImmutable):
 		httpresponse.WriteError(w, http.StatusBadRequest, "PROFILE_CODE_IMMUTABLE", "profile code is immutable")
 	default:
+		slog.Error("taxonomy profile error", "err", err)
 		httpresponse.WriteError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal server error")
 	}
 }

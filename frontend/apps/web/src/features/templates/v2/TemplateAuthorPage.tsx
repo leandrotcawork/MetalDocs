@@ -6,11 +6,9 @@ import { toast } from 'sonner';
 import { filterTransactionGuard } from '../../../editor-adapters/filter-transaction-guard';
 import { type TemplateSchemas, type VersionDTO, submitForReview } from './api/templatesV2';
 import { PlaceholderChip, usePlaceholderDrop } from '../placeholder-chip';
-import { ZoneChip, useZoneDrop } from '../zone-chip';
 import { PlaceholderInspector } from '../placeholder-inspector';
-import { ZoneInspector } from '../zone-inspector';
 import { CompositionConfigPanel } from '../composition-config-panel';
-import type { EditableZone, Placeholder, SubBlockDef } from '../placeholder-types';
+import type { Placeholder, SubBlockDef } from '../placeholder-types';
 import { useTemplateDraft } from './hooks/useTemplateDraft';
 import { useTemplateAutosave } from './hooks/useTemplateAutosave';
 import { useTemplateSchemas } from './hooks/useTemplateSchemas';
@@ -61,7 +59,7 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
   const [leftActive, setLeftActive] = useState<string>('variables');
   const [rightActive, setRightActive] = useState<string>('inspector');
   const [localSchemas, setLocalSchemas] = useState<TemplateSchemas | null>(null);
-  const [selectedType, setSelectedType] = useState<'placeholder' | 'zone' | null>(null);
+  const [selectedType, setSelectedType] = useState<'placeholder' | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const queueDocx = autosave.queueDocx;
@@ -117,16 +115,11 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
     insertTokenAtCursor(`{{${id}}}`);
   }, [insertTokenAtCursor]);
 
-  const insertZone = useCallback((id: string) => {
-    insertTokenAtCursor(`[[${id}]]`);
-  }, [insertTokenAtCursor]);
   const placeholderDrop = usePlaceholderDrop(insertPlaceholder);
-  const zoneDrop = useZoneDrop(insertZone);
 
   const handleCanvasDrop = useCallback((e: React.DragEvent) => {
     placeholderDrop.onDrop(e);
-    zoneDrop.onDrop(e);
-  }, [placeholderDrop, zoneDrop]);
+  }, [placeholderDrop]);
 
   const updatePlaceholder = useCallback((updated: Placeholder) => {
     if (!isDraft) return;
@@ -135,17 +128,6 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
       return {
         ...prev,
         placeholders: prev.placeholders.map((p) => (p.id === updated.id ? updated : p)),
-      };
-    });
-  }, [isDraft]);
-
-  const updateZone = useCallback((updated: EditableZone) => {
-    if (!isDraft) return;
-    setLocalSchemas((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        zones: prev.zones.map((z) => (z.id === updated.id ? updated : z)),
       };
     });
   }, [isDraft]);
@@ -174,27 +156,8 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
     setRightActive('inspector');
   }, [isDraft]);
 
-  const addZone = useCallback(() => {
-    if (!isDraft) return;
-    const next: EditableZone = {
-      id: crypto.randomUUID(),
-      label: 'New zone',
-      contentPolicy: { allowTables: false, allowImages: false, allowHeadings: false, allowLists: true },
-    };
-    setLocalSchemas((prev) => {
-      if (!prev) return prev;
-      return { ...prev, zones: [...prev.zones, next] };
-    });
-    setSelectedType('zone');
-    setSelectedId(next.id);
-    setRightActive('inspector');
-  }, [isDraft]);
-
   const selectedPlaceholder = selectedType === 'placeholder'
     ? localSchemas?.placeholders.find((p) => p.id === selectedId) ?? null
-    : null;
-  const selectedZone = selectedType === 'zone'
-    ? localSchemas?.zones.find((z) => z.id === selectedId) ?? null
     : null;
 
   // Eigenpal closes its popovers on any capture-phase scroll event. Scrolling
@@ -322,26 +285,6 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
                 + Add placeholder
               </button>
             </section>
-
-            <section className={styles.panelSection}>
-              <div className={styles.panelHeader}>Zones</div>
-              <div className={styles.chipList}>
-                {(localSchemas?.zones ?? []).map((zone) => (
-                  <ZoneChip
-                    key={zone.id}
-                    zone={zone}
-                    onInsert={(z) => {
-                      setSelectedType('zone');
-                      setSelectedId(z.id);
-                      setRightActive('inspector');
-                    }}
-                  />
-                ))}
-              </div>
-              <button type="button" className={styles.addBtn} onClick={addZone} disabled={!isDraft}>
-                + Add zone
-              </button>
-            </section>
           </aside>
         )}
 
@@ -349,7 +292,6 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
           className={styles.canvas}
           onDragOver={(e) => {
             placeholderDrop.onDragOver(e);
-            zoneDrop.onDragOver(e);
           }}
           onDrop={handleCanvasDrop}
         >
@@ -406,16 +348,6 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
                     onChange={(updated) => {
                       if (!isDraft) return;
                       updatePlaceholder(updated);
-                    }}
-                  />
-                </fieldset>
-              ) : selectedZone ? (
-                <fieldset className={styles.inspectorFieldset} disabled={!isDraft}>
-                  <ZoneInspector
-                    value={selectedZone}
-                    onChange={(updated) => {
-                      if (!isDraft) return;
-                      updateZone(updated);
                     }}
                   />
                 </fieldset>

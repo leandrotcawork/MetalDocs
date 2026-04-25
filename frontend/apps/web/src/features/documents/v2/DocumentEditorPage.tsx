@@ -13,6 +13,8 @@ import { PlaceholderForm } from '../placeholder-form';
 import { SubmitButton } from '../submit-button';
 import { CheckpointsDialog } from './CheckpointsDialog';
 import { ExportMenuButton } from './ExportMenuButton';
+import { StateBadge } from '../../approval/components/StateBadge';
+import type { ApprovalState } from '../../approval/api/approvalTypes';
 import styles from './styles/DocumentEditorPage.module.css';
 
 export type DocumentEditorPageProps = {
@@ -174,6 +176,9 @@ export function DocumentEditorPage({ documentID, onDone }: DocumentEditorPagePro
   }
 
   const docStatus = doc?.Status ?? doc?.status ?? '';
+  const docCode = doc?.Code ?? doc?.code ?? '';
+  const VALID_STATES: readonly ApprovalState[] = ['draft', 'under_review', 'approved', 'scheduled', 'published', 'superseded', 'rejected', 'obsolete', 'cancelled'];
+  const badgeState: ApprovalState | null = (VALID_STATES as readonly string[]).includes(docStatus) ? (docStatus as ApprovalState) : null;
   const userID = doc?.CreatedBy ?? doc?.created_by ?? '';
   const authorDisplay = String(userID);
   const commentsHook = useDocumentComments(documentID, authorDisplay);
@@ -202,6 +207,16 @@ export function DocumentEditorPage({ documentID, onDone }: DocumentEditorPagePro
           onAutoSave={handleSave}
           renderTitleBarRight={() => (
             <>
+              {docCode && (
+                <span style={{
+                  fontSize: 11, fontWeight: 600, padding: '2px 6px',
+                  borderRadius: 4, background: '#f1f5f9', color: '#475569',
+                  border: '1px solid #e2e8f0', marginRight: 6,
+                }}>
+                  {docCode}
+                </span>
+              )}
+              {badgeState && <StateBadge state={badgeState} size="sm" />}
               <button type="button" onClick={() => setCheckpointsOpen(true)}>Checkpoints</button>
               <ExportMenuButton
                 documentID={documentID}

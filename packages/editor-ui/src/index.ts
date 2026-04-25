@@ -3,3 +3,4 @@ export type { MetalDocsEditorProps, MetalDocsEditorRef, EditorMode } from './typ
 export type { Comment } from '@eigenpal/docx-js-editor';
 export { computeSidebarModel, type SidebarModel } from './plugins/mergefieldPlugin';
 export { buildSidebarModelPlugin } from './plugins/sidebarModelBridge';
+export { createOutlinePlugin } from './plugins/OutlinePlugin';

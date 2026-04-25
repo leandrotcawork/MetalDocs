@@ -1,11 +1,10 @@
 import type { Placeholder } from '../templates/placeholder-types';
-import { getPlaceholderValues, getZoneContents } from './v2/api/documentsV2';
-import type { PlaceholderValueDTO, ZoneContentDTO } from './v2/api/documentsV2';
+import { getPlaceholderValues } from './v2/api/documentsV2';
+import type { PlaceholderValueDTO } from './v2/api/documentsV2';
 
 export interface FillInData {
   bodyDocx: Uint8Array;
   placeholderValues: PlaceholderValueDTO[];
-  zoneContents: ZoneContentDTO[];
   placeholderSchema: Placeholder[];
 }
 
@@ -30,19 +29,17 @@ function placeholderFromWire(w: WirePlaceholder): Placeholder {
 }
 
 export async function loadFillInData(docId: string): Promise<FillInData> {
-  const [schema, values, zones] = await Promise.all([
+  const [schema, values] = await Promise.all([
     fetch(`/api/v2/documents/${docId}/fill-in-schema`).then((r) => {
       if (!r.ok) throw Object.assign(new Error(`http_${r.status}`), { status: r.status });
       return r.json() as Promise<FillInSchemaResponse>;
     }),
     getPlaceholderValues(docId),
-    getZoneContents(docId),
   ]);
 
   return {
     bodyDocx: new Uint8Array(),
     placeholderValues: values,
-    zoneContents: zones,
     placeholderSchema: (schema.data.placeholder_schema ?? []).map(placeholderFromWire),
   };
 }

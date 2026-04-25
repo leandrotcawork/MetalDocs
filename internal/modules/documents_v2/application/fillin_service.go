@@ -8,7 +8,6 @@ import (
 	"log"
 	"regexp"
 	"strconv"
-	"strings"
 	"time"
 
 	v2domain "metaldocs/internal/modules/documents_v2/domain"
@@ -18,12 +17,10 @@ import (
 
 type SchemaReader interface {
 	LoadPlaceholderSchema(ctx context.Context, tenantID, revisionID string) ([]templatesdomain.Placeholder, error)
-	LoadZonesSchema(ctx context.Context, tenantID, revisionID string) ([]templatesdomain.EditableZone, error)
 }
 
 type FillInWriter interface {
 	UpsertValue(ctx context.Context, v repository.PlaceholderValue) error
-	UpsertZoneContent(ctx context.Context, z repository.ZoneContent) error
 }
 
 type draftResolver interface {
@@ -34,6 +31,8 @@ type FillInService struct {
 	db            *sql.DB
 	schemas       SchemaReader
 	writer        FillInWriter
+	reader        FillInReader
+	schemaFromTpl *TemplateVersionSchemaReader
 	draftResolver draftResolver
 	iam           IAMUserOptionsReader
 }
@@ -93,28 +92,6 @@ func (r *SnapshotSchemaReader) LoadPlaceholderSchema(ctx context.Context, tenant
 	return payload.Placeholders, nil
 }
 
-func (r *SnapshotSchemaReader) LoadZonesSchema(ctx context.Context, tenantID, revisionID string) ([]templatesdomain.EditableZone, error) {
-	var raw []byte
-	if err := r.db.QueryRowContext(ctx, `
-		SELECT editable_zones_schema_snapshot
-		  FROM documents
-		 WHERE tenant_id=$1::uuid AND id=$2::uuid`, tenantID, revisionID).
-		Scan(&raw); err != nil {
-		return nil, err
-	}
-
-	var payload struct {
-		Zones []templatesdomain.EditableZone `json:"zones"`
-	}
-	if len(raw) == 0 {
-		return nil, nil
-	}
-	if err := json.Unmarshal(raw, &payload); err != nil {
-		return nil, err
-	}
-	return payload.Zones, nil
-}
-
 func (s *FillInService) SetPlaceholderValue(ctx context.Context, tenantID, actorID, revisionID, placeholderID, raw string) error {
 	if s.db != nil {
 		if err := requireDocEditDraft(ctx, s.db, tenantID, actorID, revisionID); err != nil {
@@ -124,6 +101,12 @@ func (s *FillInService) SetPlaceholderValue(ctx context.Context, tenantID, actor
 	schema, err := s.schemas.LoadPlaceholderSchema(ctx, tenantID, revisionID)
 	if err != nil {
 		return err
+	}
+	if len(schema) == 0 && s.schemaFromTpl != nil {
+		schema, _, err = s.schemaFromTpl.LoadFillInSchema(ctx, tenantID, revisionID)
+		if err != nil {
+			return err
+		}
 	}
 
 	p, ok := findPlaceholder(schema, placeholderID)
@@ -228,50 +211,73 @@ func validateValue(ctx context.Context, tenantID string, p templatesdomain.Place
 	return nil
 }
 
-func (s *FillInService) SetZoneContent(ctx context.Context, tenantID, actorID, revisionID, zoneID, ooxml string) error {
-	if s.db != nil {
-		if err := requireDocEditDraft(ctx, s.db, tenantID, actorID, revisionID); err != nil {
-			return err
-		}
-	}
-	zones, err := s.schemas.LoadZonesSchema(ctx, tenantID, revisionID)
-	if err != nil {
-		return err
-	}
-
-	zone, ok := findZone(zones, zoneID)
-	if !ok {
-		return fmt.Errorf("%w: unknown zone %s", v2domain.ErrValidationFailed, zoneID)
-	}
-	if zone.MaxLength != nil && len(ooxml) > *zone.MaxLength {
-		return fmt.Errorf("%w: zone %s exceeds max_length", v2domain.ErrValidationFailed, zoneID)
-	}
-	if !zone.ContentPolicy.AllowTables && strings.Contains(ooxml, "<w:tbl") {
-		return fmt.Errorf("%w: zone %s disallows tables", v2domain.ErrValidationFailed, zoneID)
-	}
-	if !zone.ContentPolicy.AllowImages && strings.Contains(ooxml, "<w:drawing") {
-		return fmt.Errorf("%w: zone %s disallows images", v2domain.ErrValidationFailed, zoneID)
-	}
-	if !zone.ContentPolicy.AllowHeadings && strings.Contains(ooxml, `<w:pStyle w:val="Heading`) {
-		return fmt.Errorf("%w: zone %s disallows headings", v2domain.ErrValidationFailed, zoneID)
-	}
-	if !zone.ContentPolicy.AllowLists && strings.Contains(ooxml, "<w:numPr") {
-		return fmt.Errorf("%w: zone %s disallows lists", v2domain.ErrValidationFailed, zoneID)
-	}
-
-	return s.writer.UpsertZoneContent(ctx, repository.ZoneContent{
-		TenantID:     tenantID,
-		RevisionID:   revisionID,
-		ZoneID:       zoneID,
-		ContentOOXML: ooxml,
-	})
+// FillInReader reads current fill-in values from the DB.
+type FillInReader interface {
+	ListValues(ctx context.Context, tenantID, docID string) ([]repository.PlaceholderValue, error)
 }
 
-func findZone(zones []templatesdomain.EditableZone, id string) (templatesdomain.EditableZone, bool) {
-	for _, z := range zones {
-		if z.ID == id {
-			return z, true
+// TemplateVersionSchemaReader reads fill-in schema from the template version
+// referenced by the document. Works for draft documents without snapshots.
+type TemplateVersionSchemaReader struct {
+	db *sql.DB
+}
+
+func NewTemplateVersionSchemaReader(db *sql.DB) *TemplateVersionSchemaReader {
+	return &TemplateVersionSchemaReader{db: db}
+}
+
+func (r *TemplateVersionSchemaReader) LoadFillInSchema(ctx context.Context, tenantID, docID string) ([]templatesdomain.Placeholder, []templatesdomain.EditableZone, error) {
+	var pRaw, zRaw []byte
+	err := r.db.QueryRowContext(ctx, `
+		SELECT tv.placeholder_schema, tv.editable_zones
+		  FROM templates_v2_template_version tv
+		  JOIN documents d ON d.template_version_id = tv.id
+		 WHERE d.id = $1::uuid AND d.tenant_id = $2::uuid`,
+		docID, tenantID,
+	).Scan(&pRaw, &zRaw)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil, nil
+		}
+		return nil, nil, err
+	}
+	var placeholders []templatesdomain.Placeholder
+	var zones []templatesdomain.EditableZone
+	if len(pRaw) > 0 {
+		if err := json.Unmarshal(pRaw, &placeholders); err != nil {
+			return nil, nil, err
 		}
 	}
-	return templatesdomain.EditableZone{}, false
+	if len(zRaw) > 0 {
+		if err := json.Unmarshal(zRaw, &zones); err != nil {
+			return nil, nil, err
+		}
+	}
+	return placeholders, zones, nil
+}
+
+// WithReader attaches a FillInReader for GET list operations.
+func (s *FillInService) WithReader(r FillInReader) *FillInService {
+	s.reader = r
+	return s
+}
+
+// WithTemplateSchemaReader attaches a reader that loads schema from the template version.
+func (s *FillInService) WithTemplateSchemaReader(r *TemplateVersionSchemaReader) *FillInService {
+	s.schemaFromTpl = r
+	return s
+}
+
+func (s *FillInService) GetPlaceholderValues(ctx context.Context, tenantID, docID string) ([]repository.PlaceholderValue, error) {
+	if s.reader == nil {
+		return nil, nil
+	}
+	return s.reader.ListValues(ctx, tenantID, docID)
+}
+
+func (s *FillInService) GetFillInSchema(ctx context.Context, tenantID, docID string) ([]templatesdomain.Placeholder, []templatesdomain.EditableZone, error) {
+	if s.schemaFromTpl == nil {
+		return nil, nil, nil
+	}
+	return s.schemaFromTpl.LoadFillInSchema(ctx, tenantID, docID)
 }

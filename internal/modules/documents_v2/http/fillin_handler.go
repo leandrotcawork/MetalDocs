@@ -11,13 +11,16 @@ import (
 	"time"
 
 	v2domain "metaldocs/internal/modules/documents_v2/domain"
+	"metaldocs/internal/modules/documents_v2/repository"
 	"metaldocs/internal/modules/iam/authz"
 	iamdomain "metaldocs/internal/modules/iam/domain"
+	templatesdomain "metaldocs/internal/modules/templates_v2/domain"
 )
 
 type FillInService interface {
 	SetPlaceholderValue(ctx context.Context, tenantID, actorID, revisionID, placeholderID, value string) error
-	SetZoneContent(ctx context.Context, tenantID, actorID, revisionID, zoneID, ooxml string) error
+	GetPlaceholderValues(ctx context.Context, tenantID, docID string) ([]repository.PlaceholderValue, error)
+	GetFillInSchema(ctx context.Context, tenantID, docID string) ([]templatesdomain.Placeholder, []templatesdomain.EditableZone, error)
 }
 
 type FillInHandler struct {
@@ -29,8 +32,50 @@ func NewFillInHandler(service FillInService) *FillInHandler {
 }
 
 func (h *FillInHandler) RegisterRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("GET /api/v2/documents/{id}/fill-in-schema", h.GetFillInSchema)
+	mux.HandleFunc("GET /api/v2/documents/{id}/placeholders", h.ListPlaceholderValues)
 	mux.HandleFunc("PUT /api/v2/documents/{id}/placeholders/{pid}", h.PutPlaceholderValue)
-	mux.HandleFunc("PUT /api/v2/documents/{id}/zones/{zid}", h.PutZoneContent)
+}
+
+func (h *FillInHandler) GetFillInSchema(w http.ResponseWriter, r *http.Request) {
+	tid := tenantID(r)
+	docID := r.PathValue("id")
+	phs, zones, err := h.service.GetFillInSchema(r.Context(), tid, docID)
+	if err != nil {
+		writeFillInError(w, requestID(r), err)
+		return
+	}
+	if phs == nil {
+		phs = []templatesdomain.Placeholder{}
+	}
+	if zones == nil {
+		zones = []templatesdomain.EditableZone{}
+	}
+	writeFillInJSON(w, http.StatusOK, map[string]any{
+		"data": map[string]any{
+			"placeholder_schema": phs,
+			"zone_schema":        zones,
+		},
+	})
+}
+
+func (h *FillInHandler) ListPlaceholderValues(w http.ResponseWriter, r *http.Request) {
+	docID := r.PathValue("id")
+	vals, err := h.service.GetPlaceholderValues(r.Context(), tenantID(r), docID)
+	if err != nil {
+		writeFillInError(w, requestID(r), err)
+		return
+	}
+	type out struct {
+		PlaceholderID string  `json:"placeholder_id"`
+		ValueText     *string `json:"value_text"`
+		Source        string  `json:"source"`
+	}
+	res := make([]out, len(vals))
+	for i, v := range vals {
+		res[i] = out{PlaceholderID: v.PlaceholderID, ValueText: v.ValueText, Source: v.Source}
+	}
+	writeFillInJSON(w, http.StatusOK, res)
 }
 
 func (h *FillInHandler) PutPlaceholderValue(w http.ResponseWriter, r *http.Request) {
@@ -43,8 +88,8 @@ func (h *FillInHandler) PutPlaceholderValue(w http.ResponseWriter, r *http.Reque
 	}
 
 	err := h.service.SetPlaceholderValue(r.Context(),
-		strings.TrimSpace(r.Header.Get("X-Tenant-ID")),
-		iamdomain.UserIDFromContext(r.Context()),
+		tenantID(r),
+		actorID(r),
 		r.PathValue("id"),
 		r.PathValue("pid"),
 		body.Value,
@@ -57,33 +102,6 @@ func (h *FillInHandler) PutPlaceholderValue(w http.ResponseWriter, r *http.Reque
 	writeFillInJSON(w, http.StatusOK, map[string]any{
 		"placeholder_id": r.PathValue("pid"),
 		"updated_at":     time.Now().UTC().Format(time.RFC3339),
-	})
-}
-
-func (h *FillInHandler) PutZoneContent(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		ContentOOXML string `json:"content_ooxml"`
-	}
-	if err := decodeJSON(r, &body); err != nil {
-		writeFillInError(w, requestID(r), err)
-		return
-	}
-
-	err := h.service.SetZoneContent(r.Context(),
-		strings.TrimSpace(r.Header.Get("X-Tenant-ID")),
-		iamdomain.UserIDFromContext(r.Context()),
-		r.PathValue("id"),
-		r.PathValue("zid"),
-		body.ContentOOXML,
-	)
-	if err != nil {
-		writeFillInError(w, requestID(r), err)
-		return
-	}
-
-	writeFillInJSON(w, http.StatusOK, map[string]any{
-		"zone_id":    r.PathValue("zid"),
-		"updated_at": time.Now().UTC().Format(time.RFC3339),
 	})
 }
 
@@ -181,4 +199,17 @@ func requestID(r *http.Request) string {
 		return id
 	}
 	return fmt.Sprintf("req-%d", time.Now().UnixNano())
+}
+
+const devTenantID = "ffffffff-ffff-ffff-ffff-ffffffffffff"
+
+func tenantID(r *http.Request) string {
+	if t := strings.TrimSpace(r.Header.Get("X-Tenant-ID")); t != "" {
+		return t
+	}
+	return devTenantID
+}
+
+func actorID(r *http.Request) string {
+	return iamdomain.UserIDFromContext(r.Context())
 }

@@ -10,16 +10,16 @@ import (
 	"testing"
 
 	v2domain "metaldocs/internal/modules/documents_v2/domain"
+	"metaldocs/internal/modules/documents_v2/repository"
 	"metaldocs/internal/modules/iam/authz"
 	iamdomain "metaldocs/internal/modules/iam/domain"
+	templatesdomain "metaldocs/internal/modules/templates_v2/domain"
 )
 
 type fakeFillInService struct {
 	setPlaceholderErr error
-	setZoneErr        error
 
 	gotTenantID, gotActorID, gotRevisionID, gotPlaceholderID, gotValue string
-	gotZoneID, gotOOXML                                                string
 }
 
 func (f *fakeFillInService) SetPlaceholderValue(_ context.Context, tenantID, actorID, revisionID, placeholderID, value string) error {
@@ -27,9 +27,12 @@ func (f *fakeFillInService) SetPlaceholderValue(_ context.Context, tenantID, act
 	return f.setPlaceholderErr
 }
 
-func (f *fakeFillInService) SetZoneContent(_ context.Context, tenantID, actorID, revisionID, zoneID, ooxml string) error {
-	f.gotTenantID, f.gotActorID, f.gotRevisionID, f.gotZoneID, f.gotOOXML = tenantID, actorID, revisionID, zoneID, ooxml
-	return f.setZoneErr
+func (f *fakeFillInService) GetPlaceholderValues(_ context.Context, _, _ string) ([]repository.PlaceholderValue, error) {
+	return nil, nil
+}
+
+func (f *fakeFillInService) GetFillInSchema(_ context.Context, _, _ string) ([]templatesdomain.Placeholder, []templatesdomain.EditableZone, error) {
+	return nil, nil, nil
 }
 
 func fillInTestMux(h *FillInHandler) *http.ServeMux {
@@ -94,41 +97,5 @@ func TestFillInHandler_MapErrorInternal(t *testing.T) {
 	}
 	if body.Error.Code != "internal.unknown" {
 		t.Fatalf("code=%q", body.Error.Code)
-	}
-}
-
-func TestFillInHandler_PutZoneContent(t *testing.T) {
-	tests := []struct {
-		name       string
-		svcErr     error
-		body       string
-		wantStatus int
-	}{
-		{name: "ok", body: `{"content_ooxml":"<w:p>ok</w:p>"}`, wantStatus: http.StatusOK},
-		{name: "capability denied", body: `{"content_ooxml":"<w:p>ok</w:p>"}`, svcErr: authz.ErrCapabilityDenied{Capability: "doc.edit_draft", AreaCode: "qa", ActorID: "u1"}, wantStatus: http.StatusForbidden},
-		{name: "not found", body: `{"content_ooxml":"<w:p>ok</w:p>"}`, svcErr: v2domain.ErrNotFound, wantStatus: http.StatusNotFound},
-		{name: "not draft", body: `{"content_ooxml":"<w:p>ok</w:p>"}`, svcErr: v2domain.ErrInvalidStateTransition, wantStatus: http.StatusConflict},
-		{name: "validation", body: `{"content_ooxml":"<w:tbl/>"}`, svcErr: v2domain.ErrValidationFailed, wantStatus: http.StatusUnprocessableEntity},
-		{name: "bad json", body: `{"content_ooxml":`, wantStatus: http.StatusBadRequest},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			svc := &fakeFillInService{setZoneErr: tt.svcErr}
-			h := NewFillInHandler(svc)
-			mux := fillInTestMux(h)
-
-			req := httptest.NewRequest(http.MethodPut, "/api/v2/documents/rev-1/zones/z1", bytes.NewBufferString(tt.body))
-			req.Header.Set("Content-Type", "application/json")
-			req.Header.Set("X-Tenant-ID", "tenant-1")
-			req = req.WithContext(iamdomain.WithAuthContext(req.Context(), "user-1", []iamdomain.Role{}))
-			req.Header.Set("X-Request-ID", "req-1")
-			rr := httptest.NewRecorder()
-
-			mux.ServeHTTP(rr, req)
-			if rr.Code != tt.wantStatus {
-				t.Fatalf("status=%d want=%d body=%s", rr.Code, tt.wantStatus, rr.Body.String())
-			}
-		})
 	}
 }

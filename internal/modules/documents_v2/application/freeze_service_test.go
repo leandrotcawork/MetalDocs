@@ -41,15 +41,6 @@ func (f *fakeFinalDocxWriter) WriteFinalDocx(_ context.Context, _, _, s3Key stri
 	return nil
 }
 
-type fakeZonesReader struct {
-	zones []repository.ZoneContent
-	err   error
-}
-
-func (f fakeZonesReader) ListZoneContent(_ context.Context, _, _ string) ([]repository.ZoneContent, error) {
-	return f.zones, f.err
-}
-
 type fakeFanoutClient struct {
 	req   fanout.FanoutRequest
 	resp  fanout.FanoutResponse
@@ -156,15 +147,12 @@ func TestFreezeService_Freeze_ValidatesResolvesHashesAndFinalizes(t *testing.T) 
 		CompositionJSON: []byte(`{"header_sub_blocks":["h1"]}`),
 	}}
 	finalDocx := &fakeFinalDocxWriter{}
-	zonesReader := fakeZonesReader{zones: []repository.ZoneContent{
-		{ZoneID: "intro", ContentOOXML: "<w:p>Z</w:p>"},
-	}}
 	fanoutClient := &fakeFanoutClient{resp: fanout.FanoutResponse{
 		ContentHash:    "deadbeef00000000000000000000000000000000000000000000000000000000",
 		FinalDocxS3Key: "final/r.docx",
 		UnreplacedVars: []string{},
 	}}
-	svc := NewFreezeService(fakeSchemaReader{placeholders: schema}, writer, valuesRead, reg, finalize, ctxBuilder, snapReader, finalDocx, zonesReader, fanoutClient)
+	svc := NewFreezeService(fakeSchemaReader{placeholders: schema}, writer, valuesRead, reg, finalize, ctxBuilder, snapReader, finalDocx, fanoutClient)
 
 	if err := svc.Freeze(context.Background(), nil, "t", "r", ApproverContext{}); err != nil {
 		t.Fatalf("Freeze error: %v", err)
@@ -177,9 +165,6 @@ func TestFreezeService_Freeze_ValidatesResolvesHashesAndFinalizes(t *testing.T) 
 	}
 	if fanoutClient.req.PlaceholderValues["p_user"] != "user-value" || fanoutClient.req.PlaceholderValues["p_comp"] != "DOC-001" {
 		t.Errorf("fanout placeholder values = %+v", fanoutClient.req.PlaceholderValues)
-	}
-	if fanoutClient.req.ZoneContent["intro"] != "<w:p>Z</w:p>" {
-		t.Errorf("fanout zones = %+v", fanoutClient.req.ZoneContent)
 	}
 	if string(fanoutClient.req.Composition) != `{"header_sub_blocks":["h1"]}` {
 		t.Errorf("fanout composition = %s", fanoutClient.req.Composition)
@@ -226,7 +211,6 @@ func TestFreezeService_Freeze_MissingRequiredUserPlaceholder(t *testing.T) {
 		&fakeResolverContextBuilder{},
 		fakeSnapshotReader{},
 		&fakeFinalDocxWriter{},
-		fakeZonesReader{},
 		&fakeFanoutClient{},
 	)
 
@@ -247,7 +231,6 @@ func TestFreezeService_Freeze_ComputedMissingResolverKey(t *testing.T) {
 		&fakeResolverContextBuilder{},
 		fakeSnapshotReader{},
 		&fakeFinalDocxWriter{},
-		fakeZonesReader{},
 		&fakeFanoutClient{},
 	)
 
@@ -269,7 +252,6 @@ func TestFreezeService_Freeze_UnknownResolverKey(t *testing.T) {
 		&fakeResolverContextBuilder{},
 		fakeSnapshotReader{},
 		&fakeFinalDocxWriter{},
-		fakeZonesReader{},
 		&fakeFanoutClient{},
 	)
 
@@ -295,7 +277,6 @@ func TestFreezeService_Freeze_FanoutErrorSkipsFinalDocxWrite(t *testing.T) {
 		&fakeResolverContextBuilder{},
 		fakeSnapshotReader{snap: v2dom.TemplateSnapshot{BodyDocxS3Key: "body", CompositionJSON: []byte(`{}`)}},
 		finalDocx,
-		fakeZonesReader{},
 		fanoutClient,
 	)
 
@@ -326,7 +307,6 @@ func TestFreezeService_Freeze_DefaultsEmptyComposition(t *testing.T) {
 		&fakeResolverContextBuilder{},
 		fakeSnapshotReader{snap: v2dom.TemplateSnapshot{BodyDocxS3Key: "body"}},
 		&fakeFinalDocxWriter{},
-		fakeZonesReader{},
 		fanoutClient,
 	)
 

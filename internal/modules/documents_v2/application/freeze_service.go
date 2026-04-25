@@ -27,10 +27,6 @@ type FinalDocxWriter interface {
 	WriteFinalDocx(ctx context.Context, tenantID, revisionID, s3Key string, contentHash []byte, q ...repository.DBTX) error
 }
 
-type ZoneContentReader interface {
-	ListZoneContent(ctx context.Context, tenantID, revisionID string) ([]repository.ZoneContent, error)
-}
-
 type FanoutClient interface {
 	Fanout(ctx context.Context, req fanout.FanoutRequest) (fanout.FanoutResponse, error)
 }
@@ -46,7 +42,6 @@ type FreezeService struct {
 	resolveCtx ResolverContextBuilder
 	snapshots  SnapshotReader
 	finalDocx  FinalDocxWriter
-	zonesRead  ZoneContentReader
 	fanout     FanoutClient
 }
 
@@ -67,13 +62,13 @@ func NewFreezeService(
 	},
 	reg *resolvers.Registry, final FreezeFinalizer, ctxBuilder ResolverContextBuilder,
 	snapshots SnapshotReader, finalDocx FinalDocxWriter,
-	zonesRead ZoneContentReader, fanoutClient FanoutClient,
+	fanoutClient FanoutClient,
 ) *FreezeService {
 	return &FreezeService{
 		schemas: schemas, values: values, valuesRead: valuesRead,
 		resolvers: reg, finalize: final, resolveCtx: ctxBuilder,
 		snapshots: snapshots, finalDocx: finalDocx,
-		zonesRead: zonesRead, fanout: fanoutClient,
+		fanout: fanoutClient,
 	}
 }
 
@@ -179,11 +174,6 @@ func (s *FreezeService) Freeze(ctx context.Context, tx *sql.Tx, tenantID, revisi
 			return err
 		}
 	}
-	zones, err := s.zonesRead.ListZoneContent(ctx, tenantID, revisionID)
-	if err != nil {
-		return fmt.Errorf("list zones: %w", err)
-	}
-
 	placeholderVals := map[string]string{}
 	resolvedForSubblocks := map[string]any{}
 	for id, v := range valMap {
@@ -191,10 +181,6 @@ func (s *FreezeService) Freeze(ctx context.Context, tx *sql.Tx, tenantID, revisi
 			placeholderVals[id] = sv
 			resolvedForSubblocks[id] = sv
 		}
-	}
-	zoneMap := map[string]string{}
-	for _, z := range zones {
-		zoneMap[z.ZoneID] = z.ContentOOXML
 	}
 
 	composition := snap.CompositionJSON
@@ -207,7 +193,6 @@ func (s *FreezeService) Freeze(ctx context.Context, tx *sql.Tx, tenantID, revisi
 		RevisionID:        revisionID,
 		BodyDocxS3Key:     snap.BodyDocxS3Key,
 		PlaceholderValues: placeholderVals,
-		ZoneContent:       zoneMap,
 		Composition:       json.RawMessage(composition),
 		ResolvedValues:    resolvedForSubblocks,
 	})

@@ -253,7 +253,7 @@ type fakeSequenceAllocator struct {
 	next int
 }
 
-func (f *fakeSequenceAllocator) NextAndIncrement(_ context.Context, _ interface{}, _, _ string) (int, error) {
+func (f *fakeSequenceAllocator) NextAndIncrement(_ context.Context, _ registrydomain.DBExecutor, _, _ string) (int, error) {
 	v := f.next
 	f.next++
 	return v, nil

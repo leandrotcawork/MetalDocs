@@ -220,10 +220,10 @@ func (a *PostgresSequenceAllocator) ensureCounter(ctx context.Context, execer in
 	return err
 }
 
-func (a *PostgresSequenceAllocator) NextAndIncrement(ctx context.Context, tx interface{}, tenantID, profileCode string) (int, error) {
-	exec := sequenceQueryExecutor(a.db)
-	if provided, ok := tx.(*sql.Tx); ok && provided != nil {
-		exec = provided
+func (a *PostgresSequenceAllocator) NextAndIncrement(ctx context.Context, tx registrydomain.DBExecutor, tenantID, profileCode string) (int, error) {
+	var exec registrydomain.DBExecutor = a.db
+	if tx != nil {
+		exec = tx
 	}
 
 	if err := a.ensureCounter(ctx, exec, tenantID, profileCode); err != nil {
@@ -362,11 +362,6 @@ type rowScanner interface {
 }
 
 type queryRower interface {
-	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
-}
-
-type sequenceQueryExecutor interface {
-	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 }
 

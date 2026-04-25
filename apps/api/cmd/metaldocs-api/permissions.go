@@ -165,13 +165,21 @@ func newPermissionResolver() iamdelivery.PermissionResolver {
 				return iamdomain.PermDocumentEdit, true
 			case method == http.MethodPost && strings.HasSuffix(path, "/export/pdf"):
 				return iamdomain.PermDocumentRead, true
+			case method == http.MethodPut && strings.Contains(path, "/placeholders/"):
+				return iamdomain.PermDocumentEdit, true
+			case method == http.MethodPatch:
+				return iamdomain.PermDocumentEdit, true
+			case method == http.MethodPost && strings.HasSuffix(path, "/submit"):
+				return iamdomain.PermWorkflowTransition, true
+			case method == http.MethodPost && strings.HasSuffix(path, "/reconstruct"):
+				return iamdomain.PermDocumentEdit, true
 			}
 		}
 		if strings.HasPrefix(path, "/api/v2/taxonomy/profiles") {
 			switch method {
 			case http.MethodGet:
 				return iamdomain.PermDocumentRead, true
-			case http.MethodPost, http.MethodPut, http.MethodDelete:
+			case http.MethodPost, http.MethodPatch, http.MethodPut, http.MethodDelete:
 				return iamdomain.PermIAMManageRoles, true
 			}
 		}

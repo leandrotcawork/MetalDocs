@@ -180,11 +180,6 @@ export interface PlaceholderValueDTO {
   source: 'user' | 'computed';
 }
 
-export interface ZoneContentDTO {
-  zone_id: string;
-  content_ooxml: string;
-}
-
 export async function getPlaceholderValues(docId: string): Promise<PlaceholderValueDTO[]> {
   return json(await fetch(`/api/v2/documents/${docId}/placeholders`));
 }
@@ -194,18 +189,6 @@ export async function putPlaceholderValue(docId: string, pid: string, value: str
     method: 'PUT',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ value }),
-  }));
-}
-
-export async function getZoneContents(docId: string): Promise<ZoneContentDTO[]> {
-  return json(await fetch(`/api/v2/documents/${docId}/zones`));
-}
-
-export async function putZoneContent(docId: string, zid: string, ooxml: string): Promise<void> {
-  await json(await fetch(`/api/v2/documents/${docId}/zones/${zid}`, {
-    method: 'PUT',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ ooxml }),
   }));
 }
 

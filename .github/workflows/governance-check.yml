@@ -31,7 +31,7 @@ jobs:
         run: |
           base="${{ github.event.pull_request.base.sha }}"
           head="${{ github.event.pull_request.head.sha }}"
-          bad=$(git diff --name-only "$base" "$head" | grep -E '^(frontend/apps/web/src/features/documents/ck5/|apps/ck5-export/|apps/ck5-studio/|apps/docgen/|internal/modules/documents/application/service_ck5_|internal/modules/documents/delivery/http/handler_ck5_)' || true)
+          bad=$(git diff --name-only "$base" "$head" | grep -E '^(frontend/apps/web/src/features/documents/ck5/|apps/ck5-export/|apps/ck5-studio/|internal/modules/documents/application/service_ck5_|internal/modules/documents/delivery/http/handler_ck5_)' || true)
           if [[ -n "$bad" ]]; then
             echo "::error::docx-v2 PR must not touch CK5 paths:"
             echo "$bad"

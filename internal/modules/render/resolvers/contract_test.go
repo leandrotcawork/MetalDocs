@@ -20,6 +20,7 @@ func contractCases() []resolverContractCase {
 		RevisionID:           "rev-contract",
 		ControlledDocumentID: "ctrl-contract",
 		AreaCodeSnapshot:     "CONTRACT",
+		DocumentReader: fakeDocReader{title: "Contract Document Title"},
 		RevisionReader: fakeRevisionReader{
 			revisionNumber: 3,
 			effectiveFrom:  time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC),
@@ -37,6 +38,7 @@ func contractCases() []resolverContractCase {
 	}
 	return []resolverContractCase{
 		{"doc_code", DocCodeResolver{}, baseInput},
+		{"doc_title", DocTitleResolver{}, baseInput},
 		{"revision_number", RevisionNumberResolver{}, baseInput},
 		{"effective_date", EffectiveDateResolver{}, baseInput},
 		{"author", AuthorResolver{}, baseInput},

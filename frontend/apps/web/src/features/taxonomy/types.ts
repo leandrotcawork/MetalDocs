@@ -34,6 +34,7 @@ export interface CreateProfileRequest {
 }
 
 export interface UpdateProfileRequest {
+  familyCode: string;
   name?: string;
   description?: string;
   editableByRole?: string;

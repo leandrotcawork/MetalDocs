@@ -44,7 +44,7 @@ export function DocumentCreatePage({ onCreated }: DocumentCreatePageProps): Reac
         form_data: {},
         controlled_document_id: cdPick.id,
       });
-      onCreated(res.DocumentID);
+      onCreated(res.document_id);
     } catch {
       setErr('Failed to create document.');
     } finally {

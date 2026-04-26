@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	apiv2 "metaldocs/internal/api/v2"
@@ -56,5 +57,19 @@ func TestProfilesHandler_ErrorEnvelopeContract(t *testing.T) {
 	}
 	if apiErr.Code == "" {
 		t.Fatalf("expected non-empty code in API error: %s", rec.Body.String())
+	}
+}
+
+func TestProfilesHandler_UpdateUsesPatch(t *testing.T) {
+	handler := &Handler{profiles: fakeProfileService{}}
+	mux := http.NewServeMux()
+	handler.RegisterRoutes(mux)
+
+	req := httptest.NewRequest(http.MethodPatch, "/api/v2/taxonomy/profiles/foo", strings.NewReader(`{}`))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
 	}
 }

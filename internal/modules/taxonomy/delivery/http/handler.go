@@ -41,7 +41,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v2/taxonomy/profiles", h.listProfiles)
 	mux.HandleFunc("POST /api/v2/taxonomy/profiles", h.createProfile)
 	mux.HandleFunc("GET /api/v2/taxonomy/profiles/{code}", h.getProfile)
-	mux.HandleFunc("PUT /api/v2/taxonomy/profiles/{code}", h.updateProfile)
+	mux.HandleFunc("PATCH /api/v2/taxonomy/profiles/{code}", h.updateProfile)
 	mux.HandleFunc("DELETE /api/v2/taxonomy/profiles/{code}", h.archiveProfile)
 	mux.HandleFunc("PUT /api/v2/taxonomy/profiles/{code}/default-template", h.setDefaultTemplate)
 

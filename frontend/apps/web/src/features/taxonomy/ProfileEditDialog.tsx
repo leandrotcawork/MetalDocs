@@ -39,6 +39,7 @@ export function ProfileEditDialog({ mode, profile, onClose, onSaved }: Props) {
         await createProfile(req);
       } else {
         const req: UpdateProfileRequest = {
+          familyCode: familyCode.trim(),
           name: name.trim(),
           description: description.trim() || undefined,
           editableByRole: editableByRole.trim() || undefined,

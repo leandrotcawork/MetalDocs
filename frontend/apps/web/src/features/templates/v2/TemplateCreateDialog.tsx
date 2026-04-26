@@ -9,6 +9,7 @@ export type TemplateCreateDialogProps = {
 
 export function TemplateCreateDialog({ onClose, onCreated }: TemplateCreateDialogProps) {
   const [key, setKey] = useState('');
+  const [docTypeCode, setDocTypeCode] = useState('');
   const [name, setName] = useState('');
   const [desc, setDesc] = useState('');
   const [visibility, setVisibility] = useState('public');
@@ -24,6 +25,7 @@ export function TemplateCreateDialog({ onClose, onCreated }: TemplateCreateDialo
     try {
       const { template, version } = await createTemplate({
         key,
+        doc_type_code: docTypeCode,
         name,
         description: desc || undefined,
         visibility,
@@ -54,6 +56,18 @@ export function TemplateCreateDialog({ onClose, onCreated }: TemplateCreateDialo
               required
               pattern="[a-z0-9_-]+"
               placeholder="e.g. nda-standard"
+            />
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="template-doc-type-code">
+              Doc Type Code
+            </label>
+            <input
+              id="template-doc-type-code"
+              className={styles.input}
+              value={docTypeCode}
+              onChange={(e) => setDocTypeCode(e.target.value)}
             />
           </div>
 
@@ -101,16 +115,21 @@ export function TemplateCreateDialog({ onClose, onCreated }: TemplateCreateDialo
 
           <div className={styles.field}>
             <label className={styles.label} htmlFor="template-approver-role">
-              Approver Role
+              Approver Role*
             </label>
-            <input
+            <select
               id="template-approver-role"
-              className={styles.input}
+              className={styles.select}
               value={approverRole}
               onChange={(e) => setApproverRole(e.target.value)}
               required
-              placeholder="e.g. legal-approver"
-            />
+            >
+              <option value="" disabled>Select a role</option>
+              <option value="admin">admin</option>
+              <option value="editor">editor</option>
+              <option value="reviewer">reviewer</option>
+              <option value="viewer">viewer</option>
+            </select>
           </div>
 
           {err && (

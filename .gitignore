@@ -41,3 +41,4 @@ coverage_phase5.out
 .claude/launch.json
 .codex/
 .gomodcache/
+.env.docgen-v2

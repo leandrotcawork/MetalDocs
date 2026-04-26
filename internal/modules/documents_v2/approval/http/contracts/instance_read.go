@@ -14,19 +14,20 @@ type InstanceResponse struct {
 }
 
 type StageInstance struct {
-	StageID   string          `json:"stage_id"`
-	StageName string          `json:"stage_name"`
-	Order     int             `json:"order"`
-	Status    string          `json:"status"`
-	Signoffs  []SignoffRecord `json:"signoffs"`
+	ID          string         `json:"id"`
+	StageIndex  int            `json:"stage_index"`
+	Label       string         `json:"label"`
+	Status      string         `json:"status"`
+	Signoffs    []SignoffRecord `json:"signoffs"`
 }
 
 type SignoffRecord struct {
-	SignoffID  string `json:"signoff_id"`
-	ActorID    string `json:"actor_id"`
-	Decision   string `json:"decision"`
-	Reason     string `json:"reason,omitempty"`
-	OccurredAt string `json:"occurred_at"`
+	ID              string `json:"id"`
+	ActorUserID     string `json:"actor_user_id"`
+	Decision        string `json:"decision"`
+	Reason          string `json:"reason,omitempty"`
+	SignatureMethod string `json:"signature_method"`
+	SignedAt        string `json:"signed_at"`
 }
 
 type InboxItem struct {

@@ -44,6 +44,17 @@ func mapInstanceResponse(inst *domain.Instance) contracts.InstanceResponse {
 		completedAt = &v
 	}
 
+	stages := make([]contracts.StageInstance, len(inst.Stages))
+	for i, s := range inst.Stages {
+		stages[i] = contracts.StageInstance{
+			ID:         s.ID,
+			StageIndex: s.StageOrder,
+			Label:      s.NameSnapshot,
+			Status:     mapStageStatus(s.Status),
+			Signoffs:   []contracts.SignoffRecord{},
+		}
+	}
+
 	return contracts.InstanceResponse{
 		ID:          inst.ID,
 		DocumentID:  inst.DocumentID,
@@ -53,7 +64,20 @@ func mapInstanceResponse(inst *domain.Instance) contracts.InstanceResponse {
 		SubmittedBy: inst.SubmittedBy,
 		SubmittedAt: inst.SubmittedAt.UTC().Format(time.RFC3339),
 		CompletedAt: completedAt,
-		Stages:      nil,
+		Stages:      stages,
 		ETag:        "\"v1\"",
+	}
+}
+
+func mapStageStatus(s domain.StageStatus) string {
+	switch s {
+	case domain.StageCompleted:
+		return "passed"
+	case domain.StageRejectedHere:
+		return "failed"
+	case domain.StageSkipped:
+		return "cancelled"
+	default:
+		return string(s)
 	}
 }

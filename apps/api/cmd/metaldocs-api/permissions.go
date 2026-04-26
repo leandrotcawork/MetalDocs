@@ -171,6 +171,12 @@ func newPermissionResolver() iamdelivery.PermissionResolver {
 				return iamdomain.PermDocumentEdit, true
 			case method == http.MethodPost && strings.HasSuffix(path, "/submit"):
 				return iamdomain.PermWorkflowTransition, true
+			case method == http.MethodPost && strings.HasSuffix(path, "/signoff"):
+				return iamdomain.PermWorkflowTransition, true
+			case method == http.MethodPost && strings.HasSuffix(path, "/cancel"):
+				return iamdomain.PermWorkflowTransition, true
+			case method == http.MethodGet && strings.HasSuffix(path, "/approval-instance"):
+				return iamdomain.PermDocumentRead, true
 			case method == http.MethodPost && strings.HasSuffix(path, "/reconstruct"):
 				return iamdomain.PermDocumentEdit, true
 			}

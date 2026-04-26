@@ -68,7 +68,7 @@ export function ApprovalTimelinePanel({ instance, loading, error, onRetry }: App
           </div>
         </li>
 
-        {instance.stages
+        {(instance.stages ?? [])
           .slice()
           .sort((a, b) => a.stage_index - b.stage_index)
           .map((stage) => (
@@ -81,11 +81,11 @@ export function ApprovalTimelinePanel({ instance, loading, error, onRetry }: App
                     {STAGE_STATUS_LABEL[stage.status]}
                   </span>
                 </div>
-                {stage.signoffs.length === 0 ? (
+                {(stage.signoffs ?? []).length === 0 ? (
                   <p className={styles.meta}>Sem assinaturas registradas.</p>
                 ) : (
                   <ul className={styles.signoffs}>
-                    {stage.signoffs.map((signoff) => (
+                    {(stage.signoffs ?? []).map((signoff) => (
                       <li className={styles.signoff} key={signoff.id}>
                         <p>
                           <strong>{signoff.actor_user_id}</strong> - {DECISION_LABEL[signoff.decision]}

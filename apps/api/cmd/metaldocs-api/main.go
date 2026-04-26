@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -250,11 +251,13 @@ func main() {
 	approvalRepo := approvalrepo.NewPostgresApprovalRepository(deps.SQLDB)
 	approvalEmitter := approvalapp.NewSQLEmitter()
 	approvalServices := approvalapp.NewServices(approvalRepo, approvalEmitter, approvalapp.RealClock{})
+	var effectiveFreezeInvoker approvalapp.FreezeInvoker = noopFreezeInvoker{}
 	if freezeSvc != nil {
-		approvalServices.Decision = approvalapp.NewDecisionService(
-			approvalRepo, approvalEmitter, approvalapp.RealClock{}, freezeSvc, nil,
-		)
+		effectiveFreezeInvoker = freezeSvc
 	}
+	approvalServices.Decision = approvalapp.NewDecisionService(
+		approvalRepo, approvalEmitter, approvalapp.RealClock{}, effectiveFreezeInvoker, nil,
+	)
 	approvalHandler := approvalhttp.NewHandler(approvalServices, deps.SQLDB)
 	approvalHandler.RegisterRoutes(mux)
 	e2etest.RegisterE2EHandlers(mux, deps.SQLDB, func(ctx context.Context) error {
@@ -355,6 +358,15 @@ func main() {
 type realClock struct{}
 
 func (realClock) Now() time.Time { return time.Now().UTC() }
+
+// noopFreezeInvoker is used when METALDOCS_FANOUT_URL is unset.
+// Approval completes locally without calling the fanout service.
+type noopFreezeInvoker struct{}
+
+func (noopFreezeInvoker) Freeze(_ context.Context, _ *sql.Tx, _, _ string, _ docapp.ApproverContext) error {
+	slog.Warn("freeze skipped: METALDOCS_FANOUT_URL not configured")
+	return nil
+}
 
 type realUUIDGen struct{}
 

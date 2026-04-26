@@ -183,6 +183,12 @@ func main() {
 
 	// Fanout/eigenpal client — enabled when METALDOCS_FANOUT_URL is set.
 	fanoutURL := strings.TrimSpace(os.Getenv("METALDOCS_FANOUT_URL"))
+	if fanoutURL == "" {
+		if strings.EqualFold(strings.TrimSpace(os.Getenv("METALDOCS_REQUIRE_FANOUT")), "true") {
+			log.Fatalf("METALDOCS_FANOUT_URL is required but not set")
+		}
+		slog.Warn("METALDOCS_FANOUT_URL not set; document approval will fail at freeze step")
+	}
 	var fanoutCli *fanout.Client
 	var freezeSvc *docapp.FreezeService
 	if fanoutURL != "" && deps.SQLDB != nil {

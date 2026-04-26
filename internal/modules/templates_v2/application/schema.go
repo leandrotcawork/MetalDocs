@@ -76,6 +76,11 @@ func (s *Service) UpdateSchemas(ctx context.Context, cmd UpdateSchemasCmd) (*dom
 
 var placeholderNameRe = regexp.MustCompile(`^[a-z][a-z0-9_]{0,49}$`)
 
+var placeholderCatalogSet = map[string]struct{}{
+	"doc_code": {}, "doc_title": {}, "revision_number": {},
+	"author": {}, "effective_date": {}, "approvers": {}, "controlled_by_area": {},
+}
+
 func ValidatePlaceholders(phs []domain.Placeholder) error {
 	seen := make(map[string]struct{}, len(phs))
 	seenNames := make(map[string]struct{}, len(phs))
@@ -95,6 +100,12 @@ func ValidatePlaceholders(phs []domain.Placeholder) error {
 				return fmt.Errorf("duplicate_placeholder_name: %s: %w", p.Name, domain.ErrDuplicatePlaceholderName)
 			}
 			seenNames[p.Name] = struct{}{}
+			if _, ok := placeholderCatalogSet[p.Name]; !ok {
+				return fmt.Errorf("placeholder[%s] name %q: %w", p.ID, p.Name, domain.ErrPlaceholderNotInCatalog)
+			}
+			if p.Type != domain.PHComputed || !p.Computed || p.ResolverKey == nil || *p.ResolverKey != p.Name {
+				return fmt.Errorf("placeholder[%s] %q: %w", p.ID, p.Name, domain.ErrPlaceholderNotComputed)
+			}
 		}
 		if p.Regex != nil {
 			if _, err := regexp.Compile(*p.Regex); err != nil {

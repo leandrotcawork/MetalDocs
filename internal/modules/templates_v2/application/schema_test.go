@@ -31,7 +31,7 @@ func TestUpdateSchemas_Happy(t *testing.T) {
 			DocCodePattern: "ABC-###",
 		},
 		PlaceholderSchema: []domain.Placeholder{
-			{ID: "ph-1", Label: "Signer", Type: domain.PHSelect, Options: []string{"a", "b"}},
+			{ID: "ph-1", Name: "doc_code", Label: "Doc Code", Type: domain.PHComputed, Computed: true, ResolverKey: func() *string { s := "doc_code"; return &s }()},
 		},
 		ExpectedContentHash: "hash-1",
 	})
@@ -187,9 +187,10 @@ func TestValidatePlaceholders_InvalidName_Error(t *testing.T) {
 }
 
 func TestValidatePlaceholders_DuplicateName_Error(t *testing.T) {
+	rk := "doc_code"
 	err := application.ValidatePlaceholders([]domain.Placeholder{
-		{ID: "p1", Name: "same", Type: domain.PHText},
-		{ID: "p2", Name: "same", Type: domain.PHText},
+		{ID: "p1", Name: "doc_code", Type: domain.PHComputed, Computed: true, ResolverKey: &rk},
+		{ID: "p2", Name: "doc_code", Type: domain.PHComputed, Computed: true, ResolverKey: &rk},
 	})
 	if !errors.Is(err, domain.ErrDuplicatePlaceholderName) {
 		t.Fatalf("expected ErrDuplicatePlaceholderName, got %v", err)
@@ -206,9 +207,10 @@ func TestValidatePlaceholders_EmptyName_Allowed(t *testing.T) {
 }
 
 func TestValidatePlaceholders_ValidName_NoError(t *testing.T) {
+	rk1, rk2 := "doc_code", "effective_date"
 	err := application.ValidatePlaceholders([]domain.Placeholder{
-		{ID: "p1", Name: "customer_name", Type: domain.PHText},
-		{ID: "p2", Name: "effective_date", Type: domain.PHDate},
+		{ID: "p1", Name: "doc_code", Type: domain.PHComputed, Computed: true, ResolverKey: &rk1},
+		{ID: "p2", Name: "effective_date", Type: domain.PHComputed, Computed: true, ResolverKey: &rk2},
 	})
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
@@ -269,5 +271,36 @@ func TestUpdateSchemas_UnknownResolverKey_Error(t *testing.T) {
 	_, err := svc.UpdateSchemas(context.Background(), updateCmdWithComputed("p1", "missing_resolver"))
 	if !errors.Is(err, domain.ErrUnknownResolver) {
 		t.Fatalf("expected ErrUnknownResolver, got %v", err)
+	}
+}
+
+func TestValidatePlaceholders_RejectsNonCatalogName(t *testing.T) {
+	rk := "customer_name"
+	phs := []domain.Placeholder{
+		{ID: "p1", Name: "customer_name", Label: "Customer", Type: domain.PHComputed, Computed: true, ResolverKey: &rk},
+	}
+	err := application.ValidatePlaceholders(phs)
+	if !errors.Is(err, domain.ErrPlaceholderNotInCatalog) {
+		t.Fatalf("err = %v, want ErrPlaceholderNotInCatalog", err)
+	}
+}
+
+func TestValidatePlaceholders_AcceptsCatalogName(t *testing.T) {
+	rk := "doc_code"
+	phs := []domain.Placeholder{
+		{ID: "p1", Name: "doc_code", Label: "Codigo", Type: domain.PHComputed, Computed: true, ResolverKey: &rk},
+	}
+	if err := application.ValidatePlaceholders(phs); err != nil {
+		t.Fatalf("err = %v, want nil", err)
+	}
+}
+
+func TestValidatePlaceholders_RejectsCatalogNameWithWrongShape(t *testing.T) {
+	rk := "doc_code"
+	phs := []domain.Placeholder{
+		{ID: "p1", Name: "doc_code", Label: "X", Type: domain.PHText, ResolverKey: &rk},
+	}
+	if err := application.ValidatePlaceholders(phs); !errors.Is(err, domain.ErrPlaceholderNotComputed) {
+		t.Fatalf("err = %v, want ErrPlaceholderNotComputed", err)
 	}
 }

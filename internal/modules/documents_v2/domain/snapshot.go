@@ -1,6 +1,11 @@
 package domain
 
-import "crypto/sha256"
+import (
+	"crypto/sha256"
+	"errors"
+)
+
+var ErrSnapshotTemplateNotFound = errors.New("snapshot_template_not_found")
 
 // TemplateSnapshot holds the template artifacts copied onto a document at create time.
 type TemplateSnapshot struct {

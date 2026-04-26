@@ -2,18 +2,16 @@ import '@eigenpal/docx-js-editor/styles.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DocxEditor, type DocxEditorRef } from '@eigenpal/docx-js-editor/react';
 import { createEmptyDocument } from '@eigenpal/docx-js-editor/core';
-import { toast } from 'sonner';
 import { filterTransactionGuard } from '../../../editor-adapters/filter-transaction-guard';
 import { type TemplateSchemas, type VersionDTO, submitForReview } from './api/templatesV2';
-import { PlaceholderChip, usePlaceholderDrop } from '../placeholder-chip';
-import { PlaceholderInspector } from '../placeholder-inspector';
 import { CompositionConfigPanel } from '../composition-config-panel';
-import type { Placeholder, SubBlockDef } from '../placeholder-types';
-import { slugifyLabel } from '../placeholder-types';
+import type { SubBlockDef } from '../placeholder-types';
 import { useTemplateDraft } from './hooks/useTemplateDraft';
 import { useTemplateAutosave } from './hooks/useTemplateAutosave';
 import { useTemplateSchemas } from './hooks/useTemplateSchemas';
 import { VersionActionPanel } from './VersionActionPanel';
+import { PlaceholderCatalogPanel } from './PlaceholderCatalogPanel';
+import { fetchPlaceholderCatalog, type PlaceholderCatalogEntry } from './api/catalog';
 import styles from './TemplateAuthorPage.module.css';
 
 export type TemplateAuthorPageProps = {
@@ -30,14 +28,6 @@ type RailItem = {
   icon: JSX.Element;
 };
 
-const DEFAULT_RESOLVERS = [
-  { key: 'DocCode', version: 1 },
-  { key: 'RevisionNumber', version: 1 },
-  { key: 'EffectiveDate', version: 1 },
-  { key: 'Author', version: 1 },
-  { key: 'ApprovalDate', version: 1 },
-];
-
 const SUB_BLOCK_CATALOGUE: SubBlockDef[] = [
   { key: 'doc-header', label: 'Document Header', params: [] },
   { key: 'approval-footer', label: 'Approval Footer', params: [] },
@@ -46,14 +36,6 @@ const SUB_BLOCK_CATALOGUE: SubBlockDef[] = [
 
 const EMPTY_COMPOSITION = { headerSubBlocks: [], footerSubBlocks: [], subBlockParams: {} };
 const VARIABLE_SYNC_DEBOUNCE_MS = 400;
-
-function titleCaseToken(name: string): string {
-  return name
-    .split('_')
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
-}
 
 export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion: _nav, onBack }: TemplateAuthorPageProps) {
   const draft = useTemplateDraft(templateId, versionNum);
@@ -70,39 +52,35 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
   const [leftActive, setLeftActive] = useState<string>('variables');
   const [rightActive, setRightActive] = useState<string>('inspector');
   const [localSchemas, setLocalSchemas] = useState<TemplateSchemas | null>(null);
-  const [selectedType, setSelectedType] = useState<'placeholder' | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [detectedTokenNames, setDetectedTokenNames] = useState<Set<string> | null>(null);
+  const [catalog, setCatalog] = useState<PlaceholderCatalogEntry[]>([]);
+  useEffect(() => { void fetchPlaceholderCatalog().then(setCatalog); }, []);
+  const catalogByKey = useMemo(() => new Map(catalog.map((c) => [c.key, c])), [catalog]);
+  const [detectedVariables, setDetectedVariables] = useState<string[]>([]);
   const currentVersion = liveVersion ?? draft.version ?? null;
   const isDraft = currentVersion?.status === 'draft';
 
   const queueDocx = autosave.queueDocx;
   const syncPlaceholdersFromDocument = useCallback(() => {
     if (!isDraft) return;
-    const rawVariables = editorRef.current?.getAgent()?.getVariables();
-    if (!rawVariables) return;
+    const rawVariables = editorRef.current?.getAgent?.()?.getVariables?.() ?? [];
     const variables = Array.from(new Set(rawVariables));
-    const nextTokenNames = new Set(variables);
-    setDetectedTokenNames(nextTokenNames);
-    setLocalSchemas((prev) => {
-      if (!prev) return prev;
-      const existingNames = new Set(prev.placeholders.map((p) => p.name).filter(Boolean) as string[]);
-      const missing = variables.filter((name) => !existingNames.has(name));
-      if (missing.length === 0) return prev;
+    setDetectedVariables(variables.filter((name) => catalogByKey.has(name)));
+    const valid = variables.filter((name) => catalogByKey.has(name));
+    const placeholders = valid.map((name) => {
+      const entry = catalogByKey.get(name)!;
       return {
-        ...prev,
-        placeholders: [
-          ...prev.placeholders,
-          ...missing.map((name) => ({
-            id: crypto.randomUUID(),
-            name,
-            label: titleCaseToken(name),
-            type: 'text' as const,
-          })),
-        ],
+        id: crypto.randomUUID(),
+        name,
+        label: entry.label,
+        type: 'computed' as const,
+        resolverKey: name,
       };
     });
-  }, [isDraft]);
+    setLocalSchemas((prev) => {
+      if (!prev) return prev;
+      return { ...prev, placeholders };
+    });
+  }, [isDraft, catalogByKey]);
 
   const handleEditorChange = useCallback(() => {
     editorRef.current?.save().then((buffer) => {
@@ -146,38 +124,6 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
     return () => window.clearTimeout(timer);
   }, [isDraft, localSchemas, schemaState]);
 
-  const insertTokenAtCursor = useCallback((token: string) => {
-    const pagedRef = editorRef.current?.getEditorRef();
-    if (!pagedRef) { toast.error('Editor not ready'); return; }
-    const view = pagedRef.getView();
-    if (!view) { toast.error('Editor not ready'); return; }
-    const { state } = view;
-    const tr = state.tr.insertText(token, state.selection.from, state.selection.to);
-    view.dispatch(tr);
-    view.focus();
-  }, []);
-
-  const insertPlaceholder = useCallback((id: string, name: string) => {
-    insertTokenAtCursor(name ? `{${name}}` : `{{${id}}}`);
-  }, [insertTokenAtCursor]);
-
-  const placeholderDrop = usePlaceholderDrop(insertPlaceholder);
-
-  const handleCanvasDrop = useCallback((e: React.DragEvent) => {
-    placeholderDrop.onDrop(e);
-  }, [placeholderDrop]);
-
-  const updatePlaceholder = useCallback((updated: Placeholder) => {
-    if (!isDraft) return;
-    setLocalSchemas((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        placeholders: prev.placeholders.map((p) => (p.id === updated.id ? updated : p)),
-      };
-    });
-  }, [isDraft]);
-
   const updateComposition = useCallback((updated: TemplateSchemas['composition']) => {
     if (!isDraft) return;
     setLocalSchemas((prev) => {
@@ -185,49 +131,6 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
       return { ...prev, composition: updated };
     });
   }, [isDraft]);
-
-  function uniqueName(base: string, existing: Placeholder[]): string {
-    const taken = new Set(existing.map((p) => p.name).filter(Boolean) as string[]);
-    if (!taken.has(base)) return base;
-    let i = 2;
-    while (taken.has(`${base}_${i}`)) i++;
-    return `${base}_${i}`;
-  }
-
-  const addPlaceholder = useCallback(() => {
-    if (!isDraft) return;
-    const existing = localSchemas?.placeholders ?? [];
-    const next: Placeholder = {
-      id: crypto.randomUUID(),
-      name: uniqueName(slugifyLabel('New placeholder'), existing),
-      label: 'New placeholder',
-      type: 'text',
-    };
-    setLocalSchemas((prev) => {
-      if (!prev) return prev;
-      return { ...prev, placeholders: [...prev.placeholders, next] };
-    });
-    setSelectedType('placeholder');
-    setSelectedId(next.id);
-    setRightActive('inspector');
-  }, [isDraft, localSchemas?.placeholders]);
-
-  const removePlaceholder = useCallback((id: string) => {
-    if (!isDraft) return;
-    setLocalSchemas((prev) => {
-      if (!prev) return prev;
-      return { ...prev, placeholders: prev.placeholders.filter((p) => p.id !== id) };
-    });
-    if (selectedId === id) {
-      setSelectedId(null);
-      setSelectedType(null);
-    }
-  }, [isDraft, selectedId]);
-
-  const selectedPlaceholder = selectedType === 'placeholder'
-    ? localSchemas?.placeholders.find((p) => p.id === selectedId) ?? null
-    : null;
-  const selectedPlaceholderIsOrphan = !!selectedPlaceholder?.name && detectedTokenNames !== null && !detectedTokenNames.has(selectedPlaceholder.name);
 
   // Eigenpal closes its popovers on any capture-phase scroll event. Scrolling
   // inside its own listbox (e.g. to reach font size 48) triggers the close.
@@ -334,42 +237,11 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
         </aside>
 
         {leftActive === 'variables' && (
-          <aside className={styles.sidePanel}>
-            <section className={styles.panelSection}>
-              <div className={styles.panelHeader}>Placeholders</div>
-              <div className={styles.chipList}>
-                {(localSchemas?.placeholders ?? []).map((placeholder) => (
-                  <PlaceholderChip
-                    key={placeholder.id}
-                    placeholder={placeholder}
-                    orphan={!!placeholder.name && detectedTokenNames !== null && !detectedTokenNames.has(placeholder.name)}
-                    onInsert={(p) => {
-                      setSelectedType('placeholder');
-                      setSelectedId(p.id);
-                      setRightActive('inspector');
-                    }}
-                  />
-                ))}
-              </div>
-              <button
-                type="button"
-                className={`${styles.addBtn} ${styles.addManualBtn}`}
-                onClick={addPlaceholder}
-                disabled={!isDraft}
-                title="Prefer typing {name} directly in the document - placeholders are detected automatically."
-              >
-                + Add manually
-              </button>
-            </section>
-          </aside>
+          <PlaceholderCatalogPanel detected={detectedVariables} />
         )}
 
         <main
           className={styles.canvas}
-          onDragOver={(e) => {
-            placeholderDrop.onDragOver(e);
-          }}
-          onDrop={handleCanvasDrop}
         >
           <div className={styles.editorWrapper}>
             <div className={styles.overlayTitle}>
@@ -415,24 +287,7 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
 
         <aside className={styles.rightPanel}>
           {rightActive === 'inspector' && (
-            <>
-              {selectedPlaceholder ? (
-                <fieldset className={styles.inspectorFieldset} disabled={!isDraft}>
-                  <PlaceholderInspector
-                    value={selectedPlaceholder}
-                    resolvers={DEFAULT_RESOLVERS}
-                    orphan={selectedPlaceholderIsOrphan}
-                    onChange={(updated) => {
-                      if (!isDraft) return;
-                      updatePlaceholder(updated);
-                    }}
-                    onRemove={() => removePlaceholder(selectedPlaceholder.id)}
-                  />
-                </fieldset>
-              ) : (
-                <div className={styles.panelHeader}>Select a chip to inspect</div>
-              )}
-            </>
+            <div className={styles.panelHeader} />
           )}
           {rightActive === 'composition' && (
             <fieldset className={styles.inspectorFieldset} disabled={!isDraft}>

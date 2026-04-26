@@ -21,6 +21,10 @@ const BodySchema = z.object({
 const DOCX_MIME =
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
+function frozenDocxKey(tenantId: string, revisionId: string): string {
+  return `tenants/${tenantId}/revisions/${revisionId}/frozen.docx`;
+}
+
 export function registerFanoutRoute(
   app: FastifyInstance,
   env: Env,
@@ -42,7 +46,7 @@ export function registerFanoutRoute(
       resolved_values,
     } = parsed.data;
 
-    const output_key = `tenants/${tenant_id}/revisions/${revision_id}/frozen.docx`;
+    const output_key = frozenDocxKey(tenant_id, revision_id);
 
     const client = s3Factory();
     const bodyBuf = await getObjectBuffer(

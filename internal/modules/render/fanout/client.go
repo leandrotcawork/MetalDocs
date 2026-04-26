@@ -46,7 +46,9 @@ func (c *Client) Fanout(ctx context.Context, req FanoutRequest) (FanoutResponse,
 		return FanoutResponse{}, err
 	}
 	httpReq.Header.Set("content-type", "application/json")
-	httpReq.Header.Set("X-Service-Token", c.serviceToken)
+	if c.serviceToken != "" {
+		httpReq.Header.Set("X-Service-Token", c.serviceToken)
+	}
 	resp, err := c.http.Do(httpReq)
 	if err != nil {
 		return FanoutResponse{}, err

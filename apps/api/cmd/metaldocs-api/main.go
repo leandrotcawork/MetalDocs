@@ -191,6 +191,9 @@ func main() {
 		slog.Warn("METALDOCS_FANOUT_URL not set; document approval will fail at freeze step")
 	}
 	serviceToken := strings.TrimSpace(os.Getenv("METALDOCS_DOCGEN_V2_SERVICE_TOKEN"))
+	if fanoutURL != "" && serviceToken == "" {
+		slog.Warn("METALDOCS_DOCGEN_V2_SERVICE_TOKEN not set; fanout requests will be rejected with 401")
+	}
 	var fanoutCli *fanout.Client
 	var freezeSvc *docapp.FreezeService
 	if fanoutURL != "" && deps.SQLDB != nil {

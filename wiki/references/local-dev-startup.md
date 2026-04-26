@@ -42,6 +42,34 @@ Pass `-Build` to force rebuild:
 
 ---
 
+## docgen-v2 (token substitution service)
+
+Required for document approval to produce frozen DOCX artifacts. Without it, approval succeeds but no DOCX is written to MinIO.
+
+**Setup (first time):**
+```powershell
+# 1. Copy env template
+Copy-Item .env.docgen-v2.example .env.docgen-v2
+# 2. Fill in MinIO creds (dev: minioadmin/minioadmin) and set DOCGEN_V2_SERVICE_TOKEN
+# 3. Install dependencies
+cd apps/docgen-v2 && npm install
+```
+
+**Start:**
+```powershell
+.\scripts\dev-docgen.ps1   # runs on port 3001
+```
+
+**Wire to API:** In `.env`, set:
+```
+METALDOCS_FANOUT_URL=http://localhost:3001
+METALDOCS_DOCGEN_V2_SERVICE_TOKEN=<same value as DOCGEN_V2_SERVICE_TOKEN in .env.docgen-v2>
+```
+
+**Health check:** `GET http://localhost:3001/health` → `{"status":"ok"}`
+
+---
+
 ## Credentials
 
 | field | value |

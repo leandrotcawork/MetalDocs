@@ -288,11 +288,12 @@ export async function approveVersion(
 }
 
 // Wire-format types (backend snake_case)
-interface WirePlaceholder { id: string; label: string; type: string; required: boolean; options?: string[]; regex?: string; min_number?: number; max_number?: number; min_date?: string; max_date?: string; max_length?: number; resolver_key?: string; visible_if?: { placeholder_id: string; op: string; value?: unknown }; }
+interface WirePlaceholder { id: string; name?: string; label: string; type: string; required: boolean; options?: string[]; regex?: string; min_number?: number; max_number?: number; min_date?: string; max_date?: string; max_length?: number; resolver_key?: string; visible_if?: { placeholder_id: string; op: string; value?: unknown }; }
 
 function placeholderFromWire(w: WirePlaceholder): Placeholder {
   return {
     id: w.id,
+    ...(w.name != null ? { name: w.name } : {}),
     label: w.label,
     type: w.type as Placeholder['type'],
     ...(w.required ? { required: true } : {}),
@@ -311,6 +312,7 @@ function placeholderFromWire(w: WirePlaceholder): Placeholder {
 function placeholderToWire(p: Placeholder): WirePlaceholder {
   return {
     id: p.id,
+    ...(p.name != null ? { name: p.name } : {}),
     label: p.label,
     type: p.type,
     required: p.required ?? false,

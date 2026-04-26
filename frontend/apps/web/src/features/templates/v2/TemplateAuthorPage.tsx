@@ -9,6 +9,7 @@ import { PlaceholderChip, usePlaceholderDrop } from '../placeholder-chip';
 import { PlaceholderInspector } from '../placeholder-inspector';
 import { CompositionConfigPanel } from '../composition-config-panel';
 import type { Placeholder, SubBlockDef } from '../placeholder-types';
+import { slugifyLabel } from '../placeholder-types';
 import { useTemplateDraft } from './hooks/useTemplateDraft';
 import { useTemplateAutosave } from './hooks/useTemplateAutosave';
 import { useTemplateSchemas } from './hooks/useTemplateSchemas';
@@ -111,8 +112,8 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
     view.focus();
   }, []);
 
-  const insertPlaceholder = useCallback((id: string) => {
-    insertTokenAtCursor(`{{${id}}}`);
+  const insertPlaceholder = useCallback((id: string, name: string) => {
+    insertTokenAtCursor(name ? `{${name}}` : `{{${id}}}`);
   }, [insertTokenAtCursor]);
 
   const placeholderDrop = usePlaceholderDrop(insertPlaceholder);
@@ -140,10 +141,20 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
     });
   }, [isDraft]);
 
+  function uniqueName(base: string, existing: Placeholder[]): string {
+    const taken = new Set(existing.map((p) => p.name).filter(Boolean) as string[]);
+    if (!taken.has(base)) return base;
+    let i = 2;
+    while (taken.has(`${base}_${i}`)) i++;
+    return `${base}_${i}`;
+  }
+
   const addPlaceholder = useCallback(() => {
     if (!isDraft) return;
+    const existing = localSchemas?.placeholders ?? [];
     const next: Placeholder = {
       id: crypto.randomUUID(),
+      name: uniqueName(slugifyLabel('New placeholder'), existing),
       label: 'New placeholder',
       type: 'text',
     };

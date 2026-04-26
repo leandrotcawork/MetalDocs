@@ -74,8 +74,11 @@ func (s *Service) UpdateSchemas(ctx context.Context, cmd UpdateSchemasCmd) (*dom
 	return version, nil
 }
 
+var placeholderNameRe = regexp.MustCompile(`^[a-z][a-z0-9_]{0,49}$`)
+
 func ValidatePlaceholders(phs []domain.Placeholder) error {
 	seen := make(map[string]struct{}, len(phs))
+	seenNames := make(map[string]struct{}, len(phs))
 	for i, p := range phs {
 		if p.ID == "" {
 			return fmt.Errorf("placeholder[%d]: %w", i, domain.ErrPlaceholderIDEmpty)
@@ -84,6 +87,15 @@ func ValidatePlaceholders(phs []domain.Placeholder) error {
 			return fmt.Errorf("duplicate_placeholder_id: %s: %w", p.ID, domain.ErrDuplicatePlaceholderID)
 		}
 		seen[p.ID] = struct{}{}
+		if p.Name != "" {
+			if !placeholderNameRe.MatchString(p.Name) {
+				return fmt.Errorf("placeholder[%s] name invalid: %w", p.ID, domain.ErrPlaceholderNameInvalid)
+			}
+			if _, exists := seenNames[p.Name]; exists {
+				return fmt.Errorf("duplicate_placeholder_name: %s: %w", p.Name, domain.ErrDuplicatePlaceholderName)
+			}
+			seenNames[p.Name] = struct{}{}
+		}
 		if p.Regex != nil {
 			if _, err := regexp.Compile(*p.Regex); err != nil {
 				return fmt.Errorf("placeholder[%s] regex: %w", p.ID, domain.ErrInvalidConstraint)

@@ -29,6 +29,8 @@ func TestMapErr(t *testing.T) {
 		{name: "forbidden", err: domain.ErrForbidden, wantStatus: http.StatusForbidden, wantCode: "forbidden"},
 		{name: "archived", err: domain.ErrArchived, wantStatus: http.StatusConflict, wantCode: "archived"},
 		{name: "invalid approval config", err: domain.ErrInvalidApprovalConfig, wantStatus: http.StatusBadRequest, wantCode: "invalid_approval_config"},
+		{name: "placeholder name invalid", err: domain.ErrPlaceholderNameInvalid, wantStatus: http.StatusUnprocessableEntity, wantCode: "placeholder_name_invalid"},
+		{name: "duplicate placeholder name", err: domain.ErrDuplicatePlaceholderName, wantStatus: http.StatusUnprocessableEntity, wantCode: "duplicate_placeholder_name"},
 		{name: "default", err: errors.New("boom"), wantStatus: http.StatusInternalServerError, wantCode: "internal_error"},
 	}
 

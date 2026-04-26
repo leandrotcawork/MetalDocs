@@ -1,4 +1,7 @@
 import type { Placeholder, PlaceholderType } from './placeholder-types';
+import { slugifyLabel } from './placeholder-types';
+
+const nameRe = /^[a-z][a-z0-9_]{0,49}$/;
 
 interface PlaceholderInspectorProps {
   value: Placeholder;
@@ -27,8 +30,30 @@ export function PlaceholderInspector({ value, resolvers, onChange }: Placeholder
           data-testid="ph-label"
           type="text"
           value={value.label}
-          onChange={(e) => set('label', e.target.value)}
+          onChange={(e) => {
+            const newLabel = e.target.value;
+            const wasAutoDerived = !value.name || value.name === slugifyLabel(value.label);
+            onChange({
+              ...value,
+              label: newLabel,
+              ...(wasAutoDerived ? { name: slugifyLabel(newLabel) } : {}),
+            });
+          }}
         />
+      </label>
+
+      <label>
+        Name (token in document)
+        <input
+          data-testid="ph-name"
+          type="text"
+          value={value.name ?? ''}
+          placeholder={slugifyLabel(value.label)}
+          onChange={(e) => set('name', (e.target.value || undefined) as string | undefined)}
+        />
+        {value.name && !nameRe.test(value.name) && (
+          <span role="alert">Lowercase letters, digits, underscores; start with letter; max 50 chars.</span>
+        )}
       </label>
 
       <label>

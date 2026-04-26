@@ -8,7 +8,6 @@ import { fanout } from '../render/fanout.js';
 const BodySchema = z.object({
   body_docx_key: z.string().min(1),
   placeholder_values: z.record(z.string()),
-  zone_content: z.record(z.string()),
   composition_config: z.object({
     header_sub_blocks: z.array(z.string()),
     footer_sub_blocks: z.array(z.string()),
@@ -36,7 +35,6 @@ export function registerFanoutRoute(
     const {
       body_docx_key,
       placeholder_values,
-      zone_content,
       composition_config,
       resolved_values,
       output_key,
@@ -52,7 +50,6 @@ export function registerFanoutRoute(
     const result = await fanout({
       bodyDocx: new Uint8Array(bodyBuf),
       placeholderValues: placeholder_values,
-      zoneContent: zone_content,
       compositionConfig: composition_config,
       resolvedValues: resolved_values,
     });

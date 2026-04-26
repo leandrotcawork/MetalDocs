@@ -35,6 +35,10 @@ func MapErr(err error) (httpStatus int, code string) {
 		return http.StatusConflict, "archived"
 	case errors.Is(err, domain.ErrInvalidApprovalConfig):
 		return http.StatusBadRequest, "invalid_approval_config"
+	case errors.Is(err, domain.ErrPlaceholderNameInvalid):
+		return http.StatusUnprocessableEntity, "placeholder_name_invalid"
+	case errors.Is(err, domain.ErrDuplicatePlaceholderName):
+		return http.StatusUnprocessableEntity, "duplicate_placeholder_name"
 	default:
 		return http.StatusInternalServerError, "internal_error"
 	}

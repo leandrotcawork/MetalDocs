@@ -49,7 +49,7 @@ describe('PlaceholderInspector', () => {
     const onChange = vi.fn();
     render(<PlaceholderInspector value={textPH} resolvers={resolvers} onChange={onChange} />);
     fireEvent.change(screen.getByTestId('ph-label'), { target: { value: 'New Label' } });
-    expect(onChange).toHaveBeenCalledWith({ ...textPH, label: 'New Label' });
+    expect(onChange).toHaveBeenCalledWith({ ...textPH, label: 'New Label', name: 'new_label' });
   });
 
   it('type=select shows options textarea', () => {

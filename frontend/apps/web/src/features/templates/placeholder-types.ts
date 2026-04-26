@@ -8,6 +8,7 @@ export interface VisibilityCondition {
 
 export interface Placeholder {
   id: string;
+  name?: string;
   label: string;
   type: PlaceholderType;
   required?: boolean;
@@ -44,4 +45,18 @@ export interface CompositionConfig {
   headerSubBlocks: string[];
   footerSubBlocks: string[];
   subBlockParams: Record<string, Record<string, string>>;
+}
+
+/**
+ * Derive a URL-safe token slug from a human label.
+ * "Customer Name" -> "customer_name"
+ */
+export function slugifyLabel(label: string): string {
+  const cleaned = label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 50);
+  if (!cleaned) return 'field';
+  return /^[a-z]/.test(cleaned) ? cleaned : `f_${cleaned}`.slice(0, 50);
 }

@@ -177,6 +177,44 @@ func TestValidatePlaceholders_DuplicateID_Error(t *testing.T) {
 	}
 }
 
+func TestValidatePlaceholders_InvalidName_Error(t *testing.T) {
+	err := application.ValidatePlaceholders([]domain.Placeholder{
+		{ID: "p1", Name: "Bad Name!", Type: domain.PHText},
+	})
+	if !errors.Is(err, domain.ErrPlaceholderNameInvalid) {
+		t.Fatalf("expected ErrPlaceholderNameInvalid, got %v", err)
+	}
+}
+
+func TestValidatePlaceholders_DuplicateName_Error(t *testing.T) {
+	err := application.ValidatePlaceholders([]domain.Placeholder{
+		{ID: "p1", Name: "same", Type: domain.PHText},
+		{ID: "p2", Name: "same", Type: domain.PHText},
+	})
+	if !errors.Is(err, domain.ErrDuplicatePlaceholderName) {
+		t.Fatalf("expected ErrDuplicatePlaceholderName, got %v", err)
+	}
+}
+
+func TestValidatePlaceholders_EmptyName_Allowed(t *testing.T) {
+	err := application.ValidatePlaceholders([]domain.Placeholder{
+		{ID: "p1", Type: domain.PHText},
+	})
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+}
+
+func TestValidatePlaceholders_ValidName_NoError(t *testing.T) {
+	err := application.ValidatePlaceholders([]domain.Placeholder{
+		{ID: "p1", Name: "customer_name", Type: domain.PHText},
+		{ID: "p2", Name: "effective_date", Type: domain.PHDate},
+	})
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+}
+
 func TestValidatePlaceholders_InvalidRegex_Error(t *testing.T) {
 	regex := "["
 	err := application.ValidatePlaceholders([]domain.Placeholder{

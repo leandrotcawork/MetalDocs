@@ -8,7 +8,6 @@ import (
 
 	v2dom "metaldocs/internal/modules/documents_v2/domain"
 	"metaldocs/internal/modules/iam/authz"
-	iamdomain "metaldocs/internal/modules/iam/domain"
 	"metaldocs/internal/modules/render/fanout"
 )
 
@@ -32,7 +31,7 @@ func (h *ReconstructHandler) HandleReconstruct(w http.ResponseWriter, r *http.Re
 	entry, err := h.svc.GetReconstruction(
 		r.Context(),
 		strings.TrimSpace(r.Header.Get("X-Tenant-ID")),
-		iamdomain.UserIDFromContext(r.Context()),
+		actorID(r),
 		r.PathValue("id"),
 	)
 	if err != nil {

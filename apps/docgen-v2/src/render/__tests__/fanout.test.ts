@@ -45,7 +45,7 @@ describe('fanout', () => {
     const result = await fanout({
       bodyDocx: tpl,
       placeholderValues: { doc_code: 'ABC-001' },
-      zoneContent: {},
+
       compositionConfig: {
         header_sub_blocks: [],
         footer_sub_blocks: [],
@@ -68,7 +68,7 @@ describe('fanout', () => {
     const result = await fanout({
       bodyDocx: tpl,
       placeholderValues: { doc_code: 'ABC-001' },
-      zoneContent: {},
+
       compositionConfig: {
         header_sub_blocks: ['doc_header_standard'],
         footer_sub_blocks: [],
@@ -92,7 +92,7 @@ describe('fanout', () => {
     const input = {
       bodyDocx: tpl,
       placeholderValues: { doc_code: 'STABLE-1' },
-      zoneContent: {},
+
       compositionConfig: {
         header_sub_blocks: [],
         footer_sub_blocks: [],

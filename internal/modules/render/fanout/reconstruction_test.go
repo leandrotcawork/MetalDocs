@@ -135,7 +135,6 @@ func TestReconstruct_FanoutRequestPropagated(t *testing.T) {
 		RevisionID:        "r",
 		BodyDocxS3Key:     "body.docx",
 		PlaceholderValues: map[string]string{"title": "Hello"},
-		ZoneContent:       map[string]string{"z1": "<w:p/>"},
 	}
 	client := &fakeFanoutClient{resp: FanoutResponse{ContentHash: "00"}}
 	svc := newReconstructService(t, fakeReconstructInputs{req: req, originalHash: []byte{0}}, client, &fakeReconstructionWriter{})

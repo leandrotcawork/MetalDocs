@@ -33,7 +33,6 @@ func TestClient_Fanout_Success(t *testing.T) {
 		RevisionID:        "r1",
 		BodyDocxS3Key:     "templates/x.docx",
 		PlaceholderValues: map[string]string{"doc_code": "ABC"},
-		ZoneContent:       map[string]string{},
 		Composition:       json.RawMessage(`{}`),
 		ResolvedValues:    map[string]any{"doc_code": "ABC"},
 	})

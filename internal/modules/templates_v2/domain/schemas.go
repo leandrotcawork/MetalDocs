@@ -27,6 +27,7 @@ type VisibilityCondition struct {
 
 type Placeholder struct {
 	ID       string          `json:"id"`
+	Name     string          `json:"name,omitempty"`
 	Label    string          `json:"label"`
 	Type     PlaceholderType `json:"type"`
 	Required bool            `json:"required"`

@@ -42,6 +42,15 @@ func (r *RevisionReader) GetAuthor(ctx context.Context, tenantID, revisionID str
 	return resolvers.AuthorInfo{UserID: userID, DisplayName: userID}, nil
 }
 
+func (r *RevisionReader) GetDocumentTitle(ctx context.Context, tenantID, revisionID string) (string, error) {
+	var title string
+	err := r.db.QueryRowContext(ctx,
+		`SELECT name FROM documents WHERE tenant_id=$1::uuid AND id=$2::uuid`,
+		tenantID, revisionID,
+	).Scan(&title)
+	return title, err
+}
+
 // WorkflowReader implements resolvers.WorkflowReader backed by approval tables.
 type WorkflowReader struct{ db *sql.DB }
 

@@ -7,12 +7,13 @@ func TestRegisterBuiltins_RegistersAllV1Resolvers(t *testing.T) {
 	RegisterBuiltins(r)
 
 	known := r.Known()
-	if len(known) != 7 {
-		t.Fatalf("expected 7 resolvers, got %d", len(known))
+	if len(known) != 8 {
+		t.Fatalf("expected 8 resolvers, got %d", len(known))
 	}
 
 	expected := []string{
 		"doc_code",
+		"doc_title",
 		"revision_number",
 		"effective_date",
 		"controlled_by_area",

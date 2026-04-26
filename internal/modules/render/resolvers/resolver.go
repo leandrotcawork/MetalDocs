@@ -11,6 +11,7 @@ type ResolveInput struct {
 	RegistryReader                             RegistryReader
 	RevisionReader                             RevisionReader
 	WorkflowReader                             WorkflowReader
+	DocumentReader                             DocumentReader
 }
 
 type ResolvedValue struct {
@@ -55,4 +56,8 @@ type RevisionReader interface {
 type WorkflowReader interface {
 	GetApprovers(ctx context.Context, tenantID, revisionID string) ([]ApproverInfo, error)
 	GetFinalApprovalDate(ctx context.Context, tenantID, revisionID string) (time.Time, error)
+}
+
+type DocumentReader interface {
+	GetDocumentTitle(ctx context.Context, tenantID, revisionID string) (string, error)
 }

@@ -5,12 +5,8 @@ import { toast } from 'sonner';
 import { useDocumentSession } from './hooks/useDocumentSession';
 import { useDocumentAutosave } from './hooks/useDocumentAutosave';
 import { useDocumentComments } from './hooks/useDocumentComments';
-import { getDocument, finalizeDocument, renameDocument, signedRevisionURL, putPlaceholderValue, getPlaceholderValues } from './api/documentsV2';
+import { getDocument, finalizeDocument, renameDocument, signedRevisionURL } from './api/documentsV2';
 import type { DocumentResponse } from './api/documentsV2';
-import { loadFillInData } from '../fill-in-loader';
-import type { FillInData } from '../fill-in-loader';
-import { PlaceholderForm } from '../placeholder-form';
-import { SubmitButton } from '../submit-button';
 import { CheckpointsDialog } from './CheckpointsDialog';
 import { ExportMenuButton } from './ExportMenuButton';
 import { StateBadge } from '../../approval/components/StateBadge';
@@ -28,7 +24,6 @@ export function DocumentEditorPage({ documentID, onDone }: DocumentEditorPagePro
   const [documentName, setDocumentName] = useState('');
   const [buffer, setBuffer] = useState<ArrayBuffer | null | undefined>(undefined);
   const [checkpointsOpen, setCheckpointsOpen] = useState(false);
-  const [fillIn, setFillIn] = useState<FillInData | null>(null);
   const editorRef = useRef<MetalDocsEditorRef>(null);
 
   const fetchRevisionBuffer = useCallback(async (revisionID: string) => {
@@ -51,21 +46,11 @@ export function DocumentEditorPage({ documentID, onDone }: DocumentEditorPagePro
     void (async () => {
       try {
         setBuffer(undefined);
-        setFillIn(null);
-        const [loadedDoc, fillInData] = await Promise.all([
-          getDocument(documentID),
-          loadFillInData(documentID).catch((err: { status?: number }) => {
-            if (err?.status !== 404) {
-              toast.error('Failed to load placeholder schema.');
-            }
-            return null;
-          }),
-        ]);
+        const loadedDoc = await getDocument(documentID);
         const name = loadedDoc.Name ?? loadedDoc.name ?? 'Document';
         const revisionID = loadedDoc.CurrentRevisionID ?? loadedDoc.current_revision_id ?? '';
         setDoc(loadedDoc);
         setDocumentName(name);
-        setFillIn(fillInData);
         await fetchRevisionBuffer(revisionID);
       } catch {
         toast.error('Failed to load document.');
@@ -132,16 +117,6 @@ export function DocumentEditorPage({ documentID, onDone }: DocumentEditorPagePro
       toast.error('Failed to rename document.');
     });
   }, [documentID]);
-
-  async function handlePlaceholderSave(pid: string, value: string) {
-    try {
-      await putPlaceholderValue(documentID, pid, value);
-      const updated = await getPlaceholderValues(documentID);
-      setFillIn((prev) => prev ? { ...prev, placeholderValues: updated } : prev);
-    } catch {
-      toast.error('Failed to save placeholder value.');
-    }
-  }
 
   async function handleSave() {
     if (!editorRef.current) return;
@@ -233,22 +208,6 @@ export function DocumentEditorPage({ documentID, onDone }: DocumentEditorPagePro
           )}
         />
       ) : null}
-      {fillIn && fillIn.placeholderSchema.length > 0 && (
-        <aside style={{ width: 280, flexShrink: 0, borderLeft: '1px solid #e2e8f0', padding: 12, overflowY: 'auto' }}>
-          <PlaceholderForm
-            schema={fillIn.placeholderSchema}
-            values={fillIn.placeholderValues}
-            disabled={session.state.phase !== 'writer'}
-            onSave={handlePlaceholderSave}
-          />
-          <SubmitButton
-            docId={documentID}
-            placeholderSchema={fillIn.placeholderSchema}
-            placeholderValues={fillIn.placeholderValues}
-            onSubmitted={onDone}
-          />
-        </aside>
-      )}
       <CheckpointsDialog
         open={checkpointsOpen}
         onClose={() => setCheckpointsOpen(false)}

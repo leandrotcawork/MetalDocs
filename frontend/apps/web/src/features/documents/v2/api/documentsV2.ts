@@ -171,27 +171,3 @@ export async function deleteComment(documentID: string, libraryID: number): Prom
   const res = await fetch(`/api/v2/documents/${documentID}/comments/${libraryID}`, { method: 'DELETE' });
   if (!res.ok) throw Object.assign(new Error(`http_${res.status}`), { status: res.status, body: await res.text() });
 }
-
-// --- Fill-in endpoints ---
-
-export interface PlaceholderValueDTO {
-  placeholder_id: string;
-  value_text: string | null;
-  source: 'user' | 'computed';
-}
-
-export async function getPlaceholderValues(docId: string): Promise<PlaceholderValueDTO[]> {
-  return json(await fetch(`/api/v2/documents/${docId}/placeholders`));
-}
-
-export async function putPlaceholderValue(docId: string, pid: string, value: string): Promise<void> {
-  await json(await fetch(`/api/v2/documents/${docId}/placeholders/${pid}`, {
-    method: 'PUT',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ value }),
-  }));
-}
-
-export async function submitDocument(docId: string): Promise<void> {
-  await json(await fetch(`/api/v2/documents/${docId}/submit`, { method: 'POST' }));
-}

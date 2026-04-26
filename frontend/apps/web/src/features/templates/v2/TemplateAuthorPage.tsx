@@ -45,6 +45,15 @@ const SUB_BLOCK_CATALOGUE: SubBlockDef[] = [
 ];
 
 const EMPTY_COMPOSITION = { headerSubBlocks: [], footerSubBlocks: [], subBlockParams: {} };
+const VARIABLE_SYNC_DEBOUNCE_MS = 400;
+
+function titleCaseToken(name: string): string {
+  return name
+    .split('_')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
 
 export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion: _nav, onBack }: TemplateAuthorPageProps) {
   const draft = useTemplateDraft(templateId, versionNum);
@@ -52,6 +61,7 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
   const schemaState = useTemplateSchemas(templateId, versionNum);
   const editorRef = useRef<DocxEditorRef>(null);
   const schemaSnapshotRef = useRef<string | null>(null);
+  const variableSyncTimerRef = useRef<number | null>(null);
   const blankDoc = useMemo(() => createEmptyDocument(), []);
   const editorPlugins = useMemo(() => [filterTransactionGuard()], []);
   const [submitting, setSubmitting] = useState(false);
@@ -62,8 +72,38 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
   const [localSchemas, setLocalSchemas] = useState<TemplateSchemas | null>(null);
   const [selectedType, setSelectedType] = useState<'placeholder' | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [detectedTokenNames, setDetectedTokenNames] = useState<Set<string> | null>(null);
+  const currentVersion = liveVersion ?? draft.version ?? null;
+  const isDraft = currentVersion?.status === 'draft';
 
   const queueDocx = autosave.queueDocx;
+  const syncPlaceholdersFromDocument = useCallback(() => {
+    if (!isDraft) return;
+    const rawVariables = editorRef.current?.getAgent()?.getVariables();
+    if (!rawVariables) return;
+    const variables = Array.from(new Set(rawVariables));
+    const nextTokenNames = new Set(variables);
+    setDetectedTokenNames(nextTokenNames);
+    setLocalSchemas((prev) => {
+      if (!prev) return prev;
+      const existingNames = new Set(prev.placeholders.map((p) => p.name).filter(Boolean) as string[]);
+      const missing = variables.filter((name) => !existingNames.has(name));
+      if (missing.length === 0) return prev;
+      return {
+        ...prev,
+        placeholders: [
+          ...prev.placeholders,
+          ...missing.map((name) => ({
+            id: crypto.randomUUID(),
+            name,
+            label: titleCaseToken(name),
+            type: 'text' as const,
+          })),
+        ],
+      };
+    });
+  }, [isDraft]);
+
   const handleEditorChange = useCallback(() => {
     editorRef.current?.save().then((buffer) => {
       if (buffer) {
@@ -72,7 +112,15 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
     }).catch(() => {
       // ignore autosave buffer serialization errors
     });
-  }, [queueDocx]);
+    if (variableSyncTimerRef.current) window.clearTimeout(variableSyncTimerRef.current);
+    variableSyncTimerRef.current = window.setTimeout(syncPlaceholdersFromDocument, VARIABLE_SYNC_DEBOUNCE_MS);
+  }, [queueDocx, syncPlaceholdersFromDocument]);
+
+  useEffect(() => {
+    return () => {
+      if (variableSyncTimerRef.current) window.clearTimeout(variableSyncTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     setLiveVersion(draft.version ?? null);
@@ -83,9 +131,6 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
     setLocalSchemas(schemaState.schemas);
     schemaSnapshotRef.current = JSON.stringify(schemaState.schemas);
   }, [schemaState.schemas]);
-
-  const currentVersion = liveVersion ?? draft.version ?? null;
-  const isDraft = currentVersion?.status === 'draft';
 
   useEffect(() => {
     if (!localSchemas || !isDraft) return;
@@ -165,11 +210,24 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
     setSelectedType('placeholder');
     setSelectedId(next.id);
     setRightActive('inspector');
-  }, [isDraft]);
+  }, [isDraft, localSchemas?.placeholders]);
+
+  const removePlaceholder = useCallback((id: string) => {
+    if (!isDraft) return;
+    setLocalSchemas((prev) => {
+      if (!prev) return prev;
+      return { ...prev, placeholders: prev.placeholders.filter((p) => p.id !== id) };
+    });
+    if (selectedId === id) {
+      setSelectedId(null);
+      setSelectedType(null);
+    }
+  }, [isDraft, selectedId]);
 
   const selectedPlaceholder = selectedType === 'placeholder'
     ? localSchemas?.placeholders.find((p) => p.id === selectedId) ?? null
     : null;
+  const selectedPlaceholderIsOrphan = !!selectedPlaceholder?.name && detectedTokenNames !== null && !detectedTokenNames.has(selectedPlaceholder.name);
 
   // Eigenpal closes its popovers on any capture-phase scroll event. Scrolling
   // inside its own listbox (e.g. to reach font size 48) triggers the close.
@@ -284,6 +342,7 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
                   <PlaceholderChip
                     key={placeholder.id}
                     placeholder={placeholder}
+                    orphan={!!placeholder.name && detectedTokenNames !== null && !detectedTokenNames.has(placeholder.name)}
                     onInsert={(p) => {
                       setSelectedType('placeholder');
                       setSelectedId(p.id);
@@ -292,8 +351,14 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
                   />
                 ))}
               </div>
-              <button type="button" className={styles.addBtn} onClick={addPlaceholder} disabled={!isDraft}>
-                + Add placeholder
+              <button
+                type="button"
+                className={`${styles.addBtn} ${styles.addManualBtn}`}
+                onClick={addPlaceholder}
+                disabled={!isDraft}
+                title="Prefer typing {name} directly in the document - placeholders are detected automatically."
+              >
+                + Add manually
               </button>
             </section>
           </aside>
@@ -356,10 +421,12 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
                   <PlaceholderInspector
                     value={selectedPlaceholder}
                     resolvers={DEFAULT_RESOLVERS}
+                    orphan={selectedPlaceholderIsOrphan}
                     onChange={(updated) => {
                       if (!isDraft) return;
                       updatePlaceholder(updated);
                     }}
+                    onRemove={() => removePlaceholder(selectedPlaceholder.id)}
                   />
                 </fieldset>
               ) : (

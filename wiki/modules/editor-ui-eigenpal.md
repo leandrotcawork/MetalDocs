@@ -1,6 +1,6 @@
 # Module: Editor UI (Eigenpal Integration)
 
-> **Last verified:** 2026-04-25
+> **Last verified:** 2026-04-25 (authoring convergence)
 > **Scope:** How MetalDocs wraps `@eigenpal/docx-js-editor`, what plugins are registered, autosave wiring, ProseMirror access patterns.
 > **Out of scope:** Placeholder semantics (see `concepts/placeholders.md`), template authoring page UX (see `modules/templates-v2.md`).
 > **Key files:**
@@ -46,7 +46,7 @@ Imported from `@eigenpal/docx-js-editor`. Detects docxtemplater tokens (`{name}`
 - Provides sidebar chips
 - Exposes `TemplateTag[]` via plugin state
 
-**Status:** Active. MetalDocs now uses `{name}` syntax (post-migration 2026-04-25), so tokens are highlighted orange and listed in the sidebar natively. See `concepts/placeholders.md`.
+**Status:** Active. MetalDocs now uses `{name}` syntax (post-migration 2026-04-25), so tokens are highlighted orange and listed in the sidebar natively. In template authoring, `TemplateAuthorPage` also reads `editorRef.current.getAgent().getVariables()` after editor changes and auto-syncs schema metadata from detected token names. See `concepts/placeholders.md`.
 
 ### `outlinePlugin` (custom MetalDocs)
 Source: `packages/editor-ui/src/plugins/OutlinePlugin.tsx`. Walks the ProseMirror doc tree, finds paragraphs with heading style (`outlineLevel` attr or `styleId` matching `Título1` / `Heading1`), surfaces them as a left panel for navigation.

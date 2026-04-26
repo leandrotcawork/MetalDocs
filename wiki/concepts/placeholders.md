@@ -1,11 +1,11 @@
-# Placeholders — Eigenpal Native vs MetalDocs Legacy
+# Placeholders — Eigenpal Native + MetalDocs Metadata
 
-> **Last verified:** 2026-04-25 (post-migration)
-> **Scope:** What a placeholder is, how eigenpal handles it natively, how MetalDocs uses it (post-migration state).
+> **Last verified:** 2026-04-25 (authoring convergence)
+> **Scope:** What a placeholder is, how eigenpal handles it natively, how MetalDocs uses it as the source of truth for authoring.
 > **Out of scope:** Fill-in form UI (see `workflows/document-fillin.md`), substitution at render time (see `modules/render-fanout.md`).
 > **Key files:**
 > - `packages/editor-ui/src/MetalDocsEditor.tsx:54` — eigenpal `templatePlugin` wired here
-> - `frontend/apps/web/src/features/templates/v2/TemplateAuthorPage.tsx` — `insertTokenAtCursor(\`{${placeholder.name}}\`)` — current insertion
+> - `frontend/apps/web/src/features/templates/v2/TemplateAuthorPage.tsx` — `getAgent().getVariables()` schema sync and `insertTokenAtCursor(\`{${placeholder.name}}\`)`
 > - `frontend/apps/web/src/features/templates/placeholder-types.ts` — Placeholder schema type (id, name, label, type, constraints)
 > - `frontend/apps/web/src/features/templates/placeholder-chip.tsx` — drag-drop chip UI
 > - `internal/modules/render/fanout/` — server-side substitution (Go)
@@ -48,15 +48,19 @@ This was verified end-to-end in eigenpal-spike T4 with fixture `placeholders.doc
 
 **Backend substitution:** Same docxtemplater algorithm. Identical syntax. So a template authored with `{name}` tokens works for both browser preview AND server fanout — single source of truth.
 
-## MetalDocs current mechanism (post-migration, 2026-04-25)
+## MetalDocs current mechanism (converged, 2026-04-25)
 
 **Token syntax:** Single brace `{name}` — docxtemplater standard, matching eigenpal native.
 
-**Insertion:** `TemplateAuthorPage.tsx` — `` insertTokenAtCursor(`{${placeholder.name}}`) ``. Triggered by clicking placeholder chip in sidebar.
+**Authoring source of truth:** the DOCX token exists if and only if the author typed `{name}` in the document. `TemplateAuthorPage.tsx` calls `editorRef.current.getAgent().getVariables()` after editor changes and auto-creates missing schema metadata entries for detected token names.
+
+**Insertion:** Direct typing is preferred. Clicking or dragging an existing placeholder chip still inserts `` `{${placeholder.name}}` `` via `insertTokenAtCursor()`.
 
 **Detection:** Eigenpal's `templatePlugin` detects `{name}` tokens and:
 - Highlights them orange in the canvas
 - Shows them as chips in the eigenpal sidebar
+
+**Orphans:** If schema metadata exists for a placeholder name that is no longer present in `getVariables()`, MetalDocs keeps the schema entry but marks the chip as orphan. Authors can remove that stale metadata from the inspector.
 
 **Schema metadata** (`placeholder-types.ts`):
 ```ts
@@ -89,6 +93,7 @@ type Placeholder = {
 | Sidebar chips | ✅ eigenpal native |
 | Server substitution | ✅ docxtemplater (name-keyed map) |
 | Constraints (required, regex, min/max) | ✅ MetalDocs schema layer |
+| Authoring convergence | ✅ DOCX token is source of truth; schema auto-syncs metadata |
 | Word desktop authoring | ✅ type `{customer_name}` directly |
 
 ## History

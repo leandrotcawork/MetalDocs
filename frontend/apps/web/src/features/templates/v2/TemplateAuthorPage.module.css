@@ -221,6 +221,11 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+.addManualBtn {
+  padding: 6px;
+  color: var(--muted);
+  font-size: 11.5px;
+}
 
 .chipList {
   display: flex;

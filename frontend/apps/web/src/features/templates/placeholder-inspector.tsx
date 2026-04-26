@@ -7,11 +7,13 @@ interface PlaceholderInspectorProps {
   value: Placeholder;
   resolvers: { key: string; version: number }[];
   onChange: (updated: Placeholder) => void;
+  orphan?: boolean;
+  onRemove?: () => void;
 }
 
 const ALL_TYPES: PlaceholderType[] = ['text', 'date', 'number', 'select', 'user', 'picture', 'computed'];
 
-export function PlaceholderInspector({ value, resolvers, onChange }: PlaceholderInspectorProps) {
+export function PlaceholderInspector({ value, resolvers, onChange, orphan = false, onRemove }: PlaceholderInspectorProps) {
   function set<K extends keyof Placeholder>(field: K, val: Placeholder[K]) {
     onChange({ ...value, [field]: val });
   }
@@ -182,6 +184,12 @@ export function PlaceholderInspector({ value, resolvers, onChange }: Placeholder
             ))}
           </select>
         </label>
+      )}
+
+      {orphan && (
+        <button type="button" onClick={onRemove}>
+          Remove from schema
+        </button>
       )}
     </div>
   );

@@ -13,7 +13,6 @@ type FanoutRequest struct {
 	RevisionID        string            `json:"revision_id"`
 	BodyDocxS3Key     string            `json:"body_docx_s3_key"`
 	PlaceholderValues map[string]string `json:"placeholder_values"`
-	ZoneContent       map[string]string `json:"zone_content"`
 	Composition       json.RawMessage   `json:"composition_config"`
 	ResolvedValues    map[string]any    `json:"resolved_values"`
 }

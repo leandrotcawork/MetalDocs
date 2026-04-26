@@ -21,16 +21,18 @@ type Module struct {
 }
 
 type Dependencies struct {
-	DB              *sql.DB
-	Docgen          application.DocgenRenderer
-	Presign         application.Presigner
-	TplRead         application.TemplateReader
-	FormVal         application.FormValidator
-	Audit           application.Audit
-	RegistryReader  application.RegistryReader
-	AuthzChecker    application.AuthorizationChecker
-	ProfileDefaults application.ProfileDefaultTemplateReader
-	ExportPresign   application.ExportPresigner
+	DB                *sql.DB
+	Docgen            application.DocgenRenderer
+	Presign           application.Presigner
+	TplRead           application.TemplateReader
+	FormVal           application.FormValidator
+	Audit             application.Audit
+	RegistryReader    application.RegistryReader
+	AuthzChecker      application.AuthorizationChecker
+	ProfileDefaults   application.ProfileDefaultTemplateReader
+	SnapshotReader    application.SnapshotTemplateReader
+	SnapshotWriter    application.SnapshotWriter
+	ExportPresign     application.ExportPresigner
 	ExportDocgen      application.DocgenPDFClient
 	DocgenVer         string
 	GrammarVer        string
@@ -39,7 +41,13 @@ type Dependencies struct {
 
 func New(deps Dependencies) *Module {
 	repo := repository.New(deps.DB)
-	svc := application.NewService(repo, deps.Docgen, deps.Presign, deps.TplRead, deps.FormVal, deps.Audit, deps.RegistryReader, deps.AuthzChecker, deps.ProfileDefaults)
+	var svc *application.Service
+	if deps.SnapshotReader != nil && deps.SnapshotWriter != nil {
+		snapSvc := application.NewSnapshotService(deps.SnapshotReader, deps.SnapshotWriter)
+		svc = application.NewServiceWithSnapshot(repo, deps.Docgen, deps.Presign, deps.TplRead, deps.FormVal, deps.Audit, deps.RegistryReader, deps.AuthzChecker, deps.ProfileDefaults, snapSvc)
+	} else {
+		svc = application.NewService(repo, deps.Docgen, deps.Presign, deps.TplRead, deps.FormVal, deps.Audit, deps.RegistryReader, deps.AuthzChecker, deps.ProfileDefaults)
+	}
 	h := dhttp.NewHandler(svc)
 
 	var exportHandler *dhttp.ExportHandler

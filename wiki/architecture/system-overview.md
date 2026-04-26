@@ -77,9 +77,12 @@ Shared packages:
 7. Submit -> `POST /documents/{id}/submit` -> `under_review`. Migration `0152`'s `enforce_snapshot_on_submit_trg` trigger requires all six snapshot columns to be non-NULL before draft -> under_review.
 8. Approves -> `POST /documents/{id}/approve` -> triggers `freeze`:
    - Use the creation-time snapshots as the immutable render inputs
-   - Call fanout -> renders final DOCX (substituted) + PDF
-   - Upload to MinIO under `documents/{id}/final.{docx,pdf}`
-   - Persist final_docx_s3_key, hashes
+   - Go calls docgen-v2 `POST /render/fanout` with `X-Service-Token`; docgen-v2 validates the token
+   - Go sends `tenant_id`, `revision_id`, `body_docx_s3_key`, `placeholder_values`, `composition_config`, and `resolved_values`
+   - docgen-v2 computes the final DOCX S3 key internally as `tenants/{tenant_id}/revisions/{revision_id}/frozen.docx`
+   - docgen-v2 runs eigenpal `processTemplateDetailed` for token substitution
+   - docgen-v2 returns `content_hash`, `final_docx_s3_key`, and `unreplaced_vars`
+   - Persist `final_docx_s3_key`, hashes
 9. **View:** `GET /documents/{id}/view` -> returns signed URL for PDF
 
 ## Cross-refs

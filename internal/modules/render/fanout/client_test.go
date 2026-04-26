@@ -27,7 +27,7 @@ func TestClient_Fanout_Success(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := NewClient(srv.URL, srv.Client())
+	c := NewClient(srv.URL, "", srv.Client())
 	resp, err := c.Fanout(context.Background(), FanoutRequest{
 		TenantID:          "t1",
 		RevisionID:        "r1",
@@ -62,7 +62,7 @@ func TestClient_Fanout_Non200(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := NewClient(srv.URL, srv.Client())
+	c := NewClient(srv.URL, "", srv.Client())
 	_, err := c.Fanout(context.Background(), FanoutRequest{})
 	if err == nil {
 		t.Fatal("expected error on non-200")

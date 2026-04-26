@@ -209,6 +209,8 @@ func main() {
 		)
 	}
 
+	docSnapshotReader := docgenv2.NewTemplatesV2SnapshotReader(deps.SQLDB)
+	docSnapshotWriter := docrepo.NewSnapshotRepository(deps.SQLDB)
 	docDeps := documents_v2.Dependencies{
 		DB:      deps.SQLDB,
 		Docgen:  nil,
@@ -223,6 +225,8 @@ func main() {
 		RegistryReader:  cdRepo,
 		AuthzChecker:    permissiveAuthzChecker{},
 		ProfileDefaults: &profileDefaultsAdapter{profileRepo: profileRepo},
+		SnapshotReader:  docSnapshotReader,
+		SnapshotWriter:  docSnapshotWriter,
 	}
 	if deps.DocgenV2Client != nil {
 		docDeps.ExportDocgen = deps.DocgenV2Client

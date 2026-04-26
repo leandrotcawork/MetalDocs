@@ -42,6 +42,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v2/templates/{id}/versions/{n}", h.getVersion)
 	mux.HandleFunc("GET /api/v2/templates/{id}/versions/{n}/docx-url", h.getDocxURL)
 	mux.HandleFunc("GET /api/v2/templates/{id}/audit", h.listAudit)
+	mux.HandleFunc("GET /api/v2/templates/v2/placeholder-catalog", h.listPlaceholderCatalog)
 }
 
 var (

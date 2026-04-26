@@ -80,7 +80,6 @@ describe('POST /render/fanout', () => {
       payload: {
         body_docx_key: 'templates/x.docx',
         placeholder_values: { doc_code: 'ABC-001' },
-        zone_content: {},
         composition_config: {
           header_sub_blocks: [],
           footer_sub_blocks: [],

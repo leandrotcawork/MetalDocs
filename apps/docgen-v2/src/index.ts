@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { loadEnv } from './env.js';
 import { registerServiceAuth } from './service-auth.js';
@@ -19,7 +21,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   return app;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (resolve(fileURLToPath(import.meta.url)) === resolve(process.argv[1])) {
   const env = loadEnv();
   buildApp().then((app) => {
     app.listen({ port: env.DOCGEN_V2_PORT, host: '0.0.0.0' })

@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { processTemplateDetailed } from '@eigenpal/docx-js-editor';
+import { processTemplateDetailed } from '@eigenpal/docx-js-editor/headless';
 
 export interface ProcessDocxResult {
   buffer: Uint8Array;

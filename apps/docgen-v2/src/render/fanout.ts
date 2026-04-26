@@ -1,13 +1,11 @@
 import { createHash } from 'node:crypto';
 import { processTemplateDetailed } from '@eigenpal/docx-js-editor';
-import { injectZones } from './zoneInjection.js';
 import { SubBlockRegistry } from './subblocks/registry.js';
 import { registerV1Builtins } from './subblocks/builtins.js';
 
 export interface FanoutInput {
   bodyDocx: Uint8Array;
   placeholderValues: Record<string, string>;
-  zoneContent: Record<string, string>;
   compositionConfig: {
     header_sub_blocks: string[];
     footer_sub_blocks: string[];
@@ -47,8 +45,6 @@ export async function fanout(input: FanoutInput): Promise<FanoutResult> {
     )
   ).join('');
 
-  const withZones = await injectZones(input.bodyDocx, input.zoneContent);
-
   const variables: Record<string, string> = {
     ...input.placeholderValues,
     __header_composition__: headerOoxml,
@@ -56,9 +52,9 @@ export async function fanout(input: FanoutInput): Promise<FanoutResult> {
   };
 
   const result = processTemplateDetailed(
-    withZones.buffer.slice(
-      withZones.byteOffset,
-      withZones.byteOffset + withZones.byteLength,
+    input.bodyDocx.buffer.slice(
+      input.bodyDocx.byteOffset,
+      input.bodyDocx.byteOffset + input.bodyDocx.byteLength,
     ) as ArrayBuffer,
     variables,
     { nullGetter: 'empty' },

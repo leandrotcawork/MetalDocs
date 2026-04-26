@@ -12,6 +12,7 @@ export function PlaceholderChip({ placeholder, onInsert }: PlaceholderChipProps)
       data-testid={`placeholder-chip-${placeholder.id}`}
       onDragStart={(e) => {
         e.dataTransfer.setData('application/x-placeholder-id', placeholder.id);
+        e.dataTransfer.setData('application/x-placeholder-name', placeholder.name ?? '');
         e.dataTransfer.effectAllowed = 'copy';
       }}
       onClick={() => onInsert?.(placeholder)}
@@ -22,7 +23,7 @@ export function PlaceholderChip({ placeholder, onInsert }: PlaceholderChipProps)
   );
 }
 
-export function usePlaceholderDrop(onInsert: (id: string) => void) {
+export function usePlaceholderDrop(onInsert: (id: string, name: string) => void) {
   return {
     onDragOver: (e: React.DragEvent) => {
       e.preventDefault();
@@ -30,8 +31,9 @@ export function usePlaceholderDrop(onInsert: (id: string) => void) {
     },
     onDrop: (e: React.DragEvent) => {
       e.preventDefault();
-      const id = e.dataTransfer.getData('application/x-placeholder-id');
-      if (id) onInsert(id);
+      const id   = e.dataTransfer.getData('application/x-placeholder-id');
+      const name = e.dataTransfer.getData('application/x-placeholder-name');
+      if (id) onInsert(id, name);
     },
   };
 }

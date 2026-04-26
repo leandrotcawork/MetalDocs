@@ -20,4 +20,11 @@ describe('slugifyLabel', () => {
   it('trims leading/trailing underscores', () => {
     expect(slugifyLabel('  hello  ')).toBe('hello');
   });
+  it('f_ prefix on digit-led 50-char label stays within 50 chars', () => {
+    // A label of 50 digits: cleaned = '1...1' (50 chars), f_ prefix → 52, slice(0,50) = 'f_1...1' (50)
+    const label = '1'.repeat(50);
+    const result = slugifyLabel(label);
+    expect(result.length).toBeLessThanOrEqual(50);
+    expect(result.startsWith('f_')).toBe(true);
+  });
 });

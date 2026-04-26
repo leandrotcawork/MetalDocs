@@ -178,11 +178,23 @@ func (s *FreezeService) Freeze(ctx context.Context, tx *sql.Tx, tenantID, revisi
 			return err
 		}
 	}
+	// Build id->name lookup from schema.
+	idToName := make(map[string]string, len(schema))
+	for _, p := range schema {
+		if p.Name != "" {
+			idToName[p.ID] = p.Name
+		}
+	}
+
 	placeholderVals := map[string]string{}
 	resolvedForSubblocks := map[string]any{}
 	for id, v := range valMap {
 		if sv, ok := v.(string); ok {
-			placeholderVals[id] = sv
+			key := id
+			if n, ok := idToName[id]; ok {
+				key = n
+			}
+			placeholderVals[key] = sv
 			resolvedForSubblocks[id] = sv
 		}
 	}

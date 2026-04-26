@@ -130,8 +130,8 @@ func (r fixedResolver) Resolve(_ context.Context, _ resolvers.ResolveInput) (res
 func TestFreezeService_Freeze_ValidatesResolvesHashesAndFinalizes(t *testing.T) {
 	resolverKey := "doc_code"
 	schema := []tmpldom.Placeholder{
-		{ID: "p_user", Required: true},
-		{ID: "p_comp", Computed: true, ResolverKey: &resolverKey},
+		{ID: "p_user", Name: "user_field", Required: true},
+		{ID: "p_comp", Name: "doc_code_field", Computed: true, ResolverKey: &resolverKey},
 	}
 	existing := []repository.PlaceholderValue{
 		{PlaceholderID: "p_user", ValueText: strPtr("user-value"), Source: "user"},
@@ -163,7 +163,7 @@ func TestFreezeService_Freeze_ValidatesResolvesHashesAndFinalizes(t *testing.T) 
 	if fanoutClient.req.BodyDocxS3Key != "templates/body.docx" {
 		t.Errorf("fanout body key = %q", fanoutClient.req.BodyDocxS3Key)
 	}
-	if fanoutClient.req.PlaceholderValues["p_user"] != "user-value" || fanoutClient.req.PlaceholderValues["p_comp"] != "DOC-001" {
+	if fanoutClient.req.PlaceholderValues["user_field"] != "user-value" || fanoutClient.req.PlaceholderValues["doc_code_field"] != "DOC-001" {
 		t.Errorf("fanout placeholder values = %+v", fanoutClient.req.PlaceholderValues)
 	}
 	if string(fanoutClient.req.Composition) != `{"header_sub_blocks":["h1"]}` {
@@ -197,6 +197,38 @@ func TestFreezeService_Freeze_ValidatesResolvesHashesAndFinalizes(t *testing.T) 
 	}
 	if finalize.at.IsZero() {
 		t.Fatal("expected frozenAt to be set")
+	}
+}
+
+func TestFreezeService_Freeze_FallsBackToIDWhenNameEmpty(t *testing.T) {
+	schema := []tmpldom.Placeholder{{ID: "p_user", Name: "", Required: true}}
+	existing := []repository.PlaceholderValue{
+		{PlaceholderID: "p_user", ValueText: strPtr("user-value"), Source: "user"},
+	}
+	fanoutClient := &fakeFanoutClient{resp: fanout.FanoutResponse{
+		ContentHash:    "deadbeef00000000000000000000000000000000000000000000000000000000",
+		FinalDocxS3Key: "final/r.docx",
+	}}
+	svc := NewFreezeService(
+		fakeSchemaReader{placeholders: schema},
+		&fakeFillInWriter{},
+		&fakeValuesReader{values: existing},
+		resolvers.NewRegistry(),
+		&fakeFreezeFinalizer{},
+		&fakeResolverContextBuilder{},
+		fakeSnapshotReader{snap: v2dom.TemplateSnapshot{BodyDocxS3Key: "body", CompositionJSON: []byte(`{}`)}},
+		&fakeFinalDocxWriter{},
+		fanoutClient,
+	)
+
+	if err := svc.Freeze(context.Background(), nil, "t", "r", ApproverContext{}); err != nil {
+		t.Fatalf("Freeze error: %v", err)
+	}
+	if fanoutClient.req.PlaceholderValues["p_user"] != "user-value" {
+		t.Fatalf("fanout placeholder values = %+v", fanoutClient.req.PlaceholderValues)
+	}
+	if _, ok := fanoutClient.req.PlaceholderValues[""]; ok {
+		t.Fatalf("fanout placeholder values should not use empty key: %+v", fanoutClient.req.PlaceholderValues)
 	}
 }
 

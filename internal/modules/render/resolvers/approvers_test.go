@@ -46,14 +46,26 @@ func TestApproversResolver_Resolve(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	approvers, ok := v1.Value.([]ApproverInfo)
-	if !ok {
-		t.Fatalf("expected []ApproverInfo value, got %T", v1.Value)
-	}
-	if len(approvers) != 1 || approvers[0].UserID != "u-1" {
-		t.Fatalf("unexpected approvers: %#v", approvers)
+	if v1.Value != "Jane" {
+		t.Fatalf("Value = %q, want %q", v1.Value, "Jane")
 	}
 	if !bytes.Equal(v1.InputsHash, v2.InputsHash) {
 		t.Fatal("expected stable hash across repeated resolves")
+	}
+}
+
+func TestApproversResolver_NoApprovers_ReturnsPortuguesePending(t *testing.T) {
+	r := ApproversResolver{}
+	in := ResolveInput{
+		TenantID:       "t1",
+		RevisionID:     "rev1",
+		WorkflowReader: fakeWorkflowReader{approvers: nil},
+	}
+	out, err := r.Resolve(context.Background(), in)
+	if err != nil {
+		t.Fatalf("Resolve err = %v", err)
+	}
+	if out.Value != "[aguardando aprovação]" {
+		t.Fatalf("Value = %q, want %q", out.Value, "[aguardando aprovação]")
 	}
 }

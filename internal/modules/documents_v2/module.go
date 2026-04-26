@@ -6,14 +6,18 @@ import (
 
 	"metaldocs/internal/modules/documents_v2/application"
 	dhttp "metaldocs/internal/modules/documents_v2/delivery/http"
+	documentshttp "metaldocs/internal/modules/documents_v2/http"
 	"metaldocs/internal/modules/documents_v2/repository"
 	"metaldocs/internal/platform/ratelimit"
 )
 
 type Module struct {
-	Handler       *dhttp.Handler
-	ExportHandler *dhttp.ExportHandler
-	repo          *repository.Repository
+	Handler            *dhttp.Handler
+	ExportHandler      *dhttp.ExportHandler
+	FillInHandler      *documentshttp.FillInHandler
+	ViewHandler        *documentshttp.ViewHandler
+	ReconstructHandler *documentshttp.ReconstructHandler
+	repo               *repository.Repository
 }
 
 type Dependencies struct {
@@ -27,9 +31,10 @@ type Dependencies struct {
 	AuthzChecker    application.AuthorizationChecker
 	ProfileDefaults application.ProfileDefaultTemplateReader
 	ExportPresign   application.ExportPresigner
-	ExportDocgen    application.DocgenPDFClient
-	DocgenVer       string
-	GrammarVer      string
+	ExportDocgen      application.DocgenPDFClient
+	DocgenVer         string
+	GrammarVer        string
+	ReconstructRunner application.ReconstructionRunner
 }
 
 func New(deps Dependencies) *Module {
@@ -51,10 +56,31 @@ func New(deps Dependencies) *Module {
 		exportHandler = dhttp.NewExportHandler(exportSvc)
 	}
 
+	fillInRepo := repository.NewFillInRepository(deps.DB)
+	fillInSvc := application.NewFillInService(deps.DB, application.NewSnapshotSchemaReader(deps.DB), fillInRepo).
+		WithReader(fillInRepo).
+		WithTemplateSchemaReader(application.NewTemplateVersionSchemaReader(deps.DB))
+	fillInHandler := documentshttp.NewFillInHandler(fillInSvc)
+
+	var viewHandler *documentshttp.ViewHandler
+	if deps.Presign != nil && deps.DB != nil {
+		viewSvc := application.NewViewService(deps.DB, deps.Presign)
+		viewHandler = documentshttp.NewViewHandler(viewSvc)
+	}
+
+	var reconstructHandler *documentshttp.ReconstructHandler
+	if deps.ReconstructRunner != nil && deps.DB != nil {
+		reconstructSvc := application.NewReconstructionService(deps.DB, deps.ReconstructRunner)
+		reconstructHandler = documentshttp.NewReconstructHandler(reconstructSvc)
+	}
+
 	return &Module{
-		Handler:       h,
-		ExportHandler: exportHandler,
-		repo:          repo,
+		Handler:            h,
+		ExportHandler:      exportHandler,
+		FillInHandler:      fillInHandler,
+		ViewHandler:        viewHandler,
+		ReconstructHandler: reconstructHandler,
+		repo:               repo,
 	}
 }
 
@@ -63,12 +89,26 @@ func (m *Module) RegisterRoutes(mux *http.ServeMux) {
 	if m.ExportHandler != nil {
 		m.ExportHandler.RegisterRoutes(mux)
 	}
+	m.FillInHandler.RegisterRoutes(mux)
+	if m.ViewHandler != nil {
+		m.ViewHandler.RegisterRoutes(mux)
+	}
+	if m.ReconstructHandler != nil {
+		m.ReconstructHandler.RegisterRoutes(mux)
+	}
 }
 
 func (m *Module) RegisterRoutesWithRateLimit(mux *http.ServeMux, rl *ratelimit.Middleware, userFn func(*http.Request) string) {
 	m.Handler.RegisterRoutesWithRateLimit(mux, rl, userFn)
 	if m.ExportHandler != nil {
 		m.ExportHandler.RegisterRoutesWithRateLimit(mux, rl, userFn)
+	}
+	m.FillInHandler.RegisterRoutes(mux)
+	if m.ViewHandler != nil {
+		m.ViewHandler.RegisterRoutes(mux)
+	}
+	if m.ReconstructHandler != nil {
+		m.ReconstructHandler.RegisterRoutes(mux)
 	}
 }
 

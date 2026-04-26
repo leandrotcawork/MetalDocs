@@ -190,10 +190,11 @@ func main() {
 		}
 		slog.Warn("METALDOCS_FANOUT_URL not set; document approval will fail at freeze step")
 	}
+	serviceToken := strings.TrimSpace(os.Getenv("METALDOCS_DOCGEN_V2_SERVICE_TOKEN"))
 	var fanoutCli *fanout.Client
 	var freezeSvc *docapp.FreezeService
 	if fanoutURL != "" && deps.SQLDB != nil {
-		fanoutCli = fanout.NewClient(fanoutURL, nil)
+		fanoutCli = fanout.NewClient(fanoutURL, serviceToken, nil)
 		snapRepo := docrepo.NewSnapshotRepository(deps.SQLDB)
 		fillInRepo := docrepo.NewFillInRepository(deps.SQLDB)
 		schemaReader := docapp.NewSnapshotSchemaReader(deps.SQLDB)

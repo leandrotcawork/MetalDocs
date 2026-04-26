@@ -6,7 +6,9 @@ import { getObjectBuffer, putObjectBuffer } from '../s3.js';
 import { fanout } from '../render/fanout.js';
 
 const BodySchema = z.object({
-  body_docx_key: z.string().min(1),
+  body_docx_s3_key: z.string().min(1),
+  tenant_id: z.string().min(1),
+  revision_id: z.string().min(1),
   placeholder_values: z.record(z.string()),
   composition_config: z.object({
     header_sub_blocks: z.array(z.string()),
@@ -14,7 +16,6 @@ const BodySchema = z.object({
     sub_block_params: z.record(z.record(z.unknown())),
   }),
   resolved_values: z.record(z.unknown()),
-  output_key: z.string().min(1),
 });
 
 const DOCX_MIME =
@@ -33,18 +34,21 @@ export function registerFanoutRoute(
         .send({ error: 'bad_request', details: parsed.error.format() });
     }
     const {
-      body_docx_key,
+      body_docx_s3_key,
+      tenant_id,
+      revision_id,
       placeholder_values,
       composition_config,
       resolved_values,
-      output_key,
     } = parsed.data;
+
+    const output_key = `tenants/${tenant_id}/revisions/${revision_id}/frozen.docx`;
 
     const client = s3Factory();
     const bodyBuf = await getObjectBuffer(
       client,
       env.DOCGEN_V2_S3_BUCKET,
-      body_docx_key,
+      body_docx_s3_key,
     );
 
     const result = await fanout({

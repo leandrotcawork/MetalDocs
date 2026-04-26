@@ -24,15 +24,16 @@ type FanoutResponse struct {
 }
 
 type Client struct {
-	baseURL string
-	http    *http.Client
+	baseURL      string
+	serviceToken string
+	http         *http.Client
 }
 
-func NewClient(baseURL string, h *http.Client) *Client {
+func NewClient(baseURL, serviceToken string, h *http.Client) *Client {
 	if h == nil {
 		h = http.DefaultClient
 	}
-	return &Client{baseURL: baseURL, http: h}
+	return &Client{baseURL: baseURL, serviceToken: serviceToken, http: h}
 }
 
 func (c *Client) Fanout(ctx context.Context, req FanoutRequest) (FanoutResponse, error) {
@@ -45,6 +46,7 @@ func (c *Client) Fanout(ctx context.Context, req FanoutRequest) (FanoutResponse,
 		return FanoutResponse{}, err
 	}
 	httpReq.Header.Set("content-type", "application/json")
+	httpReq.Header.Set("X-Service-Token", c.serviceToken)
 	resp, err := c.http.Do(httpReq)
 	if err != nil {
 		return FanoutResponse{}, err

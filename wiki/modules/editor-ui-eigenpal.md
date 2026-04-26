@@ -1,6 +1,8 @@
 # Module: Editor UI (Eigenpal Integration)
 
-> **Last verified:** 2026-04-25 (authoring convergence)
+> _Changelog: 2026-04-26 — added note that `applyVariables` is NOT used in writer mode (ADR 0008)._
+>
+> **Last verified:** 2026-04-26
 > **Scope:** How MetalDocs wraps `@eigenpal/docx-js-editor`, what plugins are registered, autosave wiring, ProseMirror access patterns.
 > **Out of scope:** Placeholder semantics (see `concepts/placeholders.md`), template authoring page UX (see `modules/templates-v2.md`).
 > **Key files:**
@@ -47,6 +49,8 @@ Imported from `@eigenpal/docx-js-editor`. Detects docxtemplater tokens (`{name}`
 - Exposes `TemplateTag[]` via plugin state
 
 **Status:** Active. MetalDocs now uses `{name}` syntax (post-migration 2026-04-25), so tokens are highlighted orange and listed in the sidebar natively. In template authoring, `TemplateAuthorPage` also reads `editorRef.current.getAgent().getVariables()` after editor changes and auto-syncs schema metadata from detected token names. See `concepts/placeholders.md`.
+
+**`applyVariables` is NOT called in writer mode.** Tokens remain as literal `{name}` strings in the editor DOCX. Substitution occurs server-side at freeze/finalize via the fanout pipeline. Reason: eigenpal autosaves on every change — calling `applyVariables` in-editor would persist substituted values in the DOCX, destroying original tokens. A future "preview mode" (two-buffer design) would allow ephemeral browser-side substitution without affecting the autosaved edit buffer. See `decisions/0008-placeholder-fixed-catalog.md`.
 
 ### `outlinePlugin` (custom MetalDocs)
 Source: `packages/editor-ui/src/plugins/OutlinePlugin.tsx`. Walks the ProseMirror doc tree, finds paragraphs with heading style (`outlineLevel` attr or `styleId` matching `Título1` / `Heading1`), surfaces them as a left panel for navigation.

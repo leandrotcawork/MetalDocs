@@ -1,109 +1,87 @@
-# Placeholders — Eigenpal Native + MetalDocs Metadata
+# Placeholders — Fixed Catalog Model
 
-> **Last verified:** 2026-04-25 (authoring convergence)
-> **Scope:** What a placeholder is, how eigenpal handles it natively, how MetalDocs uses it as the source of truth for authoring.
-> **Out of scope:** Fill-in form UI (see `workflows/document-fillin.md`), substitution at render time (see `modules/render-fanout.md`).
+> _Changelog: 2026-04-26 — rewritten for fixed-catalog model (ADR 0008); dropped legacy fill-in workflow content._
+>
+> **Last verified:** 2026-04-26
+> **Scope:** What a placeholder is, the fixed 7-entry catalog, how tokens stay literal in the editor, and when substitution occurs.
+> **Out of scope:** Substitution engine internals (see `modules/render-fanout.md`), editor plugin wiring (see `modules/editor-ui-eigenpal.md`).
 > **Key files:**
 > - `packages/editor-ui/src/MetalDocsEditor.tsx:54` — eigenpal `templatePlugin` wired here
-> - `frontend/apps/web/src/features/templates/v2/TemplateAuthorPage.tsx` — `getAgent().getVariables()` schema sync and `insertTokenAtCursor(\`{${placeholder.name}}\`)`
-> - `frontend/apps/web/src/features/templates/placeholder-types.ts` — Placeholder schema type (id, name, label, type, constraints)
-> - `frontend/apps/web/src/features/templates/placeholder-chip.tsx` — drag-drop chip UI
-> - `internal/modules/render/fanout/` — server-side substitution (Go)
-> - `C:\Users\leandro.theodoro.MN-NTB-LEANDROT\Documents\eigenpal-spike\spike\src\pages\T4TemplatePlugin.tsx` — spike T4 reference impl
-> - `C:\Users\leandro.theodoro.MN-NTB-LEANDROT\Documents\eigenpal-spike\public\fixtures\placeholders.docx` — fixture using `{name}` syntax
+> - `frontend/apps/web/src/features/templates/v2/TemplateAuthorPage.tsx` — catalog panel, auto-detect via `getVariables()`
+> - `frontend/apps/web/src/features/templates/placeholder-types.ts` — `CatalogPlaceholder` type
+> - `internal/modules/templates_v2/application/validate_placeholders.go` — `ValidatePlaceholders` rejects non-catalog names
+> - `internal/modules/render/fanout/` — server-side substitution at freeze/finalize (Go)
+> - `internal/modules/render/fanout/resolvers/approvers_resolver.go` — `ApproversResolver`
 
 ---
 
 ## What a placeholder is
 
-A variable in a template DOCX that gets substituted with a real value when an end user fills in a document. Example: `{customer_name}` → `"Acme Corp"`.
+A `{token}` in a template DOCX that gets substituted with a computed value when a document is finalized (frozen). Example: `{doc_code}` → `"QMS-001-v2"`.
 
-## Eigenpal-native mechanism (the truth)
+Tokens use single-brace `{name}` syntax — docxtemplater standard, detected natively by eigenpal's `templatePlugin`.
 
-**Token syntax:** Single brace `{name}` — docxtemplater standard.
+## The fixed catalog
 
-**Detection:** Eigenpal's `templatePlugin` (a ProseMirror plugin) auto-scans the document on every change. Tokens matching the docxtemplater regex are:
-- Highlighted orange in the canvas
-- Listed as chips in the eigenpal sidebar
-- Tracked as `TemplateTag` objects with `{ id, type, name, rawTag, from, to }`
+MetalDocs defines exactly 7 computed tokens. Template authors may only use names from this list. The backend rejects any other name at schema-save time (`ValidatePlaceholders`).
 
-Tag types eigenpal supports:
-- `variable` — `{name}` simple substitution
-- `sectionStart` / `sectionEnd` — `{#name}...{/name}` repeating sections
-- `invertedStart` — `{^name}...{/name}` conditional
-- `raw` — `{@name}` raw HTML/OOXML injection
+| Token | Resolver source |
+|---|---|
+| `{doc_code}` | Document code — generated from profile sequence counter |
+| `{doc_title}` | Document title field |
+| `{revision_number}` | Revision counter on the document version |
+| `{author}` | Display name of the document author (creator) |
+| `{effective_date}` | Effective date set during approval/freeze |
+| `{approvers}` | Approver names joined by `", "`; `"[aguardando aprovação]"` if none |
+| `{controlled_by_area}` | Area name from the document's taxonomy binding |
 
-**Substitution API (browser-side):**
-```ts
-const agent = editorRef.current.getAgent();
-const variables = agent.getVariables();              // discover
-const filled = await agent.applyVariables({          // substitute
-  customer_name: 'Acme Corp',
-  effective_date: '2026-04-25',
-});
-const buffer = await filled.toBuffer();              // export DOCX
-```
+All tokens are **computed** — no user input is required. There is no fill-in panel in the document editor.
 
-This was verified end-to-end in eigenpal-spike T4 with fixture `placeholders.docx`. See `references/eigenpal-spike.md`.
+## Authoring workflow
 
-**Backend substitution:** Same docxtemplater algorithm. Identical syntax. So a template authored with `{name}` tokens works for both browser preview AND server fanout — single source of truth.
+1. Template author types `{token}` directly in the DOCX inside the editor (or in Word desktop).
+2. Eigenpal's `templatePlugin` auto-detects the token, highlights it orange, and lists it as a chip in the sidebar.
+3. `TemplateAuthorPage` reads `editorRef.current.getAgent().getVariables()` after each editor change and auto-saves detected names as `computed` entries in the template schema.
+4. The catalog panel shows what each detected token resolves to.
+5. Non-catalog names are rejected by `ValidatePlaceholders` when the schema is saved.
 
-## MetalDocs current mechanism (converged, 2026-04-25)
+## Tokens are literal until freeze
 
-**Token syntax:** Single brace `{name}` — docxtemplater standard, matching eigenpal native.
+Tokens are **never substituted** in the editor (writer mode). The DOCX stored on disk always contains the raw `{token}` strings until a document is finalized.
 
-**Authoring source of truth:** the DOCX token exists if and only if the author typed `{name}` in the document. `TemplateAuthorPage.tsx` calls `editorRef.current.getAgent().getVariables()` after editor changes and auto-creates missing schema metadata entries for detected token names.
+Reason: eigenpal autosaves on every change. Calling `applyVariables` in-editor would mutate the DOCX with substituted values, destroying the original tokens on the next autosave cycle. See ADR 0008 for the full rationale and the deferred "preview mode" story.
 
-**Insertion:** Direct typing is preferred. Clicking or dragging an existing placeholder chip still inserts `` `{${placeholder.name}}` `` via `insertTokenAtCursor()`.
+Substitution happens exclusively at **finalize/freeze** via the existing server fanout pipeline:
+1. `freeze_service.go` resolves each catalog token via its resolver.
+2. The `{name: value}` map is passed to docxtemplater → native substitution.
+3. The frozen DOCX (with resolved values) is archived and rendered to PDF.
 
-**Detection:** Eigenpal's `templatePlugin` detects `{name}` tokens and:
-- Highlights them orange in the canvas
-- Shows them as chips in the eigenpal sidebar
+## `applyVariables` — deferred
 
-**Orphans:** If schema metadata exists for a placeholder name that is no longer present in `getVariables()`, MetalDocs keeps the schema entry but marks the chip as orphan. Authors can remove that stale metadata from the inspector.
-
-**Schema metadata** (`placeholder-types.ts`):
-```ts
-type Placeholder = {
-  id: string;           // UUID — internal PK only, never appears in DOCX
-  name: string;         // slug — used as the DOCX token (e.g. "customer_name")
-  label: string;        // human-readable name shown in UI
-  type: 'text' | 'date' | 'number' | 'select' | 'user' | 'picture' | 'computed';
-  required?: boolean;
-  maxLength?: number;
-  options?: string[];   // for type=select
-  resolverKey?: string; // for type=computed
-  // ...constraints depending on type
-}
-```
-
-`name` is validated: unique per template version, matches `^[a-z][a-z0-9_]{0,49}$`. Auto-derived from `label` by `slugifyLabel()` in the inspector.
-
-**Substitution:** Server-only. The flow:
-1. User fills placeholder values via custom form
-2. `freeze_service.go` builds a `{name: value}` map (keyed by slug, not UUID)
-3. Server fanout passes map to docxtemplater — native `{name}` substitution
+The eigenpal `applyVariables` API (browser-side substitution) is intentionally not called in writer mode. It is reserved for a future "preview mode" with a two-buffer story (edit buffer keeps raw tokens; preview buffer holds a substituted copy). See ADR 0008.
 
 ## Feature status
 
 | Feature | Status |
-|---------|--------|
-| Token format | ✅ `{name}` — eigenpal native |
-| Editor highlighting | ✅ orange via `templatePlugin` |
-| Sidebar chips | ✅ eigenpal native |
-| Server substitution | ✅ docxtemplater (name-keyed map) |
-| Constraints (required, regex, min/max) | ✅ MetalDocs schema layer |
-| Authoring convergence | ✅ DOCX token is source of truth; schema auto-syncs metadata |
-| Word desktop authoring | ✅ type `{customer_name}` directly |
+|---|---|
+| Token format | `{name}` — eigenpal native |
+| Editor highlighting | orange via `templatePlugin` |
+| Sidebar chips | eigenpal native |
+| Catalog enforcement | backend `ValidatePlaceholders` rejects non-catalog names |
+| Server substitution | docxtemplater at freeze/finalize |
+| Fill-in panel | not present — all tokens are computed |
+| `applyVariables` in editor | deferred (see ADR 0008) |
 
 ## History
 
-MetalDocs originally used `{{uuid}}` (double-brace UUID) tokens. `templatePlugin` was wired but inert because it only detects `{name}`. Migrated 2026-04-25. See `decisions/0003-token-syntax-migration.md` for the full ADR and rationale.
+- **Pre-2026-04-25:** MetalDocs used `{{uuid}}` double-brace tokens and had user-fill types (text/date/number/select). See `decisions/0003-token-syntax-migration.md`.
+- **2026-04-25:** Migrated to `{name}` single-brace tokens; eigenpal authoring convergence.
+- **2026-04-26:** Replaced user-fill placeholder model with fixed 7-entry computed catalog. See `decisions/0008-placeholder-fixed-catalog.md`.
 
 ## Cross-refs
 
-- [token-syntax.md](token-syntax.md) — deeper dive on `{name}` vs `{{uuid}}`
+- [concepts/token-syntax.md](token-syntax.md) — deeper dive on `{name}` vs `{{uuid}}`
 - [modules/editor-ui-eigenpal.md](../modules/editor-ui-eigenpal.md) — how MetalDocsEditor wires eigenpal plugins
 - [modules/render-fanout.md](../modules/render-fanout.md) — server substitution code
-- [decisions/0003-token-syntax-migration.md](../decisions/0003-token-syntax-migration.md) — migration ADR
-- [references/eigenpal-spike.md](../references/eigenpal-spike.md) — T4 spike result
+- [decisions/0008-placeholder-fixed-catalog.md](../decisions/0008-placeholder-fixed-catalog.md) — fixed catalog ADR
+- [decisions/0003-token-syntax-migration.md](../decisions/0003-token-syntax-migration.md) — token syntax migration ADR

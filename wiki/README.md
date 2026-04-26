@@ -1,6 +1,6 @@
 # MetalDocs Wiki
 
-> **Last verified:** 2026-04-25
+> **Last verified:** 2026-04-26
 > **Purpose:** Single source of truth for codebase knowledge. Read this first — drill into folders only after.
 
 ## How to use this wiki
@@ -30,10 +30,10 @@
 - [modules/approval.md](modules/approval.md) — approval routes, signoffs, ISO segregation
 - [modules/render-fanout.md](modules/render-fanout.md) — DOCX → PDF rendering, substitution engine
 - [modules/iam-rbac.md](modules/iam-rbac.md) — capabilities, role checks, area-scoped permissions
-- [modules/editor-ui-eigenpal.md](modules/editor-ui-eigenpal.md) — eigenpal integration layer, plugin wiring
+- [modules/editor-ui-eigenpal.md](modules/editor-ui-eigenpal.md) — eigenpal integration layer, plugin wiring (Last verified: 2026-04-26)
 
 ### Concepts (cross-cutting)
-- [concepts/placeholders.md](concepts/placeholders.md) — **CRITICAL:** eigenpal-native vs MetalDocs-legacy gap
+- [concepts/placeholders.md](concepts/placeholders.md) — **CRITICAL:** fixed 7-token catalog, substitution at freeze (Last verified: 2026-04-26)
 - [concepts/token-syntax.md](concepts/token-syntax.md) — `{name}` vs `{{uuid}}` — why it matters
 - [concepts/controlled-documents.md](concepts/controlled-documents.md) — code generation, profile binding, sequence counters
 - [concepts/iso-segregation.md](concepts/iso-segregation.md) — why submitter cannot approve own submit
@@ -49,6 +49,7 @@
 - [decisions/0001-eigenpal-adoption.md](decisions/0001-eigenpal-adoption.md) — why we picked eigenpal over CKEditor/BlockNote
 - [decisions/0002-zone-purge.md](decisions/0002-zone-purge.md) — why we removed editable zones (2026-04-25)
 - [decisions/0003-token-syntax-migration.md](decisions/0003-token-syntax-migration.md) — plan to move from `{{uuid}}` → `{name}`
+- [decisions/0008-placeholder-fixed-catalog.md](decisions/0008-placeholder-fixed-catalog.md) — replace user-fill placeholders with fixed 7-token computed catalog (2026-04-26)
 
 ### References
 - [references/eigenpal-spike.md](references/eigenpal-spike.md) — pointer to spike repo + key findings (T1–T8)

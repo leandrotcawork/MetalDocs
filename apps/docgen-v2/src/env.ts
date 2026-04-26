@@ -9,7 +9,7 @@ const EnvSchema = z.object({
   DOCGEN_V2_S3_ACCESS_KEY: z.string().min(3),
   DOCGEN_V2_S3_SECRET_KEY: z.string().min(3),
   DOCGEN_V2_S3_BUCKET: z.string().default('metaldocs-docx-v2'),
-  DOCGEN_V2_S3_USE_SSL: z.coerce.boolean().default(false),
+  DOCGEN_V2_S3_USE_SSL: z.enum(['true', 'false', '1', '0']).transform(v => v === 'true' || v === '1').default('false'),
   DOCGEN_V2_GOTENBERG_URL: z.string().url().default('http://gotenberg:3000'),
 });
 

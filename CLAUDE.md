@@ -1,3 +1,16 @@
+## Wiki
+
+Project knowledge lives in `wiki/`. **Always read `wiki/README.md` first** for any non-trivial task — it indexes every doc with file:line anchors. Skip re-grepping the codebase when the wiki already says where things are.
+
+Critical entry points:
+- `wiki/concepts/placeholders.md` — eigenpal native vs MetalDocs legacy gap
+- `wiki/modules/editor-ui-eigenpal.md` — how MetalDocs wraps eigenpal
+- `wiki/decisions/` — ADRs (zone purge, token migration, etc.)
+
+When you change code referenced by a wiki doc, update its `Last verified:` stamp.
+
+---
+
 Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
 
 Tradeoff: These guidelines bias toward caution over speed. For trivial tasks, use judgment.

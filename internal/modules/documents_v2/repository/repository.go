@@ -41,9 +41,9 @@ func (r *Repository) CreateDocument(ctx context.Context, d *domain.Document, ini
 
 	// Deferrable FKs allow inserting doc -> session -> revision in any order in tx.
 	if err := tx.QueryRowContext(ctx,
-		`INSERT INTO documents (tenant_id, template_version_id, name, status, form_data_json, created_by)
-		 VALUES ($1, $2, $3, 'draft', $4, $5) RETURNING id`,
-		d.TenantID, d.TemplateVersionID, d.Name, d.FormDataJSON, d.CreatedBy,
+		`INSERT INTO documents (tenant_id, template_version_id, name, status, form_data_json, created_by, controlled_document_id, profile_code_snapshot, process_area_code_snapshot)
+		 VALUES ($1, $2, $3, 'draft', $4, $5, $6, $7, $8) RETURNING id`,
+		d.TenantID, d.TemplateVersionID, d.Name, d.FormDataJSON, d.CreatedBy, d.ControlledDocumentID, d.ProfileCodeSnapshot, d.ProcessAreaCodeSnapshot,
 	).Scan(&docID); err != nil {
 		return "", "", "", fmt.Errorf("insert document: %w", err)
 	}

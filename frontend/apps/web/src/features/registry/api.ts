@@ -57,3 +57,21 @@ export async function supersedeControlledDocument(id: string): Promise<void> {
     method: "PUT",
   });
 }
+
+export interface ActiveDocumentInstance {
+  documentId: string;
+  approvalState: string;
+  contentHash: string;
+  revisionVersion: number;
+}
+
+export async function fetchActiveDocumentInstance(
+  controlledDocumentId: string,
+): Promise<ActiveDocumentInstance | null> {
+  const res = await fetch(`${BASE}/${encodeURIComponent(controlledDocumentId)}/active-document`, {
+    credentials: "include",
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error("Failed to load active document instance");
+  return res.json() as Promise<ActiveDocumentInstance>;
+}

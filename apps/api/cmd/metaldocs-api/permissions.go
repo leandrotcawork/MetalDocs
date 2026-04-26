@@ -209,6 +209,14 @@ func newPermissionResolver() iamdelivery.PermissionResolver {
 		if method == http.MethodGet && path == "/api/v2/signed" {
 			return iamdomain.PermTemplateView, true
 		}
+		if strings.HasPrefix(path, "/api/v2/approval/") {
+			switch {
+			case method == http.MethodGet:
+				return iamdomain.PermDocumentRead, true
+			case method == http.MethodPost, method == http.MethodPut, method == http.MethodDelete:
+				return iamdomain.PermWorkflowTransition, true
+			}
+		}
 
 		return "", false
 	}

@@ -29,7 +29,7 @@ var (
 
 func (h *Handler) PublishHandler(w http.ResponseWriter, r *http.Request) {
 	reqID := requestID(r)
-	tenantID := strings.TrimSpace(r.Header.Get("X-Tenant-ID"))
+	tenantID := tenantIDFromReq(r)
 	actorID := actorIDFromRequest(r)
 	documentID := r.PathValue("id")
 
@@ -68,7 +68,7 @@ func (h *Handler) PublishHandler(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) SchedulePublishHandler(w http.ResponseWriter, r *http.Request) {
 	reqID := requestID(r)
-	tenantID := strings.TrimSpace(r.Header.Get("X-Tenant-ID"))
+	tenantID := tenantIDFromReq(r)
 	actorID := actorIDFromRequest(r)
 	documentID := r.PathValue("id")
 

@@ -1,3 +1,13 @@
+## Local dev startup
+
+**Always use the PowerShell script — never bash/source .env:**
+```powershell
+.\scripts\start-api.ps1        # starts API on :8081
+.\scripts\start-api.ps1 -Build # rebuild binary first
+```
+Login: `POST /api/v1/auth/login` with body `{"identifier":"admin","password":"AdminMetalDocs123!"}`.
+Full details: `wiki/references/local-dev-startup.md`
+
 ## Wiki
 
 Project knowledge lives in `wiki/`. **Always read `wiki/README.md` first** for any non-trivial task — it indexes every doc with file:line anchors. Skip re-grepping the codebase when the wiki already says where things are.

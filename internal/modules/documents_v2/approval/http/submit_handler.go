@@ -14,7 +14,7 @@ import (
 func (h *Handler) SubmitHandler(w http.ResponseWriter, r *http.Request) {
 	reqID := requestID(r)
 	documentID := r.PathValue("id")
-	tenantID := strings.TrimSpace(r.Header.Get("X-Tenant-ID"))
+	tenantID := tenantIDFromReq(r)
 	actorID := iamdomain.UserIDFromContext(r.Context())
 	idempotencyKey := strings.TrimSpace(r.Header.Get("Idempotency-Key"))
 	if idempotencyKey == "" {

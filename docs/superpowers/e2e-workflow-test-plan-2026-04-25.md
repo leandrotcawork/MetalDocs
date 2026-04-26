@@ -75,26 +75,27 @@ FROM templates_v2_template WHERE key = 'e2e-full-v1';
 
 ## Stage 2 — Author Template (Catalog Panel + Token Insertion)
 
-**Goal:** DOCX uploaded with 7 catalog tokens in body, catalog panel auto-detects all 7 and marks them detected, schema saved as 7 computed placeholders, persists on reload.
+**Goal:** All 7 catalog tokens typed into built-in ProseMirror editor, catalog panel auto-detects all 7, schema saved as 7 computed placeholders, persists on reload.
 
-### 2A — Upload DOCX and verify eigenpal loads
+**Note (2026-04-26):** Template authoring uses the built-in ProseMirror editor — no DOCX upload. Authors type `{token_name}` directly in the canvas. DOCX is only generated at freeze/finalize time by docgen-v2 on the backend.
+
+### 2A — Editor loads
 
 | # | UI Action | Tool | Expected |
 |---|-----------|------|----------|
-| 2.1 | Template author page loads | `preview_snapshot` | Editor renders, left rail "Variables" tab visible |
+| 2.1 | Template author page loads after create | `preview_snapshot` | Editor renders, left rail visible, catalog panel open |
 | 2.2 | `preview_console_logs` | logs | 0 errors on load |
-| 2.3 | Upload DOCX (containing all 7 `{token}` paragraphs) via upload button | `preview_click` upload | Editor renders document content |
-| 2.4 | `preview_snapshot` | snapshot | Pages container shows content with `{doc_code}`, `{doc_title}` etc literal |
 
-### 2B — Verify catalog panel and auto-detect
+### 2B — Type tokens → catalog auto-detect
 
 | # | UI Action | Tool | Expected |
 |---|-----------|------|----------|
-| 2.5 | Click "Variables" tab on left rail | `preview_click` | Left panel shows catalog panel |
+| 2.3 | Click into ProseMirror canvas, type all 7 tokens one per line: `{doc_code}`, `{doc_title}`, `{revision_number}`, `{author}`, `{effective_date}`, `{approvers}`, `{controlled_by_area}` | `preview_eval execCommand / ProseMirror API` | Text appears in editor |
+| 2.4 | `preview_snapshot` | snapshot | Canvas shows all 7 literal tokens |
+| 2.5 | Verify catalog panel visible (left rail) | `preview_snapshot` | "Placeholders disponíveis" panel shows 7 entries |
 | 2.6 | `preview_snapshot` | snapshot | 7 catalog entries visible (doc_code, doc_title, revision_number, author, effective_date, approvers, controlled_by_area) |
-| 2.7 | Verify no "+ Add manually" button | `preview_snapshot` | Button absent |
-| 2.8 | `preview_inspect [data-testid="catalog-doc_code"]` | inspect | `data-detected="true"` (auto-detected from uploaded DOCX) |
-| 2.9 | Verify all 7 entries `data-detected="true"` | `preview_inspect` each | All green |
+| 2.7 | Verify no "+ Add manually" button | `preview_eval` | Button absent |
+| 2.8 | Verify all 7 entries `data-detected="true"` | `preview_eval` | All 7 auto-detected |
 | 2.10 | `preview_network` | network log | `PUT /schema → 200` after editor change |
 
 ### 2C — Verify persistence

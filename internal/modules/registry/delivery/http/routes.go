@@ -1,6 +1,7 @@
 package http
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -26,6 +27,13 @@ type createDocRequest struct {
 	ManualCodeReason          *string `json:"manualCodeReason"`
 	OverrideTemplateVersionID *string `json:"overrideTemplateVersionId"`
 	OverrideTemplateReason    *string `json:"overrideTemplateReason"`
+}
+
+type activeDocumentResponse struct {
+	DocumentID      string `json:"documentId"`
+	ApprovalState   string `json:"approvalState"`
+	ContentHash     string `json:"contentHash"`
+	RevisionVersion int    `json:"revisionVersion"`
 }
 
 func (h *Handler) listDocs(w http.ResponseWriter, r *http.Request) {
@@ -77,6 +85,53 @@ func (h *Handler) getDoc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpresponse.WriteJSON(w, http.StatusOK, doc)
+}
+
+func (h *Handler) getActiveDocument(w http.ResponseWriter, r *http.Request) {
+	tenantID := tenantIDFromRequest(r)
+	cdID := r.PathValue("id")
+
+	var resp activeDocumentResponse
+	err := h.db.QueryRowContext(r.Context(), `
+		SELECT d.id,
+		       COALESCE(d.content_hash_at_submit,
+		                (SELECT r.content_hash FROM document_revisions r
+		                  WHERE r.document_id = d.id
+		                  ORDER BY r.created_at DESC LIMIT 1),
+		                ''),
+		       COALESCE(d.revision_version, 0),
+		       COALESCE(
+		         (SELECT CASE ai.status
+		            WHEN 'in_progress' THEN 'under_review'
+		            WHEN 'approved'    THEN 'approved'
+		            WHEN 'scheduled'   THEN 'scheduled'
+		            WHEN 'rejected'    THEN 'rejected'
+		            WHEN 'cancelled'   THEN 'cancelled'
+		          END
+		          FROM approval_instances ai
+		          WHERE ai.document_v2_id = d.id
+		          ORDER BY ai.submitted_at DESC
+		          LIMIT 1),
+		         'draft'
+		       )
+		  FROM documents d
+		 WHERE d.tenant_id = $1::uuid
+		   AND d.controlled_document_id = $2::uuid
+		   AND d.status IN ('draft','under_review','approved','rejected','scheduled')
+		 LIMIT 1`,
+		tenantID, cdID,
+	).Scan(&resp.DocumentID, &resp.ContentHash, &resp.RevisionVersion, &resp.ApprovalState)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			httpresponse.WriteError(w, http.StatusNotFound, "NO_ACTIVE_INSTANCE", "no active document instance for this controlled document")
+			return
+		}
+		httpresponse.WriteError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal server error")
+		return
+	}
+
+	httpresponse.WriteJSON(w, http.StatusOK, resp)
 }
 
 func (h *Handler) obsoleteDoc(w http.ResponseWriter, r *http.Request) {

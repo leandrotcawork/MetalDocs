@@ -12,7 +12,7 @@ import styles from './RegistryDetailPanel.module.css';
 
 interface RegistryDetailPanelProps {
   documentId: string;
-  documentStatus: string;
+  approvalState: string;
   contentHash: string;
   revisionVersion: number;
   lockedByInstanceId?: string;
@@ -105,7 +105,7 @@ function toApprovalState(status: string): ApprovalState {
 
 export function RegistryDetailPanel({
   documentId,
-  documentStatus,
+  approvalState,
   contentHash,
   revisionVersion,
   lockedByInstanceId,
@@ -140,9 +140,15 @@ export function RegistryDetailPanel({
       const next = await getInstance(documentId);
       setInstance(next);
       setLastFetchedAt(Date.now());
-    } catch (_error) {
-      setError('Erro ao carregar dados de aprovação.');
-      setInstance(null);
+    } catch (err) {
+      if ((err as { status?: number }).status === 404) {
+        setInstance(null);
+        setLastFetchedAt(Date.now());
+        if (!etagCache.get(documentId)) etagCache.set(documentId, '"v0"');
+      } else {
+        setError('Erro ao carregar dados de aprovação.');
+        setInstance(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -166,7 +172,7 @@ export function RegistryDetailPanel({
     return now - lastFetchedAt > 30_000;
   }, [lastFetchedAt, now]);
 
-  const status = toApprovalState(documentStatus);
+  const status = toApprovalState(approvalState);
   const policy = TRANSITION_POLICY[status];
   const etag = etagCache.get(documentId) ?? '-';
   const shortHash = contentHash.length > 8 ? `${contentHash.slice(0, 8)}…` : contentHash;
@@ -414,5 +420,4 @@ export function RegistryDetailPanel({
 }
 
 export { TRANSITION_POLICY };
-
 

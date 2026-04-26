@@ -55,7 +55,7 @@ describe('RegistryDetailPanel', () => {
     render(
       <RegistryDetailPanel
         documentId="doc-1"
-        documentStatus="draft"
+        approvalState="draft"
         contentHash="abcdef1234567890"
         revisionVersion={4}
       />,
@@ -68,7 +68,7 @@ describe('RegistryDetailPanel', () => {
     render(
       <RegistryDetailPanel
         documentId="doc-1"
-        documentStatus="draft"
+        approvalState="draft"
         contentHash="abcdef1234567890"
         revisionVersion={4}
       />,
@@ -81,7 +81,7 @@ describe('RegistryDetailPanel', () => {
     render(
       <RegistryDetailPanel
         documentId="doc-1"
-        documentStatus="under_review"
+        approvalState="under_review"
         contentHash="abcdef1234567890"
         revisionVersion={4}
         lockedByInstanceId="inst-1"
@@ -100,7 +100,7 @@ describe('RegistryDetailPanel', () => {
     render(
       <RegistryDetailPanel
         documentId="doc-1"
-        documentStatus="approved"
+        approvalState="approved"
         contentHash="abcdef1234567890"
         revisionVersion={4}
       />,
@@ -113,7 +113,7 @@ describe('RegistryDetailPanel', () => {
     render(
       <RegistryDetailPanel
         documentId="doc-1"
-        documentStatus="obsolete"
+        approvalState="obsolete"
         contentHash="abcdef1234567890"
         revisionVersion={4}
       />,
@@ -126,7 +126,7 @@ describe('RegistryDetailPanel', () => {
     render(
       <RegistryDetailPanel
         documentId="doc-1"
-        documentStatus="draft"
+        approvalState="draft"
         contentHash="abcdef1234567890"
         revisionVersion={4}
       />,
@@ -145,7 +145,7 @@ describe('RegistryDetailPanel', () => {
     render(
       <RegistryDetailPanel
         documentId="doc-1"
-        documentStatus="draft"
+        approvalState="draft"
         contentHash="abcdef1234567890"
         revisionVersion={4}
       />,
@@ -171,7 +171,7 @@ describe('RegistryDetailPanel', () => {
     render(
       <RegistryDetailPanel
         documentId="doc-1"
-        documentStatus="draft"
+        approvalState="draft"
         contentHash="abcdef1234567890"
         revisionVersion={4}
       />,

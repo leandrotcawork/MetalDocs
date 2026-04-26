@@ -77,8 +77,13 @@ func actorIDFromRequest(r *http.Request) string {
 	return iamdomain.UserIDFromContext(r.Context())
 }
 
+const devTenantID = "ffffffff-ffff-ffff-ffff-ffffffffffff"
+
 func tenantIDFromReq(r *http.Request) string {
-	return strings.TrimSpace(r.Header.Get("X-Tenant-ID"))
+	if t := strings.TrimSpace(r.Header.Get("X-Tenant-ID")); t != "" {
+		return t
+	}
+	return devTenantID
 }
 
 func parseIfMatch(header string) (int, error) {

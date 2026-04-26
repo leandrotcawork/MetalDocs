@@ -55,6 +55,8 @@
 - [references/eigenpal-spike.md](references/eigenpal-spike.md) — pointer to spike repo + key findings (T1–T8)
 - [references/environment-setup.md](references/environment-setup.md) — local dev: compose, migrations, seed
 - [references/how-to-run-tests.md](references/how-to-run-tests.md) — Go tests, frontend vitest, e2e playwright
+- [references/local-dev-startup.md](references/local-dev-startup.md) — **START HERE** — PS script, port, credentials, common mistakes
+- [references/local-dev-credentials.md](references/local-dev-credentials.md) — admin login details, DB access
 
 ### Glossary
 - [GLOSSARY.md](GLOSSARY.md) — placeholder, zone (deprecated), fanout, freeze, eigenpal, controlled doc, profile, etc.

@@ -41,6 +41,7 @@ type Document struct {
 	ControlledDocumentID    *string
 	ProfileCodeSnapshot     *string
 	ProcessAreaCodeSnapshot *string
+	Code                    string
 	// TemplateVersionID is already present above — now semantically write-once after this migration
 }
 

@@ -26,6 +26,7 @@ import { renderDocumentsV2View, routeFromPath as docsRouteFromPath, pathFromRout
 import { RegistryListPage } from "./features/registry";
 import { AreaMembershipAdminPage } from "./features/iam/AreaMembershipAdminPage";
 import { InboxPage } from "./features/approval/pages/InboxPage";
+import { RouteAdminPage } from "./features/approval/pages/RouteAdminPage";
 import { Toaster } from "sonner";
 
 type AppErrorBoundaryState = {
@@ -349,6 +350,10 @@ function AppContent() {
   function renderWorkspaceView() {
     if (activeView === "approvals") {
       return <InboxPage />;
+    }
+
+    if (activeView === "approval-routes" && isAdmin) {
+      return <RouteAdminPage />;
     }
 
     if (activeView === "operations" || activeView === "audit") {

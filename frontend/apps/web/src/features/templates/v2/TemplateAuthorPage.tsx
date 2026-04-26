@@ -104,6 +104,14 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
     setLiveVersion(draft.version ?? null);
   }, [draft.version]);
 
+  // Sync detected tokens on load: runs once when catalog + draft content are both ready.
+  const editorContentReady = draft.version != null && catalog.length > 0;
+  useEffect(() => {
+    if (!editorContentReady) return;
+    const timer = window.setTimeout(syncPlaceholdersFromDocument, 600);
+    return () => window.clearTimeout(timer);
+  }, [editorContentReady, syncPlaceholdersFromDocument]);
+
   useEffect(() => {
     if (!schemaState.schemas) return;
     setLocalSchemas(schemaState.schemas);

@@ -271,9 +271,10 @@ func (s *SubmitService) loadRoute(ctx context.Context, tx *sql.Tx, tenantID, rou
 func loadDocumentAreaCode(ctx context.Context, tx *sql.Tx, tenantID, documentID string) (string, error) {
 	var areaCode string
 	err := tx.QueryRowContext(ctx, `
-		SELECT area_code
-		FROM documents
-		WHERE id = $1 AND tenant_id = $2`,
+		SELECT COALESCE(d.process_area_code_snapshot, cd.process_area_code, '')
+		  FROM documents d
+		  LEFT JOIN controlled_documents cd ON d.controlled_document_id = cd.id
+		 WHERE d.id = $1 AND d.tenant_id = $2`,
 		documentID, tenantID,
 	).Scan(&areaCode)
 	if err != nil {

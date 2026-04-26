@@ -115,3 +115,21 @@ type StageResponse struct {
 	QuorumM            *int   `json:"quorum_m,omitempty"`
 	DriftPolicy        string `json:"drift_policy"`
 }
+
+type ListStageItem struct {
+	Label       string   `json:"label"`
+	Members     []string `json:"members"`
+	QuorumKind  string   `json:"quorum_kind"`
+	DriftPolicy string   `json:"drift_policy"`
+}
+
+type ListRouteItem struct {
+	ID          string          `json:"id"`
+	Name        string          `json:"name"`
+	TenantID    string          `json:"tenant_id"`
+	ProfileCode string          `json:"profile_code"`
+	Active      bool            `json:"active"`
+	Stages      []ListStageItem `json:"stages"`
+	CreatedAt   string          `json:"created_at"`
+	UpdatedAt   string          `json:"updated_at"`
+}

@@ -3,7 +3,7 @@ import { buildProfileAccordions } from "../features/documents/adapters/catalogSu
 import type { DocumentProfileItem, ProcessAreaItem, SearchDocumentItem } from "../lib.types";
 import styles from "./DocumentWorkspaceShell.module.css";
 
-export type WorkspaceView = "operations" | "approvals" | "audit" | "library" | "my-docs" | "recent" | "create" | "content-builder" | "registry" | "notifications" | "admin" | "taxonomy-admin" | "templates-v2" | "documents-v2" | "registry-v2" | "iam-memberships";
+export type WorkspaceView = "operations" | "approvals" | "audit" | "library" | "my-docs" | "recent" | "create" | "content-builder" | "registry" | "notifications" | "admin" | "taxonomy-admin" | "templates-v2" | "documents-v2" | "registry-v2" | "iam-memberships" | "approval-routes";
 
 type WorkspaceShellProps = {
   userDisplayName: string;
@@ -198,6 +198,15 @@ function sections(props: WorkspaceShellProps): NavSection[] {
             </svg>
           ),
         },
+        {
+          key: "approval-routes" as WorkspaceView,
+          label: "Rotas de Aprovacao",
+          icon: (
+            <svg viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.4">
+              <path d="M2 7.5h11M9 4l3.5 3.5L9 11" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          ),
+        },
       ],
     });
   }
@@ -255,6 +264,8 @@ function activeTitle(activeView: WorkspaceView): string {
       return "Documentos Controlados";
     case "iam-memberships":
       return "Memberships de Area";
+    case "approval-routes":
+      return "Rotas de Aprovacao";
     default:
       return "Workspace";
   }

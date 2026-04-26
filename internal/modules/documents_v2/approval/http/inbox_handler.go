@@ -15,7 +15,7 @@ import (
 
 func (h *Handler) InboxHandler(w http.ResponseWriter, r *http.Request) {
 	reqID := requestID(r)
-	tenantID := strings.TrimSpace(r.Header.Get("X-Tenant-ID"))
+	tenantID := tenantIDFromReq(r)
 	actorID := iamdomain.UserIDFromContext(r.Context())
 	areaCode := strings.TrimSpace(r.URL.Query().Get("area_code"))
 

@@ -29,7 +29,7 @@ func New(deps Dependencies) *Module {
 	areas := infrastructure.NewTaxonomyAreaReader(deps.DB)
 	govLogger := taxonomyapp.NewDBGovernanceLogger(deps.DB)
 	svc := application.NewRegistryService(deps.DB, repo, seq, tplCheck, profiles, areas, govLogger)
-	h := dhttp.NewHandler(svc)
+	h := dhttp.NewHandler(svc, deps.DB)
 	return &Module{Handler: h}
 }
 

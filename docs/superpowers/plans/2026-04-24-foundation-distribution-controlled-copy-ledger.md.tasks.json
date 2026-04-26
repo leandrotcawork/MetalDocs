@@ -1,0 +1,95 @@
+{
+  "planPath": "docs/superpowers/plans/2026-04-24-foundation-distribution-controlled-copy-ledger.md",
+  "lastUpdated": "2026-04-24T00:00:00Z",
+  "executionModel": {
+    "coding": "gpt-5.3-codex (high|medium|low effort per task)",
+    "simple_ui_or_boilerplate": "claude-haiku-4-5 | claude-sonnet-4-6",
+    "controller": "opus (this session, never codes directly)",
+    "watch_protocol": "every codex launch: status poll until completed/failed/canceled, ≤20min cancel threshold"
+  },
+  "tasks": [
+    {
+      "id": 1,
+      "subject": "Phase 1: Migrations 0157–0168 (enums, tenants, outbox, ledger, exports, reconciliation)",
+      "status": "pending",
+      "description": "**Goal:** all schema for Spec 4 in place.\n\n**Files:** migrations/0157_ack_type_enum.sql → 0168_governance_events.sql (12 files).\n\n**Acceptance:** `go run ./apps/api migrate up` clean; smoke test inserts roundtrip for each new table.\n\n```json:metadata\n{\"files\":[\"migrations/0157_ack_type_enum.sql\",\"migrations/0158_metaldocs_tenants.sql\",\"migrations/0159_controlled_documents_criticality.sql\",\"migrations/0160_process_areas_default_ack_type.sql\",\"migrations/0161_documents_ack_type_distribution_mode.sql\",\"migrations/0162_document_distributions.sql\",\"migrations/0163_distribution_outbox.sql\",\"migrations/0164_distribution_outbox_dlq.sql\",\"migrations/0165_document_exports.sql\",\"migrations/0166_documents_legal_transition_trigger_ext.sql\",\"migrations/0167_distribution_nonces.sql\",\"migrations/0168_governance_events.sql\"],\"verifyCommand\":\"go run ./apps/api migrate up && psql -c '\\\\d+ document_distributions'\",\"acceptanceCriteria\":[\"all 12 migrations apply clean\",\"round-trip insert on each new table\"],\"model\":\"gpt-5.3-codex\",\"effort\":\"medium\"}\n```"
+    },
+    {
+      "id": 2,
+      "subject": "Phase 2: Domain layer (AckType, CriticalityTier, RevokeReason, ResolveAckType, Nonce, HMAC)",
+      "status": "pending",
+      "blockedBy": [1],
+      "description": "**Goal:** pure-Go primitives; 7-case policy matrix; ComputeAckSignature returns 64-char hex.\n\n```json:metadata\n{\"files\":[\"internal/modules/distribution/domain/ack_type.go\",\"internal/modules/distribution/domain/criticality.go\",\"internal/modules/distribution/domain/revoke_reason.go\",\"internal/modules/distribution/domain/resolve_ack_type.go\",\"internal/modules/distribution/domain/nonce.go\",\"internal/modules/distribution/domain/signature.go\"],\"verifyCommand\":\"rtk go test ./internal/modules/distribution/domain/... -count=1\",\"acceptanceCriteria\":[\"7-case ack_type matrix passes\",\"ErrAckTypeLocked surfaced on safety/regulatory attempt\",\"HMAC signature matches golden vector\"],\"model\":\"gpt-5.3-codex\",\"effort\":\"high\"}\n```"
+    },
+    {
+      "id": 3,
+      "subject": "Phase 3: Outbox + FanoutWorker (advisory-locked per controlled_document_id, backoff + DLQ)",
+      "status": "pending",
+      "blockedBy": [1, 2],
+      "description": "**Goal:** enqueue/claim via FOR UPDATE SKIP LOCKED, advisory-lock fan-out, 1m/5m/15m/1h/4h backoff → DLQ after 5.\n\n```json:metadata\n{\"files\":[\"internal/modules/distribution/repository/outbox_repo.go\",\"internal/modules/distribution/repository/distribution_repo.go\",\"internal/modules/distribution/application/fanout_worker.go\",\"internal/modules/distribution/application/fanout_worker_test.go\"],\"verifyCommand\":\"rtk go test ./internal/modules/distribution/application/... -count=1\",\"acceptanceCriteria\":[\"supersession preserves acked_at\",\"advisory lock serializes rev-N vs rev-N+1\",\"DLQ after 5 fails\"],\"model\":\"gpt-5.3-codex\",\"effort\":\"high\"}\n```"
+    },
+    {
+      "id": 4,
+      "subject": "Phase 4: Publish hook — extend Spec 2 PublishService inside tx (active/passive, prior_version_id)",
+      "status": "pending",
+      "blockedBy": [3],
+      "description": "**Goal:** PublishService calls Distributor.EnqueueFanout inside same tx; passive skips; scheduled path enqueues with ScheduledFor.\n\n```json:metadata\n{\"files\":[\"internal/modules/documents_v2/approval/application/publish_service.go\",\"internal/modules/distribution/application/publish_hook.go\",\"internal/modules/distribution/application/publish_hook_test.go\",\"internal/modules/documents_v2/approval/repository/approval_repository.go\"],\"verifyCommand\":\"rtk go test ./internal/modules/documents_v2/approval/... ./internal/modules/distribution/... -count=1\",\"acceptanceCriteria\":[\"Spec 2 tests pass unchanged\",\"active mode = 1 row, passive = 0\",\"prior_version_id threaded on supersession\"],\"model\":\"gpt-5.3-codex\",\"effort\":\"high\",\"opusReview\":true}\n```"
+    },
+    {
+      "id": 5,
+      "subject": "Phase 5: Membership hook — Grant enqueues, Revoke marks non-acked revoke_reason=area_removed",
+      "status": "pending",
+      "blockedBy": [3],
+      "description": "**Goal:** single SQL per call; idempotent; only pending rows affected on revoke.\n\n```json:metadata\n{\"files\":[\"internal/modules/iam/area_membership/area_membership.go\",\"internal/modules/iam/area_membership/area_membership_test.go\"],\"verifyCommand\":\"rtk go test ./internal/modules/iam/area_membership/... -count=1\",\"acceptanceCriteria\":[\"Grant enqueues scoped rows per published active doc\",\"Revoke marks pending rows revoked+area_removed\",\"idempotent re-call\"],\"model\":\"gpt-5.3-codex\",\"effort\":\"medium\"}\n```"
+    },
+    {
+      "id": 6,
+      "subject": "Phase 6: AckService + HTTP handlers (nonce, view ack, signature ack, rate limit, 429/409/410)",
+      "status": "pending",
+      "blockedBy": [2, 3],
+      "description": "**Goal:** 32b base64url nonce, 15min TTL, single-use; password re-auth for signature; rate limit 5 failed/15min/(user,obligation); HTTP error mapping complete.\n\n```json:metadata\n{\"files\":[\"internal/modules/distribution/application/ack_service.go\",\"internal/modules/distribution/application/ack_service_test.go\",\"internal/modules/distribution/delivery/http/ack_handler.go\",\"internal/modules/distribution/delivery/http/ack_handler_test.go\",\"internal/modules/distribution/repository/nonce_repo.go\"],\"verifyCommand\":\"rtk go test ./internal/modules/distribution/application/... ./internal/modules/distribution/delivery/... -count=1\",\"acceptanceCriteria\":[\"nonce consumed only on success (view) or password-ok (signature)\",\"rate limit triggers 429\",\"ack_signature is 64-char hex\"],\"model\":\"gpt-5.3-codex\",\"effort\":\"high\",\"opusReview\":true}\n```"
+    },
+    {
+      "id": 7,
+      "subject": "Phase 7: ExportService watermark (ledger insert + inject via docgen-v2 + hash backfill)",
+      "status": "pending",
+      "blockedBy": [1],
+      "description": "**Goal:** watermark_text deterministic; 503 on Gotenberg down (no ledger row); 500 on inject fail (rollback).\n\n```json:metadata\n{\"files\":[\"internal/modules/documents_v2/application/export_service.go\",\"internal/modules/documents_v2/application/export_service_test.go\",\"internal/modules/distribution/repository/exports_repo.go\",\"apps/docgen-v2/src/routes/convert-pdf.ts\"],\"verifyCommand\":\"rtk go test ./internal/modules/documents_v2/application/... -count=1 -run Export && rtk pnpm -C apps/docgen-v2 vitest run\",\"acceptanceCriteria\":[\"watermark hash = sha256(text || pdf[:4096])\",\"503 → 0 ledger rows\",\"500 → ledger rolled back\"],\"model\":\"gpt-5.3-codex\",\"effort\":\"high\",\"opusReview\":true}\n```"
+    },
+    {
+      "id": 8,
+      "subject": "Phase 8: CutoverJob + DST resolver (earlier/later policy)",
+      "status": "pending",
+      "blockedBy": [3],
+      "description": "**Goal:** 60s scheduler tick flips scheduled→published with advisory lock; DST table-driven test.\n\n```json:metadata\n{\"files\":[\"internal/modules/distribution/application/cutover_job.go\",\"internal/modules/distribution/application/cutover_job_test.go\",\"internal/modules/distribution/domain/dst.go\",\"internal/modules/distribution/domain/dst_test.go\",\"apps/worker/cmd/metaldocs-worker/main.go\"],\"verifyCommand\":\"rtk go test ./internal/modules/distribution/application/... ./internal/modules/distribution/domain/... -count=1\",\"acceptanceCriteria\":[\"OCC guard skips racing cutover\",\"fall-back earlier=EDT, later=EST\",\"spring-gap earlier=pre, later=post\"],\"model\":\"gpt-5.3-codex\",\"effort\":\"medium\"}\n```"
+    },
+    {
+      "id": 9,
+      "subject": "Phase 9: ReconciliationJob + Prometheus metrics (outbox/DLQ depth, ack latency)",
+      "status": "pending",
+      "blockedBy": [3, 5],
+      "description": "**Goal:** nightly backfill + orphan sweep; summary row; histograms/gauges registered.\n\n```json:metadata\n{\"files\":[\"internal/modules/distribution/application/reconciliation_job.go\",\"internal/modules/distribution/application/reconciliation_job_test.go\",\"internal/modules/distribution/observability/metrics.go\"],\"verifyCommand\":\"rtk go test ./internal/modules/distribution/application/... -count=1 -run Reconciliation\",\"acceptanceCriteria\":[\"missing obligations inserted\",\"orphans flagged revoke_reason=reconciliation_orphan\",\"summary row written\"],\"model\":\"gpt-5.3-codex\",\"effort\":\"medium\",\"opusReview\":true}\n```"
+    },
+    {
+      "id": 10,
+      "subject": "Phase 10: Frontend UI (Inbox, AckModal, ManagerDashboard, PublishDialog ext, TenantSettings)",
+      "status": "pending",
+      "blockedBy": [6],
+      "description": "**Goal:** 5 screens + 1 extension; reuse TanStack+RHF+Zod; route guards.\n\n```json:metadata\n{\"files\":[\"frontend/apps/web/src/features/distribution/pages/InboxPage.tsx\",\"frontend/apps/web/src/features/distribution/components/AckModal.tsx\",\"frontend/apps/web/src/features/distribution/pages/ManagerDashboardPage.tsx\",\"frontend/apps/web/src/features/approval/components/PublishDialog.tsx\",\"frontend/apps/web/src/features/tenant/pages/TenantSettingsPage.tsx\",\"frontend/apps/web/src/app/routes.tsx\"],\"verifyCommand\":\"rtk pnpm -C frontend/apps/web vitest run src/features/distribution src/features/tenant && rtk pnpm -C frontend/apps/web tsc --noEmit\",\"acceptanceCriteria\":[\"error codes 401/409/410/429 mapped\",\"criticality=safety/regulatory locks ack_type=signature\",\"RBAC guards on 3 routes\"],\"model\":\"gpt-5.3-codex\",\"effort\":\"low\",\"fallbackSimpleModel\":\"claude-haiku-4-5\",\"opusReview\":true}\n```"
+    },
+    {
+      "id": 11,
+      "subject": "Phase 11: Integration + Load + E2E tests",
+      "status": "pending",
+      "blockedBy": [6, 8, 10],
+      "description": "**Goal:** integration (publish→ack), load (50-way rev contention, 0 dup obligations), Playwright E2E (inbox, signature, 410).\n\n```json:metadata\n{\"files\":[\"internal/modules/distribution/integration_test.go\",\"internal/modules/distribution/load_test.go\",\"frontend/apps/web/e2e/distribution.spec.ts\"],\"verifyCommand\":\"rtk go test -tags=integration ./internal/modules/distribution/... -count=1 && rtk go test -tags=load ./internal/modules/distribution/... -count=1 -timeout 5m && rtk pnpm -C frontend/apps/web exec playwright test e2e/distribution.spec.ts\",\"acceptanceCriteria\":[\"round-trip ≤3s\",\"1 live rev after 50 publishers\",\"0 duplicate obligations\"],\"model\":\"gpt-5.3-codex\",\"effort\":\"medium\",\"opusReview\":true}\n```"
+    },
+    {
+      "id": 12,
+      "subject": "Phase 12: Hardening + cutover migrations (DML backfill, DLQ replay, feature flag default-off)",
+      "status": "pending",
+      "blockedBy": [9, 11],
+      "description": "**Goal:** idempotent migration 0169; DLQ admin replay endpoint; feature flag distribution.active_mode_enabled (default off).\n\n```json:metadata\n{\"files\":[\"migrations/0169_distribution_backfill_production.sql\",\"internal/modules/distribution/delivery/http/admin_dlq_handler.go\",\"internal/shared/featureflags/registry.go\"],\"verifyCommand\":\"rtk go test ./internal/modules/distribution/... -count=1 -run Admin && psql -f migrations/0169_distribution_backfill_production.sql && psql -f migrations/0169_distribution_backfill_production.sql\",\"acceptanceCriteria\":[\"0 rows on 2nd migration apply\",\"replay moves DLQ→outbox with attempt_count=0\",\"flag default off; FanoutWorker no-op when off\"],\"model\":\"gpt-5.3-codex\",\"effort\":\"high\",\"opusReview\":true}\n```"
+    }
+  ]
+}

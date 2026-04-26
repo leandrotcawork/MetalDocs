@@ -3,7 +3,6 @@ package approvalhttp
 import (
 	"errors"
 	"net/http"
-	"strings"
 	"time"
 
 	"metaldocs/internal/modules/documents_v2/approval/domain"
@@ -14,7 +13,7 @@ import (
 
 func (h *Handler) GetInstanceHandler(w http.ResponseWriter, r *http.Request) {
 	reqID := requestID(r)
-	tenantID := strings.TrimSpace(r.Header.Get("X-Tenant-ID"))
+	tenantID := tenantIDFromReq(r)
 	actorID := iamdomain.UserIDFromContext(r.Context())
 	instanceID := r.PathValue("instance_id")
 

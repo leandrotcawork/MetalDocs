@@ -41,9 +41,9 @@ func (r *Repository) CreateDocument(ctx context.Context, d *domain.Document, ini
 
 	// Deferrable FKs allow inserting doc -> session -> revision in any order in tx.
 	if err := tx.QueryRowContext(ctx,
-		`INSERT INTO documents (tenant_id, template_version_id, name, status, form_data_json, created_by)
-		 VALUES ($1, $2, $3, 'draft', $4, $5) RETURNING id`,
-		d.TenantID, d.TemplateVersionID, d.Name, d.FormDataJSON, d.CreatedBy,
+		`INSERT INTO documents (tenant_id, template_version_id, name, status, form_data_json, created_by, controlled_document_id)
+		 VALUES ($1, $2, $3, 'draft', $4, $5, $6) RETURNING id`,
+		d.TenantID, d.TemplateVersionID, d.Name, d.FormDataJSON, d.CreatedBy, d.ControlledDocumentID,
 	).Scan(&docID); err != nil {
 		return "", "", "", fmt.Errorf("insert document: %w", err)
 	}
@@ -103,11 +103,12 @@ func (r *Repository) GetDocument(ctx context.Context, tenantID, id string) (*dom
 	err := r.db.QueryRowContext(ctx,
 		`SELECT id, tenant_id, template_version_id, name, status, form_data_json,
 		        coalesce(current_revision_id::text, ''), coalesce(active_session_id::text, ''),
-		        finalized_at, archived_at, created_at, updated_at, created_by
+		        finalized_at, archived_at, created_at, updated_at, created_by,
+		        controlled_document_id, coalesce(code,'')
 		 FROM documents WHERE id=$1 AND tenant_id=$2`, id, tenantID,
 	).Scan(&d.ID, &d.TenantID, &d.TemplateVersionID, &d.Name, &d.Status, &d.FormDataJSON,
 		&d.CurrentRevisionID, &d.ActiveSessionID, &d.FinalizedAt, &d.ArchivedAt,
-		&d.CreatedAt, &d.UpdatedAt, &d.CreatedBy)
+		&d.CreatedAt, &d.UpdatedAt, &d.CreatedBy, &d.ControlledDocumentID, &d.Code)
 	if errors.Is(err, sql.ErrNoRows) || isInvalidUUID(err) {
 		return nil, domain.ErrNotFound
 	}
@@ -135,7 +136,8 @@ func (r *Repository) ListDocuments(ctx context.Context, tenantID string) ([]doma
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, tenant_id, template_version_id, name, status, form_data_json,
 		        coalesce(current_revision_id::text, ''), coalesce(active_session_id::text, ''),
-		        finalized_at, archived_at, created_at, updated_at, created_by
+		        finalized_at, archived_at, created_at, updated_at, created_by,
+		        controlled_document_id, coalesce(code,'')
 		 FROM documents WHERE tenant_id=$1 ORDER BY updated_at DESC`, tenantID)
 	if err != nil {
 		return nil, err
@@ -146,7 +148,7 @@ func (r *Repository) ListDocuments(ctx context.Context, tenantID string) ([]doma
 		var d domain.Document
 		if err := rows.Scan(&d.ID, &d.TenantID, &d.TemplateVersionID, &d.Name, &d.Status, &d.FormDataJSON,
 			&d.CurrentRevisionID, &d.ActiveSessionID, &d.FinalizedAt, &d.ArchivedAt,
-			&d.CreatedAt, &d.UpdatedAt, &d.CreatedBy); err != nil {
+			&d.CreatedAt, &d.UpdatedAt, &d.CreatedBy, &d.ControlledDocumentID, &d.Code); err != nil {
 			return nil, err
 		}
 		out = append(out, d)
@@ -161,7 +163,8 @@ func (r *Repository) ListDocumentsForUser(ctx context.Context, tenantID, userID 
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, tenant_id, template_version_id, name, status, form_data_json,
 		        coalesce(current_revision_id::text, ''), coalesce(active_session_id::text, ''),
-		        finalized_at, archived_at, created_at, updated_at, created_by
+		        finalized_at, archived_at, created_at, updated_at, created_by,
+		        controlled_document_id, coalesce(code,'')
 		 FROM documents WHERE tenant_id=$1 AND created_by=$2 ORDER BY updated_at DESC`, tenantID, userID)
 	if err != nil {
 		return nil, err
@@ -172,7 +175,7 @@ func (r *Repository) ListDocumentsForUser(ctx context.Context, tenantID, userID 
 		var d domain.Document
 		if err := rows.Scan(&d.ID, &d.TenantID, &d.TemplateVersionID, &d.Name, &d.Status, &d.FormDataJSON,
 			&d.CurrentRevisionID, &d.ActiveSessionID, &d.FinalizedAt, &d.ArchivedAt,
-			&d.CreatedAt, &d.UpdatedAt, &d.CreatedBy); err != nil {
+			&d.CreatedAt, &d.UpdatedAt, &d.CreatedBy, &d.ControlledDocumentID, &d.Code); err != nil {
 			return nil, err
 		}
 		out = append(out, d)

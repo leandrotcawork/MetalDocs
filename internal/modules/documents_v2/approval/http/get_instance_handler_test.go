@@ -136,7 +136,7 @@ func TestGetInstanceHandler_NoTenantHeader(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", rr.Code, http.StatusOK)
 	}
-	if fakeSvc.gotTenantID != "" {
-		t.Fatalf("tenant_id = %q, want empty", fakeSvc.gotTenantID)
+	if fakeSvc.gotTenantID != devTenantID {
+		t.Fatalf("tenant_id = %q, want %q", fakeSvc.gotTenantID, devTenantID)
 	}
 }

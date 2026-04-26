@@ -20,7 +20,7 @@ var cancelInstance = func(h *Handler, ctx context.Context, db *sql.DB, req appli
 
 func (h *Handler) CancelHandler(w http.ResponseWriter, r *http.Request) {
 	reqID := requestID(r)
-	tenantID := strings.TrimSpace(r.Header.Get("X-Tenant-ID"))
+	tenantID := tenantIDFromReq(r)
 	actorID := actorIDFromRequest(r)
 	instanceID := r.PathValue("instance_id")
 

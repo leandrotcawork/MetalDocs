@@ -89,7 +89,7 @@ func TestRegistryHandler_ErrorEnvelopeContract(t *testing.T) {
 		fakeAreaReader{},
 		fakeGovernanceLogger{},
 	)
-	handler := NewHandler(svc)
+	handler := NewHandler(svc, nil)
 	mux := http.NewServeMux()
 	handler.RegisterRoutes(mux)
 

@@ -103,7 +103,7 @@ func ValidatePlaceholders(phs []domain.Placeholder) error {
 			if _, ok := placeholderCatalogSet[p.Name]; !ok {
 				return fmt.Errorf("placeholder[%s] name %q: %w", p.ID, p.Name, domain.ErrPlaceholderNotInCatalog)
 			}
-			if p.Type != domain.PHComputed || !p.Computed || p.ResolverKey == nil || *p.ResolverKey != p.Name {
+			if p.Type != domain.PHComputed || p.ResolverKey == nil || *p.ResolverKey != p.Name {
 				return fmt.Errorf("placeholder[%s] %q: %w", p.ID, p.Name, domain.ErrPlaceholderNotComputed)
 			}
 		}

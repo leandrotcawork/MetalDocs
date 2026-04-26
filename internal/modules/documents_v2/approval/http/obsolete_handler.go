@@ -20,7 +20,7 @@ var markObsolete = func(h *Handler, ctx context.Context, db *sql.DB, req applica
 
 func (h *Handler) ObsoleteHandler(w http.ResponseWriter, r *http.Request) {
 	reqID := requestID(r)
-	tenantID := strings.TrimSpace(r.Header.Get("X-Tenant-ID"))
+	tenantID := tenantIDFromReq(r)
 	actorID := actorIDFromRequest(r)
 	documentID := r.PathValue("id")
 

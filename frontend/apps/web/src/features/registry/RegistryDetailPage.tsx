@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { fetchControlledDocument, obsoleteControlledDocument } from "./api";
+import { fetchActiveDocumentInstance, fetchControlledDocument, obsoleteControlledDocument, type ActiveDocumentInstance } from "./api";
 import type { ControlledDocument } from "./types";
+import { RegistryDetailPanel } from '../approval/components/RegistryDetailPanel';
 
 type Props = {
   id: string;
@@ -22,6 +23,7 @@ function StatusBadge({ status }: { status: ControlledDocument["status"] }) {
 
 export function RegistryDetailPage({ id, onBack }: Props) {
   const [doc, setDoc] = useState<ControlledDocument | null>(null);
+  const [instance, setInstance] = useState<ActiveDocumentInstance | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [actioning, setActioning] = useState(false);
@@ -31,6 +33,12 @@ export function RegistryDetailPage({ id, onBack }: Props) {
     try {
       const d = await fetchControlledDocument(id);
       setDoc(d);
+      try {
+        const inst = await fetchActiveDocumentInstance(id);
+        setInstance(inst);
+      } catch {
+        setInstance(null);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load.");
     } finally {
@@ -103,6 +111,20 @@ export function RegistryDetailPage({ id, onBack }: Props) {
           </button>
         </div>
       )}
+      {instance !== null ? (
+        <div style={{ marginTop: 32 }}>
+          <RegistryDetailPanel
+            documentId={instance.documentId}
+            approvalState={instance.approvalState}
+            contentHash={instance.contentHash}
+            revisionVersion={instance.revisionVersion}
+          />
+        </div>
+      ) : doc.status === 'active' ? (
+        <div style={{ marginTop: 32, padding: 16, border: '1px dashed #ccc', borderRadius: 4, color: '#888' }}>
+          <p style={{ margin: 0 }}>Nenhum documento ativo para este registro.</p>
+        </div>
+      ) : null}
     </div>
   );
 }

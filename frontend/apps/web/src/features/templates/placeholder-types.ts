@@ -8,6 +8,7 @@ export interface VisibilityCondition {
 
 export interface Placeholder {
   id: string;
+  name?: string;
   label: string;
   type: PlaceholderType;
   required?: boolean;

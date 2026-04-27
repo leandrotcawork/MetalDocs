@@ -486,8 +486,13 @@
 }
 .editorWrapper :global(.ep-root) { scrollbar-width: thin; scrollbar-color: var(--brand) transparent; }
 
-/* Hide template annotation chips sidebar — plugin still active for substitution */
+/* Hide template annotation chips — plugin still active for substitution */
+.editorWrapper :global(.plugin-panels-left),
+.editorWrapper :global(.plugin-panels-right),
 .editorWrapper :global(.docx-unified-sidebar) { display: none !important; }
+
+/* Eigenpal shifts canvas left via transform when sidebar is present; undo it */
+.editorWrapper :global(.ep-root.paged-editor > div) { transform: none !important; }
 
 /* ---------- Submit alert (inline banner) ---------- */
 .submitAlert {

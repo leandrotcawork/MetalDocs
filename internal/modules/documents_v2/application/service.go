@@ -80,6 +80,10 @@ type RegistryReader interface {
 	GetByID(ctx context.Context, tenantID, id string) (*registrydomain.ControlledDocument, error)
 }
 
+type RegistryDuplicator interface {
+	DuplicateControlledDocument(ctx context.Context, tenantID, controlledDocumentID, actorUserID string) (*registrydomain.ControlledDocument, error)
+}
+
 // AuthorizationChecker validates that the actor can perform an action on a resource.
 type AuthorizationChecker interface {
 	Check(ctx context.Context, userID, tenantID string, cap iamdomain.Capability, res iamapp.ResourceCtx) error
@@ -91,16 +95,17 @@ type ProfileDefaultTemplateReader interface {
 }
 
 type Service struct {
-	repo             Repository
-	docgen           DocgenRenderer
-	presigner        Presigner
-	tpl              TemplateReader
-	fv               FormValidator
-	audit            Audit
-	registry         RegistryReader
-	authz            AuthorizationChecker
-	profileTemplates ProfileDefaultTemplateReader
-	snapshotSvc      *SnapshotService
+	repo               Repository
+	docgen             DocgenRenderer
+	presigner          Presigner
+	tpl                TemplateReader
+	fv                 FormValidator
+	audit              Audit
+	registry           RegistryReader
+	registryDuplicator RegistryDuplicator
+	authz              AuthorizationChecker
+	profileTemplates   ProfileDefaultTemplateReader
+	snapshotSvc        *SnapshotService
 }
 
 func New(r Repository, d DocgenRenderer, p Presigner, t TemplateReader, fv FormValidator, a Audit) *Service {
@@ -166,8 +171,14 @@ func NewServiceWithSnapshot(
 	}
 }
 
+func (s *Service) WithRegistryDuplicator(d RegistryDuplicator) *Service {
+	s.registryDuplicator = d
+	return s
+}
+
 var ErrControlledDocumentRequired = errors.New("controlled_document_id is required")
 var errRegistryReaderNotConfigured = errors.New("registry reader not configured")
+var errRegistryDuplicatorNotConfigured = errors.New("registry duplicator not configured")
 var errAuthorizationCheckerNotConfigured = errors.New("authorization checker not configured")
 var errProfileTemplateReaderNotConfigured = errors.New("profile default template reader not configured")
 
@@ -347,6 +358,31 @@ func (s *Service) CreateDocument(ctx context.Context, cmd CreateDocumentInput) (
 
 func (s *Service) GetDocument(ctx context.Context, tenantID, id string) (*domain.Document, error) {
 	return s.repo.GetDocument(ctx, tenantID, id)
+}
+
+func (s *Service) DuplicateDocument(ctx context.Context, tenantID, userID, docID string) (*CreateDocumentResult, error) {
+	if s.registryDuplicator == nil {
+		return nil, errRegistryDuplicatorNotConfigured
+	}
+	doc, err := s.repo.GetDocument(ctx, tenantID, docID)
+	if err != nil {
+		return nil, err
+	}
+	if doc.ControlledDocumentID == nil || strings.TrimSpace(*doc.ControlledDocumentID) == "" {
+		return nil, ErrControlledDocumentRequired
+	}
+	cd, err := s.registryDuplicator.DuplicateControlledDocument(ctx, tenantID, *doc.ControlledDocumentID, userID)
+	if err != nil {
+		return nil, err
+	}
+	return s.CreateDocument(ctx, CreateDocumentInput{
+		TenantID:             tenantID,
+		ActorUserID:          userID,
+		ControlledDocumentID: cd.ID,
+		TemplateVersionID:    doc.TemplateVersionID,
+		Name:                 doc.Name,
+		FormData:             doc.FormDataJSON,
+	})
 }
 
 func (s *Service) ListDocuments(ctx context.Context, tenantID string) ([]domain.Document, error) {

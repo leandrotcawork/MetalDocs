@@ -228,10 +228,11 @@ func (r *Repository) AcquireSession(ctx context.Context, tenantID, docID, userID
 	if err == nil {
 		// Caller already holds it - refresh.
 		if existingUser == userID {
-			if _, err := tx.ExecContext(ctx, `UPDATE editor_sessions SET expires_at = now() + interval '5 minutes' WHERE id=$1`, existingID); err != nil {
+			var refreshedExpiresAt time.Time
+			if err := tx.QueryRowContext(ctx, `UPDATE editor_sessions SET expires_at = now() + interval '5 minutes' WHERE id=$1 RETURNING expires_at`, existingID).Scan(&refreshedExpiresAt); err != nil {
 				return nil, err
 			}
-			s := &domain.Session{ID: existingID, DocumentID: docID, UserID: userID, LastAcknowledgedRevisionID: existingAck, Status: domain.SessionActive}
+			s := &domain.Session{ID: existingID, DocumentID: docID, UserID: userID, LastAcknowledgedRevisionID: existingAck, Status: domain.SessionActive, ExpiresAt: refreshedExpiresAt}
 			return s, tx.Commit()
 		}
 		// Someone else owns it.
@@ -251,11 +252,12 @@ func (r *Repository) AcquireSession(ctx context.Context, tenantID, docID, userID
 	}
 
 	var newID string
+	var newExpiresAt time.Time
 	if err := tx.QueryRowContext(ctx,
 		`INSERT INTO editor_sessions (document_id, user_id, expires_at, last_acknowledged_revision_id, status)
-		 VALUES ($1, $2, now() + interval '5 minutes', $3, 'active') RETURNING id`,
+		 VALUES ($1, $2, now() + interval '5 minutes', $3, 'active') RETURNING id, expires_at`,
 		docID, userID, curRev,
-	).Scan(&newID); err != nil {
+	).Scan(&newID, &newExpiresAt); err != nil {
 		return nil, err
 	}
 
@@ -263,7 +265,7 @@ func (r *Repository) AcquireSession(ctx context.Context, tenantID, docID, userID
 		return nil, err
 	}
 
-	return &domain.Session{ID: newID, DocumentID: docID, UserID: userID, LastAcknowledgedRevisionID: curRev, Status: domain.SessionActive}, tx.Commit()
+	return &domain.Session{ID: newID, DocumentID: docID, UserID: userID, LastAcknowledgedRevisionID: curRev, Status: domain.SessionActive, ExpiresAt: newExpiresAt}, tx.Commit()
 }
 
 func (r *Repository) HeartbeatSession(ctx context.Context, sessionID, userID string) error {

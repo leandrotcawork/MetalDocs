@@ -27,6 +27,7 @@ const (
 type Service interface {
 	CreateDocument(ctx context.Context, cmd application.CreateDocumentInput) (*application.CreateDocumentResult, error)
 	GetDocument(ctx context.Context, tenantID, id string) (*domain.Document, error)
+	DuplicateDocument(ctx context.Context, tenantID, userID, docID string) (*application.CreateDocumentResult, error)
 	RenameDocument(ctx context.Context, tenantID, userID, docID, newName string) error
 	ListDocuments(ctx context.Context, tenantID string) ([]domain.Document, error)
 	ListDocumentsForUser(ctx context.Context, tenantID, userID string) ([]domain.Document, error)
@@ -63,6 +64,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("PATCH /api/v2/documents/{id}", h.renameDocument)
 	mux.HandleFunc("POST /api/v2/documents/{id}/finalize", h.finalizeDocument)
 	mux.HandleFunc("POST /api/v2/documents/{id}/archive", h.archiveDocument)
+	mux.HandleFunc("POST /api/v2/documents/{id}/duplicate", h.duplicateDocument)
 
 	mux.HandleFunc("POST /api/v2/documents/{id}/session/acquire", h.acquireSession)
 	mux.HandleFunc("POST /api/v2/documents/{id}/session/heartbeat", h.heartbeatSession)
@@ -91,6 +93,7 @@ func (h *Handler) RegisterRoutesWithRateLimit(mux *http.ServeMux, rl *ratelimit.
 	mux.HandleFunc("PATCH /api/v2/documents/{id}", h.renameDocument)
 	mux.HandleFunc("POST /api/v2/documents/{id}/finalize", h.finalizeDocument)
 	mux.HandleFunc("POST /api/v2/documents/{id}/archive", h.archiveDocument)
+	mux.HandleFunc("POST /api/v2/documents/{id}/duplicate", h.duplicateDocument)
 
 	mux.HandleFunc("POST /api/v2/documents/{id}/session/acquire", h.acquireSession)
 	mux.HandleFunc("POST /api/v2/documents/{id}/session/heartbeat", h.heartbeatSession)
@@ -276,6 +279,31 @@ func (h *Handler) archiveDocument(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) duplicateDocument(w http.ResponseWriter, r *http.Request) {
+	r = withAdminCtx(r)
+	docID := r.PathValue("id")
+	tenantID, userID, ok := h.authorizeDocumentScope(w, r, docID)
+	if !ok {
+		return
+	}
+
+	res, err := h.svc.DuplicateDocument(r.Context(), tenantID, userID, docID)
+	if err != nil {
+		status, msg := mapErr(err)
+		if status == http.StatusInternalServerError {
+			http.Error(w, `{"error":"`+msg+`","detail":"`+err.Error()+`"}`, status)
+			return
+		}
+		httpErr(w, status, msg)
+		return
+	}
+	httpresponse.WriteJSON(w, http.StatusCreated, map[string]string{
+		"document_id":         res.DocumentID,
+		"initial_revision_id": res.InitialRevisionID,
+		"session_id":          res.SessionID,
+	})
 }
 
 func (h *Handler) acquireSession(w http.ResponseWriter, r *http.Request) {

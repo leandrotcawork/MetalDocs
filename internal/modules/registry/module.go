@@ -14,6 +14,7 @@ import (
 
 type Module struct {
 	Handler *dhttp.Handler
+	svc     *application.RegistryService
 }
 
 type Dependencies struct {
@@ -30,7 +31,7 @@ func New(deps Dependencies) *Module {
 	govLogger := taxonomyapp.NewDBGovernanceLogger(deps.DB)
 	svc := application.NewRegistryService(deps.DB, repo, seq, tplCheck, profiles, areas, govLogger)
 	h := dhttp.NewHandler(svc, deps.DB)
-	return &Module{Handler: h}
+	return &Module{Handler: h, svc: svc}
 }
 
 func (m *Module) RegisterRoutes(mux *http.ServeMux) {
@@ -40,3 +41,5 @@ func (m *Module) RegisterRoutes(mux *http.ServeMux) {
 func (m *Module) RunStartupMigrations(ctx context.Context, db *sql.DB, logger *slog.Logger) error {
 	return application.BackfillLegacyDocuments(ctx, db, logger)
 }
+
+func (m *Module) Service() *application.RegistryService { return m.svc }

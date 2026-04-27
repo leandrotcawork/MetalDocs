@@ -122,6 +122,10 @@ func (f *fakeSvc) RestoreCheckpoint(_ context.Context, _, _, _ string, _ int) (*
 	return &application.RestoreResult{NewRevisionID: "rev_3", NewRevisionNum: 3}, nil
 }
 
+func (f *fakeSvc) DuplicateDocument(_ context.Context, _, _, _ string) (*application.CreateDocumentResult, error) {
+	return &application.CreateDocumentResult{DocumentID: "doc_dup", InitialRevisionID: "rev_dup", SessionID: "sess_dup"}, nil
+}
+
 func (f *fakeSvc) Finalize(_ context.Context, _, _, _ string) error { return nil }
 
 func (f *fakeSvc) Archive(_ context.Context, _, _, _ string, _ bool) error { return nil }

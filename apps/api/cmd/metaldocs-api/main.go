@@ -20,10 +20,10 @@ import (
 
 	auditdomain "metaldocs/internal/modules/audit/domain"
 	documents_v2 "metaldocs/internal/modules/documents_v2"
+	docapp "metaldocs/internal/modules/documents_v2/application"
 	approvalapp "metaldocs/internal/modules/documents_v2/approval/application"
 	approvalhttp "metaldocs/internal/modules/documents_v2/approval/http"
 	approvalrepo "metaldocs/internal/modules/documents_v2/approval/repository"
-	docapp "metaldocs/internal/modules/documents_v2/application"
 	"metaldocs/internal/modules/documents_v2/jobs"
 	docrepo "metaldocs/internal/modules/documents_v2/repository"
 	"metaldocs/internal/modules/jobs/effective_date_publisher"
@@ -45,6 +45,7 @@ import (
 	notificationapp "metaldocs/internal/modules/notifications/application"
 	notificationdelivery "metaldocs/internal/modules/notifications/delivery/http"
 	"metaldocs/internal/modules/registry"
+	registryapp "metaldocs/internal/modules/registry/application"
 	registrydomain "metaldocs/internal/modules/registry/domain"
 	registryinfra "metaldocs/internal/modules/registry/infrastructure"
 	"metaldocs/internal/modules/render/fanout"
@@ -53,8 +54,8 @@ import (
 	searchdelivery "metaldocs/internal/modules/search/delivery/http"
 	searchdocs "metaldocs/internal/modules/search/infrastructure/v2documents"
 	"metaldocs/internal/modules/taxonomy"
-	taxonomyinfra "metaldocs/internal/modules/taxonomy/infrastructure"
 	taxonomydomain "metaldocs/internal/modules/taxonomy/domain"
+	taxonomyinfra "metaldocs/internal/modules/taxonomy/infrastructure"
 	workflowapp "metaldocs/internal/modules/workflow/application"
 	workflowdelivery "metaldocs/internal/modules/workflow/delivery/http"
 	"metaldocs/internal/platform/authn"
@@ -68,6 +69,36 @@ import (
 	"metaldocs/internal/platform/security"
 	e2etest "metaldocs/internal/test"
 )
+
+type registryControlledDocumentDuplicator struct {
+	svc *registryapp.RegistryService
+}
+
+func (a registryControlledDocumentDuplicator) DuplicateControlledDocument(ctx context.Context, tenantID, controlledDocumentID, actorUserID string) (*registrydomain.ControlledDocument, error) {
+	if a.svc == nil {
+		return nil, fmt.Errorf("registry service not configured")
+	}
+	source, err := a.svc.Get(ctx, tenantID, controlledDocumentID)
+	if err != nil {
+		return nil, err
+	}
+	var overrideReason *string
+	if source.OverrideTemplateVersionID != nil {
+		reason := "Duplicated from existing controlled document"
+		overrideReason = &reason
+	}
+	return a.svc.Create(ctx, registryapp.CreateControlledDocumentCmd{
+		TenantID:                  tenantID,
+		ProfileCode:               source.ProfileCode,
+		ProcessAreaCode:           source.ProcessAreaCode,
+		DepartmentCode:            source.DepartmentCode,
+		Title:                     source.Title,
+		OwnerUserID:               source.OwnerUserID,
+		ActorUserID:               actorUserID,
+		OverrideTemplateVersionID: source.OverrideTemplateVersionID,
+		OverrideTemplateReason:    overrideReason,
+	})
+}
 
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -169,6 +200,7 @@ func main() {
 			log.Printf("registry startup migration failed: %v", err)
 		}
 	}
+	docRegistryDuplicator := registryControlledDocumentDuplicator{svc: registryModule.Service()}
 
 	var membershipService *iamapp.AreaMembershipService
 	if deps.SQLDB != nil {
@@ -229,14 +261,15 @@ func main() {
 			docgenv2.NewTemplateReader(deps.SQLDB, deps.MinioClient, deps.MinioBucket),
 			docgenv2.NewTemplatesV2TemplateReader(deps.SQLDB),
 		),
-		FormVal:         formval.NewGojsonschema(),
-		Audit:           newDocumentsV2AuditAdapter(deps.AuditWriter),
-		ExportPresign:   docPresigner,
-		RegistryReader:  cdRepo,
-		AuthzChecker:    permissiveAuthzChecker{},
-		ProfileDefaults: &profileDefaultsAdapter{profileRepo: profileRepo},
-		SnapshotReader:   docSnapshotReader,
-		SnapshotWriter:   docSnapshotWriter,
+		FormVal:            formval.NewGojsonschema(),
+		Audit:              newDocumentsV2AuditAdapter(deps.AuditWriter),
+		ExportPresign:      docPresigner,
+		RegistryReader:     cdRepo,
+		RegistryDuplicator: docRegistryDuplicator,
+		AuthzChecker:       permissiveAuthzChecker{},
+		ProfileDefaults:    &profileDefaultsAdapter{profileRepo: profileRepo},
+		SnapshotReader:     docSnapshotReader,
+		SnapshotWriter:     docSnapshotWriter,
 	}
 	if deps.DocgenV2Client != nil {
 		docDeps.ExportDocgen = deps.DocgenV2Client

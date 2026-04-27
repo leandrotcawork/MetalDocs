@@ -13,6 +13,7 @@ import (
 
 type Module struct {
 	Handler            *dhttp.Handler
+	Service            *application.Service
 	ExportHandler      *dhttp.ExportHandler
 	FillInHandler      *documentshttp.FillInHandler
 	ViewHandler        *documentshttp.ViewHandler
@@ -21,22 +22,23 @@ type Module struct {
 }
 
 type Dependencies struct {
-	DB                *sql.DB
-	Docgen            application.DocgenRenderer
-	Presign           application.Presigner
-	TplRead           application.TemplateReader
-	FormVal           application.FormValidator
-	Audit             application.Audit
-	RegistryReader    application.RegistryReader
-	AuthzChecker      application.AuthorizationChecker
-	ProfileDefaults   application.ProfileDefaultTemplateReader
-	SnapshotReader    application.SnapshotTemplateReader
-	SnapshotWriter    application.SnapshotWriter
-	ExportPresign     application.ExportPresigner
-	ExportDocgen      application.DocgenPDFClient
-	DocgenVer         string
-	GrammarVer        string
-	ReconstructRunner application.ReconstructionRunner
+	DB                 *sql.DB
+	Docgen             application.DocgenRenderer
+	Presign            application.Presigner
+	TplRead            application.TemplateReader
+	FormVal            application.FormValidator
+	Audit              application.Audit
+	RegistryReader     application.RegistryReader
+	RegistryDuplicator application.RegistryDuplicator
+	AuthzChecker       application.AuthorizationChecker
+	ProfileDefaults    application.ProfileDefaultTemplateReader
+	SnapshotReader     application.SnapshotTemplateReader
+	SnapshotWriter     application.SnapshotWriter
+	ExportPresign      application.ExportPresigner
+	ExportDocgen       application.DocgenPDFClient
+	DocgenVer          string
+	GrammarVer         string
+	ReconstructRunner  application.ReconstructionRunner
 }
 
 func New(deps Dependencies) *Module {
@@ -48,6 +50,7 @@ func New(deps Dependencies) *Module {
 	} else {
 		svc = application.NewService(repo, deps.Docgen, deps.Presign, deps.TplRead, deps.FormVal, deps.Audit, deps.RegistryReader, deps.AuthzChecker, deps.ProfileDefaults)
 	}
+	svc.WithRegistryDuplicator(deps.RegistryDuplicator)
 	h := dhttp.NewHandler(svc)
 
 	var exportHandler *dhttp.ExportHandler
@@ -84,6 +87,7 @@ func New(deps Dependencies) *Module {
 
 	return &Module{
 		Handler:            h,
+		Service:            svc,
 		ExportHandler:      exportHandler,
 		FillInHandler:      fillInHandler,
 		ViewHandler:        viewHandler,

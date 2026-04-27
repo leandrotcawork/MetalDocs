@@ -25,10 +25,11 @@ SELECT
 	COALESCE(d.profile_code_snapshot, ''),
 	COALESCE(d.process_area_code_snapshot, ''),
 	COALESCE(d.created_by, ''),
-	COALESCE(d.code, ''),
-	d.revision_number,
+	COALESCE(cd.code, ''),
+	COALESCE(cd.sequence_num, d.revision_number, 0),
 	d.created_at
 FROM public.documents d
+LEFT JOIN controlled_documents cd ON cd.id = d.controlled_document_id
 WHERE d.archived_at IS NULL
 ORDER BY d.created_at DESC
 `

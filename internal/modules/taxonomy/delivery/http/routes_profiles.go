@@ -154,7 +154,9 @@ func (h *Handler) setDefaultTemplate(w http.ResponseWriter, r *http.Request) {
 		h.writeProfileError(w, err)
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte("{}"))
 }
 
 func (h *Handler) archiveProfile(w http.ResponseWriter, r *http.Request) {

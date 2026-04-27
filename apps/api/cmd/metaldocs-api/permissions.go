@@ -257,6 +257,9 @@ func requiresSessionButNoPermission(method, path string) bool {
 	if method == http.MethodPost && path == "/api/v1/auth/change-password" {
 		return true
 	}
+	// All /api/v2/ routes require a session. The resolver covers every registered
+	// route explicitly, but this catch-all ensures any gap in coverage fails
+	// closed (session required) rather than open (public).
 	if strings.HasPrefix(path, "/api/v2/") {
 		return true
 	}

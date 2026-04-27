@@ -1,6 +1,6 @@
 # E2E Workflow Test Plan — Full User Journey
 **Date:** 2026-04-25 (updated post zone-purge + token-migration)
-**Updated:** 2026-04-26 (post placeholder-fixed-catalog migration)
+**Updated:** 2026-04-26 (post placeholder-fixed-catalog migration) | 2026-04-26 (Stage 10 live testing complete — 5 pipeline bugs fixed)
 **Scope:** Validate full ISO flow — template authoring with fixed catalog tokens, auto-resolution, approval, fanout substitution, view.
 **Method:** Manual UI simulation via preview tools (preview_click, preview_fill, preview_snapshot).
 DB queries used ONLY for analysis/confirmation after UI actions — never as primary driver.
@@ -280,11 +280,73 @@ FROM public.documents WHERE id = '{docID}';
 -- Expect: status=approved, all hashes non-null, final_docx_s3_key set
 ```
 
-**Note:** If fanout fails (docgen-v2 down or token mismatch), `preview_network` shows 500 on approve. Do NOT proceed to Stage 10.
+**Note:** If fanout fails (docgen-v2 down or token mismatch), `preview_network` shows 500 on approve. Do NOT proceed to Stage 10b.
 
 ---
 
-## Stage 10 — View Frozen Artifact
+## Stage 10 — Signoff → Freeze Pipeline (Backend E2E)
+
+**Date tested:** 2026-04-26
+**Status:** COMPLETE — all 5 bugs found and fixed.
+
+**Scope:** This section documents live API testing of the full signoff → auto-freeze pipeline (the backend pipeline that runs before the View step). Testing used document `088636b8-b924-4d7e-ba58-6ee65d3be1db` (tenant `ffffffff-...`) which was already under review.
+
+### Pipeline steps (what happens on signoff)
+
+1. `POST /api/v2/documents/{id}/signoff` receives `decision`, `password`, `content_hash`
+2. Backend verifies password and content hash
+3. Document status set to `approved`
+4. Freeze triggered: `values_frozen_at` stamped, `schema_hash`/`values_hash` recorded
+5. Fanout call dispatched to docgen-v2 with substitution map (all 7 catalog tokens resolved)
+6. docgen-v2 fetches template DOCX from `metaldocs-attachments` bucket, applies substitutions, uploads frozen DOCX to `metaldocs-docx-v2` bucket
+7. `final_docx_s3_key` written to document row
+
+**API call used:**
+```
+POST /api/v2/documents/{id}/signoff
+{ "decision": "approve", "password": "test1234", "content_hash": "5fbc68..." }
+```
+
+### Bugs found during live test
+
+**Bug 1 — `area_code` → `process_area_code_snapshot` column name mismatch**
+- 5 Go files queried `area_code` column from the `documents` table; actual column name is `process_area_code_snapshot`.
+- Fixed in: `context_builder.go`, `fillin_authz.go`, `view_service.go`, `cancel_service.go`, `obsolete_service.go`
+
+**Bug 2 — Placeholder schema JSON format mismatch**
+- eigenpal stores placeholder schema as a raw JSON array `[{...}]` but Go parsers expected a wrapped object `{"placeholders":[...]}`.
+- Fixed by adding a `parsePlaceholderSchema()` helper in `fillin_service.go` that tries the raw array format first and falls back to the wrapped format. `snapshot_service.go` updated to delegate to the same helper.
+
+**Bug 3 — `composition_config` required fields in docgen-v2 fanout route**
+- docgen-v2 fanout route required `header_sub_blocks`, `footer_sub_blocks`, and `sub_block_params` even when empty, causing validation errors on minimal payloads.
+- Fixed in `apps/docgen-v2/src/routes/fanout.ts`: made all three fields optional with defaults `[]` / `{}`.
+
+**Bug 4 — Template DOCX missing from `metaldocs-docx-v2` bucket**
+- The `metaldocs-docx-v2` bucket was empty; the source DOCX lives in `metaldocs-attachments`.
+- Root cause: local dev setup does not copy the template DOCX automatically.
+- **Dev setup requirement:** manually copy the template DOCX from `metaldocs-attachments/templates/{id}/versions/` into `metaldocs-docx-v2/templates/{id}/versions/` before running the freeze pipeline locally.
+
+**Bug 5 — Fanout error body swallowed**
+- `fanout/client.go` only surfaced the HTTP status code in errors; the response body (which contains the actual error detail) was discarded.
+- Fixed: `fanout/client.go` now includes the full response body in the returned error.
+
+### Verification result
+
+After all 5 fixes:
+- Signoff returned `{"outcome":"approved"}`
+- DB: `status=approved`, `final_docx_s3_key=tenants/.../frozen.docx`, `values_frozen_at` stamped (non-null)
+- MinIO: `frozen.docx` exists in `metaldocs-docx-v2` bucket
+
+**DB confirmation query:**
+```sql
+SELECT status, final_docx_s3_key, values_frozen_at
+FROM public.documents WHERE id = '088636b8-b924-4d7e-ba58-6ee65d3be1db';
+-- Result: status=approved, final_docx_s3_key set, values_frozen_at non-null
+```
+
+---
+
+## Stage 10b — View Frozen Artifact
 
 **Goal:** Signed URL returned, DOCX/PDF contains all 8 substituted values — no `{name}` tokens remaining.
 

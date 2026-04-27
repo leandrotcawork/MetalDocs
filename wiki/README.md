@@ -1,6 +1,6 @@
 # MetalDocs Wiki
 
-> **Last verified:** 2026-04-26
+> **Last verified:** 2026-04-27
 > **Purpose:** Single source of truth for codebase knowledge. Read this first - drill into folders only after.
 
 ## How to use this wiki

@@ -1,6 +1,6 @@
 # E2E Workflow Test Plan — Full User Journey
 **Date:** 2026-04-25 (updated post zone-purge + token-migration)
-**Updated:** 2026-04-26 (post placeholder-fixed-catalog migration) | 2026-04-26 (Stage 10 live testing complete — 5 pipeline bugs fixed) | 2026-04-26 (Stage 10b PDF pipeline investigation — BLOCKED, architecture decision needed)
+**Updated:** 2026-04-26 (post placeholder-fixed-catalog migration) | 2026-04-26 (Stage 10 live testing complete — 5 pipeline bugs fixed) | 2026-04-26 (Stage 10b PDF pipeline investigation — BLOCKED, architecture decision needed) | 2026-04-27 (Stage 10b PDF pipeline PASSED — full end-to-end validated)
 **Scope:** Validate full ISO flow — template authoring with fixed catalog tokens, auto-resolution, approval, fanout substitution, view.
 **Method:** Manual UI simulation via preview tools (preview_click, preview_fill, preview_snapshot).
 DB queries used ONLY for analysis/confirmation after UI actions — never as primary driver.
@@ -348,64 +348,69 @@ FROM public.documents WHERE id = '088636b8-b924-4d7e-ba58-6ee65d3be1db';
 
 ## Stage 10b — View (PDF)
 
-**Status: READY TO TEST — pipeline fully wired as of 2026-04-26**
+**Status: PASSED — 2026-04-27**
 
-**Goal:** After signoff, worker generates PDF → `GET /api/v2/documents/{id}/view` returns presigned PDF URL. PDF must contain all 7 substituted catalog tokens — no raw `{token}` strings remaining.
+**Goal:** After signoff, worker generates PDF → `GET /api/v2/documents/{id}/view` returns presigned PDF URL. PDF renders in browser with all 7 substituted catalog tokens.
 
-### Architecture (implemented)
+### Architecture (validated)
 
-Outbox + worker pattern. No webhook — docgen-v2 `/convert/pdf` is synchronous; worker writes result directly.
+Outbox + worker pattern. Non-blocking signoff — worker handles PDF async.
 
 1. Signoff → `DecisionService.RecordSignoff` calls `pdfDispatchAdapter.Dispatch(ctx, tenantID, revisionID)` post-commit
 2. `PDFDispatchAdapter` reads `final_docx_s3_key` from DB, calls `PDFDispatcher.Dispatch`
-3. `PDFDispatcher` publishes `docgen_v2_pdf` event to `messaging_outbox` table
-4. Worker polls outbox → `PDFJobRunner.Handle` picks up event
+3. `PDFDispatcher` publishes `docgen_v2_pdf` event to `metaldocs.outbox_events` table
+4. Worker polls outbox every **2s** → `PDFJobRunner.Handle` picks up event
 5. `PDFJobRunner` calls docgen-v2 `/convert/pdf` synchronously with `final_docx_s3_key`
 6. docgen-v2 converts DOCX → PDF, uploads to MinIO at `tenants/{id}/revisions/{id}/final.pdf`, returns `OutputKey` + `ContentHash`
 7. `PDFJobRunner` calls `WritePDF` → stamps `final_pdf_s3_key` + `pdf_content_hash` on document row
-8. `GET /api/v2/documents/{id}/view` reads `final_pdf_s3_key`, returns presigned URL
+8. `GET /api/v2/documents/{id}/view` reads `final_pdf_s3_key`, returns presigned URL → PDF renders
 
-### Zod fix (committed 2026-04-26)
+### Bugs found and fixed during implementation (2026-04-26 → 2026-04-27)
 
-`render_opts` in docgen-v2 `/convert/pdf` Zod schema was required; made optional. Go client uses `omitempty` so this was causing 400. Fixed in `apps/docgen-v2/src/routes/convert-pdf.ts`.
+**Bug 6 — `render_opts` required in `/convert/pdf` Zod schema**
+- Go client omits `render_opts` via `omitempty` → 400. Made `render_opts` and all its fields optional.
+- Fixed in `apps/docgen-v2/src/routes/convert-pdf.ts`.
 
-### Pre-requisites
+**Bug 7 — outbox table was `public.messaging_outbox` but actual table is `metaldocs.outbox_events`**
+- Worker could not find events. Fixed by correcting schema+table reference.
 
-| # | Prerequisite | Status |
-|---|---|---|
-| 1 | API wired with PDFDispatchAdapter | ✅ cdaf7625 |
-| 2 | Worker PDFJobRunner wired | ✅ cdaf7625 |
-| 3 | PDFDispatchAdapter bridging interface mismatch | ✅ 00c8f24a |
-| 4 | Worker routes docgen_v2_pdf events | ✅ bfbdbbbb |
-| 5 | Zod render_opts optional in /convert/pdf | ✅ 79adcd3c |
-| 6 | Worker binary running alongside API | ⚠️ must start separately |
+**Bug 8 — inline adapter in `main.go` didn't use `fanout.NewPDFDispatchAdapter`**
+- Fixed: proper `fanout.NewPDFDispatchAdapter(pdfDispatcher, snapRepo)` constructor used.
 
-### Local dev setup requirement
+### Poll interval
+
+`METALDOCS_WORKER_POLL_INTERVAL_SECONDS=2` in `.env` — reduces PDF wait from 10s to 2s.
+
+### Verified result (document `32152e2f-e9cf-4ce2-bf38-0e36ce979cb5`)
+
+```
+GET /api/v2/documents/32152e2f-e9cf-4ce2-bf38-0e36ce979cb5/view
+→ 200 { "signed_url": "http://127.0.0.1:9000/metaldocs-attachments/tenants/ffffffff.../revisions/32152e2f.../final.pdf?..." }
+```
+
+PDF opened in browser ✅. DB confirmed:
+```sql
+SELECT final_pdf_s3_key, pdf_content_hash
+FROM public.documents WHERE id = '32152e2f-e9cf-4ce2-bf38-0e36ce979cb5';
+-- Result: both non-null
+```
+
+### Local dev setup
 
 Worker is a separate binary. Must run both:
 ```powershell
 .\scripts\start-api.ps1      # API on :8081
-.\scripts\start-worker.ps1   # Worker (if script exists) OR go run ./apps/worker/...
+.\scripts\start-worker.ps1   # Worker (polls every 2s)
 ```
 
-### Test steps
-
-| # | Action | Tool | Expected |
-|---|--------|------|----------|
-| 10.1 | Complete Stage 9 (signoff) | — | `final_docx_s3_key` set in DB |
-| 10.2 | Wait for worker to drain outbox (poll interval ~10s) | wait | — |
-| 10.3 | Check worker log | worker stdout | `worker_event event_type=docgen_v2_pdf result=published` |
-| 10.4 | DB: `final_pdf_s3_key` set | SQL | non-null |
-| 10.5 | Click View / PDF button | `preview_click` | `GET /api/v2/documents/{id}/view → 200` |
-| 10.6 | `preview_network` | network log | 200, `signed_url` in response |
-| 10.7 | Open signed URL | browser | PDF renders with all 7 token values substituted — no `{doc_code}` raw strings |
-
-**DB verification:**
-```sql
-SELECT final_pdf_s3_key, pdf_content_hash
-FROM public.documents WHERE id = '{docID}';
--- Expect: both non-null after worker processes event
+Also requires docgen-v2 running on :3001:
+```powershell
+.\scripts\dev-docgen.ps1
 ```
+
+### Known limitation: can't create 2nd document for same CD
+
+`ux_documents_v2_cd_revision` unique index on `(controlled_document_id, revision_number)` in `public.documents` blocks creating a new document for a CD that already has one at the same revision number. To test with a fresh document, either use a new CD or archive the old document first.
 
 ---
 

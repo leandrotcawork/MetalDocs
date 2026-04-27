@@ -1,6 +1,6 @@
 # Local Dev Startup
 
-**Last verified:** 2026-04-26
+**Last verified:** 2026-04-27
 
 ## TL;DR
 
@@ -115,7 +115,7 @@ Required for PDF generation after document approval. Polls `messaging_outbox` ev
 .\scripts\start-worker.ps1 -Build # rebuild binary first
 ```
 
-**Verify running:** worker logs `MetalDocs Worker running (poll_interval_s=10 ...)` on start, then `worker_batch result=completed ...` every 10s.
+**Verify running:** worker logs `MetalDocs Worker running (poll_interval_s=2 ...)` on start, then `worker_batch result=completed ...` every 2s.
 
 **Env vars required (already in `.env`):**
 - `METALDOCS_DOCGEN_V2_URL=http://localhost:3001`

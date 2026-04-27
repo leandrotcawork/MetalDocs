@@ -137,9 +137,20 @@ The editor doesn't expose its `EditorView` directly. To do programmatic edits:
 3. **Multiple `MetalDocsEditor` instances** — the spike's outline plugin had a module-level cache bug. Confirmed fixed in our port via factory pattern. If you ever see "second editor sees stale headings", check this regression first.
 4. **Autosave race** — parent must handle 409/etag conflicts itself. The editor doesn't track server state.
 
+## Freeze Integration
+
+Eigenpal's headless substitution API is **not** called in the editor (writer mode). Substitution happens exclusively at freeze time, server-side, triggered by the final signoff approval:
+
+1. `FreezeService.Freeze` resolves each catalog token via `resolvers.Registry`.
+2. The `{name: value}` map is posted to docgen-v2 via `fanout.Client.Fanout`.
+3. docgen-v2 calls eigenpal headless substitution on the stored template DOCX and uploads the result as `frozen.docx`.
+
+For the full pipeline, see [workflows/freeze-and-fanout.md](../workflows/freeze-and-fanout.md).
+
 ## Cross-refs
 
 - [concepts/placeholders.md](../concepts/placeholders.md) — placeholder schema and `{name}` token format
+- [workflows/freeze-and-fanout.md](../workflows/freeze-and-fanout.md) — approve → freeze → fanout → PDF artifact
 - [modules/templates-v2.md](templates-v2.md) — TemplateAuthorPage consumer
 - [modules/documents-v2.md](documents-v2.md) — DocumentEditorPage consumer
 - [references/eigenpal-spike.md](../references/eigenpal-spike.md) — T7 outline plugin origin + caveats

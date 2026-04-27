@@ -56,6 +56,19 @@ Substitution happens exclusively at **finalize/freeze** via the existing server 
 2. The `{name: value}` map is passed to docxtemplater → native substitution.
 3. The frozen DOCX (with resolved values) is archived and rendered to PDF.
 
+## Storage format
+
+`placeholder_schema_snapshot` in the `documents` table stores the placeholder schema as **eigenpal-native format**: a raw JSON array.
+
+```json
+[
+  { "id": "...", "type": "computed", "resolver_key": "doc_code" },
+  { "id": "...", "type": "computed", "resolver_key": "approvers" }
+]
+```
+
+This is **not** wrapped as `{"placeholders": [...]}`. `parsePlaceholderSchema()` in `internal/modules/documents_v2/application/fillin_service.go` accepts both formats for backward compatibility with any legacy rows that used the wrapped form.
+
 ## `applyVariables` — deferred
 
 The eigenpal `applyVariables` API (browser-side substitution) is intentionally not called in writer mode. It is reserved for a future "preview mode" with a two-buffer story (edit buffer keeps raw tokens; preview buffer holds a substituted copy). See ADR 0008.

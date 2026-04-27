@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"strings"
 
 	v2domain "metaldocs/internal/modules/documents_v2/domain"
 	"metaldocs/internal/modules/iam/authz"
@@ -36,7 +35,7 @@ func (h *ViewHandler) RegisterRoutes(mux *http.ServeMux) {
 
 func (h *ViewHandler) HandleView(w http.ResponseWriter, r *http.Request) {
 	result, err := h.svc.GetViewURL(r.Context(),
-		strings.TrimSpace(r.Header.Get("X-Tenant-ID")),
+		tenantID(r),
 		actorID(r),
 		r.PathValue("id"),
 	)

@@ -225,9 +225,14 @@ export function useDocumentsWorkspace(applyDocumentProfile: (profileCode: string
 
   const openDocumentForHub = useCallback(
     async (documentId: string) => {
+      const existing = documents.find((d) => d.documentId === documentId);
+      if (existing) {
+        setSelectedDocument(existing);
+        return;
+      }
       await loadDocumentDetails(documentId);
     },
-    [loadDocumentDetails],
+    [documents, loadDocumentDetails, setSelectedDocument],
   );
 
   const handleUploadAttachment = useCallback(

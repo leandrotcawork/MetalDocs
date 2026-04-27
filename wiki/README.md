@@ -25,12 +25,13 @@
 
 ### Modules (one per backend module / frontend feature)
 - [modules/templates-v2.md](modules/templates-v2.md) - template authoring, schemas, versioning, approval
-- [modules/documents-v2.md](modules/documents-v2.md) - document instances, fill-in, freeze, view
+- [modules/documents-v2.md](modules/documents-v2.md) - document instances, editing flow, session model, API (Last verified: 2026-04-27)
 - [modules/taxonomy.md](modules/taxonomy.md) - document profiles, areas, departments, subjects
 - [modules/approval.md](modules/approval.md) - approval routes, signoffs, ISO segregation
 - [modules/render-fanout.md](modules/render-fanout.md) - DOCX -> PDF rendering, substitution engine
 - [modules/iam-rbac.md](modules/iam-rbac.md) - capabilities, role checks, area-scoped permissions
 - [modules/editor-ui-eigenpal.md](modules/editor-ui-eigenpal.md) - eigenpal integration layer, plugin wiring (Last verified: 2026-04-26)
+- modules/search.md (TBD) - cross-module search index; v2 reader at `internal/modules/search/infrastructure/v2documents/reader.go` JOINs `controlled_documents` to populate `DocumentCode` (fixed 2026-04-27)
 
 #### documents_v2 snapshot note
 

@@ -237,7 +237,6 @@ func main() {
 		ProfileDefaults: &profileDefaultsAdapter{profileRepo: profileRepo},
 		SnapshotReader:   docSnapshotReader,
 		SnapshotWriter:   docSnapshotWriter,
-		PDFWebhookSecret: strings.TrimSpace(os.Getenv("METALDOCS_PDF_WEBHOOK_SECRET")),
 	}
 	if deps.DocgenV2Client != nil {
 		docDeps.ExportDocgen = deps.DocgenV2Client

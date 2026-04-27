@@ -51,7 +51,7 @@ func (s *ObsoleteService) MarkObsolete(ctx context.Context, db *sql.DB, req Mark
 	var currentRevision int
 	var areaCode string
 	err = tx.QueryRowContext(ctx, `
-		SELECT status, revision_version, area_code
+		SELECT status, revision_version, process_area_code_snapshot
 		  FROM documents
 		 WHERE id        = $1
 		   AND tenant_id = $2

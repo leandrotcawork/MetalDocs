@@ -79,17 +79,29 @@ func (r *SnapshotSchemaReader) LoadPlaceholderSchema(ctx context.Context, tenant
 		Scan(&raw); err != nil {
 		return nil, err
 	}
+	return parsePlaceholderSchema(raw)
+}
 
-	var payload struct {
-		Placeholders []templatesdomain.Placeholder `json:"placeholders"`
-	}
+// parsePlaceholderSchema handles both storage formats:
+//   - raw array:          [{"id":"..."}]           (eigenpal native, stored in templates_v2)
+//   - wrapped object:     {"placeholders":[...]}   (legacy snapshot format)
+func parsePlaceholderSchema(raw []byte) ([]templatesdomain.Placeholder, error) {
 	if len(raw) == 0 {
 		return nil, nil
 	}
-	if err := json.Unmarshal(raw, &payload); err != nil {
+	// Try raw array first (eigenpal format).
+	var phs []templatesdomain.Placeholder
+	if err := json.Unmarshal(raw, &phs); err == nil {
+		return phs, nil
+	}
+	// Fallback: wrapped object format.
+	var wrapped struct {
+		Placeholders []templatesdomain.Placeholder `json:"placeholders"`
+	}
+	if err := json.Unmarshal(raw, &wrapped); err != nil {
 		return nil, err
 	}
-	return payload.Placeholders, nil
+	return wrapped.Placeholders, nil
 }
 
 func (s *FillInService) SetPlaceholderValue(ctx context.Context, tenantID, actorID, revisionID, placeholderID, raw string) error {

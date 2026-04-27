@@ -36,7 +36,7 @@ func NewDocumentContextBuilder(
 func (b *DocumentContextBuilder) loadAreaCode(ctx context.Context, tenantID, revisionID string) (string, error) {
 	var areaCode string
 	err := b.db.QueryRowContext(ctx,
-		`SELECT coalesce(area_code, '') FROM documents WHERE tenant_id=$1::uuid AND id=$2::uuid`,
+		`SELECT coalesce(process_area_code_snapshot, '') FROM documents WHERE tenant_id=$1::uuid AND id=$2::uuid`,
 		tenantID, revisionID,
 	).Scan(&areaCode)
 	return areaCode, err

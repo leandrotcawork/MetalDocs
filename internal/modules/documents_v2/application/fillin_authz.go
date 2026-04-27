@@ -45,7 +45,7 @@ func setAuthzGUC(ctx context.Context, tx *sql.Tx, tenantID, actorID string) erro
 func loadDocumentAreaCode(ctx context.Context, tx *sql.Tx, tenantID, documentID string) (string, error) {
 	var areaCode string
 	err := tx.QueryRowContext(ctx, `
-		SELECT area_code
+		SELECT process_area_code_snapshot
 		  FROM documents
 		 WHERE id = $1 AND tenant_id = $2`,
 		documentID, tenantID,

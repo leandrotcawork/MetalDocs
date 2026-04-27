@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 )
 
@@ -55,7 +56,8 @@ func (c *Client) Fanout(ctx context.Context, req FanoutRequest) (FanoutResponse,
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return FanoutResponse{}, fmt.Errorf("fanout status %d", resp.StatusCode)
+		errBody, _ := io.ReadAll(resp.Body)
+		return FanoutResponse{}, fmt.Errorf("fanout status %d: %s", resp.StatusCode, string(errBody))
 	}
 	var out FanoutResponse
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {

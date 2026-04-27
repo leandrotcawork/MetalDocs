@@ -11,10 +11,10 @@ const BodySchema = z.object({
   revision_id: z.string().min(1),
   placeholder_values: z.record(z.string()),
   composition_config: z.object({
-    header_sub_blocks: z.array(z.string()),
-    footer_sub_blocks: z.array(z.string()),
-    sub_block_params: z.record(z.record(z.unknown())),
-  }),
+    header_sub_blocks: z.array(z.string()).default([]),
+    footer_sub_blocks: z.array(z.string()).default([]),
+    sub_block_params: z.record(z.record(z.unknown())).default({}),
+  }).default({ header_sub_blocks: [], footer_sub_blocks: [], sub_block_params: {} }),
   resolved_values: z.record(z.unknown()),
 });
 

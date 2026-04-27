@@ -48,7 +48,7 @@ func (s *ViewService) GetViewURL(ctx context.Context, tenantID, actorID, docID s
 	var status, areaCode string
 	var pdfKey sql.NullString
 	err = tx.QueryRowContext(ctx, `
-		SELECT status, coalesce(area_code,''), final_pdf_s3_key
+		SELECT status, coalesce(process_area_code_snapshot,''), final_pdf_s3_key
 		  FROM documents
 		 WHERE tenant_id=$1::uuid AND id=$2::uuid`,
 		tenantID, docID,

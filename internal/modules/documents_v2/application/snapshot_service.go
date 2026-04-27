@@ -2,7 +2,6 @@ package application
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"metaldocs/internal/modules/documents_v2/domain"
@@ -71,17 +70,12 @@ func (s *SnapshotService) SnapshotFromTemplate(ctx context.Context, tenantID, do
 // parseRequiredPlaceholders extracts placeholders with Required=true from
 // the placeholder schema JSON blob. Returns empty slice on empty/nil input.
 func parseRequiredPlaceholders(schemaJSON []byte) ([]templatesdomain.Placeholder, error) {
-	if len(schemaJSON) == 0 {
-		return nil, nil
-	}
-	var schema struct {
-		Placeholders []templatesdomain.Placeholder `json:"placeholders"`
-	}
-	if err := json.Unmarshal(schemaJSON, &schema); err != nil {
+	all, err := parsePlaceholderSchema(schemaJSON)
+	if err != nil {
 		return nil, err
 	}
 	var out []templatesdomain.Placeholder
-	for _, p := range schema.Placeholders {
+	for _, p := range all {
 		if p.Required {
 			out = append(out, p)
 		}

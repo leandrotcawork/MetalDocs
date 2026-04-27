@@ -224,3 +224,44 @@ export function deleteSubject(code: string) {
 export function downloadProfileTemplateDocx(profileCode: string) {
   return requestBlob(`/document-profiles/${encodeURIComponent(profileCode)}/template/docx`);
 }
+
+type TaxonomyProfileItem = Pick<DocumentProfileItem, "code" | "name" | "description" | "familyCode"> & {
+  archived?: boolean;
+};
+
+type TaxonomyAreaItem = Pick<ProcessAreaItem, "code" | "name" | "description"> & {
+  archived?: boolean;
+};
+
+async function fetchV2<T>(path: string): Promise<T> {
+  const res = await fetch(`/api/v2${path}`, { credentials: "include", headers: { "Content-Type": "application/json" } });
+  if (!res.ok) throw new Error(`${path} failed: ${res.status}`);
+  return res.json() as Promise<T>;
+}
+
+export async function listTaxonomyProfiles(): Promise<{ items: DocumentProfileItem[] }> {
+  const response = await fetchV2<{ items: TaxonomyProfileItem[] }>("/taxonomy/profiles");
+  return {
+    items: Array.isArray(response.items)
+      ? response.items
+          .filter((item) => item.archived !== true)
+          .map((item) =>
+            normalizeDocumentProfile({
+              code: item.code,
+              familyCode: item.familyCode,
+              name: item.name,
+              description: item.description,
+            } as DocumentProfileItem),
+          )
+      : [],
+  };
+}
+
+export async function listTaxonomyAreas(): Promise<{ items: ProcessAreaItem[] }> {
+  const response = await fetchV2<{ items: TaxonomyAreaItem[] }>("/taxonomy/areas");
+  return {
+    items: Array.isArray(response.items)
+      ? response.items.filter((item) => item.archived !== true).map(normalizeProcessArea)
+      : [],
+  };
+}

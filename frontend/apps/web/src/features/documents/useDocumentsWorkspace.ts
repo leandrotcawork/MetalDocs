@@ -1,4 +1,5 @@
 import { useCallback, useRef } from "react";
+import { listTaxonomyAreas, listTaxonomyProfiles } from "../../api/registry";
 import { api, markUx, reportUxSequence, startApiTrace, stopApiTrace } from "../../lib.api";
 import type {
   AccessPolicyItem,
@@ -86,10 +87,10 @@ export function useDocumentsWorkspace(applyDocumentProfile: (profileCode: string
         const empty = { items: [] };
         const safe = <T,>(p: Promise<T>, fallback: T) => p.catch(() => fallback);
         const [profilesResponse, processAreasResponse, departmentsResponse, subjectsResponse, docsResponse, usersResponse, notificationsResponse] = await Promise.all([
-          safe(api.listDocumentProfiles(), empty as never),
-          safe(api.listProcessAreas(), empty as never),
-          safe(api.listDocumentDepartments(), empty as never),
-          safe(api.listSubjects(), empty as never),
+          safe(listTaxonomyProfiles(), empty as never),
+          safe(listTaxonomyAreas(), empty as never),
+          Promise.resolve({ items: [] }),
+          Promise.resolve({ items: [] }),
           safe(api.searchDocuments(new URLSearchParams({ limit: "25" })), empty as never),
           (Array.isArray(currentUser.roles) ? currentUser.roles : []).includes("admin")
             ? safe(api.listUsers(), empty as never)

@@ -1,7 +1,7 @@
 # Workflow: Freeze and Fanout
 
 > **Last verified:** 2026-04-26
-> **Scope:** The full pipeline from signoff approval → computed value resolution → DOCX substitution → frozen artifact stored in S3.
+> **Scope:** The full pipeline from signoff approval → computed value resolution → DOCX substitution → frozen artifact stored in S3 → async PDF generation via outbox worker.
 > **Out of scope:** Approval routing and signoff rules (see `workflows/approval.md`), editor-side substitution deferral (see `modules/editor-ui-eigenpal.md`).
 > **Key files:**
 > - `internal/modules/documents_v2/approval/application/decision_service.go` — triggers freeze on signoff
@@ -11,6 +11,9 @@
 > - `internal/modules/render/resolvers/builtins.go` — registered resolver implementations
 > - `apps/docgen-v2/src/routes/fanout.ts` — docgen-v2 fanout route, Zod request schema
 > - `apps/docgen-v2/src/render/fanout.ts` — eigenpal headless token substitution
+> - `internal/modules/render/fanout/pdf_dispatcher.go` — PDFDispatcher: publishes docgen_v2_pdf outbox event
+> - `internal/modules/render/fanout/pdf_dispatch_adapter.go` — PDFDispatchAdapter: bridges PDFDispatchInvoker interface
+> - `internal/platform/worker/pdf_job_runner.go` — PDFJobRunner: handles docgen_v2_pdf events end-to-end
 
 ---
 
@@ -109,6 +112,48 @@ This is a **raw JSON array** — NOT wrapped as `{"placeholders": [...]}`. `pars
 - **`composition_config` defaults:** `header_sub_blocks`, `footer_sub_blocks`, and `sub_block_params` default to empty — templates without sub-blocks work fine without explicit values.
 - **Freeze is idempotent:** `values_frozen_at` already set → early return, no duplicate writes, no error.
 - **Freeze runs inside signoff transaction:** if the freeze step fails, the entire signoff is rolled back.
+
+## PDF Generation Pipeline (Steps 12–16)
+
+> **Status as of 2026-04-26:** Fully implemented and wired. PDF is generated asynchronously after freeze via outbox + worker pattern. No webhook — docgen-v2 `/convert/pdf` is synchronous; the worker writes the result directly.
+
+### Flow
+
+| Step | Component | What happens |
+|---|---|---|
+| 12 | `DecisionService.RecordSignoff` | Post-commit: calls `pdfDispatchAdapter.Dispatch(ctx, tenantID, revisionID)` |
+| 13 | `PDFDispatchAdapter` | Reads `final_docx_s3_key` from DB, delegates to `PDFDispatcher.Dispatch` |
+| 14 | `PDFDispatcher` | Publishes `docgen_v2_pdf` event to `messaging_outbox` table |
+| 15 | Worker (`PDFJobRunner.Handle`) | Picks up event, calls docgen-v2 `/convert/pdf` synchronously |
+| 16 | docgen-v2 | Converts DOCX→PDF, uploads to `tenants/{id}/revisions/{id}/final.pdf`, returns `OutputKey` + `ContentHash` |
+| 17 | `PDFJobRunner.Handle` (cont.) | Calls `WritePDF` — stamps `final_pdf_s3_key` and `pdf_content_hash` on document row |
+
+After step 17, `GET /api/v2/documents/{id}/view` can return a presigned URL for the PDF.
+
+### S3 key pattern
+
+| Object | Bucket | Key pattern |
+|---|---|---|
+| Frozen DOCX (input) | `metaldocs-attachments` (local) / `metaldocs-docx-v2` (prod) | `tenants/{tenantID}/revisions/{revisionID}/frozen.docx` |
+| Final PDF (output) | same bucket | `tenants/{tenantID}/revisions/{revisionID}/final.pdf` |
+
+### Zod fix (2026-04-26)
+
+`apps/docgen-v2/src/routes/convert-pdf.ts`: `render_opts` was required in the Zod schema; Go client omits it via `omitempty` → 400. Made `render_opts` and its fields optional.
+
+### Key files
+
+- `apps/api/cmd/metaldocs-api/main.go` — wires `PDFDispatchAdapter` into `NewDecisionService`
+- `internal/modules/render/fanout/pdf_dispatch_adapter.go` — `PDFDispatchAdapter`: reads `final_docx_s3_key` from DB, calls `PDFDispatcher`
+- `internal/modules/render/fanout/pdf_dispatcher.go` — `PDFDispatcher`: publishes `docgen_v2_pdf` outbox event
+- `internal/modules/documents_v2/approval/application/decision_service.go` — `PDFDispatchInvoker` interface + post-commit dispatch call
+- `internal/platform/worker/pdf_job_runner.go` — `PDFJobRunner`: handles `docgen_v2_pdf` events end-to-end
+- `internal/platform/worker/service.go` — routes `docgen_v2_pdf` to `PDFJobRunner`
+- `internal/platform/bootstrap/worker.go` — builds `DocgenV2Client` + exposes `SQLDB` in `WorkerDependencies`
+- `apps/worker/cmd/metaldocs-worker/main.go` — conditionally wires `PDFJobRunner` via `WithPDFRunner`
+- `internal/modules/documents_v2/http/view_handler.go` — view endpoint, reads `final_pdf_s3_key`
+
+---
 
 ## Cross-refs
 

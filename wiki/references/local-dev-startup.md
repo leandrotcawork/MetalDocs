@@ -105,6 +105,26 @@ Port: `5433` (host) → `5432` (container). DB: `metaldocs`. Schema split:
 
 ---
 
+## Worker (PDF generation)
+
+Required for PDF generation after document approval. Polls `messaging_outbox` every 10s, calls docgen-v2 `/convert/pdf`, writes `final_pdf_s3_key` to DB.
+
+**Start (separate terminal, after API + docgen-v2 are up):**
+```powershell
+.\scripts\start-worker.ps1        # uses existing metaldocs-worker.exe
+.\scripts\start-worker.ps1 -Build # rebuild binary first
+```
+
+**Verify running:** worker logs `MetalDocs Worker running (poll_interval_s=10 ...)` on start, then `worker_batch result=completed ...` every 10s.
+
+**Env vars required (already in `.env`):**
+- `METALDOCS_DOCGEN_V2_URL=http://localhost:3001`
+- `METALDOCS_DOCGEN_V2_SERVICE_TOKEN=dev-local-service-token-32chars!!`
+
+**If PDF not generated after signoff:** check worker log for `event_type=docgen_v2_pdf result=published`. If missing, event may not have been dispatched — check `METALDOCS_FANOUT_URL` is set (required for pdfDispatchAdapter to be wired).
+
+---
+
 ## Common mistakes
 
 | Mistake | Symptom | Fix |

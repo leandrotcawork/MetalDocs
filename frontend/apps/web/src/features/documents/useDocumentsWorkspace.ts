@@ -113,8 +113,12 @@ export function useDocumentsWorkspace(applyDocumentProfile: (profileCode: string
         if (profiles.length > 0) {
           const nextProfileCode = profiles.find((item) => item.code === documentForm.documentProfile)?.code ?? profiles[0]?.code ?? "";
           if (nextProfileCode) {
-            await applyDocumentProfile(nextProfileCode, documentForm.processArea);
-            await prefetchProfile(nextProfileCode);
+            try {
+              await applyDocumentProfile(nextProfileCode, documentForm.processArea);
+              await prefetchProfile(nextProfileCode);
+            } catch {
+              // profile bundle unavailable (v2-only profile) — workspace still loads
+            }
           }
         }
         setLoadState("ready");

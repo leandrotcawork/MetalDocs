@@ -1,6 +1,5 @@
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { DocxEditor, PluginHost, templatePlugin, type DocxEditorRef, type ReactEditorPlugin } from '@eigenpal/docx-js-editor';
-import { createOutlinePlugin } from './plugins/OutlinePlugin';
 import '@eigenpal/docx-js-editor/styles.css';
 import type { MetalDocsEditorProps, MetalDocsEditorRef } from './types';
 import { buildSidebarModelPlugin } from './plugins/sidebarModelBridge';
@@ -47,12 +46,9 @@ export const MetalDocsEditor = forwardRef<MetalDocsEditorRef, MetalDocsEditorPro
       }, AUTOSAVE_DEBOUNCE_MS);
     };
 
-    const outlinePlugin = useMemo(() => createOutlinePlugin(), []);
-
     const libMode = props.mode === 'readonly' ? 'viewing' : 'editing';
     const plugins: ReactEditorPlugin[] = [
       templatePlugin,
-      ...(props.mode !== 'readonly' ? [outlinePlugin] : []),
       ...(props.sidebarModel ? [buildSidebarModelPlugin(props.sidebarModel)] : []),
       ...(props.externalPlugins ?? []),
     ];

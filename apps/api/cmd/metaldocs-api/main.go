@@ -196,6 +196,7 @@ func main() {
 	}
 	var fanoutCli *fanout.Client
 	var freezeSvc *docapp.FreezeService
+	var pdfDispatchAdapter approvalapp.PDFDispatchInvoker
 	if fanoutURL != "" && deps.SQLDB != nil {
 		fanoutCli = fanout.NewClient(fanoutURL, serviceToken, nil)
 		snapRepo := docrepo.NewSnapshotRepository(deps.SQLDB)
@@ -212,6 +213,10 @@ func main() {
 			resolverReg, snapRepo, ctxBuilder,
 			snapRepo, snapRepo, fillInRepo, fanoutCli,
 		)
+		if deps.Publisher != nil {
+			pdfDispatcher := fanout.NewPDFDispatcher(deps.Publisher)
+			pdfDispatchAdapter = fanout.NewPDFDispatchAdapter(pdfDispatcher, snapRepo)
+		}
 	}
 
 	docSnapshotReader := docgenv2.NewTemplatesV2SnapshotReader(deps.SQLDB)
@@ -230,8 +235,9 @@ func main() {
 		RegistryReader:  cdRepo,
 		AuthzChecker:    permissiveAuthzChecker{},
 		ProfileDefaults: &profileDefaultsAdapter{profileRepo: profileRepo},
-		SnapshotReader:  docSnapshotReader,
-		SnapshotWriter:  docSnapshotWriter,
+		SnapshotReader:   docSnapshotReader,
+		SnapshotWriter:   docSnapshotWriter,
+		PDFWebhookSecret: strings.TrimSpace(os.Getenv("METALDOCS_PDF_WEBHOOK_SECRET")),
 	}
 	if deps.DocgenV2Client != nil {
 		docDeps.ExportDocgen = deps.DocgenV2Client
@@ -260,7 +266,7 @@ func main() {
 		effectiveFreezeInvoker = freezeSvc
 	}
 	approvalServices.Decision = approvalapp.NewDecisionService(
-		approvalRepo, approvalEmitter, approvalapp.RealClock{}, effectiveFreezeInvoker, nil,
+		approvalRepo, approvalEmitter, approvalapp.RealClock{}, effectiveFreezeInvoker, pdfDispatchAdapter,
 	)
 	approvalHandler := approvalhttp.NewHandler(approvalServices, deps.SQLDB)
 	approvalHandler.RegisterRoutes(mux)

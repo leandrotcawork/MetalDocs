@@ -48,5 +48,23 @@ export function useTemplateAutosave(templateId: string, versionNum: number) {
 
   const hasPending = useCallback(() => pendingDocx.current !== null, []);
 
-  return { queueDocx, flush, status, hasPending };
+  const importDocx = useCallback(async (buf: ArrayBuffer): Promise<void> => {
+    setStatus('saving');
+    try {
+      const { upload_url } = await presignAutosave(templateId, versionNum);
+      await fetch(upload_url, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' },
+        body: buf,
+      });
+      const hash = await sha256Hex(buf);
+      await commitAutosave(templateId, versionNum, hash);
+      setStatus('saved');
+    } catch (err) {
+      setStatus('error');
+      throw err;
+    }
+  }, [templateId, versionNum]);
+
+  return { queueDocx, flush, status, hasPending, importDocx };
 }

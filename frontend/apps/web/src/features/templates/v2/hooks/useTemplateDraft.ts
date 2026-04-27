@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { getVersion, getTemplate, getDocxURL, type VersionDTO, type TemplateDTO } from '../api/templatesV2';
 
 type DraftState = {
@@ -9,7 +9,11 @@ type DraftState = {
   docxBytes: ArrayBuffer | null;
 };
 
-export function useTemplateDraft(templateId: string, versionNum: number): DraftState {
+type TemplateDraft = DraftState & {
+  refetch: () => void;
+};
+
+export function useTemplateDraft(templateId: string, versionNum: number): TemplateDraft {
   const [state, setState] = useState<DraftState>({
     loading: true,
     error: null,
@@ -17,6 +21,8 @@ export function useTemplateDraft(templateId: string, versionNum: number): DraftS
     version: null,
     docxBytes: null,
   });
+  const [tick, setTick] = useState(0);
+  const refetch = useCallback(() => setTick((t) => t + 1), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,7 +62,7 @@ export function useTemplateDraft(templateId: string, versionNum: number): DraftS
     return () => {
       cancelled = true;
     };
-  }, [templateId, versionNum]);
+  }, [templateId, versionNum, tick]);
 
-  return state;
+  return { ...state, refetch };
 }

@@ -1,4 +1,5 @@
 import '@eigenpal/docx-js-editor/styles.css';
+import * as React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DocxEditor, type DocxEditorRef } from '@eigenpal/docx-js-editor/react';
 import { createEmptyDocument } from '@eigenpal/docx-js-editor/core';
@@ -42,12 +43,15 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
   const autosave = useTemplateAutosave(templateId, versionNum);
   const schemaState = useTemplateSchemas(templateId, versionNum);
   const editorRef = useRef<DocxEditorRef>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const schemaSnapshotRef = useRef<string | null>(null);
   const variableSyncTimerRef = useRef<number | null>(null);
   const blankDoc = useMemo(() => createEmptyDocument(), []);
   const editorPlugins = useMemo(() => [filterTransactionGuard()], []);
   const [submitting, setSubmitting] = useState(false);
   const [submitErr, setSubmitErr] = useState<string | null>(null);
+  const [importing, setImporting] = React.useState(false);
+  const [importErr, setImportErr] = React.useState<string | null>(null);
   const [liveVersion, setLiveVersion] = useState<VersionDTO | null>(null);
   const [leftActive, setLeftActive] = useState<string>('variables');
   const [rightActive, setRightActive] = useState<string>('inspector');
@@ -172,6 +176,22 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
     }
   }
 
+  async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setImporting(true);
+    setImportErr(null);
+    try {
+      await autosave.importDocx(await file.arrayBuffer());
+      draft.refetch();
+      setImporting(false);
+    } catch (err) {
+      setImportErr(err instanceof Error ? err.message : String(err));
+      setImporting(false);
+    }
+  }
+
   if (draft.loading || (schemaState.loading && !localSchemas)) return <div className={styles.loading}>Loading template...</div>;
   if (draft.error) return <div role="alert" className={styles.error}>{draft.error}</div>;
   if (schemaState.error && !localSchemas) return <div role="alert" className={styles.error}>{schemaState.error}</div>;
@@ -264,6 +284,21 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
             <div className={styles.overlayRight}>
               {autosaveNode}
               {isDraft && (
+                <>
+                  <input
+                    ref={fileInputRef}
+                    type='file'
+                    accept='.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                    style={{ display: 'none' }}
+                    onChange={handleImportFile}
+                  />
+                  <button
+                    className={styles.editorSubmitBtn}
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={importing}
+                  >
+                    {importing ? 'Importando…' : 'Importar .docx'}
+                  </button>
                 <button
                   className={styles.editorSubmitBtn}
                   onClick={() => void handleSubmitForReview()}
@@ -271,6 +306,7 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
                 >
                   {IconSend} {submitting ? 'Enviando…' : 'Solicitar Revisão'}
                 </button>
+                </>
               )}
             </div>
             {submitErr && (
@@ -280,6 +316,15 @@ export function TemplateAuthorPage({ templateId, versionNum, onNavigateToVersion
                 style={{ color: submitErr === 'Submitted for review.' ? '#065f46' : '#dc2626' }}
               >
                 {submitErr}
+              </div>
+            )}
+            {importErr && (
+              <div
+                role="alert"
+                className={styles.overlayAlert}
+                style={{ color: '#dc2626' }}
+              >
+                {importErr}
               </div>
             )}
             <DocxEditor

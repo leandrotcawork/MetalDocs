@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -119,6 +120,27 @@ func (r *SnapshotRepository) WriteFinalDocx(ctx context.Context, tenant, docID, 
          WHERE tenant_id=$3::uuid AND id=$4::uuid`, r.table("documents")),
 		s3Key, contentHash, tenant, docID)
 	return err
+}
+
+// ReadFinalDocxS3Key returns the frozen DOCX S3 key for a document.
+// Returns an error if the document does not exist or has not been frozen yet.
+func (r *SnapshotRepository) ReadFinalDocxS3Key(ctx context.Context, tenantID, docID string) (string, error) {
+	var key sql.NullString
+	err := r.db.QueryRowContext(ctx, fmt.Sprintf(`
+		SELECT final_docx_s3_key
+		  FROM %s
+		 WHERE tenant_id=$1::uuid AND id=$2::uuid`, r.table("documents")),
+		tenantID, docID).Scan(&key)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", fmt.Errorf("document not found: %s", docID)
+		}
+		return "", err
+	}
+	if !key.Valid || key.String == "" {
+		return "", fmt.Errorf("document not frozen: no final_docx_s3_key for %s", docID)
+	}
+	return key.String, nil
 }
 
 // WritePDF persists the rendered PDF pointer, hash, and generation timestamp.

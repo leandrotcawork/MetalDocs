@@ -116,6 +116,40 @@ func TestSnapshotRepository_WriteFinalDocx_PersistsKeyAndContentHash(t *testing.
 	}
 }
 
+func TestSnapshotRepository_ReadFinalDocxS3Key(t *testing.T) {
+	if testing.Short() {
+		t.Skip("requires postgres")
+	}
+
+	ctx := context.Background()
+	db, schema := testdb.Open(t)
+
+	docID, tenant := testdb.InsertDraftDocument(t, db, schema, snapshotTestTenantID)
+	repo := repository.NewSnapshotRepositoryWithSchema(db, schema)
+
+	if _, err := repo.ReadFinalDocxS3Key(ctx, tenant, docID); err == nil {
+		t.Fatal("ReadFinalDocxS3Key on unfrozen document: got nil error, want error")
+	}
+
+	contentHash, err := hex.DecodeString("dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd")
+	if err != nil {
+		t.Fatalf("decode hash: %v", err)
+	}
+	s3Key := "final/read-doc.docx"
+
+	if err := repo.WriteFinalDocx(ctx, tenant, docID, s3Key, contentHash); err != nil {
+		t.Fatalf("WriteFinalDocx: %v", err)
+	}
+
+	got, err := repo.ReadFinalDocxS3Key(ctx, tenant, docID)
+	if err != nil {
+		t.Fatalf("ReadFinalDocxS3Key: %v", err)
+	}
+	if got != s3Key {
+		t.Fatalf("ReadFinalDocxS3Key = %q, want %q", got, s3Key)
+	}
+}
+
 func TestSnapshotRepository_WritePDF_PersistsAllColumns(t *testing.T) {
 	ctx := context.Background()
 	db, schema := testdb.Open(t)

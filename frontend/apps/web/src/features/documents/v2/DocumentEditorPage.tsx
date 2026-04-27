@@ -198,17 +198,17 @@ export function DocumentEditorPage({ documentID, onDone }: DocumentEditorPagePro
             </div>
 
             <div className={styles.overlayRight}>
-              {autosave.status === 'saving' && (
+              {autosave.status === 'saving' ? (
                 <span className={styles.autosaveStatus}>
                   <span className={styles.autosaveDot} aria-hidden="true" />
                   Saving…
                 </span>
-              )}
-              {autosave.status === 'error' && (
+              ) : autosave.status === 'error' ? (
                 <span className={styles.autosaveStatus} style={{ color: '#dc2626' }}>Save failed</span>
-              )}
-              {autosave.status === 'saved' && (
+              ) : autosave.status === 'saved' ? (
                 <span className={styles.autosaveStatus}>✓ Saved</span>
+              ) : (
+                <span className={styles.autosaveStatus} />
               )}
               <button
                 type="button"

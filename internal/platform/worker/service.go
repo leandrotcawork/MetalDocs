@@ -14,6 +14,7 @@ import (
 type Service struct {
 	consumer      messaging.Consumer
 	notifications *notificationapp.Service
+	pdfRunner     *PDFJobRunner
 	cfg           config.WorkerConfig
 }
 
@@ -23,6 +24,12 @@ func NewService(consumer messaging.Consumer, notifications *notificationapp.Serv
 		notifications: notifications,
 		cfg:           cfg,
 	}
+}
+
+// WithPDFRunner attaches a PDFJobRunner that handles docgen_v2_pdf events.
+func (s *Service) WithPDFRunner(r *PDFJobRunner) *Service {
+	s.pdfRunner = r
+	return s
 }
 
 func (s *Service) RunOnce(ctx context.Context, batchSize int) error {
@@ -40,9 +47,18 @@ func (s *Service) RunOnce(ctx context.Context, batchSize int) error {
 	failed := 0
 	deadLettered := 0
 	for _, event := range events {
-		if err := s.notifications.HandleEvent(ctx, event); err != nil {
+		var handleErr error
+		switch event.EventType {
+		case "docgen_v2_pdf":
+			if s.pdfRunner != nil {
+				handleErr = s.pdfRunner.Handle(ctx, event)
+			}
+		default:
+			handleErr = s.notifications.HandleEvent(ctx, event)
+		}
+		if handleErr != nil {
 			failed++
-			markedDLQ, markErr := s.markFailure(ctx, event, err)
+			markedDLQ, markErr := s.markFailure(ctx, event, handleErr)
 			if markErr != nil {
 				return markErr
 			}

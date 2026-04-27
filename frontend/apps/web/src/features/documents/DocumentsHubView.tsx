@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo } from "react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import { buildDocumentProfileCountMap } from "./adapters/catalogSummary";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { metalNobreProcessAreaHint } from "./adapters/metalNobreExperience";
@@ -195,6 +195,21 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [pdfLoading, setPdfLoading] = useState(false);
+
+  const handleOpenPdf = useCallback(async (documentId: string) => {
+    setPdfLoading(true);
+    try {
+      const res = await fetch(`/api/v2/documents/${encodeURIComponent(documentId)}/view`, { credentials: "include" });
+      if (!res.ok) throw new Error(`${res.status}`);
+      const data = await res.json() as { url?: string };
+      if (data.url) window.open(data.url, "_blank", "noopener");
+    } catch {
+      // no PDF yet — silently ignore
+    } finally {
+      setPdfLoading(false);
+    }
+  }, []);
   const scope = documentScope(props.view);
   const {
     documentsHubView,
@@ -654,13 +669,18 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
                 </div>
               </div>
               <div className={styles.detailActionsBar}>
-                <button type="button" className={styles.primaryButton} onClick={() => props.onOpenDocument(doc.documentId, "content-builder")}>
+                <button
+                  type="button"
+                  className={styles.primaryButton}
+                  onClick={() => void handleOpenPdf(doc.documentId)}
+                  disabled={pdfLoading}
+                >
                   <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
                     <path d="M3.5 2.5h6l3 3v8H3.5z" />
                     <path d="M9.5 2.5v3h3" />
                     <path d="M6 9h4M6 11h3" strokeLinecap="round" />
                   </svg>
-                  Abrir documento
+                  {pdfLoading ? "Abrindo..." : "Ver PDF"}
                 </button>
                 <button type="button" className={styles.ghostButton} disabled>
                   <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
@@ -674,17 +694,11 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
                   </svg>
                   Duplicar
                 </button>
-                <button type="button" className={styles.ghostButton} disabled>
-                  <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-                    <path d="M8 3a5 5 0 1 0 5 5" />
-                    <path d="M8 1.8v2.4M8 8l1.7 1.2" strokeLinecap="round" />
-                  </svg>
-                  Historico de versoes
-                </button>
               </div>
             </article>
 
             <div className={styles.detailPanelGrid}>
+              {/* Identificacao — codigo, profile, area, revisao */}
               <article className={`${styles.detailPanel} ${styles.detailPanelBlue}`}>
                 <div className={styles.detailPanelHeader}>
                   <span className={styles.detailPanelIcon}>
@@ -693,16 +707,17 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
                       <path d="M5.2 8l1.8 1.8 3.7-3.7" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </span>
-                  <h3>Classificacao</h3>
+                  <h3>Identificacao</h3>
                 </div>
                 <div className={styles.detailPanelBody}>
-                  <div className={styles.detailPanelRow}><span>Familia</span><strong className={styles.detailChipBlue}>{doc.documentFamily || "-"}</strong></div>
+                  <div className={styles.detailPanelRow}><span>Codigo</span><strong className={styles.detailChipBlue}>{doc.documentCode || doc.documentId.slice(0, 8).toUpperCase()}</strong></div>
                   <div className={styles.detailPanelRow}><span>Profile</span><strong>{profileLabel}</strong></div>
-                  <div className={styles.detailPanelRow}><span>Departamento</span><strong>{doc.department || "-"}</strong></div>
-                  <div className={styles.detailPanelRow}><span>Subject</span><strong>{doc.subject ?? "-"}</strong></div>
+                  <div className={styles.detailPanelRow}><span>Area</span><strong>{areaLabel}</strong></div>
+                  <div className={styles.detailPanelRow}><span>Revisao</span><strong>#{doc.documentSequence ?? 1}</strong></div>
                 </div>
               </article>
 
+              {/* Estado — status, tipo, criado em, tags */}
               <article className={`${styles.detailPanel} ${styles.detailPanelGreen}`}>
                 <div className={styles.detailPanelHeader}>
                   <span className={styles.detailPanelIcon}>
@@ -710,16 +725,17 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
                       <path d="M8 2.2 12.8 4v3.6C12.8 10.3 10.7 12.8 8 13.8 5.3 12.8 3.2 10.3 3.2 7.6V4z" />
                     </svg>
                   </span>
-                  <h3>Governanca</h3>
+                  <h3>Estado</h3>
                 </div>
                 <div className={styles.detailPanelBody}>
-                  <div className={styles.detailPanelRow}><span>Workflow</span><strong className={styles.detailChipGreen}>{governance?.workflowProfile ?? "-"}</strong></div>
-                  <div className={styles.detailPanelRow}><span>Revisao</span><strong>{governance ? `${governance.reviewIntervalDays} dias` : "-"}</strong></div>
-                  <div className={styles.detailPanelRow}><span>Aprovacao</span><strong className={styles.detailChipGold}>{governance ? (governance.approvalRequired ? "Obrigatoria" : "Opcional") : "-"}</strong></div>
-                  <div className={styles.detailPanelRow}><span>Validade</span><strong>{governance ? `${governance.validityDays} dias` : "-"}</strong></div>
+                  <div className={styles.detailPanelRow}><span>Status</span><strong className={styles.detailChipGreen}>{documentStatus}</strong></div>
+                  <div className={styles.detailPanelRow}><span>Tipo</span><strong>{doc.documentType || doc.documentProfile || "-"}</strong></div>
+                  <div className={styles.detailPanelRow}><span>Criado em</span><strong>{props.formatDate(doc.createdAt)}</strong></div>
+                  <div className={styles.detailPanelRow}><span>Tags</span><strong>{doc.tags?.length ? doc.tags.join(", ") : "-"}</strong></div>
                 </div>
               </article>
 
+              {/* Autoria — autor, criado, validade */}
               <article className={`${styles.detailPanel} ${styles.detailPanelRose}`}>
                 <div className={styles.detailPanelHeader}>
                   <span className={styles.detailPanelIcon}>
@@ -728,30 +744,32 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
                       <path d="M2.8 12.8c.3-2 1.6-3 3.7-3s3.4 1 3.7 3M9.4 12.8c.2-1.3 1.1-2.1 2.5-2.1 1.4 0 2.3.8 2.5 2.1" strokeLinecap="round" />
                     </svg>
                   </span>
-                  <h3>Colaboracao</h3>
+                  <h3>Autoria</h3>
                 </div>
                 <div className={styles.detailPanelBody}>
-                  <div className={styles.detailPanelRow}><span>Lock de edicao</span><strong className={styles.detailMutedValue}>Sem lock ativo</strong></div>
-                  <div className={styles.detailPanelRow}><span>Ativo desde</span><strong>{props.formatDate(new Date().toISOString())}</strong></div>
-                  <div className={styles.detailPanelRow}><span>Proxima revisao</span><strong>{doc.expiryAt ? props.formatDate(doc.expiryAt) : "-"}</strong></div>
                   <div className={styles.detailPanelRow}><span>Autor</span><strong>{ownerLabel}</strong></div>
+                  <div className={styles.detailPanelRow}><span>Criado em</span><strong>{props.formatDate(doc.createdAt)}</strong></div>
+                  <div className={styles.detailPanelRow}><span>Validade</span><strong>{doc.expiryAt ? props.formatDate(doc.expiryAt) : "Sem validade"}</strong></div>
+                  <div className={styles.detailPanelRow}><span>Classificacao</span><strong>{doc.classification || "-"}</strong></div>
                 </div>
               </article>
 
+              {/* Arquivo — pdf + docx availability */}
               <article className={`${styles.detailPanel} ${styles.detailPanelCyan}`}>
                 <div className={styles.detailPanelHeader}>
                   <span className={styles.detailPanelIcon}>
                     <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-                      <path d="M4 2.8h8M4 6.2h8M4 9.6h5" strokeLinecap="round" />
-                      <path d="m10.3 12.2 1.3 1.3 2.2-2.2" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M3.5 2.5h6l3 3v8H3.5z" />
+                      <path d="M9.5 2.5v3h3" />
+                      <path d="M6 9h4M6 11h3" strokeLinecap="round" />
                     </svg>
                   </span>
-                  <h3>Diff da versao atual</h3>
+                  <h3>Arquivo</h3>
                 </div>
-                <div className={styles.detailDiffEmpty}>
-                  <span className={styles.detailDiffIcon}>+</span>
-                  <p>Nenhuma alteracao registrada nesta versao.</p>
-                  <small>versao 1 · draft</small>
+                <div className={styles.detailPanelBody}>
+                  <div className={styles.detailPanelRow}><span>PDF</span><strong className={doc.status === "published" || doc.status === "obsolete" ? styles.detailChipGreen : styles.detailMutedValue}>{doc.status === "published" || doc.status === "obsolete" ? "Disponivel" : "Nao gerado"}</strong></div>
+                  <div className={styles.detailPanelRow}><span>ID do documento</span><strong className={styles.detailMutedValue} title={doc.documentId}>{doc.documentId.slice(0, 8)}…</strong></div>
+                  <div className={styles.detailPanelRow}><span>Efetivo em</span><strong>{doc.effectiveAt ? props.formatDate(doc.effectiveAt) : "-"}</strong></div>
                 </div>
               </article>
             </div>

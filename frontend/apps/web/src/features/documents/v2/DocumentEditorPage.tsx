@@ -9,8 +9,6 @@ import { getDocument, finalizeDocument, renameDocument, signedRevisionURL } from
 import type { DocumentResponse } from './api/documentsV2';
 import { CheckpointsDialog } from './CheckpointsDialog';
 import { ExportMenuButton } from './ExportMenuButton';
-import { StateBadge } from '../../approval/components/StateBadge';
-import type { ApprovalState } from '../../approval/api/approvalTypes';
 import styles from './styles/DocumentEditorPage.module.css';
 
 export type DocumentEditorPageProps = {
@@ -152,8 +150,13 @@ export function DocumentEditorPage({ documentID, onDone }: DocumentEditorPagePro
 
   const docStatus = doc?.Status ?? doc?.status ?? '';
   const docCode = doc?.Code ?? doc?.code ?? '';
-  const VALID_STATES: readonly ApprovalState[] = ['draft', 'under_review', 'approved', 'scheduled', 'published', 'superseded', 'rejected', 'obsolete', 'cancelled'];
-  const badgeState: ApprovalState | null = (VALID_STATES as readonly string[]).includes(docStatus) ? (docStatus as ApprovalState) : null;
+  const displayName = documentName.replace(/\.docx$/i, '');
+  const statusPillClass = {
+    draft: styles.draft,
+    under_review: styles.inReview,
+    approved: styles.approved,
+    published: styles.published,
+  }[docStatus] ?? '';
   const userID = doc?.CreatedBy ?? doc?.created_by ?? '';
   const authorDisplay = String(userID);
   const commentsHook = useDocumentComments(documentID, authorDisplay);
@@ -183,14 +186,15 @@ export function DocumentEditorPage({ documentID, onDone }: DocumentEditorPagePro
           <div className={styles.editorWrapper}>
 
             <div className={styles.overlayTitle}>
-              <span className={styles.docTitle}>{documentName || 'Document'}</span>
-              {docCode && (
-                <>
-                  <span className={styles.docSep}>·</span>
-                  <span className={styles.docMeta} style={{ fontFamily: 'monospace' }}>{docCode}</span>
-                </>
+              <span className={styles.docTitle}>{displayName || 'Documento'}</span>
+              <span className={styles.docSep}>·</span>
+              <span className={styles.docMeta}>Documento</span>
+              {docCode && <span className={styles.versionBadge}>{docCode}</span>}
+              {docStatus && (
+                <span className={`${styles.statusPill} ${statusPillClass}`}>
+                  {docStatus.replace('_', ' ')}
+                </span>
               )}
-              {badgeState && <StateBadge state={badgeState} size="sm" />}
             </div>
 
             <div className={styles.overlayRight}>
@@ -239,9 +243,6 @@ export function DocumentEditorPage({ documentID, onDone }: DocumentEditorPagePro
                 onCommentResolve={(c: Comment) => void (c.done ? commentsHook.resolve(c) : commentsHook.reopen(c))}
                 onCommentDelete={(c: Comment) => void commentsHook.remove(c)}
                 onCommentReply={(reply: Comment, parent: Comment) => void commentsHook.reply(reply, parent)}
-                documentName={documentName}
-                documentNameEditable={session.state.phase === 'writer'}
-                onDocumentNameChange={handleRename}
                 onAutoSave={handleSave}
                 showRuler={false}
               />

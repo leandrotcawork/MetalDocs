@@ -26,6 +26,7 @@ type DocumentsHubViewProps = {
   onCreateDocument: () => void;
   onOpenDocument: (documentId: string, nextView?: "library" | "content-builder") => void | Promise<void>;
   onOpenDocumentForHub: (documentId: string) => void | Promise<void>;
+  onRefreshDocuments?: () => void | Promise<void>;
 };
 
 type HubScope = "all" | "mine" | "recent";
@@ -196,6 +197,8 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
+  const [duplicateTarget, setDuplicateTarget] = useState<string | null>(null);
 
   const handleOpenPdf = useCallback(async (documentId: string) => {
     setPdfLoading(true);
@@ -263,6 +266,48 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
     },
     [buildHubParams, navigate],
   );
+
+  const handleDuplicate = useCallback(async (documentId: string) => {
+    setDuplicating(true);
+    try {
+      const res = await fetch(`/api/v2/documents/${encodeURIComponent(documentId)}/duplicate`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(`${res.status}`);
+      const data = await res.json() as { document_id?: string };
+      if (data.document_id) {
+        if (props.onRefreshDocuments) await props.onRefreshDocuments();
+        navigateWithParams(buildDocumentsPath(props.view, { view: "detail", documentId: data.document_id }));
+      }
+    } catch {
+      // silently ignore — user can retry
+    } finally {
+      setDuplicating(false);
+      setDuplicateTarget(null);
+    }
+  }, [props.onRefreshDocuments, props.view, navigateWithParams]);
+
+  const handleDuplicateAndEdit = useCallback(async (documentId: string) => {
+    setDuplicating(true);
+    try {
+      const res = await fetch(`/api/v2/documents/${encodeURIComponent(documentId)}/duplicate`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(`${res.status}`);
+      const data = await res.json() as { document_id?: string };
+      if (data.document_id) {
+        if (props.onRefreshDocuments) await props.onRefreshDocuments();
+        navigate(`/documents-v2/${data.document_id}`);
+      }
+    } catch {
+      // silently ignore — user can retry
+    } finally {
+      setDuplicating(false);
+      setDuplicateTarget(null);
+    }
+  }, [props.onRefreshDocuments, navigate]);
 
   const handleSearchQueryChange = useCallback(
     (value: string) => {
@@ -654,6 +699,48 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
       <div className={styles.page}>
         {headerShell}
         <section className={styles.detail}>
+          {duplicateTarget !== null && (
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                background: "rgba(0,0,0,0.5)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 1000,
+              }}
+            >
+              <div
+                style={{
+                  background: "white",
+                  borderRadius: 8,
+                  padding: 24,
+                  maxWidth: 400,
+                  width: "90%",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 16,
+                }}
+              >
+                <h3 style={{ margin: 0 }}>Duplicar documento?</h3>
+                <p style={{ margin: 0 }}>
+                  Uma cópia deste documento será criada com um novo código sequencial. O conteúdo original será preservado.
+                </p>
+                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                  <button type="button" onClick={() => setDuplicateTarget(null)} disabled={duplicating}>
+                    Não
+                  </button>
+                  <button type="button" onClick={() => void handleDuplicate(duplicateTarget!)} disabled={duplicating}>
+                    {duplicating ? "Duplicando..." : "Sim"}
+                  </button>
+                  <button type="button" onClick={() => void handleDuplicateAndEdit(duplicateTarget!)} disabled={duplicating}>
+                    {duplicating ? "Duplicando..." : "Ir para o editor"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           <div className={styles.detailShell}>
             <article className={styles.detailHeroCard}>
               <div className={styles.detailHeroLine} />
@@ -669,6 +756,19 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
                 </div>
               </div>
               <div className={styles.detailActionsBar}>
+                {doc.status === 'DRAFT' && (
+                  <button
+                    type="button"
+                    className={styles.primaryButton}
+                    onClick={() => navigate(`/documents-v2/${doc.documentId}`)}
+                  >
+                    <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                      <path d="M11 2.5l2.5 2.5-7 7H4v-2.5l7-7z" strokeLinejoin="round" />
+                      <path d="M13.5 4l-1.5-1.5" strokeLinecap="round" />
+                    </svg>
+                    Editar
+                  </button>
+                )}
                 <button
                   type="button"
                   className={styles.primaryButton}
@@ -688,11 +788,16 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
                   </svg>
                   Enviar para revisao
                 </button>
-                <button type="button" className={styles.ghostButton} disabled>
+                <button
+                  type="button"
+                  className={styles.ghostButton}
+                  onClick={() => setDuplicateTarget(doc.documentId)}
+                  disabled={duplicating}
+                >
                   <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
                     <path d="M6 2.5h5v9H6zM5 4H4v9h5" strokeLinejoin="round" />
                   </svg>
-                  Duplicar
+                  {duplicating ? "Duplicando..." : "Duplicar"}
                 </button>
               </div>
             </article>

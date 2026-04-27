@@ -243,6 +243,7 @@ export function DocumentEditorPage({ documentID, onDone }: DocumentEditorPagePro
                 documentNameEditable={session.state.phase === 'writer'}
                 onDocumentNameChange={handleRename}
                 onAutoSave={handleSave}
+                showRuler={false}
               />
             ) : null}
 

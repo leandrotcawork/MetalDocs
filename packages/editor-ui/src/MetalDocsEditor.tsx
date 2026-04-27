@@ -70,8 +70,8 @@ export const MetalDocsEditor = forwardRef<MetalDocsEditorRef, MetalDocsEditorPro
           onCommentDelete={props.onCommentDelete}
           onCommentReply={props.onCommentReply}
           renderTitleBarRight={props.renderTitleBarRight}
-          showRuler
-          showMarginGuides
+          showRuler={props.showRuler ?? true}
+          showMarginGuides={props.showRuler ?? true}
           showOutlineButton
           showPrintButton
           showZoomControl

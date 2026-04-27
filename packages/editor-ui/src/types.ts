@@ -23,6 +23,7 @@ export interface MetalDocsEditorProps {
   externalPlugins?: ReactEditorPlugin[];
   onAutoSave?: (buf: ArrayBuffer) => Promise<void>;
   onLockLost?: () => void;
+  showRuler?: boolean;
 }
 
 export interface MetalDocsEditorRef {

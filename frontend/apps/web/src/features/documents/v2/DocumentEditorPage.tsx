@@ -150,6 +150,7 @@ export function DocumentEditorPage({ documentID, onDone }: DocumentEditorPagePro
 
   const docStatus = doc?.Status ?? doc?.status ?? '';
   const docCode = doc?.Code ?? doc?.code ?? '';
+  const revNum = doc?.CurrentRevisionNum ?? doc?.current_revision_num ?? 0;
   const displayName = documentName.replace(/\.docx$/i, '');
   const statusPillClass = {
     draft: styles.draft,
@@ -190,6 +191,7 @@ export function DocumentEditorPage({ documentID, onDone }: DocumentEditorPagePro
               <span className={styles.docSep}>·</span>
               <span className={styles.docMeta}>Documento</span>
               {docCode && <span className={styles.versionBadge}>{docCode}</span>}
+              {revNum > 0 && <span className={styles.versionBadge}>REV{String(revNum).padStart(2, '0')}</span>}
               {docStatus && (
                 <span className={`${styles.statusPill} ${statusPillClass}`}>
                   {docStatus.replace('_', ' ')}

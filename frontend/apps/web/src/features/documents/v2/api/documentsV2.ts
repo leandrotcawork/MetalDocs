@@ -31,6 +31,8 @@ export type DocumentResponse = {
   created_by?: string;
   CurrentRevisionID?: string;
   current_revision_id?: string;
+  CurrentRevisionNum?: number;
+  current_revision_num?: number;
   FormDataJSON?: unknown;
   form_data?: unknown;
 };

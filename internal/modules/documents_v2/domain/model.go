@@ -29,8 +29,9 @@ type Document struct {
 	Name              string
 	Status            DocumentStatus
 	FormDataJSON      []byte
-	CurrentRevisionID string
-	ActiveSessionID   string
+	CurrentRevisionID  string
+	CurrentRevisionNum int64
+	ActiveSessionID    string
 	FinalizedAt       *time.Time
 	ValuesFrozenAt    *time.Time
 	ArchivedAt        *time.Time

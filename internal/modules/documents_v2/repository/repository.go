@@ -101,14 +101,18 @@ func (r *Repository) SetRevisionStorageKey(ctx context.Context, revID, storageKe
 func (r *Repository) GetDocument(ctx context.Context, tenantID, id string) (*domain.Document, error) {
 	var d domain.Document
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, tenant_id, template_version_id, name, status, form_data_json,
-		        coalesce(current_revision_id::text, ''), coalesce(active_session_id::text, ''),
-		        finalized_at, archived_at, created_at, updated_at, created_by,
-		        controlled_document_id, coalesce(code,'')
-		 FROM documents WHERE id=$1 AND tenant_id=$2`, id, tenantID,
+		`SELECT d.id, d.tenant_id, d.template_version_id, d.name, d.status, d.form_data_json,
+		        coalesce(d.current_revision_id::text, ''), coalesce(d.active_session_id::text, ''),
+		        d.finalized_at, d.archived_at, d.created_at, d.updated_at, d.created_by,
+		        d.controlled_document_id, coalesce(d.code,''),
+		        coalesce(r.revision_num, 0)
+		 FROM documents d
+		 LEFT JOIN document_revisions r ON r.id = d.current_revision_id AND r.document_id = d.id
+		 WHERE d.id=$1 AND d.tenant_id=$2`, id, tenantID,
 	).Scan(&d.ID, &d.TenantID, &d.TemplateVersionID, &d.Name, &d.Status, &d.FormDataJSON,
 		&d.CurrentRevisionID, &d.ActiveSessionID, &d.FinalizedAt, &d.ArchivedAt,
-		&d.CreatedAt, &d.UpdatedAt, &d.CreatedBy, &d.ControlledDocumentID, &d.Code)
+		&d.CreatedAt, &d.UpdatedAt, &d.CreatedBy, &d.ControlledDocumentID, &d.Code,
+		&d.CurrentRevisionNum)
 	if errors.Is(err, sql.ErrNoRows) || isInvalidUUID(err) {
 		return nil, domain.ErrNotFound
 	}

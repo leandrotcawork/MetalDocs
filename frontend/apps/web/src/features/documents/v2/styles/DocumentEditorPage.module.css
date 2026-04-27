@@ -486,6 +486,9 @@
 }
 .editorWrapper :global(.ep-root) { scrollbar-width: thin; scrollbar-color: var(--brand) transparent; }
 
+/* Hide template annotation chips sidebar — plugin still active for substitution */
+.editorWrapper :global(.docx-unified-sidebar) { display: none !important; }
+
 /* ---------- Submit alert (inline banner) ---------- */
 .submitAlert {
   padding: 8px 20px;

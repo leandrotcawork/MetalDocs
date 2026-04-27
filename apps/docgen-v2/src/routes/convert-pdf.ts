@@ -12,7 +12,7 @@ const BodySchema = z.object({
   render_opts: z.object({
     paper: z.enum(['A4', 'Letter']).optional(),
     landscape: z.boolean().optional(),
-  }),
+  }).optional(),
 });
 
 const PAPER_SIZES: Record<'A4' | 'Letter', { width: number; height: number }> = {
@@ -40,8 +40,8 @@ export function registerConvertPDF(
     const { docx_key, output_key, render_opts } = parsed.data;
 
     const docxBuffer = await getObjectBuffer(client, env.DOCGEN_V2_S3_BUCKET, docx_key);
-    const paper = render_opts.paper ?? 'A4';
-    const landscape = render_opts.landscape ?? false;
+    const paper = render_opts?.paper ?? 'A4';
+    const landscape = render_opts?.landscape ?? false;
     const dims = PAPER_SIZES[paper];
 
     const form = new FormData();

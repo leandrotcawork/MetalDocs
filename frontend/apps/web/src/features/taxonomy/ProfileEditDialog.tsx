@@ -102,13 +102,28 @@ export function ProfileEditDialog({ mode, profile, onClose, onSaved }: Props) {
           )}
           <div style={{ marginBottom: 12 }}>
             <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>Familia *</label>
-            <input
-              value={familyCode}
-              onChange={(e) => setFamilyCode(e.target.value)}
-              required={mode === "create"}
-              readOnly={mode === "edit"}
-              style={{ width: "100%", padding: "6px 8px", boxSizing: "border-box", background: mode === "edit" ? "#f5f5f5" : undefined }}
-            />
+            {mode === "create" ? (
+              <select
+                value={familyCode}
+                onChange={(e) => setFamilyCode(e.target.value)}
+                required
+                style={{ width: "100%", padding: "6px 8px", boxSizing: "border-box" }}
+              >
+                <option value="" disabled>Selecione a família</option>
+                <option value="policy">Política</option>
+                <option value="procedure">Procedimento</option>
+                <option value="work_instruction">Instrução de Trabalho</option>
+                <option value="form">Formulário</option>
+                <option value="manual">Manual</option>
+                <option value="report">Relatório</option>
+                <option value="certificate">Certificado</option>
+                <option value="contract">Contrato</option>
+                <option value="technical_drawing">Desenho Técnico</option>
+                <option value="supplier_document">Documento de Fornecedor</option>
+              </select>
+            ) : (
+              <input value={profile?.familyCode ?? ""} readOnly style={{ width: "100%", padding: "6px 8px", boxSizing: "border-box", background: "#f5f5f5" }} />
+            )}
           </div>
           <div style={{ marginBottom: 12 }}>
             <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>Nome *</label>
@@ -140,12 +155,18 @@ export function ProfileEditDialog({ mode, profile, onClose, onSaved }: Props) {
             />
           </div>
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>Role editora</label>
-            <input
+            <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>Role editora *</label>
+            <select
               value={editableByRole}
               onChange={(e) => setEditableByRole(e.target.value)}
+              required
               style={{ width: "100%", padding: "6px 8px", boxSizing: "border-box" }}
-            />
+            >
+              <option value="admin">admin</option>
+              <option value="editor">editor</option>
+              <option value="reviewer">reviewer</option>
+              <option value="viewer">viewer</option>
+            </select>
           </div>
           {error && <p style={{ color: "#c00", fontSize: 12, marginBottom: 8 }}>{error}</p>}
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>

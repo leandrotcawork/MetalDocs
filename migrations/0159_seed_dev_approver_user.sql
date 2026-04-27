@@ -13,7 +13,7 @@ VALUES (
   'approver',
   'approver',
   'Approver Dev',
-  '$2a$12$pZNtu49BSig5I5Eqp/sqx.bHJ70Hl92aUhS4P9t..KBctN2EvNPye',
+  crypt('ApproverMetalDocs123!', gen_salt('bf', 12)),
   'bcrypt'
 )
 ON CONFLICT (user_id) DO NOTHING;

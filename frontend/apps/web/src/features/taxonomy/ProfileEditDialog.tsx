@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { DocumentProfile, CreateProfileRequest, UpdateProfileRequest } from "./types";
 import { createProfile, updateProfile, setDefaultTemplate } from "./api";
+import { listTemplates, type TemplateListRow } from "../templates/v2/api/templatesV2";
 
 type Props = {
   mode: "create" | "edit";
@@ -21,6 +22,14 @@ export function ProfileEditDialog({ mode, profile, onClose, onSaved }: Props) {
   const [saving, setSaving] = useState(false);
   const [templateError, setTemplateError] = useState("");
   const [templateSaving, setTemplateSaving] = useState(false);
+  const [publishedTemplates, setPublishedTemplates] = useState<TemplateListRow[]>([]);
+
+  useEffect(() => {
+    if (mode !== "edit") return;
+    listTemplates().then(({ templates }) =>
+      setPublishedTemplates(templates.filter((t) => t.published_version_id != null))
+    ).catch(() => {/* non-critical */});
+  }, [mode]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -182,14 +191,23 @@ export function ProfileEditDialog({ mode, profile, onClose, onSaved }: Props) {
             <h3 style={{ margin: "0 0 12px", fontSize: 13 }}>Template padrao</h3>
             <form onSubmit={(e) => void handleSetTemplate(e)}>
               <div style={{ marginBottom: 8 }}>
-                <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>ID da versao do template (UUID)</label>
-                <input
+                <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>Template padrão</label>
+                <select
                   value={templateVersionId}
                   onChange={(e) => setTemplateVersionId(e.target.value)}
-                  placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
                   required
                   style={{ width: "100%", padding: "6px 8px", boxSizing: "border-box" }}
-                />
+                >
+                  <option value="" disabled>Selecione um template publicado</option>
+                  {publishedTemplates.map((t) => (
+                    <option key={t.id} value={t.published_version_id!}>
+                      {t.name}{t.doc_type_code ? ` [${t.doc_type_code}]` : ""}
+                    </option>
+                  ))}
+                </select>
+                {publishedTemplates.length === 0 && (
+                  <p style={{ fontSize: 11, color: "#888", margin: "4px 0 0" }}>Nenhum template publicado encontrado.</p>
+                )}
               </div>
               {templateError && <p style={{ color: "#c00", fontSize: 12, marginBottom: 8 }}>{templateError}</p>}
               <button type="submit" disabled={templateSaving} style={{ padding: "6px 14px" }}>

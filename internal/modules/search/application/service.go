@@ -180,20 +180,16 @@ func decidePolicies(ctx context.Context, items []domain.AccessPolicy) bool {
 		rolesSet[strings.ToLower(strings.TrimSpace(role))] = struct{}{}
 	}
 
-	matchedAny := false
 	for _, item := range items {
 		if !matchesPolicySubject(item, userID, rolesSet) {
 			continue
 		}
-		matchedAny = true
 		if item.Effect == searchPolicyEffectDeny {
 			return false
 		}
 	}
-	if matchedAny {
-		return true
-	}
-	return false
+	// No matching deny policy — default allow. Policies are opt-in restrictions.
+	return true
 }
 
 func matchesPolicySubject(item domain.AccessPolicy, userID string, rolesSet map[string]struct{}) bool {

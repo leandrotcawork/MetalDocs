@@ -1,6 +1,6 @@
 # Local Dev Credentials
 
-**Last verified:** 2026-04-26
+**Last verified:** 2026-04-27
 
 ## API login
 
@@ -9,7 +9,8 @@ Body field is `identifier` (not `username`).
 
 | identifier | password | role | notes |
 |---|---|---|---|
-| `admin` | `AdminMetalDocs123!` | admin | bootstrapped on first start when no admin role exists |
+| `admin` | `AdminMetalDocs123!` | admin | bootstrapped on first start; use to author documents/templates |
+| `approver` | `ApproverMetalDocs123!` | admin | seeded by migration 0159; use to approve templates authored by `admin` (domain enforces actorID != authorID) |
 
 Bootstrap triggers when: API starts and `metaldocs.iam_user_roles` has no `admin` role.
 To re-bootstrap: truncate `metaldocs.auth_identities`, `metaldocs.iam_user_roles`, `metaldocs.iam_users` and restart API.

@@ -69,11 +69,12 @@ export async function archiveDocument(id: string) {
 export async function acquireSession(id: string): Promise<AcquireResult> {
   return json(await fetch(`/api/v2/documents/${id}/session/acquire`, { method: 'POST' }));
 }
-export async function heartbeatSession(id: string, sessionID: string) {
-  return json(await fetch(`/api/v2/documents/${id}/session/heartbeat`, {
+export async function heartbeatSession(id: string, sessionID: string): Promise<void> {
+  const res = await fetch(`/api/v2/documents/${id}/session/heartbeat`, {
     method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ session_id: sessionID }),
-  }));
+  });
+  if (!res.ok) throw Object.assign(new Error(`http_${res.status}`), { status: res.status, body: await res.text() });
 }
 export async function releaseSession(id: string, sessionID: string) {
   return json(await fetch(`/api/v2/documents/${id}/session/release`, {

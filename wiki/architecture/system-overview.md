@@ -1,6 +1,6 @@
 # System Overview
 
-> **Last verified:** 2026-04-26
+> **Last verified:** 2026-04-27
 > **Scope:** Services, ports, data flow, infra at a glance.
 > **Out of scope:** Per-module deep dives (see `modules/*`), DB schema details (see `data-model.md`).
 > **Key files:**
@@ -43,6 +43,7 @@ Modules:
 - `registry` - controlled-document codes, sequence counters
 - `workflow` - approval workflow definitions
 - `jobs/*` - background jobs (effective-date publisher, idempotency janitor, scheduler, watchdog)
+- `search` - cross-module document search index; `infrastructure/v2documents/reader.go` queries `public.documents LEFT JOIN controlled_documents` to populate `DocumentCode`/`DocumentSequence` (fixed 2026-04-27: was reading `d.code` which is always empty for v2 docs; now reads `COALESCE(cd.code, '')` from the join)
 
 ## Frontend topology
 
@@ -52,6 +53,7 @@ Modules:
 - `features/` - one folder per feature area
   - `templates/v2/` - template list + author page
   - `documents/v2/` - document list + create wizard + editor
+  - `documents/DocumentsHubView.tsx` - hub list; "Duplicar" button opens an inline confirmation modal (added 2026-04-27) with three actions: cancel, duplicate (→ `#/documents/doc/{id}`), or duplicate-and-edit (→ `/documents-v2/{id}` via react-router `navigate`). Both call `POST /api/v2/documents/{id}/duplicate`.
   - `taxonomy/` - profile/area admin
   - `iam/` - user/membership admin
   - `approval/` - inbox, etag/mutation client

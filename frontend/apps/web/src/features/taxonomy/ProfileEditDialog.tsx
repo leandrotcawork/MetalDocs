@@ -17,7 +17,7 @@ export function ProfileEditDialog({ mode, profile, onClose, onSaved }: Props) {
   const [description, setDescription] = useState(profile?.description ?? "");
   const [reviewIntervalDays, setReviewIntervalDays] = useState(String(profile?.reviewIntervalDays ?? 365));
   const [editableByRole, setEditableByRole] = useState(profile?.editableByRole ?? "admin");
-  const [templateVersionId, setTemplateVersionId] = useState("");
+  const [templateVersionId, setTemplateVersionId] = useState(profile?.defaultTemplateVersionId ?? "");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [templateError, setTemplateError] = useState("");

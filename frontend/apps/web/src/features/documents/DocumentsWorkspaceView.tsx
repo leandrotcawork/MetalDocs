@@ -45,6 +45,7 @@ export function DocumentsWorkspaceView(props: DocumentsWorkspaceViewProps) {
       onCreateDocument={props.onCreateDocument}
       onOpenDocument={props.onOpenDocument}
       onOpenDocumentForHub={props.onOpenDocumentForHub}
+      onRefreshDocuments={props.onRefreshWorkspace}
     />
   );
 }

@@ -225,14 +225,16 @@ export function useDocumentsWorkspace(applyDocumentProfile: (profileCode: string
 
   const openDocumentForHub = useCallback(
     async (documentId: string) => {
-      const existing = documents.find((d) => d.documentId === documentId);
+      // Read current store state directly to avoid stale closure after a refresh.
+      const { documents: currentDocs } = useDocumentsStore.getState();
+      const existing = currentDocs.find((d) => d.documentId === documentId);
       if (existing) {
         setSelectedDocument(existing);
         return;
       }
       await loadDocumentDetails(documentId);
     },
-    [documents, loadDocumentDetails, setSelectedDocument],
+    [loadDocumentDetails, setSelectedDocument],
   );
 
   const handleUploadAttachment = useCallback(

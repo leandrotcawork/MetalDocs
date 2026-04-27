@@ -46,10 +46,10 @@ export function formatDocumentDisplayName(doc: DocumentIdentity, profiles?: Docu
   if (alreadyStandardized(title)) return title;
 
   const canonicalCode = normalizeToken(doc.documentCode);
-  if (canonicalCode) return `${canonicalCode}-${title}`;
+  if (canonicalCode) return `${canonicalCode} ${title}`;
 
   const prefix = profileShortCode(doc.documentProfile, profiles);
   const seq = extractSequenceFromId(doc.documentId, prefix);
-  if (!seq) return `${prefix}-${title}`;
-  return `${prefix}-${seq}-${title}`;
+  if (!seq) return `${prefix} ${title}`;
+  return `${prefix}-${seq} ${title}`;
 }

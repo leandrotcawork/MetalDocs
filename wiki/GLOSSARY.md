@@ -1,6 +1,6 @@
 # Glossary
 
-> **Last verified:** 2026-04-26
+> **Last verified:** 2026-04-27
 > **Scope:** Terms used across MetalDocs codebase, docs, and PRs.
 
 ## A
@@ -26,6 +26,8 @@
 **Docxtemplater** - Template substitution library. Native syntax: `{var}`, `{#section}`, `{^inverted}`, `{@raw}`. Used by both eigenpal client-side and MetalDocs server fanout.
 
 **Draft** - Initial state of a template version or document instance. Editable. Status enum value.
+
+**Duplicate** - Action that copies a document via `POST /api/v2/documents/{id}/duplicate`, returning a new `document_id`. Triggered from `DocumentsHubView` via a confirmation modal (added 2026-04-27). Two navigation outcomes: hub detail view (`#/documents/doc/{id}`) or eigenpal editor (`/documents-v2/{id}` via react-router `navigate`).
 
 ## E
 
@@ -64,6 +66,8 @@
 ## S
 
 **Schema** - JSON definition of a template's variables (placeholders). Stored on `templates_v2_template_version.placeholder_schema_snapshot`.
+
+**Search module** - `internal/modules/search/` — aggregates documents across sources for the hub list. The v2 reader (`infrastructure/v2documents/reader.go`) queries `public.documents LEFT JOIN controlled_documents cd` to return the real document code and sequence number. Bug fixed 2026-04-27: prior to the fix, `d.code` was always empty for v2 docs; the reader now uses `COALESCE(cd.code, '')` and `COALESCE(cd.sequence_num, d.revision_number, 0)`.
 
 **Snapshot** - Immutable copy captured when a document is created, not when it is submitted. `application.SnapshotService` is wired through `documents_v2.Dependencies.SnapshotReader`/`SnapshotWriter` and populates `placeholder_schema_snapshot`, `placeholder_schema_hash`, `composition_config_snapshot`, `composition_config_hash`, `body_docx_snapshot_s3_key`, and `body_docx_hash`; catalog-only templates use `{}` for `composition_config_snapshot`. The `enforce_snapshot_on_submit_trg` trigger enforces these six columns before draft -> under_review.
 

@@ -1,6 +1,6 @@
 # E2E Workflow Test Plan — Full User Journey
 **Date:** 2026-04-25 (updated post zone-purge + token-migration)
-**Updated:** 2026-04-26 (post placeholder-fixed-catalog migration) | 2026-04-26 (Stage 10 live testing complete — 5 pipeline bugs fixed)
+**Updated:** 2026-04-26 (post placeholder-fixed-catalog migration) | 2026-04-26 (Stage 10 live testing complete — 5 pipeline bugs fixed) | 2026-04-26 (Stage 10b PDF pipeline investigation — BLOCKED, architecture decision needed)
 **Scope:** Validate full ISO flow — template authoring with fixed catalog tokens, auto-resolution, approval, fanout substitution, view.
 **Method:** Manual UI simulation via preview tools (preview_click, preview_fill, preview_snapshot).
 DB queries used ONLY for analysis/confirmation after UI actions — never as primary driver.
@@ -346,17 +346,66 @@ FROM public.documents WHERE id = '088636b8-b924-4d7e-ba58-6ee65d3be1db';
 
 ---
 
-## Stage 10b — View Frozen Artifact
+## Stage 10b — View (PDF)
 
-**Goal:** Signed URL returned, DOCX/PDF contains all 8 substituted values — no `{name}` tokens remaining.
+**Status: READY TO TEST — pipeline fully wired as of 2026-04-26**
 
-| # | UI Action | Tool | Expected |
-|---|-----------|------|----------|
-| 10.1 | Click View / PDF button | `preview_click` | `GET /api/v2/documents/{id}/view → 200` |
-| 10.2 | `preview_network` | network log | 200, `signed_url` in response |
-| 10.3 | `preview_snapshot` | snapshot | PDF viewer renders OR redirect to signed URL |
-| 10.4 | `preview_screenshot` | screenshot | Visual proof — CD code, "E2E Catalog Test", "1" etc visible; no `{doc_code}` raw token |
-| 10.5 | **Edge case — pdf_pending:** approve without PDF ready | DB hack + `preview_network` | `GET /view → 404 {"error":"pdf_pending"}` |
+**Goal:** After signoff, worker generates PDF → `GET /api/v2/documents/{id}/view` returns presigned PDF URL. PDF must contain all 7 substituted catalog tokens — no raw `{token}` strings remaining.
+
+### Architecture (implemented)
+
+Outbox + worker pattern. No webhook — docgen-v2 `/convert/pdf` is synchronous; worker writes result directly.
+
+1. Signoff → `DecisionService.RecordSignoff` calls `pdfDispatchAdapter.Dispatch(ctx, tenantID, revisionID)` post-commit
+2. `PDFDispatchAdapter` reads `final_docx_s3_key` from DB, calls `PDFDispatcher.Dispatch`
+3. `PDFDispatcher` publishes `docgen_v2_pdf` event to `messaging_outbox` table
+4. Worker polls outbox → `PDFJobRunner.Handle` picks up event
+5. `PDFJobRunner` calls docgen-v2 `/convert/pdf` synchronously with `final_docx_s3_key`
+6. docgen-v2 converts DOCX → PDF, uploads to MinIO at `tenants/{id}/revisions/{id}/final.pdf`, returns `OutputKey` + `ContentHash`
+7. `PDFJobRunner` calls `WritePDF` → stamps `final_pdf_s3_key` + `pdf_content_hash` on document row
+8. `GET /api/v2/documents/{id}/view` reads `final_pdf_s3_key`, returns presigned URL
+
+### Zod fix (committed 2026-04-26)
+
+`render_opts` in docgen-v2 `/convert/pdf` Zod schema was required; made optional. Go client uses `omitempty` so this was causing 400. Fixed in `apps/docgen-v2/src/routes/convert-pdf.ts`.
+
+### Pre-requisites
+
+| # | Prerequisite | Status |
+|---|---|---|
+| 1 | API wired with PDFDispatchAdapter | ✅ cdaf7625 |
+| 2 | Worker PDFJobRunner wired | ✅ cdaf7625 |
+| 3 | PDFDispatchAdapter bridging interface mismatch | ✅ 00c8f24a |
+| 4 | Worker routes docgen_v2_pdf events | ✅ bfbdbbbb |
+| 5 | Zod render_opts optional in /convert/pdf | ✅ 79adcd3c |
+| 6 | Worker binary running alongside API | ⚠️ must start separately |
+
+### Local dev setup requirement
+
+Worker is a separate binary. Must run both:
+```powershell
+.\scripts\start-api.ps1      # API on :8081
+.\scripts\start-worker.ps1   # Worker (if script exists) OR go run ./apps/worker/...
+```
+
+### Test steps
+
+| # | Action | Tool | Expected |
+|---|--------|------|----------|
+| 10.1 | Complete Stage 9 (signoff) | — | `final_docx_s3_key` set in DB |
+| 10.2 | Wait for worker to drain outbox (poll interval ~10s) | wait | — |
+| 10.3 | Check worker log | worker stdout | `worker_event event_type=docgen_v2_pdf result=published` |
+| 10.4 | DB: `final_pdf_s3_key` set | SQL | non-null |
+| 10.5 | Click View / PDF button | `preview_click` | `GET /api/v2/documents/{id}/view → 200` |
+| 10.6 | `preview_network` | network log | 200, `signed_url` in response |
+| 10.7 | Open signed URL | browser | PDF renders with all 7 token values substituted — no `{doc_code}` raw strings |
+
+**DB verification:**
+```sql
+SELECT final_pdf_s3_key, pdf_content_hash
+FROM public.documents WHERE id = '{docID}';
+-- Expect: both non-null after worker processes event
+```
 
 ---
 

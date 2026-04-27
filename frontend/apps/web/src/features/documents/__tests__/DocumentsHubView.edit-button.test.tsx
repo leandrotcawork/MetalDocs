@@ -59,8 +59,13 @@ function renderDetail(status: string) {
 }
 
 describe('DocumentsHubView — Edit button', () => {
-  it('shows Editar button for DRAFT documents', () => {
+  it('shows Editar button for DRAFT (uppercase) documents', () => {
     renderDetail('DRAFT');
+    expect(screen.getByRole('button', { name: /editar/i })).toBeTruthy();
+  });
+
+  it('shows Editar button for draft (lowercase) documents', () => {
+    renderDetail('draft');
     expect(screen.getByRole('button', { name: /editar/i })).toBeTruthy();
   });
 

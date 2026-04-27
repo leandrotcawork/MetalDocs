@@ -756,7 +756,7 @@ export function DocumentsHubView(props: DocumentsHubViewProps) {
                 </div>
               </div>
               <div className={styles.detailActionsBar}>
-                {doc.status === 'DRAFT' && (
+                {doc.status.toUpperCase() === 'DRAFT' && (
                   <button
                     type="button"
                     className={styles.primaryButton}

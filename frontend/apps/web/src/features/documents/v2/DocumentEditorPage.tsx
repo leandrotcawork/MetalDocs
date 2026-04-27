@@ -164,50 +164,93 @@ export function DocumentEditorPage({ documentID, onDone }: DocumentEditorPagePro
 
   return (
     <div className={styles.page} data-editor-root>
-      {canMountEditor ? (
-        <MetalDocsEditor
-          ref={editorRef}
-          mode={session.state.phase === 'writer' ? 'document-edit' : 'readonly'}
-          documentBuffer={buffer ?? undefined}
-          author={authorDisplay}
-          comments={commentsHook.comments}
-          onCommentsChange={commentsHook.setComments}
-          onCommentAdd={(c: Comment) => void commentsHook.add(c)}
-          onCommentResolve={(c: Comment) => void (c.done ? commentsHook.resolve(c) : commentsHook.reopen(c))}
-          onCommentDelete={(c: Comment) => void commentsHook.remove(c)}
-          onCommentReply={(reply: Comment, parent: Comment) => void commentsHook.reply(reply, parent)}
-          documentName={documentName}
-          documentNameEditable={session.state.phase === 'writer'}
-          onDocumentNameChange={handleRename}
-          onAutoSave={handleSave}
-          renderTitleBarRight={() => (
-            <>
+      <div className={styles.body}>
+
+        <aside className={`${styles.rail} ${styles.railLeft}`}>
+          <button
+            className={styles.railBackBtn}
+            onClick={onDone}
+            aria-label="Voltar"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+            <span className={styles.railTip}>Voltar</span>
+          </button>
+        </aside>
+
+        <main className={styles.canvas}>
+          <div className={styles.editorWrapper}>
+
+            <div className={styles.overlayTitle}>
+              <span className={styles.docTitle}>{documentName || 'Document'}</span>
               {docCode && (
-                <span style={{
-                  fontSize: 11, fontWeight: 600, padding: '2px 6px',
-                  borderRadius: 4, background: '#f1f5f9', color: '#475569',
-                  border: '1px solid #e2e8f0', marginRight: 6,
-                }}>
-                  {docCode}
-                </span>
+                <>
+                  <span className={styles.docSep}>·</span>
+                  <span className={styles.docMeta} style={{ fontFamily: 'monospace' }}>{docCode}</span>
+                </>
               )}
               {badgeState && <StateBadge state={badgeState} size="sm" />}
-              <button type="button" onClick={() => setCheckpointsOpen(true)}>Checkpoints</button>
+            </div>
+
+            <div className={styles.overlayRight}>
+              {autosave.status === 'saving' && (
+                <span className={styles.autosaveStatus}>
+                  <span className={styles.autosaveDot} aria-hidden="true" />
+                  Saving…
+                </span>
+              )}
+              {autosave.status === 'error' && (
+                <span className={styles.autosaveStatus} style={{ color: '#dc2626' }}>Save failed</span>
+              )}
+              {autosave.status === 'saved' && (
+                <span className={styles.autosaveStatus}>✓ Saved</span>
+              )}
+              <button
+                type="button"
+                className={styles.editorSubmitBtn}
+                onClick={() => setCheckpointsOpen(true)}
+              >
+                Checkpoints
+              </button>
               <ExportMenuButton
                 documentID={documentID}
                 canExport={sessionPhase === 'writer' || sessionPhase === 'readonly'}
               />
               <button
                 type="button"
+                className={styles.editorSubmitBtn}
                 onClick={() => void handleFinalize()}
                 disabled={session.state.phase !== 'writer' || docStatus !== 'draft'}
               >
-                Finalize
+                Finalizar
               </button>
-            </>
-          )}
-        />
-      ) : null}
+            </div>
+
+            {canMountEditor ? (
+              <MetalDocsEditor
+                ref={editorRef}
+                mode={session.state.phase === 'writer' ? 'document-edit' : 'readonly'}
+                documentBuffer={buffer ?? undefined}
+                author={authorDisplay}
+                comments={commentsHook.comments}
+                onCommentsChange={commentsHook.setComments}
+                onCommentAdd={(c: Comment) => void commentsHook.add(c)}
+                onCommentResolve={(c: Comment) => void (c.done ? commentsHook.resolve(c) : commentsHook.reopen(c))}
+                onCommentDelete={(c: Comment) => void commentsHook.remove(c)}
+                onCommentReply={(reply: Comment, parent: Comment) => void commentsHook.reply(reply, parent)}
+                documentName={documentName}
+                documentNameEditable={session.state.phase === 'writer'}
+                onDocumentNameChange={handleRename}
+                onAutoSave={handleSave}
+              />
+            ) : null}
+
+          </div>
+        </main>
+
+      </div>
+
       <CheckpointsDialog
         open={checkpointsOpen}
         onClose={() => setCheckpointsOpen(false)}

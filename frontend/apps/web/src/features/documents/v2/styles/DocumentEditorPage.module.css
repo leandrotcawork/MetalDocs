@@ -1,6 +1,519 @@
+/* =========================================================
+   MetalDocs Template Author — Swiss / Minimal
+   From Claude Design: template-editor.html (hero variant)
+   ========================================================= */
+
 .page {
+  --brand: #6b1f2a;
+  --brand-tint: rgba(107, 31, 42, 0.08);
+  --blue: #2563eb;
+  --blue-hover: #1d4fd8;
+  --amber: #b45309;
+  --amber-bg: #fef3c7;
+  --green: #15803d;
+
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --ink: #1e293b;
+  --ink-2: #334155;
+  --muted: #64748b;
+  --muted-2: #94a3b8;
+  --border: #e5e7eb;
+  --hover: #f1f5f9;
+  --active: #e2e8f0;
+
+  --dochead-h: 36px;
+  --rail-w: 48px;
+
   position: fixed;
   inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  overflow: hidden;
+}
+
+/* ---------- Doc head (slim bar above rails) ---------- */
+.dochead {
+  display: flex;
+  align-items: center;
+  position: relative;
+  padding: 0 12px;
+  height: var(--dochead-h);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.docheadLeft {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.docheadCenter {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  background: var(--brand);
+  border: 0;
+  border-radius: 5px;
+  color: #fff;
+  cursor: pointer;
+  transition: background 150ms ease;
+  flex-shrink: 0;
+}
+.backBtn:hover { background: #7d2433; }
+
+.docTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.docSep { color: var(--muted-2); font-weight: 400; }
+.docMeta { color: var(--muted); font-weight: 400; font-size: 12px; }
+
+.versionBadge {
+  font-size: 10.5px;
+  font-family: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  font-weight: 600;
+  padding: 2px 6px;
+  background: var(--brand);
+  color: #fff;
+  border-radius: 4px;
+  letter-spacing: 0.06em;
+}
+.statusPill {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.statusPill.draft     { background: var(--amber-bg); color: var(--amber); }
+.statusPill.inReview  { background: #dbeafe; color: #1d4ed8; }
+.statusPill.approved  { background: #dcfce7; color: #15803d; }
+.statusPill.published { background: #d1fae5; color: #065f46; }
+
+.docheadRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.autosaveStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  min-width: 60px;
+}
+.autosaveCheck { color: var(--green); width: 14px; height: 14px; flex-shrink: 0; }
+.autosaveDot { color: var(--blue); width: 8px; height: 8px; border-radius: 50%; background: currentColor; animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+.submitBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 12px;
+  background: var(--blue);
+  color: #fff;
+  border: 0;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.005em;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+.submitBtn:hover:not(:disabled) { background: var(--blue-hover); }
+.submitBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ---------- Body grid: rail | canvas | rail ---------- */
+.body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* ---------- Rails ---------- */
+.rail {
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 0;
+  gap: 2px;
+  width: var(--rail-w);
+  flex: 0 0 var(--rail-w);
+}
+.railLeft  { border-right: 1px solid var(--border); }
+.railRight { border-left: 1px solid var(--border); }
+
+.sidePanel {
+  display: flex;
+  flex-direction: column;
+  width: 280px;
+  flex: 0 0 280px;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 12px;
+  background: var(--surface);
+}
+
+.rightPanel {
+  display: flex;
+  flex-direction: column;
+  width: 280px;
+  flex: 0 0 280px;
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 12px;
+  background: var(--surface);
+}
+
+.panelSection {
+  margin-bottom: 16px;
+}
+
+.panelHeader {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.6;
+  margin-bottom: 8px;
+}
+
+.addBtn {
+  width: 100%;
+  padding: 8px;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
+  font-size: 12px;
+}
+.addBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.addManualBtn {
+  padding: 6px;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.chipList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.inspectorFieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.railBtn {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  border-radius: 6px;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+.railBtn:hover { background: var(--hover); color: var(--ink); }
+.railBtn.isActive {
+  background: var(--brand-tint);
+  color: var(--brand);
+}
+.railBtn.isActive::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  background: var(--brand);
+  border-radius: 0 2px 2px 0;
+}
+.railRight .railBtn.isActive::before {
+  left: auto;
+  right: -8px;
+  border-radius: 2px 0 0 2px;
+}
+.railDivider {
+  width: 20px;
+  height: 1px;
+  background: var(--border);
+  margin: 6px 0;
+}
+.railTip {
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--ink);
+  color: #fff;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease;
+  z-index: 30;
+}
+.railRight .railBtn .railTip { left: auto; right: calc(100% + 10px); }
+.railBtn:hover .railTip { opacity: 1; }
+
+/* ---------- Canvas (single scroll host) ---------- */
+.canvas {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+/* Editor wrapper: eigenpal owns its own internal layout (toolbar + page) */
+.editorWrapper {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg);
+  position: relative;
+}
+
+.railBackBtn {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: var(--brand);
+  border: 0;
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  transition: background 150ms ease;
+  flex-shrink: 0;
+}
+.railBackBtn:hover { background: #7d2433; }
+.railBackBtn .railTip { left: calc(100% + 10px); }
+
+.overlayTitle {
+  position: absolute;
+  top: 0;
+  height: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 60;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.overlayRight {
+  position: absolute;
+  top: 0;
+  height: 40px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 100;
+}
+
+.overlayAlert {
+  position: absolute;
+  top: 40px;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  padding: 6px 20px;
+  font-size: 12.5px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.editorSubmitBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  background: var(--brand);
+  color: #fff;
+  border: 0;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+.editorSubmitBtn:hover:not(:disabled) { background: #7d2433; }
+.editorSubmitBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ===== Eigenpal overrides ===== */
+
+/* Title bar: compact + keep white */
+.editorWrapper :global(.ep-root [data-testid="title-bar"]) {
+  padding-top: 2px !important;
+  padding-bottom: 2px !important;
+}
+
+/* Doc icon → wine color + smaller */
+.editorWrapper :global(.ep-root) svg path[fill="#cbd5e1"] { fill: var(--brand); }
+.editorWrapper :global(.ep-root) svg path[fill="#94a3b8"] { fill: #7d2433; }
+.editorWrapper :global(.ep-root) svg[viewBox="0 0 32 40"] { width: 16px; height: 20px; }
+
+/* ===== Wine theme: formatting bar pill only ===== */
+/* Both overflow axes must match — eigenpal closes font-size dropdown on any
+   scroll event (capture-phase listener). overflow-x:hidden alone forces
+   overflow-y:auto, making the bar a scroll container; browser scrolls it
+   when the font-size input gains focus and kills the dropdown. */
+.editorWrapper :global(.ep-root [data-testid="formatting-bar"]) {
+  background: rgba(107,31,42,0.18) !important;
+  border: 1px solid rgba(107,31,42,0.2) !important;
+  overflow: hidden !important;
+}
+
+/* All buttons in formatting bar */
+.editorWrapper :global(.ep-root [data-testid="formatting-bar"] button:not(.docx-advanced-color-picker-dropdown *)) {
+  color: var(--ink-2) !important;
+  background: transparent !important;
+  border-color: transparent !important;
+}
+.editorWrapper :global(.ep-root [data-testid="formatting-bar"] button:not(.docx-advanced-color-picker-dropdown *):hover) {
+  background: rgba(0,0,0,0.08) !important;
+  color: var(--ink) !important;
+}
+.editorWrapper :global(.ep-root [data-testid="formatting-bar"] button:not(.docx-advanced-color-picker-dropdown *) svg) {
+  fill: var(--ink-2) !important;
+}
+.editorWrapper :global(.ep-root [data-testid="formatting-bar"] button[aria-pressed="true"]:not(.docx-advanced-color-picker-dropdown *)) {
+  background: rgba(0,0,0,0.12) !important;
+  color: var(--ink) !important;
+}
+
+/* Font size button + input.
+   Width must be wide enough that the value doesn't trigger scrollLeft
+   on the input — eigenpal closes the dropdown on any capture-phase
+   scroll event, and a narrow input scrolls internally when .select()
+   runs on mount. */
+.editorWrapper :global(.ep-root [data-testid="font-size-display"]),
+.editorWrapper :global(.ep-root [data-testid="font-size-input"]) {
+  background: rgba(0,0,0,0.05) !important;
+  border-color: rgba(0,0,0,0.15) !important;
+  color: var(--ink-2) !important;
+  border-radius: 4px !important;
+  width: 56px !important;
+  height: 28px !important;
+  min-width: 56px !important;
+  min-height: 28px !important;
+  padding: 4px !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+
+/* Font family / style selectors */
+.editorWrapper :global(.ep-root [data-testid="formatting-bar"] [role="combobox"]),
+.editorWrapper :global(.ep-root [data-testid="formatting-bar"] select) {
+  color: var(--ink-2) !important;
+  background: transparent !important;
+  border-color: rgba(0,0,0,0.12) !important;
+}
+
+/* Group dividers */
+.editorWrapper :global(.ep-root [data-testid="formatting-bar"] [role="separator"]) {
+  background: rgba(0,0,0,0.12) !important;
+}
+
+/* Wine gradient scrollbar — keep as-is for doc area only */
+
+/* Wine gradient scrollbar inherited via eigenpal's scroll region.
+   eigenpal renders its own .ep-root with internal scroll; style it. */
+.editorWrapper :global(.ep-root) ::-webkit-scrollbar { width: 10px; height: 10px; }
+.editorWrapper :global(.ep-root) ::-webkit-scrollbar-track { background: transparent; }
+.editorWrapper :global(.ep-root) ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #b05866 0%, #6b1f2a 100%);
+  border-radius: 10px;
+  border: 2px solid var(--bg);
+}
+.editorWrapper :global(.ep-root) ::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #c16672 0%, #7a2431 100%);
+}
+.editorWrapper :global(.ep-root) { scrollbar-width: thin; scrollbar-color: var(--brand) transparent; }
+
+/* ---------- Submit alert (inline banner) ---------- */
+.submitAlert {
+  padding: 8px 20px;
+  font-size: 12.5px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+/* ---------- Loading / error states ---------- */
+.loading {
+  padding: 32px 20px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.error {
+  padding: 16px 20px;
+  color: #dc2626;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  margin: 16px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .autosaveDot { animation: none; }
+  .railBtn, .submitBtn { transition: none; }
 }
 
 .checkpointsDialog {

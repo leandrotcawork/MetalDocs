@@ -51,7 +51,7 @@ import (
 	"metaldocs/internal/modules/render/resolvers"
 	searchapp "metaldocs/internal/modules/search/application"
 	searchdelivery "metaldocs/internal/modules/search/delivery/http"
-	searchdocs "metaldocs/internal/modules/search/infrastructure/documents"
+	searchdocs "metaldocs/internal/modules/search/infrastructure/v2documents"
 	"metaldocs/internal/modules/taxonomy"
 	taxonomyinfra "metaldocs/internal/modules/taxonomy/infrastructure"
 	taxonomydomain "metaldocs/internal/modules/taxonomy/domain"
@@ -109,7 +109,7 @@ func main() {
 	auditService := auditapp.NewService(deps.AuditReader)
 
 	auditHandler := auditdelivery.NewHandler(auditService)
-	searchService := searchapp.NewService(searchdocs.NewReader(deps.DocumentsRepo))
+	searchService := searchapp.NewService(searchdocs.NewReader(deps.SQLDB))
 	searchHandler := searchdelivery.NewHandler(searchService)
 	notificationService := notificationapp.NewService(deps.NotificationsRepo, deps.DocumentsRepo, nil)
 	notificationHandler := notificationdelivery.NewHandler(notificationService)
